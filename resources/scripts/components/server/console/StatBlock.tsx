@@ -1,47 +1,37 @@
 import React from 'react';
-import Icon from '@/components/elements/Icon';
-import { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import classNames from 'classnames';
 import styles from './style.module.css';
-import useFitText from 'use-fit-text';
 import CopyOnClick from '@/components/elements/CopyOnClick';
 
 interface StatBlockProps {
     title: string;
+    subtitle?: React.ReactNode;
     copyOnClick?: string;
-    color?: string | undefined;
-    icon: IconDefinition;
+    alarm?: 'warning' | 'danger';
+    visual?: React.ReactNode;
+    mono?: boolean;
     children: React.ReactNode;
     className?: string;
 }
 
-export default ({ title, copyOnClick, icon, color, className, children }: StatBlockProps) => {
-    const { fontSize, ref } = useFitText({ minFontSize: 8, maxFontSize: 500 });
-
-    return (
-        <CopyOnClick text={copyOnClick}>
-            <div className={classNames(styles.stat_block, 'bg-gray-600', className)}>
-                <div className={classNames(styles.status_bar, color || 'bg-gray-700')} />
-                <div className={classNames(styles.icon, color || 'bg-gray-700')}>
-                    <Icon
-                        icon={icon}
-                        className={classNames({
-                            'text-gray-100': !color || color === 'bg-gray-700',
-                            'text-gray-50': color && color !== 'bg-gray-700',
-                        })}
-                    />
+export default ({ title, subtitle, copyOnClick, alarm, visual, mono, className, children }: StatBlockProps) => (
+    <CopyOnClick text={copyOnClick}>
+        <div className={classNames(styles.stat_block, className)}>
+            <div className={'min-w-0 flex-1 pr-4'}>
+                <p className={'text-sm text-neutral-300'}>{title}</p>
+                <div
+                    className={classNames('mt-2 font-semibold truncate', {
+                        'text-2xl xl:text-3xl text-neutral-50': !mono,
+                        'text-xl font-mono text-neutral-50': mono,
+                        '!text-yellow-600': alarm === 'warning',
+                        '!text-red-600': alarm === 'danger',
+                    })}
+                >
+                    {children}
                 </div>
-                <div className={'flex flex-col justify-center overflow-hidden w-full'}>
-                    <p className={'font-header font-medium leading-tight text-xs md:text-sm text-gray-200'}>{title}</p>
-                    <div
-                        ref={ref}
-                        className={'h-[1.75rem] w-full font-semibold text-gray-50 truncate'}
-                        style={{ fontSize }}
-                    >
-                        {children}
-                    </div>
-                </div>
+                {subtitle && <p className={'mt-2 text-sm text-neutral-400 truncate'}>{subtitle}</p>}
             </div>
-        </CopyOnClick>
-    );
-};
+            {visual && <div className={'flex-shrink-0'}>{visual}</div>}
+        </div>
+    </CopyOnClick>
+);

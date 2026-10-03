@@ -3,6 +3,7 @@ import Fade from '@/components/elements/Fade';
 import Portal from '@/components/elements/Portal';
 import copy from 'copy-to-clipboard';
 import classNames from 'classnames';
+import { CheckCircleIcon } from '@heroicons/react/solid';
 
 interface CopyOnClickProps {
     text: string | number | null | undefined;
@@ -49,8 +50,13 @@ const CopyOnClick = ({ text, showInNotification = true, children }: CopyOnClickP
                 <Portal>
                     <Fade in appear timeout={250} key={copied ? 'visible' : 'invisible'}>
                         <div className={'fixed z-50 bottom-0 right-0 m-4'}>
-                            <div className={'rounded-md py-3 px-4 text-gray-200 bg-neutral-600/95 shadow'}>
-                                <p>
+                            <div
+                                className={
+                                    'flex items-center rounded-xl py-3 px-4 bg-white border border-neutral-500 shadow-lg'
+                                }
+                            >
+                                <CheckCircleIcon className={'w-5 h-5 text-green-600 mr-3 flex-shrink-0'} />
+                                <p className={'text-sm text-neutral-50'}>
                                     {showInNotification
                                         ? `Copied "${String(text)}" to clipboard.`
                                         : 'Copied text to clipboard.'}

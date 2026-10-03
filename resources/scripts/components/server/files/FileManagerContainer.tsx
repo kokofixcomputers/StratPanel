@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { httpErrorToHuman } from '@/api/http';
 import { CSSTransition } from 'react-transition-group';
 import Spinner from '@/components/elements/Spinner';
@@ -15,6 +15,7 @@ import { ServerContext } from '@/state/server';
 import useFileManagerSwr from '@/plugins/useFileManagerSwr';
 import FileManagerStatus from '@/components/server/files/FileManagerStatus';
 import MassActionsBar from '@/components/server/files/MassActionsBar';
+import { DocumentAddIcon, SearchIcon } from '@heroicons/react/solid';
 import UploadButton from '@/components/server/files/UploadButton';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { useStoreActions } from '@/state/hooks';
@@ -38,12 +39,14 @@ export default () => {
     const clearFlashes = useStoreActions((actions) => actions.flashes.clearFlashes);
     const setDirectory = ServerContext.useStoreActions((actions) => actions.files.setDirectory);
 
+    const [search, setSearch] = useState('');
     const setSelectedFiles = ServerContext.useStoreActions((actions) => actions.files.setSelectedFiles);
     const selectedFilesLength = ServerContext.useStoreState((state) => state.files.selectedFiles.length);
 
     useEffect(() => {
         clearFlashes('files');
         setSelectedFiles([]);
+        setSearch('');
         setDirectory(hashToPath(hash));
     }, [hash]);
 
@@ -59,57 +62,78 @@ export default () => {
         return <ServerError message={httpErrorToHuman(error)} onRetry={() => mutate()} />;
     }
 
+    const filtered = sortFiles((files || []).slice(0, 250)).filter(
+        (file) => !search || file.name.toLowerCase().includes(search.toLowerCase())
+    );
+
     return (
         <ServerContentBlock title={'File Manager'} showFlashKey={'files'}>
             <ErrorBoundary>
-                <div className={'flex flex-wrap-reverse md:flex-nowrap mb-4'}>
-                    <FileManagerBreadcrumbs
-                        renderLeft={
-                            <FileActionCheckbox
-                                type={'checkbox'}
-                                css={tw`mx-4`}
-                                checked={selectedFilesLength === (files?.length === 0 ? -1 : files?.length)}
-                                onChange={onSelectAllClick}
-                            />
-                        }
+                <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>File Manager</h1>
+                <div css={tw`mt-4 mb-6`}>
+                    <FileManagerBreadcrumbs />
+                </div>
+                <Can action={'file.create'}>
+                    <div className={style.toolbar}>
+                        <NewDirectoryButton />
+                        <NavLink to={`/server/${id}/files/new${window.location.hash}`}>
+                            <Button>
+                                <DocumentAddIcon className={'w-5 h-5 mr-2 -ml-1'} />
+                                New File
+                            </Button>
+                        </NavLink>
+                        <UploadButton />
+                        <div className={style.divider} />
+                        <MassActionsBar />
+                        <FileManagerStatus />
+                    </div>
+                </Can>
+                <div css={tw`relative mb-4`}>
+                    <SearchIcon css={tw`absolute left-4 top-0 bottom-0 my-auto w-5 h-5 text-neutral-400`} />
+                    <input
+                        type={'text'}
+                        value={search}
+                        onChange={(e) => setSearch(e.currentTarget.value)}
+                        placeholder={'Search files in this directory...'}
+                        css={tw`w-full bg-white border border-neutral-500 rounded-xl shadow-md pl-12 pr-4 py-3.5 text-sm text-neutral-100 placeholder-neutral-400 focus:border-primary-500`}
                     />
-                    <Can action={'file.create'}>
-                        <div className={style.manager_actions}>
-                            <FileManagerStatus />
-                            <NewDirectoryButton />
-                            <UploadButton />
-                            <NavLink to={`/server/${id}/files/new${window.location.hash}`}>
-                                <Button>New File</Button>
-                            </NavLink>
-                        </div>
-                    </Can>
                 </div>
             </ErrorBoundary>
             {!files ? (
                 <Spinner size={'large'} centered />
             ) : (
-                <>
-                    {!files.length ? (
-                        <p css={tw`text-sm text-neutral-400 text-center`}>This directory seems to be empty.</p>
-                    ) : (
-                        <CSSTransition classNames={'fade'} timeout={150} appear in>
-                            <div>
-                                {files.length > 250 && (
-                                    <div css={tw`rounded bg-yellow-400 mb-px p-3`}>
-                                        <p css={tw`text-yellow-900 text-sm text-center`}>
-                                            This directory is too large to display in the browser, limiting the output
-                                            to the first 250 files.
-                                        </p>
-                                    </div>
-                                )}
-                                {sortFiles(files.slice(0, 250)).map((file) => (
-                                    <FileObjectRow key={file.key} file={file} />
-                                ))}
-                                <MassActionsBar />
+                <CSSTransition classNames={'fade'} timeout={150} appear in>
+                    <div className={style.table}>
+                        <div className={style.header_row}>
+                            <label css={tw`absolute pl-5 pr-3 flex items-center`}>
+                                <FileActionCheckbox
+                                    type={'checkbox'}
+                                    checked={files.length > 0 && selectedFilesLength === files.length}
+                                    onChange={onSelectAllClick}
+                                />
+                            </label>
+                            <div css={tw`flex-1 ml-12 pl-8`}>Name</div>
+                            <div css={tw`w-32 mr-4 hidden sm:block`}>Size</div>
+                            <div css={tw`w-56 mr-4 hidden md:block`}>Modified</div>
+                            <div css={tw`w-20 text-center`}>Actions</div>
+                        </div>
+                        {files.length > 250 && (
+                            <div css={tw`bg-yellow-50 border-b border-yellow-200 p-3`}>
+                                <p css={tw`text-yellow-800 text-sm text-center`}>
+                                    This directory is too large to display in the browser, limiting the output to the
+                                    first 250 files.
+                                </p>
                             </div>
-                        </CSSTransition>
-                    )}
-                </>
+                        )}
+                        {!filtered.length ? (
+                            <p css={tw`text-sm text-neutral-400 text-center py-10`}>
+                                {files.length ? 'No files match your search.' : 'This directory seems to be empty.'}
+                            </p>
+                        ) : (
+                            filtered.map((file) => <FileObjectRow key={file.key} file={file} />)
+                        )}
+                    </div>
+                </CSSTransition>
             )}
         </ServerContentBlock>
     );

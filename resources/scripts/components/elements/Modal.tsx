@@ -22,35 +22,33 @@ export interface ModalProps extends RequiredModalProps {
 
 export const ModalMask = styled.div`
     ${tw`fixed z-50 overflow-auto flex w-full inset-0`};
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
 `;
 
 const ModalContainer = styled.div<{ alignTop?: boolean }>`
     max-width: 95%;
-    max-height: calc(100vh - 8rem);
-    ${breakpoint('md')`max-width: 75%`};
-    ${breakpoint('lg')`max-width: 50%`};
+    max-height: calc(100vh - 6rem);
+    ${breakpoint('md')`max-width: 640px`};
+    ${breakpoint('lg')`max-width: 640px`};
 
     ${tw`relative flex flex-col w-full m-auto`};
     ${(props) =>
         props.alignTop &&
         css`
-            margin-top: 20%;
-            ${breakpoint('md')`margin-top: 10%`};
+            margin-top: 15%;
+            ${breakpoint('md')`margin-top: 8%`};
         `};
 
     margin-bottom: auto;
 
     & > .close-icon {
-        ${tw`absolute right-0 p-2 text-white cursor-pointer opacity-50 transition-all duration-150 ease-linear hover:opacity-100`};
-        top: -2.5rem;
-
-        &:hover {
-            ${tw`transform rotate-90`}
-        }
+        ${tw`absolute z-10 flex items-center justify-center w-9 h-9 rounded-full text-neutral-400 bg-white border border-neutral-500 cursor-pointer transition-all duration-150 hover:text-neutral-50 hover:bg-neutral-600`};
+        top: 1rem;
+        right: 1rem;
 
         & > svg {
-            ${tw`w-6 h-6`};
+            ${tw`w-4 h-4`};
         }
     }
 `;
@@ -122,15 +120,15 @@ const Modal: React.FC<ModalProps> = ({
                     {showSpinnerOverlay && (
                         <Fade timeout={150} appear in>
                             <div
-                                css={tw`absolute w-full h-full rounded flex items-center justify-center`}
-                                style={{ background: 'hsla(211, 10%, 53%, 0.35)', zIndex: 9999 }}
+                                css={tw`absolute w-full h-full rounded-2xl flex items-center justify-center`}
+                                style={{ background: 'rgba(255, 255, 255, 0.7)', zIndex: 9999 }}
                             >
                                 <Spinner />
                             </div>
                         </Fade>
                     )}
                     <div
-                        css={tw`bg-neutral-800 p-3 sm:p-4 md:p-6 rounded shadow-md overflow-y-scroll transition-all duration-150`}
+                        css={tw`bg-white p-5 sm:p-6 md:p-8 rounded-2xl border border-neutral-500 shadow-xl overflow-y-auto transition-all duration-150`}
                     >
                         {children}
                     </div>

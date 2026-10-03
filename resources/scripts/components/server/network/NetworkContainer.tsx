@@ -4,9 +4,12 @@ import { useFlashKey } from '@/plugins/useFlash';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { ServerContext } from '@/state/server';
 import AllocationRow from '@/components/server/network/AllocationRow';
-import Button from '@/components/elements/Button';
+import { Button } from '@/components/elements/button/index';
 import createServerAllocation from '@/api/server/network/createServerAllocation';
 import tw from 'twin.macro';
+import { ShareIcon } from '@heroicons/react/outline';
+import { PlusIcon } from '@heroicons/react/solid';
+import PageHeader, { ListHeader } from '@/components/elements/PageHeader';
 import Can from '@/components/elements/Can';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import getServerAllocations from '@/api/swr/getServerAllocations';
@@ -50,32 +53,32 @@ const NetworkContainer = () => {
             .then(() => setLoading(false));
     };
 
+    const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
+
     return (
         <ServerContentBlock showFlashKey={'server:network'} title={'Network'}>
+            <PageHeader title={'Network'} subtitle={`Manage network allocations for ${serverName}`} />
+            <ListHeader
+                icon={<ShareIcon className={'w-6 h-6'} />}
+                title={'Network'}
+                count={data ? `${data.length} / ${allocationLimit}` : undefined}
+            >
+                {allocationLimit > 0 && data && allocationLimit > data.length && (
+                    <Can action={'allocation.create'}>
+                        <Button onClick={onCreateAllocation}>
+                            <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                            New Allocation
+                        </Button>
+                    </Can>
+                )}
+            </ListHeader>
+            <SpinnerOverlay visible={loading} />
             {!data ? (
                 <Spinner size={'large'} centered />
             ) : (
-                <>
-                    {data.map((allocation) => (
-                        <AllocationRow key={`${allocation.ip}:${allocation.port}`} allocation={allocation} />
-                    ))}
-                    {allocationLimit > 0 && (
-                        <Can action={'allocation.create'}>
-                            <SpinnerOverlay visible={loading} />
-                            <div css={tw`mt-6 sm:flex items-center justify-end`}>
-                                <p css={tw`text-sm text-neutral-300 mb-4 sm:mr-6 sm:mb-0`}>
-                                    You are currently using {data.length} of {allocationLimit} allowed allocations for
-                                    this server.
-                                </p>
-                                {allocationLimit > data.length && (
-                                    <Button css={tw`w-full sm:w-auto`} color={'primary'} onClick={onCreateAllocation}>
-                                        Create Allocation
-                                    </Button>
-                                )}
-                            </div>
-                        </Can>
-                    )}
-                </>
+                data.map((allocation) => (
+                    <AllocationRow key={`${allocation.ip}:${allocation.port}`} allocation={allocation} />
+                ))
             )}
         </ServerContentBlock>
     );

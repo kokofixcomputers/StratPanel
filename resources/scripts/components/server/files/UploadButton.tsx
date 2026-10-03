@@ -12,6 +12,7 @@ import { ServerContext } from '@/state/server';
 import { WithClassname } from '@/components/types';
 import Portal from '@/components/elements/Portal';
 import { CloudUploadIcon } from '@heroicons/react/outline';
+import { UploadIcon } from '@heroicons/react/solid';
 import { useSignal } from '@preact/signals-react';
 
 function isFileOrDirectory(event: DragEvent): boolean {
@@ -120,11 +121,11 @@ export default ({ className }: WithClassname) => {
                         <div className={'w-full flex items-center justify-center pointer-events-none'}>
                             <div
                                 className={
-                                    'flex items-center space-x-4 bg-black w-full ring-4 ring-blue-200 ring-opacity-60 rounded p-6 mx-10 max-w-sm'
+                                    'flex items-center space-x-4 bg-white w-full border-2 border-dashed border-primary-500 shadow-xl rounded-2xl p-6 mx-10 max-w-sm'
                                 }
                             >
-                                <CloudUploadIcon className={'w-10 h-10 flex-shrink-0'} />
-                                <p className={'font-header flex-1 text-lg text-neutral-100 text-center'}>
+                                <CloudUploadIcon className={'w-10 h-10 flex-shrink-0 text-primary-600'} />
+                                <p className={'font-header flex-1 text-lg text-neutral-50 text-center'}>
                                     Drag and drop files to upload.
                                 </p>
                             </div>
@@ -147,6 +148,7 @@ export default ({ className }: WithClassname) => {
                 multiple
             />
             <Button className={className} onClick={() => fileUploadInput.current && fileUploadInput.current.click()}>
+                <UploadIcon className={'w-5 h-5 mr-2 -ml-1'} />
                 Upload
             </Button>
         </>

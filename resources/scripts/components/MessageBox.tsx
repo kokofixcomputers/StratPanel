@@ -13,35 +13,35 @@ interface Props {
 const styling = (type?: FlashMessageType): TwStyle | string => {
     switch (type) {
         case 'error':
-            return tw`bg-red-600 border-red-800`;
+            return tw`bg-red-50 border-red-200 text-red-800`;
         case 'info':
-            return tw`bg-primary-600 border-primary-800`;
+            return tw`bg-primary-50 border-primary-200 text-primary-800`;
         case 'success':
-            return tw`bg-green-600 border-green-800`;
+            return tw`bg-green-50 border-green-200 text-green-800`;
         case 'warning':
-            return tw`bg-yellow-600 border-yellow-800`;
+            return tw`bg-yellow-50 border-yellow-200 text-yellow-800`;
         default:
-            return '';
+            return tw`bg-white border-neutral-500 text-neutral-200`;
     }
 };
 
 const getBackground = (type?: FlashMessageType): TwStyle | string => {
     switch (type) {
         case 'error':
-            return tw`bg-red-500`;
+            return tw`bg-red-600 text-white`;
         case 'info':
-            return tw`bg-primary-500`;
+            return tw`bg-primary-600 text-white`;
         case 'success':
-            return tw`bg-green-500`;
+            return tw`bg-green-600 text-white`;
         case 'warning':
-            return tw`bg-yellow-500`;
+            return tw`bg-yellow-500 text-white`;
         default:
             return '';
     }
 };
 
 const Container = styled.div<{ $type?: FlashMessageType }>`
-    ${tw`p-2 border items-center leading-normal rounded flex w-full text-sm text-white`};
+    ${tw`px-4 py-3 border items-center leading-normal rounded-xl flex w-full text-sm`};
     ${(props) => styling(props.$type)};
 `;
 Container.displayName = 'MessageBox.Container';
@@ -52,7 +52,7 @@ const MessageBox = ({ title, children, type }: Props) => (
             <span
                 className={'title'}
                 css={[
-                    tw`flex rounded-full uppercase px-2 py-1 text-xs font-bold mr-3 leading-none`,
+                    tw`flex rounded-full uppercase px-2 py-1 text-2xs font-bold mr-3 tracking-wide leading-none`,
                     getBackground(type),
                 ]}
             >

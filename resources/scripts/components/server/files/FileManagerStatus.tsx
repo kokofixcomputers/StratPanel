@@ -18,11 +18,11 @@ const svgProps = {
 };
 
 const Spinner = ({ progress, className }: { progress: number; className?: string }) => (
-    <svg viewBox={'0 0 32 32'} className={className}>
+    <svg viewBox={'0 0 32 32'} className={`text-primary-600 ${className || ''}`}>
         <circle {...svgProps} className={'opacity-25'} />
         <circle
             {...svgProps}
-            stroke={'white'}
+            stroke={'#1447e6'}
             strokeDasharray={28 * Math.PI}
             className={'rotate-[-90deg] origin-[50%_50%] transition-[stroke-dashoffset] duration-300'}
             style={{ strokeDashoffset: ((100 - progress) / 100) * 28 * Math.PI }}
@@ -41,7 +41,10 @@ const FileUploadList = () => {
     return (
         <div className={'space-y-2 mt-6'}>
             {uploads.map(([name, file]) => (
-                <div key={name} className={'flex items-center space-x-3 bg-gray-700 p-3 rounded'}>
+                <div
+                    key={name}
+                    className={'flex items-center space-x-3 bg-neutral-900 border border-neutral-500 p-3 rounded-lg'}
+                >
                     <Tooltip content={`${Math.floor((file.loaded / file.total) * 100)}%`} placement={'left'}>
                         <div className={'flex-shrink-0'}>
                             <Spinner progress={(file.loaded / file.total) * 100} className={'w-6 h-6'} />
@@ -50,7 +53,7 @@ const FileUploadList = () => {
                     <Code className={'flex-1 truncate'}>{name}</Code>
                     <button
                         onClick={cancelFileUpload.bind(this, name)}
-                        className={'text-gray-500 hover:text-gray-200 transition-colors duration-75'}
+                        className={'text-neutral-400 hover:text-neutral-100 transition-colors duration-75'}
                     >
                         <XIcon className={'w-5 h-5'} />
                     </button>

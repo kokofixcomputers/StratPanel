@@ -5,6 +5,7 @@ import { StoreProvider } from 'easy-peasy';
 import { store } from '@/state';
 import { SiteSettings } from '@/state/settings';
 import ProgressBar from '@/components/elements/ProgressBar';
+import TaskMenu from '@/components/elements/TaskMenu';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import tw from 'twin.macro';
 import GlobalStylesheet from '@/assets/css/GlobalStylesheet';
@@ -61,6 +62,7 @@ const App = () => {
             <GlobalStylesheet />
             <StoreProvider store={store}>
                 <ProgressBar />
+                <TaskMenu />
                 <div css={tw`mx-auto w-auto`}>
                     <Router history={history}>
                         <Switch>

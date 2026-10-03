@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import getFileContents from '@/api/server/files/getFileContents';
 import { httpErrorToHuman } from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
@@ -13,13 +13,12 @@ import { ServerError } from '@/components/elements/ScreenBlock';
 import tw from 'twin.macro';
 import Button from '@/components/elements/Button';
 import Select from '@/components/elements/Select';
-import modes from '@/modes';
 import useFlash from '@/plugins/useFlash';
 import { ServerContext } from '@/state/server';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { encodePathSegments, hashToPath } from '@/helpers';
 import { dirname } from 'pathe';
-import CodemirrorEditor from '@/components/elements/CodemirrorEditor';
+import MonacoEditor, { getLanguages } from '@/components/elements/MonacoEditor';
 
 const getNewFileDraftKey = (uuid: string, directory: string) => `pterodactyl:new-file:${uuid}:${directory}`;
 
@@ -29,7 +28,8 @@ export default () => {
     const [loading, setLoading] = useState(action === 'edit');
     const [content, setContent] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
-    const [mode, setMode] = useState('text/plain');
+    const [mode, setMode] = useState('plaintext');
+    const languages = useMemo(() => getLanguages(), []);
 
     const history = useHistory();
     const { hash } = useLocation();
@@ -128,13 +128,13 @@ export default () => {
                 </div>
             </ErrorBoundary>
             {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                <div css={tw`mb-4 p-4 border-l-4 bg-neutral-900 rounded border-cyan-400`}>
-                    <p css={tw`text-neutral-300 text-sm`}>
-                        You&apos;re editing a <code css={tw`font-mono bg-black rounded py-px px-1`}>.pteroignore</code>{' '}
+                <div css={tw`mb-4 p-4 border bg-primary-50 rounded-xl border-primary-200`}>
+                    <p css={tw`text-primary-800 text-sm`}>
+                        You&apos;re editing a <code css={tw`font-mono bg-white rounded py-px px-1`}>.pteroignore</code>{' '}
                         file. Any files or directories listed in here will be excluded from backups. Wildcards are
-                        supported by using an asterisk (<code css={tw`font-mono bg-black rounded py-px px-1`}>*</code>).
+                        supported by using an asterisk (<code css={tw`font-mono bg-white rounded py-px px-1`}>*</code>).
                         You can negate a prior rule by prepending an exclamation point (
-                        <code css={tw`font-mono bg-black rounded py-px px-1`}>!</code>).
+                        <code css={tw`font-mono bg-white rounded py-px px-1`}>!</code>).
                     </p>
                 </div>
             )}
@@ -148,7 +148,7 @@ export default () => {
             />
             <div css={tw`relative`}>
                 <SpinnerOverlay visible={loading} />
-                <CodemirrorEditor
+                <MonacoEditor
                     mode={mode}
                     filename={hash.replace(/^#/, '')}
                     onModeChanged={setMode}
@@ -167,11 +167,11 @@ export default () => {
                 />
             </div>
             <div css={tw`flex justify-end mt-4`}>
-                <div css={tw`flex-1 sm:flex-none rounded bg-neutral-900 mr-4`}>
+                <div css={tw`flex-1 sm:flex-none mr-4`}>
                     <Select value={mode} onChange={(e) => setMode(e.currentTarget.value)}>
-                        {modes.map((mode) => (
-                            <option key={`${mode.name}_${mode.mime}`} value={mode.mime}>
-                                {mode.name}
+                        {languages.map((language) => (
+                            <option key={language.id} value={language.id}>
+                                {language.name}
                             </option>
                         ))}
                     </Select>

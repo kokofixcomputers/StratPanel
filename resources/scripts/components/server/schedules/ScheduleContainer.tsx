@@ -10,6 +10,9 @@ import EditScheduleModal from '@/components/server/schedules/EditScheduleModal';
 import Can from '@/components/elements/Can';
 import useFlash from '@/plugins/useFlash';
 import tw from 'twin.macro';
+import { CalendarIcon } from '@heroicons/react/outline';
+import { PlusIcon } from '@heroicons/react/solid';
+import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHeader';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 import { Button } from '@/components/elements/button/index';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
@@ -37,42 +40,40 @@ export default () => {
             .then(() => setLoading(false));
     }, []);
 
+    const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
+
     return (
         <ServerContentBlock title={'Schedules'}>
+            <PageHeader title={'Schedules'} subtitle={`Automate tasks for ${serverName}`} />
             <FlashMessageRender byKey={'schedules'} css={tw`mb-4`} />
+            <ListHeader icon={<CalendarIcon className={'w-6 h-6'} />} title={'Schedules'} count={`${schedules.length}`}>
+                <Can action={'schedule.create'}>
+                    <EditScheduleModal visible={visible} onModalDismissed={() => setVisible(false)} />
+                    <Button type={'button'} onClick={() => setVisible(true)}>
+                        <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                        New Schedule
+                    </Button>
+                </Can>
+            </ListHeader>
             {!schedules.length && loading ? (
                 <Spinner size={'large'} centered />
+            ) : schedules.length === 0 ? (
+                <EmptyState>There are no schedules configured for this server.</EmptyState>
             ) : (
-                <>
-                    {schedules.length === 0 ? (
-                        <p css={tw`text-sm text-center text-neutral-300`}>
-                            There are no schedules configured for this server.
-                        </p>
-                    ) : (
-                        schedules.map((schedule) => (
-                            <GreyRowBox
-                                as={'a'}
-                                key={schedule.id}
-                                href={`${match.url}/${schedule.id}`}
-                                css={tw`cursor-pointer mb-2 flex-wrap`}
-                                onClick={(e: any) => {
-                                    e.preventDefault();
-                                    history.push(`${match.url}/${schedule.id}`);
-                                }}
-                            >
-                                <ScheduleRow schedule={schedule} />
-                            </GreyRowBox>
-                        ))
-                    )}
-                    <Can action={'schedule.create'}>
-                        <div css={tw`mt-8 flex justify-end`}>
-                            <EditScheduleModal visible={visible} onModalDismissed={() => setVisible(false)} />
-                            <Button type={'button'} onClick={() => setVisible(true)}>
-                                Create schedule
-                            </Button>
-                        </div>
-                    </Can>
-                </>
+                schedules.map((schedule) => (
+                    <GreyRowBox
+                        as={'a'}
+                        key={schedule.id}
+                        href={`${match.url}/${schedule.id}`}
+                        css={tw`cursor-pointer mb-3 flex-wrap`}
+                        onClick={(e: any) => {
+                            e.preventDefault();
+                            history.push(`${match.url}/${schedule.id}`);
+                        }}
+                    >
+                        <ScheduleRow schedule={schedule} />
+                    </GreyRowBox>
+                ))
             )}
         </ServerContentBlock>
     );

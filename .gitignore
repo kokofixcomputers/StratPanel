@@ -35,3 +35,9 @@ resources/lang/locales.js
 /public/build
 /public/hot
 result
+
+# StratPanel
+/panel-ui.tar.gz
+/panel.tar.gz
+.serena
+/tools/mc-router/dist

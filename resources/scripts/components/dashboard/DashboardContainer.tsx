@@ -12,7 +12,10 @@ import tw from 'twin.macro';
 import useSWR from 'swr';
 import { PaginatedResult } from '@/api/http';
 import Pagination from '@/components/elements/Pagination';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { PlusIcon } from '@heroicons/react/solid';
+import Button from '@/components/elements/Button';
+import { getSelfService, SelfService } from '@/api/selfService';
 
 export default () => {
     const { search } = useLocation();
@@ -52,20 +55,47 @@ export default () => {
         if (!error) clearFlashes('dashboard');
     }, [error]);
 
+    const [selfService, setSelfService] = useState<SelfService | null>(null);
+    useEffect(() => {
+        getSelfService()
+            .then(setSelfService)
+            .catch(() => setSelfService(null));
+    }, []);
+
     return (
         <PageContentBlock title={'Dashboard'} showFlashKey={'dashboard'}>
-            {rootAdmin && (
-                <div css={tw`mb-2 flex justify-end items-center`}>
-                    <p css={tw`uppercase text-xs text-neutral-400 mr-2`}>
-                        {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
+            <div css={tw`flex flex-wrap items-end justify-between gap-4 mb-6`}>
+                <div>
+                    <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>Your servers</h1>
+                    <p css={tw`mt-1 text-neutral-400`}>
+                        {servers
+                            ? `${servers.pagination.total} server${servers.pagination.total === 1 ? '' : 's'} ${
+                                  showOnlyAdmin && rootAdmin ? 'owned by other users' : 'on your account'
+                              }`
+                            : 'Loading your servers...'}
                     </p>
-                    <Switch
-                        name={'show_all_servers'}
-                        defaultChecked={showOnlyAdmin}
-                        onChange={() => setShowOnlyAdmin((s) => !s)}
-                    />
                 </div>
-            )}
+                <div css={tw`flex items-center gap-4`}>
+                    {rootAdmin && (
+                        <label css={tw`flex items-center text-sm text-neutral-300 cursor-pointer select-none`}>
+                            <span css={tw`mr-3`}>{showOnlyAdmin ? "Others' servers" : 'My servers'}</span>
+                            <Switch
+                                name={'show_all_servers'}
+                                defaultChecked={showOnlyAdmin}
+                                onChange={() => setShowOnlyAdmin((s) => !s)}
+                            />
+                        </label>
+                    )}
+                    {selfService?.enabled && (
+                        <Link to={'/create'} css={tw`no-underline`}>
+                            <Button disabled={!selfService.canCreate} type={'button'}>
+                                <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                                Create new
+                            </Button>
+                        </Link>
+                    )}
+                </div>
+            </div>
             {!servers ? (
                 <Spinner centered size={'large'} />
             ) : (
@@ -73,14 +103,23 @@ export default () => {
                     {({ items }) =>
                         items.length > 0 ? (
                             items.map((server, index) => (
-                                <ServerRow key={server.uuid} server={server} css={index > 0 ? tw`mt-2` : undefined} />
+                                <ServerRow key={server.uuid} server={server} css={index > 0 ? tw`mt-3` : undefined} />
                             ))
                         ) : (
-                            <p css={tw`text-center text-sm text-neutral-400`}>
-                                {showOnlyAdmin
-                                    ? 'There are no other servers to display.'
-                                    : 'There are no servers associated with your account.'}
-                            </p>
+                            <div
+                                css={tw`bg-white border border-dashed border-neutral-400 rounded-xl py-14 px-6 text-center`}
+                            >
+                                <p css={tw`text-neutral-100 font-medium`}>
+                                    {showOnlyAdmin ? 'There are no other servers to display.' : 'No servers yet'}
+                                </p>
+                                {!showOnlyAdmin && (
+                                    <p css={tw`text-sm text-neutral-400 mt-1`}>
+                                        {selfService?.canCreate
+                                            ? 'Create your first Minecraft server in under a minute.'
+                                            : 'There are no servers associated with your account.'}
+                                    </p>
+                                )}
+                            </div>
                         )
                     }
                 </Pagination>

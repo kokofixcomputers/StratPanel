@@ -23,17 +23,17 @@ interface Params {
 }
 
 const CronBox = ({ title, value }: { title: string; value: string }) => (
-    <div css={tw`bg-neutral-700 rounded p-3`}>
-        <p css={tw`text-neutral-300 text-sm`}>{title}</p>
-        <p css={tw`text-xl font-medium text-neutral-100`}>{value}</p>
+    <div css={tw`bg-white border border-neutral-500 shadow-md rounded-xl p-4`}>
+        <p css={tw`text-neutral-400 text-sm`}>{title}</p>
+        <p css={tw`text-2xl font-semibold text-neutral-50 mt-1`}>{value}</p>
     </div>
 );
 
 const ActivePill = ({ active }: { active: boolean }) => (
     <span
         css={[
-            tw`rounded-full px-2 py-px text-xs ml-4 uppercase`,
-            active ? tw`bg-green-600 text-green-100` : tw`bg-red-600 text-red-100`,
+            tw`rounded-full px-3 py-0.5 text-xs font-medium ml-4 border`,
+            active ? tw`bg-green-50 text-green-700 border-green-200` : tw`bg-red-50 text-red-700 border-red-200`,
         ]}
     >
         {active ? 'Active' : 'Inactive'}
@@ -84,17 +84,20 @@ export default () => {
                 <Spinner size={'large'} centered />
             ) : (
                 <>
-                    <ScheduleCronRow cron={schedule.cron} css={tw`sm:hidden bg-neutral-700 rounded mb-4 p-3`} />
-                    <div css={tw`rounded shadow`}>
+                    <ScheduleCronRow
+                        cron={schedule.cron}
+                        css={tw`sm:hidden bg-white border border-neutral-500 rounded-xl mb-4 p-4`}
+                    />
+                    <div>
                         <div
-                            css={tw`sm:flex items-center bg-neutral-900 p-3 sm:p-6 border-b-4 border-neutral-600 rounded-t`}
+                            css={tw`sm:flex items-center bg-white p-4 sm:p-6 border border-neutral-500 shadow-md rounded-xl`}
                         >
                             <div css={tw`flex-1`}>
-                                <h3 css={tw`flex items-center text-neutral-100 text-2xl`}>
+                                <h3 css={tw`flex items-center text-neutral-50 text-2xl font-bold`}>
                                     {schedule.name}
                                     {schedule.isProcessing ? (
                                         <span
-                                            css={tw`flex items-center rounded-full px-2 py-px text-xs ml-4 uppercase bg-neutral-600 text-white`}
+                                            css={tw`flex items-center rounded-full px-3 py-0.5 text-xs font-medium ml-4 bg-neutral-600 text-neutral-200`}
                                         >
                                             <Spinner css={tw`w-3! h-3! mr-2`} />
                                             Processing
@@ -103,14 +106,14 @@ export default () => {
                                         <ActivePill active={schedule.isActive} />
                                     )}
                                 </h3>
-                                <p css={tw`mt-1 text-sm text-neutral-200`}>
+                                <p css={tw`mt-1 text-sm text-neutral-400`}>
                                     Last run at:&nbsp;
                                     {schedule.lastRunAt ? (
                                         format(schedule.lastRunAt, "MMM do 'at' h:mma")
                                     ) : (
                                         <span css={tw`text-neutral-300`}>n/a</span>
                                     )}
-                                    <span css={tw`ml-4 pl-4 border-l-4 border-neutral-600 py-px`}>
+                                    <span css={tw`ml-4 pl-4 border-l border-neutral-500 py-px`}>
                                         Next run at:&nbsp;
                                         {schedule.nextRunAt ? (
                                             format(schedule.nextRunAt, "MMM do 'at' h:mma")
@@ -136,7 +139,7 @@ export default () => {
                             <CronBox title={'Month'} value={schedule.cron.month} />
                             <CronBox title={'Day (Week)'} value={schedule.cron.dayOfWeek} />
                         </div>
-                        <div css={tw`bg-neutral-700 rounded-b`}>
+                        <div css={tw`bg-white border border-neutral-500 shadow-md rounded-xl overflow-hidden`}>
                             {schedule.tasks.length > 0
                                 ? schedule.tasks
                                       .sort((a, b) =>

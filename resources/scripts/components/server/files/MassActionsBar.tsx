@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import tw from 'twin.macro';
+import { ArchiveIcon, ArrowRightIcon, TrashIcon } from '@heroicons/react/solid';
 import { Button } from '@/components/elements/button/index';
-import Fade from '@/components/elements/Fade';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import useFileManagerSwr from '@/plugins/useFileManagerSwr';
 import useFlash from '@/plugins/useFlash';
-import compressFiles from '@/api/server/files/compressFiles';
+import { runArchiveTask } from '@/lib/tasks';
 import { ServerContext } from '@/state/server';
 import deleteFiles from '@/api/server/files/deleteFiles';
 import RenameFileModal from '@/components/server/files/RenameFileModal';
-import Portal from '@/components/elements/Portal';
 import { Dialog } from '@/components/elements/dialog';
 
 const MassActionsBar = () => {
@@ -30,16 +28,11 @@ const MassActionsBar = () => {
         if (!loading) setLoadingMessage('');
     }, [loading]);
 
+    // Archiving runs as a background task (see the task menu) so the file manager stays usable meanwhile.
     const onClickCompress = () => {
-        setLoading(true);
         clearFlashes('files');
-        setLoadingMessage('Archiving files...');
-
-        compressFiles(uuid, directory, selectedFiles)
-            .then(() => mutate())
-            .then(() => setSelectedFiles([]))
-            .catch((error) => clearAndAddHttpError({ key: 'files', error }))
-            .then(() => setLoading(false));
+        runArchiveTask(uuid, directory, selectedFiles);
+        setSelectedFiles([]);
     };
 
     const onClickConfirmDeletion = () => {
@@ -60,52 +53,53 @@ const MassActionsBar = () => {
             .then(() => setLoading(false));
     };
 
+    const none = selectedFiles.length === 0;
+
     return (
         <>
-            <div css={tw`pointer-events-none fixed bottom-0 z-20 left-0 right-0 flex justify-center`}>
-                <SpinnerOverlay visible={loading} size={'large'} fixed>
-                    {loadingMessage}
-                </SpinnerOverlay>
-                <Dialog.Confirm
-                    title={'Delete Files'}
-                    open={showConfirm}
-                    confirm={'Delete'}
-                    onClose={() => setShowConfirm(false)}
-                    onConfirmed={onClickConfirmDeletion}
-                >
-                    <p className={'mb-2'}>
-                        Are you sure you want to delete&nbsp;
-                        <span className={'font-semibold text-gray-50'}>{selectedFiles.length} files</span>? This is a
-                        permanent action and the files cannot be recovered.
-                    </p>
+            <SpinnerOverlay visible={loading} size={'large'} fixed>
+                {loadingMessage}
+            </SpinnerOverlay>
+            <Dialog.Confirm
+                title={'Delete Files'}
+                open={showConfirm}
+                confirm={'Delete'}
+                onClose={() => setShowConfirm(false)}
+                onConfirmed={onClickConfirmDeletion}
+            >
+                <p className={'mb-2 text-sm'}>
+                    Are you sure you want to delete&nbsp;
+                    <span className={'font-semibold text-neutral-50'}>{selectedFiles.length} files</span>? This is a
+                    permanent action and the files cannot be recovered.
+                </p>
+                <ul className={'text-sm text-neutral-300 list-disc list-inside'}>
                     {selectedFiles.slice(0, 15).map((file) => (
                         <li key={file}>{file}</li>
                     ))}
                     {selectedFiles.length > 15 && <li>and {selectedFiles.length - 15} others</li>}
-                </Dialog.Confirm>
-                {showMove && (
-                    <RenameFileModal
-                        files={selectedFiles}
-                        visible
-                        appear
-                        useMoveTerminology
-                        onDismissed={() => setShowMove(false)}
-                    />
-                )}
-                <Portal>
-                    <div className={'pointer-events-none fixed bottom-0 mb-6 flex justify-center w-full z-50'}>
-                        <Fade timeout={75} in={selectedFiles.length > 0} unmountOnExit>
-                            <div css={tw`flex items-center space-x-4 pointer-events-auto rounded p-4 bg-black/50`}>
-                                <Button onClick={() => setShowMove(true)}>Move</Button>
-                                <Button onClick={onClickCompress}>Archive</Button>
-                                <Button.Danger variant={Button.Variants.Secondary} onClick={() => setShowConfirm(true)}>
-                                    Delete
-                                </Button.Danger>
-                            </div>
-                        </Fade>
-                    </div>
-                </Portal>
-            </div>
+                </ul>
+            </Dialog.Confirm>
+            {showMove && (
+                <RenameFileModal
+                    files={selectedFiles}
+                    visible
+                    appear
+                    useMoveTerminology
+                    onDismissed={() => setShowMove(false)}
+                />
+            )}
+            <Button.Text disabled={none} onClick={() => setShowMove(true)}>
+                <ArrowRightIcon className={'w-4 h-4 mr-2'} />
+                Move
+            </Button.Text>
+            <Button.Text disabled={none} onClick={onClickCompress}>
+                <ArchiveIcon className={'w-4 h-4 mr-2'} />
+                Archive
+            </Button.Text>
+            <Button.Danger variant={Button.Variants.Secondary} disabled={none} onClick={() => setShowConfirm(true)}>
+                <TrashIcon className={'w-4 h-4 mr-2'} />
+                Delete
+            </Button.Danger>
         </>
     );
 };

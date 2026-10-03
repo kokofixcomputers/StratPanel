@@ -14,12 +14,12 @@ import { useStoreState } from 'easy-peasy';
 import SubNavigation from '@/components/elements/SubNavigation';
 import InstallListener from '@/components/server/InstallListener';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
+import { ExternalLinkIcon } from '@heroicons/react/outline';
 import { useLocation } from 'react-router';
 import ConflictStateRenderer from '@/components/server/ConflictStateRenderer';
 import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
+import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
@@ -27,6 +27,7 @@ export default () => {
 
     const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
     const [error, setError] = useState('');
+    const [isProxy, setIsProxy] = useState(false);
 
     const id = ServerContext.useStoreState((state) => state.server.data?.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data?.uuid);
@@ -34,6 +35,21 @@ export default () => {
     const serverId = ServerContext.useStoreState((state) => state.server.data?.internalId);
     const getServer = ServerContext.useStoreActions((actions) => actions.server.getServer);
     const clearServerState = ServerContext.useStoreActions((actions) => actions.clearServerState);
+
+    // Proxies (Velocity) get a proxy configurator instead of server.properties, so label the tab accordingly.
+    useEffect(() => {
+        if (!uuid) return;
+
+        const check = () =>
+            isProxyServer(uuid)
+                .then(setIsProxy)
+                .catch(() => setIsProxy(false));
+
+        check();
+        window.addEventListener('pterodactyl:software-changed', check);
+
+        return () => window.removeEventListener('pterodactyl:software-changed', check);
+    }, [uuid]);
 
     const to = (value: string, url = false) => {
         if (value === '/') {
@@ -82,7 +98,7 @@ export default () => {
                                         route.permission ? (
                                             <Can key={route.path} action={route.permission} matchAny>
                                                 <NavLink to={to(route.path, true)} exact={route.exact}>
-                                                    {route.name}
+                                                    {route.path === '/properties' && isProxy ? 'Proxy' : route.name}
                                                 </NavLink>
                                             </Can>
                                         ) : (
@@ -94,7 +110,7 @@ export default () => {
                                 {rootAdmin && (
                                     // eslint-disable-next-line react/jsx-no-target-blank
                                     <a href={`/admin/servers/view/${serverId}`} target={'_blank'}>
-                                        <FontAwesomeIcon icon={faExternalLinkAlt} />
+                                        <ExternalLinkIcon />
                                     </a>
                                 )}
                             </div>

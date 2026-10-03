@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ServerContext } from '@/state/server';
-import Modal from '@/components/elements/Modal';
+import { Dialog } from '@/components/elements/dialog';
 import tw from 'twin.macro';
-import Button from '@/components/elements/Button';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
@@ -58,19 +57,20 @@ const EulaModalFeature = () => {
     }, []);
 
     return (
-        <Modal
-            visible={visible}
-            onDismissed={() => setVisible(false)}
-            closeOnBackground={false}
-            showSpinnerOverlay={loading}
+        <Dialog.Confirm
+            open={visible}
+            onClose={() => !loading && setVisible(false)}
+            title={'Accept Minecraft® EULA'}
+            confirm={loading ? 'Saving...' : 'I Accept'}
+            confirmVariant={'primary'}
+            onConfirmed={onAcceptEULA}
         >
             <FlashMessageRender key={'feature:eula'} css={tw`mb-4`} />
-            <h2 css={tw`text-2xl mb-4 text-neutral-100`}>Accept Minecraft&reg; EULA</h2>
-            <p css={tw`text-neutral-200`}>
+            <p css={tw`text-sm text-neutral-300 leading-relaxed`}>
                 By pressing {'"I Accept"'} below you are indicating your agreement to the&nbsp;
                 <a
                     target={'_blank'}
-                    css={tw`text-primary-300 underline transition-colors duration-150 hover:text-primary-400`}
+                    css={tw`text-primary-600 underline transition-colors duration-150 hover:text-primary-700`}
                     rel={'noreferrer noopener'}
                     href='https://www.minecraft.net/eula'
                 >
@@ -78,15 +78,7 @@ const EulaModalFeature = () => {
                 </a>
                 .
             </p>
-            <div css={tw`mt-8 sm:flex items-center justify-end`}>
-                <Button isSecondary onClick={() => setVisible(false)} css={tw`w-full sm:w-auto border-transparent`}>
-                    Cancel
-                </Button>
-                <Button onClick={onAcceptEULA} css={tw`mt-4 sm:mt-0 sm:ml-4 w-full sm:w-auto`}>
-                    I Accept
-                </Button>
-            </div>
-        </Modal>
+        </Dialog.Confirm>
     );
 };
 

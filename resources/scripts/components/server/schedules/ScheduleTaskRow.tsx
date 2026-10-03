@@ -67,7 +67,7 @@ export default ({ schedule, task }: Props) => {
     const [title, icon] = getActionDetails(task.action);
 
     return (
-        <div css={tw`sm:flex items-center p-3 sm:p-6 border-b border-neutral-800`}>
+        <div css={tw`sm:flex items-center p-3 sm:p-5 border-b border-neutral-500 last:border-b-0`}>
             <SpinnerOverlay visible={isLoading} fixed size={'large'} />
             <TaskDetailsModal
                 schedule={schedule}
@@ -84,16 +84,16 @@ export default ({ schedule, task }: Props) => {
             >
                 Are you sure you want to delete this task? This action cannot be undone.
             </ConfirmationModal>
-            <FontAwesomeIcon icon={icon} css={tw`text-lg text-white hidden md:block`} />
+            <FontAwesomeIcon icon={icon} css={tw`text-lg text-primary-600 hidden md:block w-5`} />
             <div css={tw`flex-none sm:flex-1 w-full sm:w-auto overflow-x-auto`}>
-                <p css={tw`md:ml-6 text-neutral-200 uppercase text-sm`}>{title}</p>
+                <p css={tw`md:ml-6 text-neutral-50 font-semibold text-sm`}>{title}</p>
                 {task.payload && (
                     <div css={tw`md:ml-6 mt-2`}>
                         {task.action === 'backup' && (
                             <p css={tw`text-xs uppercase text-neutral-400 mb-1`}>Ignoring files & folders:</p>
                         )}
                         <div
-                            css={tw`font-mono bg-neutral-800 rounded py-1 px-2 text-sm w-auto inline-block whitespace-pre-wrap break-all`}
+                            css={tw`font-mono bg-neutral-600 rounded-md py-1 px-2 text-sm text-neutral-100 w-auto inline-block whitespace-pre-wrap break-all`}
                         >
                             {task.payload}
                         </div>
@@ -103,7 +103,9 @@ export default ({ schedule, task }: Props) => {
             <div css={tw`mt-3 sm:mt-0 flex items-center w-full sm:w-auto`}>
                 {task.continueOnFailure && (
                     <div css={tw`mr-6`}>
-                        <div css={tw`flex items-center px-2 py-1 bg-yellow-500 text-yellow-800 text-sm rounded-full`}>
+                        <div
+                            css={tw`flex items-center px-3 py-1 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs font-medium rounded-full`}
+                        >
                             <Icon icon={faArrowCircleDown} css={tw`w-3 h-3 mr-2`} />
                             Continues on Failure
                         </div>
@@ -111,7 +113,9 @@ export default ({ schedule, task }: Props) => {
                 )}
                 {task.sequenceId > 1 && task.timeOffset > 0 && (
                     <div css={tw`mr-6`}>
-                        <div css={tw`flex items-center px-2 py-1 bg-neutral-500 text-sm rounded-full`}>
+                        <div
+                            css={tw`flex items-center px-3 py-1 bg-neutral-600 text-neutral-200 text-xs font-medium rounded-full`}
+                        >
                             <Icon icon={faClock} css={tw`w-3 h-3 mr-2`} />
                             {task.timeOffset}s later
                         </div>
@@ -121,7 +125,7 @@ export default ({ schedule, task }: Props) => {
                     <button
                         type={'button'}
                         aria-label={'Edit scheduled task'}
-                        css={tw`block text-sm p-2 text-neutral-500 hover:text-neutral-100 transition-colors duration-150 mr-4 ml-auto sm:ml-0`}
+                        css={tw`block text-sm p-2 text-neutral-400 hover:text-neutral-100 transition-colors duration-150 mr-4 ml-auto sm:ml-0`}
                         onClick={() => setIsEditing(true)}
                     >
                         <FontAwesomeIcon icon={faPencilAlt} />
@@ -131,7 +135,7 @@ export default ({ schedule, task }: Props) => {
                     <button
                         type={'button'}
                         aria-label={'Delete scheduled task'}
-                        css={tw`block text-sm p-2 text-neutral-500 hover:text-red-600 transition-colors duration-150`}
+                        css={tw`block text-sm p-2 text-neutral-400 hover:text-red-600 transition-colors duration-150`}
                         onClick={() => setVisible(true)}
                     >
                         <FontAwesomeIcon icon={faTrashAlt} />

@@ -11,8 +11,11 @@ const http: AxiosInstance = axios.create({
     },
 });
 
+// Requests that run as a background task (see lib/tasks.ts) send this header so they don't drive the top loading bar.
+const BACKGROUND_HEADER = 'X-Panel-Background';
+
 http.interceptors.request.use((req) => {
-    if (!req.url?.endsWith('/resources')) {
+    if (!req.url?.endsWith('/resources') && !req.headers?.[BACKGROUND_HEADER]) {
         store.getActions().progress.startContinuous();
     }
 
@@ -21,14 +24,16 @@ http.interceptors.request.use((req) => {
 
 http.interceptors.response.use(
     (resp) => {
-        if (!resp.request?.url?.endsWith('/resources')) {
+        if (!resp.request?.url?.endsWith('/resources') && !resp.config?.headers?.[BACKGROUND_HEADER]) {
             store.getActions().progress.setComplete();
         }
 
         return resp;
     },
     (error) => {
-        store.getActions().progress.setComplete();
+        if (!error?.config?.headers?.[BACKGROUND_HEADER]) {
+            store.getActions().progress.setComplete();
+        }
 
         throw error;
     }

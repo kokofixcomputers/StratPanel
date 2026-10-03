@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from '@/components/elements/button/index';
+import { PlayIcon, RefreshIcon, StopIcon } from '@heroicons/react/solid';
+import classNames from 'classnames';
 import Can from '@/components/elements/Can';
 import { ServerContext } from '@/state/server';
 import { PowerAction } from '@/components/server/console/ServerConsoleContainer';
@@ -8,6 +9,9 @@ import { Dialog } from '@/components/elements/dialog';
 interface PowerButtonProps {
     className?: string;
 }
+
+const base =
+    'inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed';
 
 export default ({ className }: PowerButtonProps) => {
     const [open, setOpen] = useState(false);
@@ -49,27 +53,43 @@ export default ({ className }: PowerButtonProps) => {
                 Forcibly stopping a server can lead to data corruption.
             </Dialog.Confirm>
             <Can action={'control.start'}>
-                <Button
-                    className={'flex-1'}
+                <button
+                    className={classNames(
+                        base,
+                        'bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/30 disabled:opacity-50'
+                    )}
                     disabled={status !== 'offline'}
                     onClick={onButtonClick.bind(this, 'start')}
                 >
+                    <PlayIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
                     Start
-                </Button>
-            </Can>
-            <Can action={'control.restart'}>
-                <Button.Text className={'flex-1'} disabled={!status} onClick={onButtonClick.bind(this, 'restart')}>
-                    Restart
-                </Button.Text>
+                </button>
             </Can>
             <Can action={'control.stop'}>
-                <Button.Danger
-                    className={'flex-1'}
-                    disabled={status === 'offline'}
+                <button
+                    className={classNames(
+                        base,
+                        'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600/30 disabled:bg-red-300 disabled:opacity-70'
+                    )}
+                    disabled={status === 'offline' || !status}
                     onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}
                 >
+                    <StopIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
                     {killable ? 'Kill' : 'Stop'}
-                </Button.Danger>
+                </button>
+            </Can>
+            <Can action={'control.restart'}>
+                <button
+                    className={classNames(
+                        base,
+                        'bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-500/30 disabled:opacity-50'
+                    )}
+                    disabled={!status}
+                    onClick={onButtonClick.bind(this, 'restart')}
+                >
+                    <RefreshIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
+                    Restart
+                </button>
             </Can>
         </div>
     );

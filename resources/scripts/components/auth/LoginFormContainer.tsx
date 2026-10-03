@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { Form } from 'formik';
-import styled from 'styled-components/macro';
-import { breakpoint } from '@/theme';
+import { CubeTransparentIcon } from '@heroicons/react/outline';
+import { useStoreState } from 'easy-peasy';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import tw from 'twin.macro';
 
@@ -9,47 +9,37 @@ type Props = React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, 
     title?: string;
 };
 
-const Container = styled.div`
-    ${breakpoint('sm')`
-        ${tw`w-4/5 mx-auto`}
-    `};
+export default forwardRef<HTMLFormElement, Props>(({ title, ...props }, ref) => {
+    const name = useStoreState((state) => state.settings.data?.name);
 
-    ${breakpoint('md')`
-        ${tw`p-10`}
-    `};
-
-    ${breakpoint('lg')`
-        ${tw`w-3/5`}
-    `};
-
-    ${breakpoint('xl')`
-        ${tw`w-full`}
-        max-width: 700px;
-    `};
-`;
-
-export default forwardRef<HTMLFormElement, Props>(({ title, ...props }, ref) => (
-    <Container>
-        {title && <h2 css={tw`text-3xl text-center text-neutral-100 font-medium py-4`}>{title}</h2>}
-        <FlashMessageRender css={tw`mb-2 px-1`} />
-        <Form {...props} ref={ref}>
-            <div css={tw`md:flex w-full bg-white shadow-lg rounded-lg p-6 md:pl-0 mx-1`}>
-                <div css={tw`flex-none select-none mb-6 md:mb-0 self-center`}>
-                    <img src={'/assets/svgs/pterodactyl.svg'} css={tw`block w-48 md:w-64 mx-auto`} />
+    return (
+        <div className={'flex min-h-screen items-center justify-center px-4 py-10'}>
+            <div className={'w-full max-w-md'}>
+                <div css={tw`flex flex-col items-center mb-8`}>
+                    <span css={tw`flex items-center justify-center w-12 h-12 rounded-2xl bg-primary-600 shadow-md`}>
+                        <CubeTransparentIcon css={tw`w-7 h-7 text-white`} />
+                    </span>
+                    {name && <p css={tw`mt-3 text-sm font-medium text-neutral-300`}>{name}</p>}
                 </div>
-                <div css={tw`flex-1`}>{props.children}</div>
+                <FlashMessageRender css={tw`mb-4`} />
+                <Form {...props} ref={ref}>
+                    <div css={tw`w-full bg-white border border-neutral-500 shadow-lg rounded-2xl p-6 sm:p-8`}>
+                        {title && <h2 css={tw`text-2xl text-center text-neutral-50 font-semibold mb-6`}>{title}</h2>}
+                        {props.children}
+                    </div>
+                </Form>
+                <p css={tw`text-center text-neutral-400 text-xs mt-6`}>
+                    &copy; 2015 - {new Date().getFullYear()}&nbsp;
+                    <a
+                        rel={'noopener nofollow noreferrer'}
+                        href={'https://pterodactyl.io'}
+                        target={'_blank'}
+                        css={tw`no-underline text-neutral-400 hover:text-neutral-200`}
+                    >
+                        Pterodactyl Software
+                    </a>
+                </p>
             </div>
-        </Form>
-        <p css={tw`text-center text-neutral-500 text-xs mt-4`}>
-            &copy; 2015 - {new Date().getFullYear()}&nbsp;
-            <a
-                rel={'noopener nofollow noreferrer'}
-                href={'https://pterodactyl.io'}
-                target={'_blank'}
-                css={tw`no-underline text-neutral-500 hover:text-neutral-300`}
-            >
-                Pterodactyl Software
-            </a>
-        </p>
-    </Container>
-));
+        </div>
+    );
+});

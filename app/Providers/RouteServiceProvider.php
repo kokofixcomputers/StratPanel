@@ -59,6 +59,12 @@ class RouteServiceProvider extends ServiceProvider
                     ->group(base_path('routes/api-client.php'));
             });
 
+            // Deliberately outside of the "api" middleware group, which requires a user. This endpoint is read by the
+            // router with a shared secret and checks it itself.
+            Route::middleware(['throttle:60,1'])
+                ->prefix('/api/router')
+                ->group(base_path('routes/api-router.php'));
+
             Route::middleware('daemon')
                 ->prefix('/api/remote')
                 ->scopeBindings()

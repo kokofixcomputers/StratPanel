@@ -19,6 +19,8 @@ use Pterodactyl\Http\Middleware\Api\Client\Server\AuthenticateServerAccess;
 */
 Route::get('/', [Client\ClientController::class, 'index'])->name('api:client.index');
 Route::get('/permissions', [Client\ClientController::class, 'permissions']);
+Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
+Route::post('/self-service', [Client\SelfServiceController::class, 'store'])->middleware('throttle:10,1');
 
 Route::prefix('/account')->middleware(AccountSubject::class)->group(function () {
     Route::prefix('/')->withoutMiddleware(RequireTwoFactorAuthentication::class)->group(function () {
@@ -118,6 +120,12 @@ Route::group([
         Route::post('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'update']);
         Route::post('/allocations/{allocation}/primary', [Client\Servers\NetworkAllocationController::class, 'setPrimary']);
         Route::delete('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'delete']);
+    });
+
+    Route::group(['prefix' => '/domains'], function () {
+        Route::get('/', [Client\Servers\DomainController::class, 'index']);
+        Route::post('/', [Client\Servers\DomainController::class, 'store']);
+        Route::delete('/{domain}', [Client\Servers\DomainController::class, 'delete'])->where('domain', '[0-9]+');
     });
 
     Route::group(['prefix' => '/users'], function () {

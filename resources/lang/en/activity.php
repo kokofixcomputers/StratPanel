@@ -99,6 +99,10 @@ return [
             'rename_one' => 'Renamed :files.0.from to :files.0.to',
             'rename_other' => 'Renamed or moved :count files',
         ],
+        'domain' => [
+            'create' => 'Pointed the domain :domain at :allocation',
+            'delete' => 'Removed the domain :domain',
+        ],
         'allocation' => [
             'create' => 'Added :allocation to the server',
             'notes' => 'Updated the notes for :allocation from ":old" to ":new"',

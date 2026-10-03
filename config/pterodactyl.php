@@ -193,4 +193,57 @@ return [
     'features' => [
         'new_server_identifiers' => (bool) env('PTERODACTYL_USE_SERVER_IDENTIFIERS', false),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Self Service Server Creation
+    |--------------------------------------------------------------------------
+    |
+    | Allows users to create a Minecraft server for themselves from the "Create new"
+    | page in the dashboard. Servers are placed on any public node that has room and
+    | a free allocation, using the Egg below and the resource limits configured here.
+    | Root administrators are never limited by "max_servers".
+    */
+
+    'self_service' => [
+        'enabled' => (bool) env('PTERODACTYL_SELF_SERVICE_ENABLED', true),
+        // The egg to create servers with. Leave empty to automatically use an egg named "Java", then Paper, then Vanilla, then any Minecraft egg.
+        'egg' => env('PTERODACTYL_SELF_SERVICE_EGG'),
+        // Comma separated location ids that servers may be placed in. Leave empty to use any location.
+        'locations' => array_values(array_filter(array_map('intval', explode(',', (string) env('PTERODACTYL_SELF_SERVICE_LOCATIONS', ''))))),
+        // The maximum number of servers a regular user may own. Set to 0 for no limit.
+        'max_servers' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_SERVERS', 3),
+        // Skip the egg's install script. Leave empty to skip it automatically for eggs whose name starts with "Java".
+        'skip_scripts' => env('PTERODACTYL_SELF_SERVICE_SKIP_SCRIPTS') === null ? null : filter_var(env('PTERODACTYL_SELF_SERVICE_SKIP_SCRIPTS'), FILTER_VALIDATE_BOOLEAN),
+        'memory' => (int) env('PTERODACTYL_SELF_SERVICE_MEMORY', 2048),
+        'disk' => (int) env('PTERODACTYL_SELF_SERVICE_DISK', 10240),
+        'cpu' => (int) env('PTERODACTYL_SELF_SERVICE_CPU', 200),
+        // The most a user may pick for themselves in the "Edit specs" step of the create page.
+        'max_memory' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_MEMORY', 8192),
+        'max_disk' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_DISK', 51200),
+        'max_cpu' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_CPU', 400),
+        'databases' => (int) env('PTERODACTYL_SELF_SERVICE_DATABASES', 1),
+        'allocations' => (int) env('PTERODACTYL_SELF_SERVICE_ALLOCATIONS', 1),
+        'backups' => (int) env('PTERODACTYL_SELF_SERVICE_BACKUPS', 2),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Domains
+    |--------------------------------------------------------------------------
+    |
+    | Lets users point their own domain at a server. The domain only needs an A record that points at
+    | the machine running the Minecraft router (tools/mc-router), which reads the address a player typed
+    | and forwards the connection to the matching allocation.
+    */
+
+    'domains' => [
+        'enabled' => (bool) env('PTERODACTYL_DOMAINS_ENABLED', true),
+        // The public IP address users have to point their A record at. Leave empty to resolve the panel's host name.
+        'target_ip' => env('PTERODACTYL_DOMAINS_TARGET_IP'),
+        // The most domains a single server may have. Set to 0 for no limit.
+        'max_per_server' => (int) env('PTERODACTYL_DOMAINS_MAX_PER_SERVER', 5),
+        // Shared secret the router uses to read the domain list. Leave empty to disable the router API.
+        'router_token' => env('PTERODACTYL_DOMAINS_ROUTER_TOKEN'),
+    ],
 ];

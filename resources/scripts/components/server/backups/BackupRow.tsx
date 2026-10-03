@@ -1,6 +1,5 @@
 import React from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArchive, faEllipsisH, faLock } from '@fortawesome/free-solid-svg-icons';
+import { ArchiveIcon, DotsHorizontalIcon, LockClosedIcon } from '@heroicons/react/solid';
 import { format, formatDistanceToNow } from 'date-fns';
 import Spinner from '@/components/elements/Spinner';
 import { bytesToString } from '@/lib/formatters';
@@ -50,29 +49,29 @@ export default ({ backup, className }: Props) => {
     return (
         <GreyRowBox css={tw`flex-wrap md:flex-nowrap items-center`} className={className}>
             <div css={tw`flex items-center truncate w-full md:flex-1`}>
-                <div css={tw`mr-4`}>
+                <div css={tw`mr-4 flex items-center justify-center w-11 h-11 rounded-full bg-primary-50 flex-shrink-0`}>
                     {backup.completedAt !== null ? (
                         backup.isLocked ? (
-                            <FontAwesomeIcon icon={faLock} css={tw`text-yellow-500`} />
+                            <LockClosedIcon css={tw`w-5 h-5 text-yellow-500`} />
                         ) : (
-                            <FontAwesomeIcon icon={faArchive} css={tw`text-neutral-300`} />
+                            <ArchiveIcon css={tw`w-5 h-5 text-primary-600`} />
                         )
                     ) : (
                         <Spinner size={'small'} />
                     )}
                 </div>
                 <div css={tw`flex flex-col truncate`}>
-                    <div css={tw`flex items-center text-sm mb-1`}>
+                    <div css={tw`flex items-center text-sm font-semibold text-neutral-50 mb-1`}>
                         {backup.completedAt !== null && !backup.isSuccessful && (
                             <span
-                                css={tw`bg-red-500 py-px px-2 rounded-full text-white text-xs uppercase border border-red-600 mr-2`}
+                                css={tw`bg-red-50 py-px px-2 rounded-full text-red-700 text-2xs font-semibold uppercase border border-red-200 mr-2`}
                             >
                                 Failed
                             </span>
                         )}
                         <p css={tw`break-words truncate`}>{backup.name}</p>
                         {backup.completedAt !== null && backup.isSuccessful && (
-                            <span css={tw`ml-3 text-neutral-300 text-xs font-extralight hidden sm:inline`}>
+                            <span css={tw`ml-3 text-neutral-400 text-xs hidden sm:inline`}>
                                 {bytesToString(backup.bytes)}
                             </span>
                         )}
@@ -84,13 +83,13 @@ export default ({ backup, className }: Props) => {
                 <p title={format(backup.createdAt, 'ddd, MMMM do, yyyy HH:mm:ss')} css={tw`text-sm`}>
                     {formatDistanceToNow(backup.createdAt, { includeSeconds: true, addSuffix: true })}
                 </p>
-                <p css={tw`text-2xs text-neutral-500 uppercase mt-1`}>Created</p>
+                <p css={tw`text-2xs text-neutral-400 uppercase tracking-wide mt-1`}>Created</p>
             </div>
             <Can action={['backup.download', 'backup.restore', 'backup.delete']} matchAny>
                 <div css={tw`mt-4 md:mt-0 ml-6`} style={{ marginRight: '-0.5rem' }}>
                     {!backup.completedAt ? (
                         <div css={tw`p-2 invisible`}>
-                            <FontAwesomeIcon icon={faEllipsisH} />
+                            <DotsHorizontalIcon css={tw`w-5 h-5`} />
                         </div>
                     ) : (
                         <BackupContextMenu backup={backup} />

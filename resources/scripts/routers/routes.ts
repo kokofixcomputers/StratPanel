@@ -4,8 +4,12 @@ import DatabasesContainer from '@/components/server/databases/DatabasesContainer
 import ScheduleContainer from '@/components/server/schedules/ScheduleContainer';
 import UsersContainer from '@/components/server/users/UsersContainer';
 import BackupContainer from '@/components/server/backups/BackupContainer';
+import DomainsContainer from '@/components/server/domains/DomainsContainer';
 import NetworkContainer from '@/components/server/network/NetworkContainer';
 import StartupContainer from '@/components/server/startup/StartupContainer';
+import VersionsContainer from '@/components/server/versions/VersionsContainer';
+import PropertiesContainer from '@/components/server/properties/PropertiesContainer';
+import ModsContainer from '@/components/server/mods/ModsContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
 import AccountOverviewContainer from '@/components/dashboard/AccountOverviewContainer';
@@ -75,6 +79,24 @@ export default {
             exact: true,
         },
         {
+            path: '/versions',
+            permission: 'file.*',
+            name: 'Versions',
+            component: VersionsContainer,
+        },
+        {
+            path: '/properties',
+            permission: 'file.*',
+            name: 'Properties',
+            component: PropertiesContainer,
+        },
+        {
+            path: '/mods',
+            permission: 'file.*',
+            name: 'Mods & Plugins',
+            component: ModsContainer,
+        },
+        {
             path: '/files',
             permission: 'file.*',
             name: 'Files',
@@ -121,6 +143,12 @@ export default {
             permission: 'allocation.*',
             name: 'Network',
             component: NetworkContainer,
+        },
+        {
+            path: '/domains',
+            permission: 'allocation.*',
+            name: 'Domains',
+            component: DomainsContainer,
         },
         {
             path: '/startup',

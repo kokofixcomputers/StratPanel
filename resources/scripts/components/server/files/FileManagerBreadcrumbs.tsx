@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ServerContext } from '@/state/server';
 import { NavLink, useLocation } from 'react-router-dom';
+import { ChevronRightIcon, HomeIcon } from '@heroicons/react/solid';
 import { encodePathSegments, hashToPath } from '@/helpers';
 import tw from 'twin.macro';
 
@@ -9,6 +10,8 @@ interface Props {
     withinFileEditor?: boolean;
     isNewFile?: boolean;
 }
+
+const Separator = () => <ChevronRightIcon css={tw`w-4 h-4 mx-1 text-neutral-400 flex-shrink-0`} />;
 
 export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
     const [file, setFile] = useState<string | null>(null);
@@ -38,32 +41,37 @@ export default ({ renderLeft, withinFileEditor, isNewFile }: Props) => {
             });
 
     return (
-        <div css={tw`flex flex-grow-0 items-center text-sm text-neutral-500 overflow-x-hidden`}>
-            {renderLeft || <div css={tw`w-12`} />}/<span css={tw`px-1 text-neutral-300`}>home</span>/
-            <NavLink to={`/server/${id}/files`} css={tw`px-1 text-neutral-200 no-underline hover:text-neutral-100`}>
-                container
+        <div css={tw`flex flex-grow-0 items-center text-sm font-medium text-neutral-400 overflow-x-auto`}>
+            {renderLeft}
+            <NavLink
+                to={`/server/${id}/files`}
+                css={tw`inline-flex items-center text-primary-600 no-underline hover:text-primary-700`}
+            >
+                <HomeIcon css={tw`w-4 h-4 mr-1.5`} />
+                Home
             </NavLink>
-            /
             {breadcrumbs().map((crumb, index) =>
                 crumb.path ? (
                     <React.Fragment key={index}>
+                        <Separator />
                         <NavLink
                             to={`/server/${id}/files#${encodePathSegments(crumb.path)}`}
-                            css={tw`px-1 text-neutral-200 no-underline hover:text-neutral-100`}
+                            css={tw`text-primary-600 no-underline hover:text-primary-700 whitespace-nowrap`}
                         >
                             {crumb.name}
                         </NavLink>
-                        /
                     </React.Fragment>
                 ) : (
-                    <span key={index} css={tw`px-1 text-neutral-300`}>
-                        {crumb.name}
-                    </span>
+                    <React.Fragment key={index}>
+                        <Separator />
+                        <span css={tw`text-neutral-100 whitespace-nowrap`}>{crumb.name}</span>
+                    </React.Fragment>
                 )
             )}
             {file && (
                 <React.Fragment>
-                    <span css={tw`px-1 text-neutral-300`}>{file}</span>
+                    <Separator />
+                    <span css={tw`text-neutral-100 whitespace-nowrap`}>{file}</span>
                 </React.Fragment>
             )}
         </div>

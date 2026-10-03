@@ -11,11 +11,14 @@ import { httpErrorToHuman } from '@/api/http';
 import Can from '@/components/elements/Can';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import tw from 'twin.macro';
+import { UsersIcon } from '@heroicons/react/outline';
+import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHeader';
 
 export default () => {
     const [loading, setLoading] = useState(true);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
     const subusers = ServerContext.useStoreState((state) => state.subusers.data);
     const setSubusers = ServerContext.useStoreActions((actions) => actions.subusers.setSubusers);
 
@@ -49,17 +52,18 @@ export default () => {
 
     return (
         <ServerContentBlock title={'Users'}>
+            <PageHeader title={'Users'} subtitle={`Manage who can access ${serverName}`} />
             <FlashMessageRender byKey={'users'} css={tw`mb-4`} />
+            <ListHeader icon={<UsersIcon className={'w-6 h-6'} />} title={'Users'} count={`${subusers.length}`}>
+                <Can action={'user.create'}>
+                    <AddSubuserButton />
+                </Can>
+            </ListHeader>
             {!subusers.length ? (
-                <p css={tw`text-center text-sm text-neutral-300`}>It looks like you don&apos;t have any subusers.</p>
+                <EmptyState>It looks like you don&apos;t have any subusers.</EmptyState>
             ) : (
                 subusers.map((subuser) => <UserRow key={subuser.uuid} subuser={subuser} />)
             )}
-            <Can action={'user.create'}>
-                <div css={tw`flex justify-end mt-6`}>
-                    <AddSubuserButton />
-                </div>
-            </Can>
         </ServerContentBlock>
     );
 };

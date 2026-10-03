@@ -1,9 +1,9 @@
 import React, { memo, useRef, useState } from 'react';
+import { DotsHorizontalIcon } from '@heroicons/react/solid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
     faBoxOpen,
     faCopy,
-    faEllipsisH,
     faFileArchive,
     faFileCode,
     faFileDownload,
@@ -27,8 +27,7 @@ import useFileManagerSwr from '@/plugins/useFileManagerSwr';
 import DropdownMenu from '@/components/elements/DropdownMenu';
 import styled from 'styled-components/macro';
 import useEventListener from '@/plugins/useEventListener';
-import compressFiles from '@/api/server/files/compressFiles';
-import decompressFiles from '@/api/server/files/decompressFiles';
+import { runArchiveTask, runExtractTask } from '@/lib/tasks';
 import isEqual from 'react-fast-compare';
 import ChmodFileModal from '@/components/server/files/ChmodFileModal';
 import { Dialog } from '@/components/elements/dialog';
@@ -36,9 +35,11 @@ import { Dialog } from '@/components/elements/dialog';
 type ModalType = 'rename' | 'move' | 'chmod';
 
 const StyledRow = styled.div<{ $danger?: boolean }>`
-    ${tw`p-2 flex items-center rounded`};
+    ${tw`px-3 py-2 flex items-center rounded-lg text-sm cursor-pointer`};
     ${(props) =>
-        props.$danger ? tw`hover:bg-red-100 hover:text-red-700` : tw`hover:bg-neutral-100 hover:text-neutral-700`};
+        props.$danger
+            ? tw`text-red-600 hover:bg-red-50 hover:text-red-700`
+            : tw`text-neutral-200 hover:bg-neutral-600 hover:text-neutral-50`};
 `;
 
 interface RowProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -108,23 +109,13 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
     };
 
     const doArchive = () => {
-        setShowSpinner(true);
         clearFlashes('files');
-
-        compressFiles(uuid, directory, [file.name])
-            .then(() => mutate())
-            .catch((error) => clearAndAddHttpError({ key: 'files', error }))
-            .then(() => setShowSpinner(false));
+        runArchiveTask(uuid, directory, [file.name]);
     };
 
     const doUnarchive = () => {
-        setShowSpinner(true);
         clearFlashes('files');
-
-        decompressFiles(uuid, directory, file.name)
-            .then(() => mutate())
-            .catch((error) => clearAndAddHttpError({ key: 'files', error }))
-            .then(() => setShowSpinner(false));
+        runExtractTask(uuid, directory, file.name);
     };
 
     return (
@@ -137,13 +128,16 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 onConfirmed={doDeletion}
             >
                 You will not be able to recover the contents of&nbsp;
-                <span className={'font-semibold text-gray-50'}>{file.name}</span> once deleted.
+                <span className={'font-semibold text-neutral-50'}>{file.name}</span> once deleted.
             </Dialog.Confirm>
             <DropdownMenu
                 ref={onClickRef}
                 renderToggle={(onClick) => (
-                    <div css={tw`px-4 py-2 hover:text-white`} onClick={onClick}>
-                        <FontAwesomeIcon icon={faEllipsisH} />
+                    <div
+                        css={tw`flex items-center justify-center w-8 h-8 rounded-lg text-neutral-400 hover:text-neutral-50 hover:bg-neutral-600 cursor-pointer`}
+                        onClick={onClick}
+                    >
+                        <DotsHorizontalIcon css={tw`w-5 h-5`} />
                         {modal ? (
                             modal === 'chmod' ? (
                                 <ChmodFileModal

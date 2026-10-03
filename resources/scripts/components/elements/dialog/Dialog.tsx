@@ -17,7 +17,7 @@ const variants = {
         },
     },
     closed: {
-        scale: 0.75,
+        scale: 0.95,
         opacity: 0,
         transition: {
             type: 'easeIn',
@@ -72,7 +72,7 @@ export default ({
                         open={open}
                         onClose={onDialogClose}
                     >
-                        <div className={'fixed inset-0 bg-gray-900/50 z-40'} />
+                        <div className={'fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-40'} />
                         <div className={'fixed inset-0 overflow-y-auto z-50'}>
                             <div
                                 ref={container}

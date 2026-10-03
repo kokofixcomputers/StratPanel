@@ -9,6 +9,7 @@ import createServerBackup from '@/api/server/backups/createServerBackup';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Button from '@/components/elements/Button';
 import tw from 'twin.macro';
+import { PlusIcon } from '@heroicons/react/solid';
 import { Textarea } from '@/components/elements/Input';
 import getServerBackups from '@/api/swr/getServerBackups';
 import { ServerContext } from '@/state/server';
@@ -28,7 +29,7 @@ const ModalContent = ({ ...props }: RequiredModalProps) => {
         <Modal {...props} showSpinnerOverlay={isSubmitting}>
             <Form>
                 <FlashMessageRender byKey={'backups:create'} css={tw`mb-4`} />
-                <h2 css={tw`text-2xl mb-6`}>Create server backup</h2>
+                <h2 css={tw`text-xl mb-6 pr-10`}>Create server backup</h2>
                 <Field
                     name={'name'}
                     label={'Backup name'}
@@ -49,7 +50,7 @@ const ModalContent = ({ ...props }: RequiredModalProps) => {
                     </FormikFieldWrapper>
                 </div>
                 <Can action={'backup.delete'}>
-                    <div css={tw`mt-6 bg-neutral-700 border border-neutral-800 shadow-inner p-4 rounded`}>
+                    <div css={tw`mt-6 bg-neutral-900 border border-neutral-500 p-4 rounded-xl`}>
                         <FormikSwitch
                             name={'isLocked'}
                             label={'Locked'}
@@ -109,7 +110,8 @@ export default () => {
                 </Formik>
             )}
             <Button css={tw`w-full sm:w-auto`} onClick={() => setVisible(true)}>
-                Create backup
+                <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                New Backup
             </Button>
         </>
     );

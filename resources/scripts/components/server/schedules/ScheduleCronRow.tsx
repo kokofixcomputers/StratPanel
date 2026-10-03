@@ -10,24 +10,24 @@ interface Props {
 const ScheduleCronRow = ({ cron, className }: Props) => (
     <div className={classNames('flex', className)}>
         <div className={'w-1/5 sm:w-auto text-center'}>
-            <p className={'font-medium'}>{cron.minute}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Minute</p>
+            <p className={'font-semibold text-neutral-50'}>{cron.minute}</p>
+            <p className={'text-2xs text-neutral-400 uppercase tracking-wide'}>Minute</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
-            <p className={'font-medium'}>{cron.hour}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Hour</p>
+            <p className={'font-semibold text-neutral-50'}>{cron.hour}</p>
+            <p className={'text-2xs text-neutral-400 uppercase tracking-wide'}>Hour</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
-            <p className={'font-medium'}>{cron.dayOfMonth}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Day (Month)</p>
+            <p className={'font-semibold text-neutral-50'}>{cron.dayOfMonth}</p>
+            <p className={'text-2xs text-neutral-400 uppercase tracking-wide'}>Day (Month)</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
-            <p className={'font-medium'}>{cron.month}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Month</p>
+            <p className={'font-semibold text-neutral-50'}>{cron.month}</p>
+            <p className={'text-2xs text-neutral-400 uppercase tracking-wide'}>Month</p>
         </div>
         <div className={'w-1/5 sm:w-auto text-center ml-4'}>
-            <p className={'font-medium'}>{cron.dayOfWeek}</p>
-            <p className={'text-2xs text-neutral-500 uppercase'}>Day (Week)</p>
+            <p className={'font-semibold text-neutral-50'}>{cron.dayOfWeek}</p>
+            <p className={'text-2xs text-neutral-400 uppercase tracking-wide'}>Day (Week)</p>
         </div>
     </div>
 );

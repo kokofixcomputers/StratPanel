@@ -1,25 +1,29 @@
-.manager_actions {
-    @apply grid grid-cols-2 sm:grid-cols-3 w-full gap-4 mb-4;
+.toolbar {
+    @apply flex flex-wrap items-center gap-2 bg-white border border-neutral-500 rounded-xl shadow-md p-3 sm:p-4 mb-4;
 
-    & button {
-        @apply w-full first:col-span-2 sm:first:col-span-1;
-    }
-
-    @screen md {
-        @apply flex flex-1 justify-end mb-0;
-
-        & button {
-            @apply w-auto;
-        }
+    & .divider {
+        @apply hidden sm:block self-stretch w-px bg-neutral-500 mx-2;
     }
 }
 
+.table {
+    @apply bg-white border border-neutral-500 rounded-xl shadow-md overflow-hidden;
+}
+
+.header_row {
+    @apply relative flex items-center text-sm font-semibold text-neutral-50 border-b border-neutral-500 py-4;
+}
+
 .file_row {
-    @apply flex items-center cursor-pointer bg-neutral-700 rounded-sm mb-px text-sm no-underline;
-    @apply hover:text-neutral-100 hover:bg-neutral-600;
+    @apply relative flex items-center cursor-pointer text-sm no-underline border-b border-neutral-500 last:border-b-0;
+    @apply transition-colors duration-100 hover:bg-neutral-900;
+
+    &.selected {
+        @apply bg-blue-50 hover:bg-blue-50;
+    }
 
     & > .details {
-        @apply flex flex-1 items-center text-neutral-300 no-underline px-4 py-2 overflow-hidden truncate;
+        @apply flex flex-1 items-center text-neutral-100 no-underline py-4 overflow-hidden truncate;
 
         &:not(a) {
             @apply cursor-default;

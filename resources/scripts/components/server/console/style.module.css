@@ -1,63 +1,118 @@
 .stat_block {
-    @apply flex items-center rounded shadow-lg relative;
-    @apply col-span-3 md:col-span-2 lg:col-span-6;
-    @apply px-3 py-2 md:p-3 lg:p-4;
-
-    & > .status_bar {
-        @apply w-1 h-full absolute left-0 top-0 rounded-l sm:hidden;
-    }
-
-    & > .icon {
-        @apply hidden flex-shrink-0 items-center justify-center rounded-lg shadow-md w-12 h-12;
-        @apply transition-colors duration-500;
-        @apply sm:flex sm:mr-4;
-
-        & > svg {
-            @apply w-6 h-6 m-auto;
-        }
-    }
+    @apply flex items-center justify-between rounded-xl relative bg-white border border-neutral-500 shadow-md;
+    @apply p-5 min-h-[7.5rem];
 }
 
 .terminal {
-    @apply flex flex-col w-full;
-
-    & .overflows_container {
-        @apply -ml-4 sm:ml-0;
-        width: calc(100% + 2rem);
-
-        @screen sm {
-            @apply w-full;
-        }
-    }
+    @apply flex flex-col w-full bg-white border border-neutral-500 rounded-xl shadow-md overflow-hidden;
 
     & > .container {
-        @apply rounded-t p-1 sm:p-2 bg-black min-h-[16rem] flex-1 font-mono text-sm;
+        @apply p-3 sm:p-4 bg-white min-h-[22rem] flex-1 font-mono text-sm;
 
         & #terminal {
-            @apply h-full;
+            @apply h-full pr-8;
 
             &::-webkit-scrollbar-track {
                 @apply w-2;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                @apply bg-gray-900;
             }
         }
     }
 
     & .command_icon {
-        @apply flex items-center top-0 left-0 absolute z-10 select-none h-full px-3 transition-colors duration-100;
+        @apply flex items-center top-0 left-0 absolute z-10 select-none h-full px-4 transition-colors duration-100;
     }
 
     & .command_input {
-        @apply relative bg-gray-900 px-2 text-gray-100 pl-10 pr-4 py-2 w-full font-mono text-sm sm:rounded-b;
+        @apply relative bg-neutral-600 text-neutral-100 pl-11 pr-4 py-3 w-full font-mono text-sm;
         @apply focus:ring-0 outline-none focus-visible:outline-none;
-        @apply border-0 border-b-2 border-transparent transition-colors duration-100;
-        @apply active:border-cyan-500 focus:border-cyan-500;
+        @apply border-0 border-t border-neutral-500 transition-colors duration-100;
+        @apply placeholder:text-neutral-400;
+
+        &:focus {
+            @apply bg-white;
+            box-shadow: inset 0 -2px 0 #1447e6;
+        }
+    }
+}
+
+.terminal .expand_button {
+    @apply absolute top-3 right-3 z-20 flex items-center justify-center w-9 h-9 rounded-lg;
+    @apply bg-white/90 border border-neutral-500 text-neutral-300 shadow-sm backdrop-blur;
+    @apply transition-colors duration-150 hover:text-neutral-50 hover:bg-neutral-600;
+}
+
+/* The search button sits next to the full screen button and expands into a bar. */
+.terminal .search_button {
+    @apply right-14;
+}
+
+.terminal .search_bar {
+    @apply absolute top-3 right-14 z-20 flex items-center gap-1 pl-3 pr-1.5 h-9 rounded-lg;
+    @apply bg-white border border-neutral-500 shadow-md;
+
+    &:focus-within {
+        @apply border-blue-500 ring-4 ring-blue-600/10;
+    }
+
+    & input {
+        @apply w-40 sm:w-56 bg-transparent border-0 outline-none text-sm text-neutral-100 px-1 font-sans;
+        @apply placeholder:text-neutral-400;
+        box-shadow: none !important;
+    }
+}
+
+.terminal .search_icon {
+    @apply flex items-center justify-center w-7 h-7 rounded-md text-xs font-semibold text-neutral-400;
+    @apply transition-colors duration-100 hover:text-neutral-50 hover:bg-neutral-600;
+}
+
+.terminal .search_active {
+    @apply bg-blue-50 text-blue-600;
+}
+
+/* Copy button shown on the first row of every warning / error block. */
+.terminal .copy_chunk {
+    @apply absolute z-10 flex items-center justify-center w-6 h-5 rounded-md;
+    @apply bg-white border border-neutral-500 text-neutral-400 shadow-sm;
+    @apply transition-colors duration-100 hover:text-neutral-50 hover:bg-neutral-600;
+    right: 14px;
+    margin-top: 1px;
+}
+
+/* Full screen mode: the terminal covers the viewport and the command input grows with it. */
+.terminal.expanded {
+    @apply fixed inset-0 z-50 m-0 rounded-none border-0 shadow-none;
+
+    & > .container {
+        @apply min-h-0 p-5 sm:p-6 overflow-hidden text-base;
+    }
+
+    & .command_input {
+        @apply py-5 pl-14 pr-6 text-base sm:text-lg;
+    }
+
+    & .command_icon {
+        @apply px-5;
+
+        & svg {
+            @apply w-5 h-5;
+        }
+    }
+
+    & .expand_button {
+        @apply top-4 right-5 w-10 h-10;
+    }
+
+    & .search_button {
+        right: 4.5rem;
+    }
+
+    & .search_bar {
+        @apply top-4;
+        right: 4.5rem;
     }
 }
 
 .chart_container {
-    @apply bg-gray-600 rounded shadow-lg pt-2 border-b-4 border-gray-700 relative;
+    @apply bg-white rounded-xl shadow-md pt-2 border border-neutral-500 relative;
 }

@@ -1,8 +1,7 @@
 import React, { memo, useCallback, useState } from 'react';
 import isEqual from 'react-fast-compare';
 import tw from 'twin.macro';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faNetworkWired } from '@fortawesome/free-solid-svg-icons';
+import { ShareIcon, CheckCircleIcon } from '@heroicons/react/solid';
 import InputSpinner from '@/components/elements/InputSpinner';
 import { Textarea } from '@/components/elements/Input';
 import Can from '@/components/elements/Can';
@@ -22,7 +21,7 @@ import { ip } from '@/lib/formatters';
 import Code from '@/components/elements/Code';
 
 const Label = styled.label`
-    ${tw`uppercase text-xs mt-1 text-neutral-400 block px-1 select-none transition-colors duration-150`}
+    ${tw`uppercase text-2xs tracking-wide mb-1 text-neutral-400 block select-none`}
 `;
 
 interface Props {
@@ -60,15 +59,16 @@ const AllocationRow = ({ allocation }: Props) => {
     };
 
     return (
-        <GreyRowBox $hoverable={false} className={'flex-wrap md:flex-nowrap mt-2'}>
+        <GreyRowBox $hoverable={false} className={'flex-wrap md:flex-nowrap mb-3'}>
             <div className={'flex items-center w-full md:w-auto'}>
-                <div className={'pl-4 pr-6 text-neutral-400'}>
-                    <FontAwesomeIcon icon={faNetworkWired} />
+                <div className={'icon mr-5 !w-12 !h-12'}>
+                    <ShareIcon css={tw`w-5 h-5`} />
                 </div>
-                <div className={'mr-4 flex-1 md:w-40'}>
+                <div className={'mr-4 flex-1 md:w-44'}>
+                    <Label>{allocation.alias ? 'Hostname' : 'IP Address'}</Label>
                     {allocation.alias ? (
                         <CopyOnClick text={allocation.alias}>
-                            <Code dark className={'w-40 truncate'}>
+                            <Code dark className={'max-w-[11rem] truncate'}>
                                 {allocation.alias}
                             </Code>
                         </CopyOnClick>
@@ -77,41 +77,43 @@ const AllocationRow = ({ allocation }: Props) => {
                             <Code dark>{ip(allocation.ip)}</Code>
                         </CopyOnClick>
                     )}
-                    <Label>{allocation.alias ? 'Hostname' : 'IP Address'}</Label>
                 </div>
                 <div className={'w-16 md:w-24 overflow-hidden'}>
-                    <Code dark>{allocation.port}</Code>
                     <Label>Port</Label>
+                    <Code dark>{allocation.port}</Code>
                 </div>
             </div>
+            {allocation.isDefault && (
+                <span
+                    css={tw`hidden md:inline-flex items-center rounded-full bg-green-50 text-green-700 border border-green-200 px-3 py-1 text-xs font-medium mx-4`}
+                >
+                    <CheckCircleIcon css={tw`w-4 h-4 mr-1.5`} />
+                    Primary
+                </span>
+            )}
             <div className={'mt-4 w-full md:mt-0 md:flex-1 md:w-auto'}>
                 <InputSpinner visible={loading}>
                     <Textarea
-                        className={'bg-neutral-800 hover:border-neutral-600 border-transparent'}
-                        placeholder={'Notes'}
+                        className={'!bg-neutral-900'}
+                        rows={1}
+                        placeholder={'Add a note...'}
                         defaultValue={allocation.notes || undefined}
                         onChange={(e) => setAllocationNotes(e.currentTarget.value)}
                     />
                 </InputSpinner>
             </div>
-            <div className={'flex justify-end space-x-4 mt-4 w-full md:mt-0 md:w-48'}>
-                {allocation.isDefault ? (
-                    <Button size={Button.Sizes.Small} className={'!text-gray-50 !bg-blue-600'} disabled>
-                        Primary
-                    </Button>
-                ) : (
-                    <>
-                        <Can action={'allocation.delete'}>
-                            <DeleteAllocationButton allocation={allocation.id} />
-                        </Can>
-                        <Can action={'allocation.update'}>
-                            <Button.Text size={Button.Sizes.Small} onClick={setPrimaryAllocation}>
-                                Make Primary
-                            </Button.Text>
-                        </Can>
-                    </>
-                )}
-            </div>
+            {!allocation.isDefault && (
+                <div className={'flex justify-end items-center space-x-3 mt-4 w-full md:mt-0 md:w-auto md:ml-4'}>
+                    <Can action={'allocation.update'}>
+                        <Button.Text size={Button.Sizes.Small} onClick={setPrimaryAllocation}>
+                            Make Primary
+                        </Button.Text>
+                    </Can>
+                    <Can action={'allocation.delete'}>
+                        <DeleteAllocationButton allocation={allocation.id} />
+                    </Can>
+                </div>
+            )}
         </GreyRowBox>
     );
 };

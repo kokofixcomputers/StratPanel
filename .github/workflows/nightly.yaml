@@ -1,0 +1,52 @@
+name: Nightly
+
+# Builds panel.tar.gz on every push to 1.0-develop and publishes it as the rolling "nightly" release, so
+#   https://github.com/<owner>/<repo>/releases/download/nightly/panel.tar.gz
+# always points at the newest build and can be used to update a panel.
+
+on:
+  push:
+    branches:
+      - 1.0-develop
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: yarn install --frozen-lockfile
+      - run: yarn tsc
+      - run: yarn test
+      - run: yarn build:production
+      - name: Create archive
+        run: .github/scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panel
+          path: panel.tar.gz
+          retention-days: 14
+      - name: Publish nightly release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete nightly --cleanup-tag --yes || true
+          gh release create nightly panel.tar.gz \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Nightly (${GITHUB_SHA::7})" \
+            --notes "Automatic build of commit ${GITHUB_SHA}. Extract panel.tar.gz over your panel and follow the update steps in the README."

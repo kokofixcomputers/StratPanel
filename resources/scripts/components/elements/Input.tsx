@@ -7,18 +7,19 @@ export interface Props {
 }
 
 const light = css<Props>`
-    ${tw`bg-white border-neutral-200 text-neutral-800`};
+    ${tw`bg-white border-neutral-500 text-neutral-100`};
     &:focus {
-        ${tw`border-primary-400`}
+        ${tw`border-primary-500`}
     }
 
     &:disabled {
-        ${tw`bg-neutral-100 border-neutral-200`};
+        ${tw`bg-neutral-600 border-neutral-500`};
     }
 `;
 
 const checkboxStyle = css<Props>`
-    ${tw`bg-neutral-500 cursor-pointer appearance-none inline-block align-middle select-none flex-shrink-0 w-4 h-4 text-primary-400 border border-neutral-300 rounded-sm`};
+    ${tw`bg-white cursor-pointer appearance-none inline-block align-middle select-none flex-shrink-0 w-4 h-4 text-primary-600 border border-neutral-400`};
+    border-radius: 0.3rem;
     color-adjust: exact;
     background-origin: border-box;
     transition: all 75ms linear, box-shadow 25ms linear;
@@ -31,8 +32,8 @@ const checkboxStyle = css<Props>`
     }
 
     &:focus {
-        ${tw`outline-none border-primary-300`};
-        box-shadow: 0 0 0 1px rgba(9, 103, 210, 0.25);
+        ${tw`outline-none border-primary-500`};
+        box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.18);
     }
 `;
 
@@ -40,12 +41,17 @@ const inputStyle = css<Props>`
     // Reset to normal styling.
     resize: none;
     ${tw`appearance-none outline-none w-full min-w-0`};
-    ${tw`p-3 border-2 rounded text-sm transition-all duration-150`};
-    ${tw`bg-neutral-600 border-neutral-500 hover:border-neutral-400 text-neutral-200 shadow-none focus:ring-0`};
+    ${tw`px-4 py-3 border rounded-lg text-sm transition-all duration-150`};
+    ${tw`bg-white border-neutral-500 hover:border-neutral-400 text-neutral-100 shadow-none focus:ring-0`};
+
+    &::placeholder {
+        ${tw`text-neutral-400`};
+        opacity: 0.8;
+    }
 
     & + .input-help {
-        ${tw`mt-1 text-xs`};
-        ${(props) => (props.hasError ? tw`text-red-200` : tw`text-neutral-200`)};
+        ${tw`mt-1.5 text-xs`};
+        ${(props) => (props.hasError ? tw`text-red-600` : tw`text-neutral-400`)};
     }
 
     &:required,
@@ -54,16 +60,19 @@ const inputStyle = css<Props>`
     }
 
     &:not(:disabled):not(:read-only):focus {
-        ${tw`shadow-md border-primary-300 ring-2 ring-primary-400 ring-opacity-50`};
-        ${(props) => props.hasError && tw`border-red-300 ring-red-200`};
+        ${tw`border-primary-500`};
+        box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.15);
+        ${(props) => props.hasError && tw`border-red-500`};
+        ${(props) => props.hasError && 'box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15)'};
     }
 
     &:disabled {
-        ${tw`opacity-75`};
+        ${tw`bg-neutral-600 text-neutral-400`};
+        cursor: not-allowed;
     }
 
     ${(props) => props.isLight && light};
-    ${(props) => props.hasError && tw`text-red-100 border-red-400 hover:border-red-300`};
+    ${(props) => props.hasError && tw`border-red-500 hover:border-red-500`};
 `;
 
 const Input = styled.input<Props>`

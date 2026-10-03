@@ -1,12 +1,10 @@
 name: Docker
 
 on:
-  push:
-    branches:
-      - 1.0-develop
   release:
     types:
       - published
+  workflow_dispatch:
 
 jobs:
   push:
@@ -24,7 +22,7 @@ jobs:
         id: docker_meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/pterodactyl/panel
+          images: ghcr.io/kokofixcomputers/stratpanel
           flavor: |
             latest=false
           tags: |

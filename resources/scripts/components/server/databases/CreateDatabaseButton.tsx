@@ -10,6 +10,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import useFlash from '@/plugins/useFlash';
 import Button from '@/components/elements/Button';
 import tw from 'twin.macro';
+import { PlusIcon } from '@heroicons/react/solid';
 
 interface Values {
     databaseName: string;
@@ -69,7 +70,7 @@ export default () => {
                         }}
                     >
                         <FlashMessageRender byKey={'database:create'} css={tw`mb-6`} />
-                        <h2 css={tw`text-2xl mb-6`}>Create new database</h2>
+                        <h2 css={tw`text-xl mb-6 pr-10`}>Create new database</h2>
                         <Form css={tw`m-0`}>
                             <Field
                                 type={'string'}
@@ -106,7 +107,10 @@ export default () => {
                     </Modal>
                 )}
             </Formik>
-            <Button onClick={() => setVisible(true)}>New Database</Button>
+            <Button onClick={() => setVisible(true)}>
+                <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                New Database
+            </Button>
         </>
     );
 };

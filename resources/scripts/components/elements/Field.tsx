@@ -6,7 +6,7 @@ import Label from '@/components/elements/Label';
 interface OwnProps {
     name: string;
     light?: boolean;
-    label?: string;
+    label?: React.ReactNode;
     description?: string;
     validate?: (value: any) => undefined | string | Promise<any>;
 }

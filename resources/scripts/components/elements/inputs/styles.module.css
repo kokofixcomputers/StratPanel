@@ -1,8 +1,8 @@
 .checkbox_input {
-    @apply w-4 h-4 rounded-sm border-neutral-500 bg-neutral-600 text-primary-500;
+    @apply w-4 h-4 rounded border-neutral-400 bg-white text-primary-600;
 
     &:focus, &:active {
-        @apply ring-2 ring-primary-500 ring-offset-2 ring-offset-neutral-700;
+        @apply ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
     }
 
     &.indeterminate:checked {
@@ -13,10 +13,10 @@
 
 .text_input {
     @apply transition-shadow duration-75;
-    @apply w-full bg-neutral-800 rounded px-4 py-2 outline-none border-0;
+    @apply w-full bg-white border border-neutral-500 text-neutral-100 rounded-lg px-4 py-2 outline-none;
 
     &:focus, &:active {
-        @apply ring-4 ring-blue-300 ring-opacity-75;
+        @apply ring-4 ring-blue-600/15 border-blue-500;
     }
 
     &.loose {
