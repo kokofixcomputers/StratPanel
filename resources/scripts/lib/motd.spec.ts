@@ -1,4 +1,4 @@
-import { decodeMotd, encodeMotd, parseMotd } from './motd';
+import { decodeMotd, encodeMotd, encodeMotdLines, parseMotd, parseMotdLines } from './motd';
 
 describe('motd', () => {
     it('round trips colour codes through the properties format', () => {
@@ -24,5 +24,59 @@ describe('motd', () => {
 
         expect(line[0]).toMatchObject({ text: 'Hi ', color: '#FF5555', bold: true });
         expect(line[1]).toMatchObject({ text: 'there', color: null, bold: false });
+    });
+});
+
+describe('formatted lines', () => {
+    it('reads colours, hex colours and formats per character', () => {
+        const [first, second] = parseMotdLines(
+            '\\u00A7aGreen \\u00A7lBold\\n\\u00A7x\\u00A7f\\u00A7f\\u00A78\\u00A78\\u00A70\\u00A70Orange'
+        );
+
+        expect(first.text).toBe('Green Bold');
+        expect(first.fmts[0]).toEqual({ color: '#55ff55' });
+        // A format keeps the colour that came before it.
+        expect(first.fmts[6]).toEqual({ color: '#55ff55', bold: true });
+        expect(second.text).toBe('Orange');
+        expect(second.fmts[0]).toEqual({ color: '#ff8800' });
+    });
+
+    it('keeps an escaped backslash in front of an n as text', () => {
+        expect(parseMotdLines('a\\\\nb')[0].text).toBe('a\\nb');
+        expect(parseMotdLines('a\\nb')[1].text).toBe('b');
+    });
+
+    it('writes the colour before the formats and resets between styles', () => {
+        const line = { text: 'ab', fmts: [{ color: '#ff8800', bold: true }, {}] };
+
+        expect(encodeMotdLines([line, { text: '', fmts: [] }])).toBe(
+            '\\u00A7x\\u00A7f\\u00A7f\\u00A78\\u00A78\\u00A70\\u00A70\\u00A7la\\u00A7rb'
+        );
+        expect(encodeMotdLines([{ text: 'x', fmts: [{ color: '#55ff55' }] }])).toBe('\\u00A7ax');
+    });
+
+    it('round trips what the editor makes, two lines included', () => {
+        const lines = [
+            {
+                text: 'Hi there',
+                fmts: Array.from({ length: 8 }, (_, i) => (i < 2 ? { color: '#123456', italic: true } : {})),
+            },
+            { text: 'Second', fmts: Array.from({ length: 6 }, () => ({ underlined: true, obfuscated: true })) },
+        ];
+        const back = parseMotdLines(encodeMotdLines(lines));
+
+        expect(back.map((l) => l.text)).toEqual(['Hi there', 'Second']);
+        expect(back[0].fmts[0]).toEqual({ color: '#123456', italic: true });
+        expect(back[0].fmts[5]).toEqual({});
+        expect(back[1].fmts[3]).toEqual({ underlined: true, obfuscated: true });
+    });
+
+    it('does not turn a typed ampersand into a code', () => {
+        const lines = [
+            { text: 'Q&A &a', fmts: Array.from({ length: 6 }, () => ({})) },
+            { text: '', fmts: [] },
+        ];
+
+        expect(parseMotdLines(encodeMotdLines(lines))[0].text).toBe('Q&A &a');
     });
 });

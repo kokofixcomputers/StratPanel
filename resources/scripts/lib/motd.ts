@@ -146,3 +146,153 @@ export const parseMotd = (text: string): MotdSegment[][] =>
 
             return segments;
         });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The rich editor works on formatted lines: the text plus the formatting of every single character.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface CharFormat {
+    /** #rrggbb, undefined for the default colour. */
+    color?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underlined?: boolean;
+    strikethrough?: boolean;
+    obfuscated?: boolean;
+}
+
+export interface MotdLine {
+    text: string;
+    // One entry per UTF-16 unit of text, so it lines up with the selection of the input.
+    fmts: CharFormat[];
+}
+
+export const FLAGS = ['bold', 'italic', 'underlined', 'strikethrough', 'obfuscated'] as const;
+export const MAX_LINES = 2;
+
+const FLAG_CODES: Record<string, typeof FLAGS[number]> = {
+    l: 'bold',
+    o: 'italic',
+    n: 'underlined',
+    m: 'strikethrough',
+    k: 'obfuscated',
+};
+
+const colorByHex: Record<string, string> = {};
+Object.keys(COLORS).forEach((code) => (colorByHex[COLORS[code].hex.toLowerCase()] = code));
+
+/** Java properties escapes (\n, \\, \uXXXX) back to the real characters, in one pass so `\\n` stays a backslash and an n. */
+export const unescapeMotd = (raw: string): string =>
+    raw.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (_, sequence: string) =>
+        sequence[0] === 'u' && sequence.length === 5
+            ? String.fromCharCode(parseInt(sequence.slice(1), 16))
+            : sequence === 'n'
+            ? '\n'
+            : sequence === 't'
+            ? '\t'
+            : sequence
+    );
+
+/** Real characters into a value that is safe in server.properties. */
+export const escapeMotd = (text: string): string =>
+    text
+        .replace(/\\/g, '\\\\')
+        .replace(/\n/g, '\\n')
+        .replace(/[^\x20-\x7e]/g, (char) => `\\u${char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`);
+
+/** One line of text with section sign codes into characters with their formatting. */
+export const parseLegacyLine = (source: string): MotdLine => {
+    let text = '';
+    const fmts: CharFormat[] = [];
+    let style: CharFormat = {};
+
+    for (let i = 0; i < source.length; i++) {
+        if (source[i] !== '§' || i + 1 >= source.length) {
+            text += source[i];
+            fmts.push({ ...style });
+            continue;
+        }
+
+        const code = source[i + 1].toLowerCase();
+        const hex = code === 'x' ? /^§x(?:§([0-9a-f])){6}/i.exec(source.slice(i, i + 14)) : null;
+
+        if (hex) {
+            // A colour code resets the formatting, like in the game.
+            style = {
+                color: `#${source
+                    .slice(i, i + 14)
+                    .replace(/§x|§/gi, '')
+                    .toLowerCase()}`,
+            };
+            i += 13;
+        } else if (COLORS[code]) {
+            style = { color: COLORS[code].hex.toLowerCase() };
+            i++;
+        } else if (FLAG_CODES[code]) {
+            style = { ...style, [FLAG_CODES[code]]: true };
+            i++;
+        } else if (code === 'r') {
+            style = {};
+            i++;
+        } else {
+            // A code the game does not know is dropped along with its section sign.
+            i++;
+        }
+    }
+
+    return { text, fmts };
+};
+
+/** The raw value of the motd property into the formatted lines of the editor. */
+export const parseMotdLines = (raw: string): MotdLine[] => {
+    const lines = unescapeMotd(raw).split('\n').slice(0, MAX_LINES).map(parseLegacyLine);
+
+    while (lines.length < MAX_LINES) lines.push({ text: '', fmts: [] });
+
+    return lines;
+};
+
+const sameFormat = (a: CharFormat, b: CharFormat) =>
+    a.color === b.color && FLAGS.every((flag) => !!a[flag] === !!b[flag]);
+
+const isPlain = (format: CharFormat) => !format.color && FLAGS.every((flag) => !format[flag]);
+
+const colorCode = (hex: string): string => {
+    const known = colorByHex[hex.toLowerCase()];
+
+    return known ? `§${known}` : `§x${hex.replace('#', '').toLowerCase().replace(/./g, '§$&')}`;
+};
+
+/**
+ * The formatted lines into the value of the motd property. The colour comes before the formats because a colour code
+ * clears them again, and a style change starts with a reset so nothing of the previous one leaks into the next.
+ */
+export const encodeMotdLines = (lines: MotdLine[]): string => {
+    // Trailing empty lines are dropped, the server shows one line then.
+    const used = lines.slice(0, MAX_LINES);
+    while (used.length > 1 && !used[used.length - 1].text) used.pop();
+
+    const encoded = used.map((line) => {
+        let out = '';
+        let previous: CharFormat = {};
+
+        for (let i = 0; i < line.text.length; i++) {
+            const format = line.fmts[i] || {};
+
+            if (!sameFormat(format, previous)) {
+                if (!isPlain(previous)) out += '§r';
+                if (format.color) out += colorCode(format.color);
+                Object.keys(FLAG_CODES).forEach((code) => {
+                    if (format[FLAG_CODES[code]]) out += `§${code}`;
+                });
+                previous = format;
+            }
+
+            out += line.text[i];
+        }
+
+        return out;
+    });
+
+    return escapeMotd(encoded.join('\n'));
+};

@@ -206,6 +206,7 @@ export default () => {
                         icon={shownIcon}
                         onPickIcon={pickIcon}
                         onRemoveIcon={() => setPendingIcon({ blob: null, url: null })}
+                        maxPlayers={parseInt(values.find((line) => line.key === 'max-players')?.value ?? '', 10) || 20}
                         value={values.find((line) => line.key === 'motd')?.value ?? 'A Minecraft Server'}
                         onChange={(encoded) =>
                             setValues((all) =>

@@ -1,46 +1,391 @@
-import React, { useEffect, useRef, useState } from 'react';
-import tw from 'twin.macro';
-import { Textarea } from '@/components/elements/Input';
-import { COLORS, decodeMotd, encodeMotd, MotdSegment, parseMotd } from '@/lib/motd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { PlusIcon, SparklesIcon, XIcon } from '@heroicons/react/solid';
+import { ServerContext } from '@/state/server';
+import { CharFormat, COLORS, encodeMotdLines, FLAGS, MAX_LINES, MotdLine, parseMotdLines } from '@/lib/motd';
+import { interpolateColors } from '@/lib/gradient';
+import { GRADIENT_PRESETS, QUICK_PRESETS } from '@/lib/gradientPresets';
+
+type Flag = typeof FLAGS[number];
 
 const OBFUSCATION = 'abcdefghijklmnopqrstuvwxyz0123456789#%&?!';
+const DEFAULT_COLOR = '#aaaaaa';
+const FONT = '"Minecraft", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
-const Segment = ({ segment, tick }: { segment: MotdSegment; tick: number }) => (
-    <span
+// The dark surfaces of the editor. The page around it is light, this is meant to look like the game.
+const INK = { surface: '#161616', raised: '#202020', line: '#343434', text: '#e4e4e4', muted: '#8a8a8a' };
+
+/** The shadow Minecraft draws under text is the colour at a quarter of its brightness. */
+const shadowOf = (hex: string): string => {
+    const n = parseInt(hex.replace('#', ''), 16);
+
+    return `rgb(${((n >> 16) & 255) >> 2}, ${((n >> 8) & 255) >> 2}, ${(n & 255) >> 2})`;
+};
+
+const sameFormat = (a: CharFormat, b: CharFormat) =>
+    a.color === b.color && FLAGS.every((flag) => !!a[flag] === !!b[flag]);
+
+/** Runs of characters that share their formatting, which are what the preview draws as one piece. */
+const runs = (line: MotdLine): { text: string; format: CharFormat }[] => {
+    const out: { text: string; format: CharFormat }[] = [];
+    for (let i = 0; i < line.text.length; i++) {
+        const format = line.fmts[i] || {};
+        const last = out[out.length - 1];
+        if (last && sameFormat(last.format, format)) last.text += line.text[i];
+        else out.push({ text: line.text[i], format });
+    }
+
+    return out;
+};
+
+// ---- toolbar ---------------------------------------------------------------------------------------------------------
+
+const Tool = ({
+    children,
+    title,
+    onClick,
+    disabled,
+    active,
+    style,
+}: {
+    children: React.ReactNode;
+    title: string;
+    onClick: () => void;
+    disabled?: boolean;
+    active?: boolean;
+    style?: React.CSSProperties;
+}) => (
+    <button
+        type={'button'}
+        title={title}
+        aria-label={title}
+        disabled={disabled}
+        onClick={onClick}
+        className={'h-7 min-w-[1.75rem] px-2 rounded-md text-xs font-medium select-none transition-colors duration-100'}
         style={{
-            color: segment.color || '#AAAAAA',
-            fontWeight: segment.bold ? 700 : 400,
-            fontStyle: segment.italic ? 'italic' : 'normal',
-            textDecoration:
-                [segment.underline && 'underline', segment.strike && 'line-through'].filter(Boolean).join(' ') ||
-                'none',
-            textShadow: '2px 2px 0 rgba(0, 0, 0, 0.45)',
-            whiteSpace: 'pre',
+            background: active ? 'rgba(96, 139, 250, 0.28)' : 'transparent',
+            color: disabled ? '#4a4a4a' : active ? '#93b4fd' : INK.text,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            ...style,
         }}
     >
-        {segment.obfuscated
-            ? segment.text
-                  .split('')
-                  .map((c, i) =>
-                      c === ' ' ? ' ' : OBFUSCATION[(c.charCodeAt(0) + tick * 7 + i * 13) % OBFUSCATION.length]
-                  )
-                  .join('')
-            : segment.text}
-    </span>
+        {children}
+    </button>
 );
 
-const FORMATS: { code: string; label: string; title: string; style: React.CSSProperties }[] = [
-    { code: '&l', label: 'B', title: 'Bold', style: { fontWeight: 700 } },
-    { code: '&o', label: 'I', title: 'Italic', style: { fontStyle: 'italic' } },
-    { code: '&n', label: 'U', title: 'Underline', style: { textDecoration: 'underline' } },
-    { code: '&m', label: 'S', title: 'Strikethrough', style: { textDecoration: 'line-through' } },
-    { code: '&k', label: '?', title: 'Obfuscated (scrambling text)', style: {} },
-];
+const Divider = () => <span className={'w-px h-5 mx-1 self-center'} style={{ background: INK.line }} />;
 
-/**
- * Builds the message of the day with colour and formatting buttons and a live preview that looks like the
- * multiplayer server list.
- */
+// ---- gradient presets ------------------------------------------------------------------------------------------------
+
+const PresetBrowser = ({ onSelect, onClose }: { onSelect: (stops: string[]) => void; onClose: () => void }) => {
+    const [query, setQuery] = useState('');
+    const box = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const outside = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && onClose();
+        const escape = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+        document.addEventListener('mousedown', outside);
+        document.addEventListener('keydown', escape);
+
+        return () => {
+            document.removeEventListener('mousedown', outside);
+            document.removeEventListener('keydown', escape);
+        };
+    }, [onClose]);
+
+    const shown = GRADIENT_PRESETS.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+
+    return createPortal(
+        <div
+            data-gradient-browser
+            className={'fixed inset-0 flex items-center justify-center'}
+            style={{ zIndex: 100000, background: 'rgba(0,0,0,0.55)' }}
+        >
+            <div
+                ref={box}
+                className={'rounded-2xl p-5 w-[520px] max-w-[95vw] max-h-[80vh] flex flex-col gap-4'}
+                style={{
+                    background: INK.surface,
+                    border: `1px solid ${INK.line}`,
+                    boxShadow: '0 24px 60px rgba(0,0,0,.5)',
+                }}
+            >
+                <div className={'flex items-center justify-between'}>
+                    <div className={'flex items-center gap-2'} style={{ color: INK.text }}>
+                        <SparklesIcon className={'w-4 h-4'} style={{ color: '#93b4fd' }} />
+                        <span className={'font-semibold text-sm'}>Gradient presets</span>
+                        <span
+                            className={'text-xs rounded-full px-2 py-0.5'}
+                            style={{ background: INK.raised, color: INK.muted }}
+                        >
+                            {shown.length}
+                        </span>
+                    </div>
+                    <button type={'button'} aria-label={'Close'} onClick={onClose} style={{ color: INK.muted }}>
+                        <XIcon className={'w-4 h-4'} />
+                    </button>
+                </div>
+                <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.currentTarget.value)}
+                    placeholder={'Search presets…'}
+                    className={'w-full rounded-lg px-3 py-2 text-sm outline-none'}
+                    style={{ background: INK.raised, border: `1px solid ${INK.line}`, color: INK.text }}
+                />
+                <div className={'overflow-y-auto flex-1'}>
+                    <div className={'grid grid-cols-2 sm:grid-cols-3 gap-2'}>
+                        {shown.map((preset) => (
+                            <button
+                                key={preset.name}
+                                type={'button'}
+                                onClick={() => onSelect(preset.stops)}
+                                className={
+                                    'rounded-xl overflow-hidden text-left transition-transform duration-100 hover:scale-105'
+                                }
+                                style={{ border: `1px solid ${INK.line}` }}
+                            >
+                                <div
+                                    className={'h-10'}
+                                    style={{ background: `linear-gradient(90deg, ${preset.stops.join(',')})` }}
+                                />
+                                <div className={'px-2.5 py-1.5'} style={{ background: INK.raised }}>
+                                    <span className={'text-xs font-medium'} style={{ color: INK.text }}>
+                                        {preset.name}
+                                    </span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                    {shown.length === 0 && (
+                        <p className={'text-sm text-center py-8'} style={{ color: INK.muted }}>
+                            No presets found
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+const GradientPopover = ({
+    anchor,
+    popover,
+    stops,
+    onStops,
+    onApply,
+    onPreset,
+}: {
+    anchor: React.RefObject<HTMLDivElement>;
+    popover: React.RefObject<HTMLDivElement>;
+    stops: string[];
+    onStops: (stops: string[]) => void;
+    onApply: () => void;
+    onPreset: (stops: string[]) => void;
+}) => {
+    const [browse, setBrowse] = useState(false);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+
+    useEffect(() => {
+        const rect = anchor.current?.getBoundingClientRect();
+        if (rect)
+            setPosition({ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - 256)) });
+    }, []);
+
+    const change = (index: number, hex: string) => onStops(stops.map((s, i) => (i === index ? hex : s)));
+
+    return createPortal(
+        <>
+            <div
+                ref={popover}
+                className={'p-3 rounded-xl w-60 space-y-3'}
+                style={{
+                    position: 'fixed',
+                    top: position.top,
+                    left: position.left,
+                    zIndex: 99999,
+                    background: INK.surface,
+                    border: `1px solid ${INK.line}`,
+                    boxShadow: '0 12px 36px rgba(0,0,0,.45)',
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+            >
+                <div>
+                    <div className={'flex items-center justify-between mb-1.5'}>
+                        <p className={'text-xs font-medium'} style={{ color: INK.muted }}>
+                            Presets
+                        </p>
+                        <button
+                            type={'button'}
+                            onClick={() => setBrowse(true)}
+                            className={'text-xs flex items-center gap-1 rounded-md px-1.5 py-0.5'}
+                            style={{ color: '#93b4fd' }}
+                        >
+                            <SparklesIcon className={'w-3 h-3'} /> Browse all
+                        </button>
+                    </div>
+                    <div className={'grid grid-cols-2 gap-1.5'}>
+                        {QUICK_PRESETS.map((preset) => (
+                            <button
+                                key={preset.name}
+                                type={'button'}
+                                onClick={() => onPreset(preset.stops)}
+                                className={
+                                    'rounded-lg px-2 py-1 text-xs font-semibold text-left transition-transform duration-100 hover:scale-105'
+                                }
+                                style={{
+                                    border: `1px solid ${INK.line}`,
+                                    background: `linear-gradient(90deg, ${preset.stops.join(',')})`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                }}
+                            >
+                                {preset.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ borderTop: `1px solid ${INK.line}`, paddingTop: '0.75rem' }}>
+                    <div className={'flex items-center justify-between mb-1.5'}>
+                        <p className={'text-xs font-medium'} style={{ color: INK.muted }}>
+                            Colours
+                        </p>
+                        <button
+                            type={'button'}
+                            onClick={() => onStops([...stops, stops[stops.length - 1] || '#ffffff'])}
+                            className={'text-xs flex items-center gap-0.5'}
+                            style={{ color: '#93b4fd' }}
+                        >
+                            <PlusIcon className={'w-3 h-3'} /> Add
+                        </button>
+                    </div>
+                    <div
+                        className={'h-3 rounded-md mb-2'}
+                        style={{
+                            background: stops.length > 1 ? `linear-gradient(to right, ${stops.join(',')})` : stops[0],
+                        }}
+                    />
+                    <div className={'space-y-1.5'}>
+                        {stops.map((hex, i) => (
+                            <div key={i} className={'flex items-center gap-2'}>
+                                <span className={'text-xs w-3 text-center'} style={{ color: INK.muted }}>
+                                    {i + 1}
+                                </span>
+                                <input
+                                    type={'color'}
+                                    value={hex}
+                                    onChange={(e) => change(i, e.currentTarget.value)}
+                                    className={
+                                        'w-7 h-7 rounded cursor-pointer border-0 p-0 flex-shrink-0 bg-transparent'
+                                    }
+                                />
+                                <input
+                                    value={hex}
+                                    maxLength={7}
+                                    onChange={(e) =>
+                                        /^#[0-9a-fA-F]{0,6}$/.test(e.currentTarget.value) &&
+                                        change(i, e.currentTarget.value)
+                                    }
+                                    className={'flex-1 min-w-0 rounded-md px-2 py-0.5 text-xs font-mono outline-none'}
+                                    style={{ background: INK.raised, border: `1px solid ${INK.line}`, color: INK.text }}
+                                />
+                                <button
+                                    type={'button'}
+                                    aria-label={'Remove colour'}
+                                    disabled={stops.length <= 2}
+                                    onClick={() => onStops(stops.filter((_, j) => j !== i))}
+                                    className={'disabled:opacity-20'}
+                                    style={{ color: INK.muted }}
+                                >
+                                    <XIcon className={'w-3 h-3'} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button
+                        type={'button'}
+                        onClick={onApply}
+                        className={'w-full text-xs py-1.5 rounded-lg font-medium mt-3'}
+                        style={{ background: '#1447e6', color: '#fff' }}
+                    >
+                        Apply to selection
+                    </button>
+                </div>
+            </div>
+            {browse && (
+                <PresetBrowser
+                    onClose={() => setBrowse(false)}
+                    onSelect={(preset) => {
+                        setBrowse(false);
+                        onPreset(preset);
+                    }}
+                />
+            )}
+        </>,
+        document.body
+    );
+};
+
+// ---- one editable line -----------------------------------------------------------------------------------------------
+
+const LINE: React.CSSProperties = {
+    fontFamily: FONT,
+    fontSize: 16,
+    lineHeight: '20px',
+    height: 20,
+    padding: '0 2px',
+    whiteSpace: 'pre',
+    letterSpacing: 0,
+};
+
+const Overlay = ({ line, tick, placeholder }: { line: MotdLine; tick: number; placeholder: string }) => (
+    <div
+        aria-hidden
+        className={'select-none overflow-hidden'}
+        style={{ ...LINE, gridArea: '1 / 1', pointerEvents: 'none', zIndex: 1 }}
+    >
+        {line.text ? (
+            runs(line).map((run, index) => {
+                const color = run.format.color || DEFAULT_COLOR;
+
+                return (
+                    <span
+                        key={index}
+                        style={{
+                            color,
+                            fontWeight: run.format.bold ? 700 : 400,
+                            fontStyle: run.format.italic ? 'italic' : 'normal',
+                            textDecoration:
+                                [run.format.underlined && 'underline', run.format.strikethrough && 'line-through']
+                                    .filter(Boolean)
+                                    .join(' ') || 'none',
+                            textShadow: `2px 2px 0 ${shadowOf(color)}`,
+                        }}
+                    >
+                        {run.format.obfuscated
+                            ? run.text
+                                  .split('')
+                                  .map((c, i) =>
+                                      c === ' '
+                                          ? ' '
+                                          : OBFUSCATION[(c.charCodeAt(0) + tick * 7 + i * 13) % OBFUSCATION.length]
+                                  )
+                                  .join('')
+                            : run.text}
+                    </span>
+                );
+            })
+        ) : (
+            <span style={{ color: '#4a4a4a' }}>{placeholder}</span>
+        )}
+    </div>
+);
+
+// ---- the builder -----------------------------------------------------------------------------------------------------
+
 interface Props {
     value: string;
     onChange: (encoded: string) => void;
@@ -48,203 +393,457 @@ interface Props {
     icon?: string | null;
     onPickIcon?: (file: File) => void;
     onRemoveIcon?: () => void;
+    maxPlayers?: number;
 }
 
-export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon }: Props) => {
-    const picker = useRef<HTMLInputElement>(null);
-    const [text, setText] = useState(() => decodeMotd(value));
-    const [tick, setTick] = useState(0);
-    const [hex, setHex] = useState('#ff8800');
-    const area = useRef<HTMLTextAreaElement>(null);
-    const lines = parseMotd(text);
+interface Selection {
+    line: number;
+    s: number;
+    e: number;
+}
 
-    // Only follow outside changes (for example a reload), not the value we just sent out ourselves.
+/**
+ * Builds the message of the day. The two lines are edited right where they show up in the multiplayer server list,
+ * with a toolbar for colours, formats and gradients that works on the selected text.
+ */
+export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPlayers = 20 }: Props) => {
+    const serverName = ServerContext.useStoreState((state) => state.server.data?.name || 'A Minecraft Server');
+    const picker = useRef<HTMLInputElement>(null);
+    const inputs = useRef<(HTMLInputElement | null)[]>([null, null]);
+    const before = useRef([
+        { s: 0, e: 0 },
+        { s: 0, e: 0 },
+    ]);
+    const lastEmitted = useRef(value);
+
+    const [lines, setLines] = useState<MotdLine[]>(() => parseMotdLines(value));
+    const [sel, setSel] = useState<Selection | null>(null);
+    const [focused, setFocused] = useState<number | null>(null);
+    const [tick, setTick] = useState(0);
+    const [stops, setStops] = useState(['#ff0000', '#0000ff']);
+    const [gradient, setGradient] = useState(false);
+    const anchor = useRef<HTMLDivElement>(null);
+    const popover = useRef<HTMLDivElement>(null);
+
+    // Only follow outside changes (a reload, for example), not the value that was just sent out from here.
     useEffect(() => {
-        if (encodeMotd(text) !== value) setText(decodeMotd(value));
+        if (value === lastEmitted.current) return;
+        lastEmitted.current = value;
+        setLines(parseMotdLines(value));
+        setSel(null);
     }, [value]);
 
-    useEffect(() => {
-        if (!text.includes('&k')) return;
+    const commit = useCallback(
+        (next: MotdLine[]) => {
+            setLines(next);
+            const encoded = encodeMotdLines(next);
+            lastEmitted.current = encoded;
+            onChange(encoded);
+        },
+        [onChange]
+    );
 
+    const animated = lines.some((line) => line.fmts.some((f) => f && f.obfuscated));
+    useEffect(() => {
+        if (!animated) return;
         const timer = setInterval(() => setTick((t) => t + 1), 90);
 
         return () => clearInterval(timer);
-    }, [text.includes('&k')]);
+    }, [animated]);
 
-    const update = (next: string) => {
-        const limited = next.split('\n').slice(0, 2).join('\n');
-        setText(limited);
-        onChange(encodeMotd(limited));
+    // The selection before a character goes in is needed to know which formatting a typed character inherits.
+    useEffect(() => {
+        const remove: (() => void)[] = [];
+        inputs.current.forEach((el, index) => {
+            if (!el) return;
+            const listener = () => (before.current[index] = { s: el.selectionStart ?? 0, e: el.selectionEnd ?? 0 });
+            el.addEventListener('beforeinput', listener);
+            remove.push(() => el.removeEventListener('beforeinput', listener));
+        });
+
+        return () => remove.forEach((fn) => fn());
+    }, []);
+
+    useEffect(() => {
+        if (!gradient) return;
+        const outside = (e: MouseEvent) => {
+            const target = e.target as Node;
+            if (
+                anchor.current?.contains(target) ||
+                popover.current?.contains(target) ||
+                (target as Element).closest?.('[data-gradient-browser]')
+            )
+                return;
+            setGradient(false);
+        };
+        document.addEventListener('mousedown', outside);
+
+        return () => document.removeEventListener('mousedown', outside);
+    }, [gradient]);
+
+    const report = (index: number) => {
+        const el = inputs.current[index];
+        if (!el) return;
+        const s = el.selectionStart ?? 0;
+        const e = el.selectionEnd ?? 0;
+        setSel(s < e ? { line: index, s, e } : null);
     };
 
-    /** Inserts a code at the cursor, or around the selection, which is reset again afterwards. */
-    const insert = (code: string) => {
-        const el = area.current;
-        if (!el) return update(text + code);
+    const typed = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const next = e.currentTarget.value;
+        const line = lines[index];
+        const { s, e: end } = before.current[index];
+        const inserted = Math.max(0, next.length - line.text.length + (end - s));
+        const inherit = line.fmts[s > 0 ? s - 1 : 0] || {};
 
-        const { selectionStart: start, selectionEnd: end } = el;
-        const selected = text.slice(start, end);
-        const insertion = selected ? `${code}${selected}&r` : code;
+        const fmts = [
+            ...line.fmts.slice(0, s),
+            ...Array.from({ length: inserted }, () => ({ ...inherit })),
+            ...line.fmts.slice(end),
+        ].slice(0, next.length);
+        while (fmts.length < next.length) fmts.push({ ...inherit });
 
-        update(text.slice(0, start) + insertion + text.slice(end));
-        setTimeout(() => {
-            el.focus();
-            const cursor = selected ? start + insertion.length : start + code.length;
-            el.setSelectionRange(cursor, cursor);
-        }, 0);
+        commit(lines.map((l, i) => (i === index ? { text: next, fmts } : l)));
     };
+
+    const patch = (change: (format: CharFormat) => CharFormat) => {
+        if (!sel) return;
+        commit(
+            lines.map((line, i) =>
+                i === sel.line
+                    ? { ...line, fmts: line.fmts.map((f, j) => (j >= sel.s && j < sel.e ? change(f || {}) : f)) }
+                    : line
+            )
+        );
+    };
+
+    const selected = sel ? lines[sel.line].fmts.slice(sel.s, sel.e) : [];
+    const all = (flag: Flag) => selected.length > 0 && selected.every((f) => !!f[flag]);
+    const toggle = (flag: Flag) => patch((f) => ({ ...f, [flag]: all(flag) ? undefined : true }));
+    const colorOfSelection = (selected[0] && selected[0].color) || DEFAULT_COLOR;
+
+    const applyStops = (colors: string[]) => {
+        if (!sel) return;
+        const spread = interpolateColors(colors, sel.e - sel.s);
+        commit(
+            lines.map((line, i) =>
+                i === sel.line
+                    ? {
+                          ...line,
+                          fmts: line.fmts.map((f, j) =>
+                              j >= sel.s && j < sel.e ? { ...f, color: spread[j - sel.s] } : f
+                          ),
+                      }
+                    : line
+            )
+        );
+        setGradient(false);
+    };
+
+    const openGradient = () => {
+        if (!sel) return;
+        // Start from the colours the selection has, so a gradient made earlier can be tweaked.
+        const colours = selected.map((f) => f && f.color).filter(Boolean) as string[];
+        const distinct = colours.filter((c, i) => i === 0 || c !== colours[i - 1]);
+        if (distinct.length >= 2) {
+            const step = (distinct.length - 1) / Math.min(distinct.length - 1, 4);
+            setStops(
+                distinct.length === 2
+                    ? distinct
+                    : Array.from({ length: Math.min(distinct.length, 5) }, (_, k) => distinct[Math.round(k * step)])
+            );
+        }
+        setGradient((open) => !open);
+    };
+
+    const keys = (index: number) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const el = e.currentTarget;
+        const go = (to: number, at: 'start' | 'end') => {
+            const target = inputs.current[to];
+            if (!target) return;
+            e.preventDefault();
+            target.focus();
+            const position = at === 'start' ? 0 : target.value.length;
+            target.setSelectionRange(position, position);
+        };
+
+        if (e.key === 'Enter' || e.key === 'ArrowDown') go(Math.min(index + 1, MAX_LINES - 1), 'start');
+        else if (e.key === 'ArrowUp') go(Math.max(index - 1, 0), 'start');
+        else if (e.key === 'Backspace' && index > 0 && el.selectionStart === 0 && el.selectionEnd === 0) {
+            go(index - 1, 'end');
+        }
+    };
+
+    const colorList = useMemo(() => Object.keys(COLORS), []);
+    const hasSel = sel !== null;
 
     return (
-        <div css={tw`bg-white border border-neutral-500 rounded-xl shadow-md mb-4`}>
-            <div css={tw`px-5 py-4 border-b border-neutral-500`}>
-                <h2 css={tw`text-base font-semibold text-neutral-50`}>MOTD Builder</h2>
-                <p css={tw`text-sm text-neutral-400 mt-0.5`}>
-                    The message shown in the multiplayer server list. Select text and pick a colour or format, or just
-                    place the cursor and keep typing.
+        <div className={'bg-white border border-neutral-500 rounded-xl shadow-md mb-4'}>
+            <div className={'px-5 py-4 border-b border-neutral-500'}>
+                <h2 className={'text-base font-semibold text-neutral-50'}>MOTD Builder</h2>
+                <p className={'text-sm text-neutral-400 mt-0.5'}>
+                    The message shown in the multiplayer server list. Type straight into the preview, select text and
+                    pick a colour, a format or a gradient.
                 </p>
             </div>
-            <div css={tw`p-5`}>
-                <div
-                    css={tw`flex items-center rounded-lg px-3 py-3 mb-4`}
-                    style={{ background: '#1c1c1c', border: '2px solid #3b3b3b' }}
-                    aria-label={'MOTD preview'}
-                >
-                    <button
-                        type={'button'}
-                        title={onPickIcon ? 'Click to upload a server icon' : undefined}
-                        aria-label={'Change server icon'}
-                        disabled={!onPickIcon}
-                        onClick={() => picker.current?.click()}
-                        className={'group'}
-                        css={tw`relative flex-shrink-0 rounded mr-3 overflow-hidden p-0 border-0`}
-                        style={{
-                            width: 56,
-                            height: 56,
-                            background: icon ? 'none' : 'linear-gradient(135deg, #5b8a3a 0 50%, #7a5a3a 50% 100%)',
-                            cursor: onPickIcon ? 'pointer' : 'default',
-                        }}
-                    >
-                        {icon && (
-                            <img
-                                src={icon}
-                                alt={'Server icon'}
-                                width={56}
-                                height={56}
-                                style={{ imageRendering: 'pixelated', width: 56, height: 56 }}
-                            />
-                        )}
-                        {onPickIcon && (
-                            <span
-                                css={tw`absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
-                            >
-                                Change
-                            </span>
-                        )}
-                    </button>
-                    <input
-                        ref={picker}
-                        type={'file'}
-                        accept={'image/*'}
-                        css={tw`hidden`}
-                        onChange={(e) => {
-                            const file = e.currentTarget.files?.[0];
-                            e.currentTarget.value = '';
-                            if (file && onPickIcon) onPickIcon(file);
-                        }}
-                    />
-                    <div
-                        css={tw`min-w-0 overflow-hidden`}
-                        style={{
-                            fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-                            fontSize: 15,
-                            lineHeight: '22px',
-                        }}
-                    >
-                        {[0, 1].map((i) => (
-                            <div key={i} style={{ minHeight: 22 }}>
-                                {(lines[i] || []).map((segment, index) => (
-                                    <Segment key={index} segment={segment} tick={tick} />
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div css={tw`flex flex-wrap items-center gap-1.5 mb-3`}>
-                    {Object.keys(COLORS).map((code) => (
-                        <button
-                            key={code}
-                            type={'button'}
-                            title={`${COLORS[code].name} (&${code})`}
-                            aria-label={COLORS[code].name}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => insert(`&${code}`)}
-                            css={tw`w-7 h-7 rounded-md border border-neutral-500 hover:scale-110 transition-transform duration-100`}
-                            style={{ background: COLORS[code].hex }}
-                        />
-                    ))}
-                    <span css={tw`w-px h-6 bg-neutral-500 mx-1`} />
-                    <input
-                        type={'color'}
-                        value={hex}
-                        aria-label={'Custom colour'}
-                        title={'Custom colour'}
-                        onChange={(e) => setHex(e.currentTarget.value)}
-                        css={tw`w-7 h-7 rounded-md border border-neutral-500 bg-white cursor-pointer p-0.5`}
-                    />
-                    <button
-                        type={'button'}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => insert(`&${hex}`)}
-                        css={tw`px-2.5 h-7 rounded-md border border-neutral-500 text-xs font-medium text-neutral-200 hover:bg-neutral-600`}
-                    >
-                        Use {hex.toUpperCase()}
-                    </button>
-                    <span css={tw`w-px h-6 bg-neutral-500 mx-1`} />
-                    {FORMATS.map((format) => (
-                        <button
-                            key={format.code}
-                            type={'button'}
-                            title={`${format.title} (${format.code})`}
-                            aria-label={format.title}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => insert(format.code)}
-                            css={tw`w-7 h-7 rounded-md border border-neutral-500 text-sm text-neutral-100 hover:bg-neutral-600`}
-                            style={format.style}
+            <div className={'p-5'}>
+                <div className={'rounded-xl p-3'} style={{ background: INK.surface, border: `1px solid ${INK.line}` }}>
+                    {/* Toolbar. Mouse down is stopped so the text keeps its focus and its selection. */}
+                    <div className={'flex flex-wrap items-center gap-0.5 mb-3'} onMouseDown={(e) => e.preventDefault()}>
+                        <Tool
+                            title={'Bold'}
+                            disabled={!hasSel}
+                            active={all('bold')}
+                            onClick={() => toggle('bold')}
+                            style={{ fontWeight: 700 }}
                         >
-                            {format.label}
-                        </button>
-                    ))}
-                    <button
-                        type={'button'}
-                        title={'Reset colour and formatting (&r)'}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => insert('&r')}
-                        css={tw`px-2.5 h-7 rounded-md border border-neutral-500 text-xs font-medium text-neutral-200 hover:bg-neutral-600`}
+                            B
+                        </Tool>
+                        <Tool
+                            title={'Italic'}
+                            disabled={!hasSel}
+                            active={all('italic')}
+                            onClick={() => toggle('italic')}
+                            style={{ fontStyle: 'italic' }}
+                        >
+                            I
+                        </Tool>
+                        <Tool
+                            title={'Underline'}
+                            disabled={!hasSel}
+                            active={all('underlined')}
+                            onClick={() => toggle('underlined')}
+                            style={{ textDecoration: 'underline' }}
+                        >
+                            U
+                        </Tool>
+                        <Tool
+                            title={'Strikethrough'}
+                            disabled={!hasSel}
+                            active={all('strikethrough')}
+                            onClick={() => toggle('strikethrough')}
+                            style={{ textDecoration: 'line-through' }}
+                        >
+                            S
+                        </Tool>
+                        <Tool
+                            title={'Obfuscated (scrambling text)'}
+                            disabled={!hasSel}
+                            active={all('obfuscated')}
+                            onClick={() => toggle('obfuscated')}
+                        >
+                            Obf
+                        </Tool>
+                        <Divider />
+                        <div
+                            className={'flex flex-wrap gap-1'}
+                            style={{ opacity: hasSel ? 1 : 0.35, pointerEvents: hasSel ? 'auto' : 'none' }}
+                        >
+                            {colorList.map((code) => (
+                                <button
+                                    key={code}
+                                    type={'button'}
+                                    title={COLORS[code].name}
+                                    aria-label={COLORS[code].name}
+                                    onClick={() => patch((f) => ({ ...f, color: COLORS[code].hex.toLowerCase() }))}
+                                    className={'w-5 h-5 rounded-sm hover:scale-125 transition-transform duration-100'}
+                                    style={{ background: COLORS[code].hex, border: '1px solid rgba(255,255,255,0.2)' }}
+                                />
+                            ))}
+                        </div>
+                        <label
+                            title={'Custom colour'}
+                            className={
+                                'relative h-7 w-7 ml-1 rounded-md overflow-hidden cursor-pointer flex items-center justify-center'
+                            }
+                            style={{ opacity: hasSel ? 1 : 0.35, pointerEvents: hasSel ? 'auto' : 'none' }}
+                        >
+                            <span
+                                className={'w-4 h-4 rounded-sm'}
+                                style={{ background: colorOfSelection, border: '1px solid rgba(255,255,255,0.3)' }}
+                            />
+                            <input
+                                type={'color'}
+                                aria-label={'Custom colour'}
+                                value={colorOfSelection}
+                                onChange={(e) => {
+                                    patch((f) => ({ ...f, color: e.currentTarget.value }));
+                                }}
+                                className={'absolute inset-0 opacity-0 cursor-pointer w-full h-full'}
+                            />
+                        </label>
+                        <Divider />
+                        <div ref={anchor} className={'relative'}>
+                            <Tool title={'Gradient'} disabled={!hasSel} active={gradient} onClick={openGradient}>
+                                Gradient
+                            </Tool>
+                            {gradient && (
+                                <GradientPopover
+                                    anchor={anchor}
+                                    popover={popover}
+                                    stops={stops}
+                                    onStops={setStops}
+                                    onApply={() => applyStops(stops)}
+                                    onPreset={(preset) => {
+                                        setStops(preset);
+                                        applyStops(preset);
+                                    }}
+                                />
+                            )}
+                        </div>
+                        <Divider />
+                        <Tool
+                            title={'Clear formatting of the selection'}
+                            disabled={!hasSel}
+                            onClick={() => patch(() => ({}))}
+                        >
+                            Clear
+                        </Tool>
+                    </div>
+
+                    {/* The server list entry */}
+                    <div
+                        className={'flex items-start rounded-sm p-1'}
+                        style={{
+                            background: '#000',
+                            border: `2px solid ${focused !== null ? '#ffffff' : '#555555'}`,
+                            fontFamily: FONT,
+                        }}
+                        aria-label={'MOTD preview'}
                     >
-                        Reset
-                    </button>
+                        <button
+                            type={'button'}
+                            title={onPickIcon ? 'Click to upload a server icon' : undefined}
+                            aria-label={'Change server icon'}
+                            disabled={!onPickIcon}
+                            onClick={() => picker.current?.click()}
+                            className={'group relative flex-shrink-0 overflow-hidden p-0 border-0 mr-3'}
+                            style={{
+                                width: 64,
+                                height: 64,
+                                background: icon ? 'none' : 'linear-gradient(135deg, #5b8a3a 0 50%, #7a5a3a 50% 100%)',
+                                cursor: onPickIcon ? 'pointer' : 'default',
+                            }}
+                        >
+                            {icon && (
+                                <img
+                                    src={icon}
+                                    alt={'Server icon'}
+                                    width={64}
+                                    height={64}
+                                    style={{ imageRendering: 'pixelated', width: 64, height: 64 }}
+                                />
+                            )}
+                            {onPickIcon && (
+                                <span
+                                    className={
+                                        'absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150'
+                                    }
+                                >
+                                    Change
+                                </span>
+                            )}
+                        </button>
+                        <input
+                            ref={picker}
+                            type={'file'}
+                            accept={'image/*'}
+                            className={'hidden'}
+                            onChange={(e) => {
+                                const file = e.currentTarget.files?.[0];
+                                e.currentTarget.value = '';
+                                if (file && onPickIcon) onPickIcon(file);
+                            }}
+                        />
+                        <div className={'min-w-0 flex-1 overflow-hidden'}>
+                            <div
+                                className={'flex items-center justify-between'}
+                                style={{ ...LINE, whiteSpace: 'nowrap' }}
+                            >
+                                <span className={'truncate'} style={{ color: '#fff', textShadow: '2px 2px 0 #3f3f3f' }}>
+                                    {serverName}
+                                </span>
+                                <span className={'flex items-center flex-shrink-0 ml-3'}>
+                                    <span style={{ color: '#aaaaaa', textShadow: '2px 2px 0 #2a2a2a' }}>
+                                        0<span style={{ color: '#555555' }}>/</span>
+                                        {maxPlayers}
+                                    </span>
+                                    <svg
+                                        width={20}
+                                        height={16}
+                                        viewBox={'0 0 10 8'}
+                                        className={'ml-2'}
+                                        shapeRendering={'crispEdges'}
+                                    >
+                                        {[0, 1, 2, 3, 4].map((bar) => (
+                                            <rect
+                                                key={bar}
+                                                x={bar * 2}
+                                                y={7 - (bar + 3)}
+                                                width={1.4}
+                                                height={bar + 3}
+                                                fill={'#55ff55'}
+                                            />
+                                        ))}
+                                    </svg>
+                                </span>
+                            </div>
+                            {lines.map((line, index) => (
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: 'grid',
+                                        outline: focused === index ? '1px dashed rgba(255,255,255,0.35)' : 'none',
+                                        outlineOffset: 1,
+                                    }}
+                                >
+                                    <Overlay line={line} tick={tick} placeholder={`Line ${index + 1}`} />
+                                    <input
+                                        ref={(el) => {
+                                            inputs.current[index] = el;
+                                        }}
+                                        value={line.text}
+                                        spellCheck={false}
+                                        autoComplete={'off'}
+                                        aria-label={`MOTD line ${index + 1}`}
+                                        onChange={(e) => typed(index, e)}
+                                        onSelect={() => report(index)}
+                                        onMouseUp={() => report(index)}
+                                        onKeyUp={() => report(index)}
+                                        onKeyDown={keys(index)}
+                                        onFocus={() => setFocused(index)}
+                                        onBlur={() => setFocused((current) => (current === index ? null : current))}
+                                        className={'border-0 outline-none w-full'}
+                                        style={{
+                                            ...LINE,
+                                            gridArea: '1 / 1',
+                                            background: 'transparent',
+                                            color: 'transparent',
+                                            caretColor: '#ffffff',
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <p className={'mt-2 text-xs'} style={{ color: INK.muted }}>
+                        {hasSel
+                            ? 'Pick a colour, a format or a gradient for the selected text.'
+                            : 'Select some text to colour or format it. Two lines at most, and the game cuts off what does not fit.'}
+                    </p>
                 </div>
 
-                <Textarea
-                    ref={area}
-                    rows={2}
-                    value={text}
-                    spellCheck={false}
-                    aria-label={'MOTD text'}
-                    css={tw`font-mono`}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => update(e.currentTarget.value)}
-                />
-                <p css={tw`mt-2 text-xs text-neutral-400`}>
-                    Two lines at most. Codes are written with &amp; here, like <code>&amp;a</code> for green or{' '}
-                    <code>&amp;#ff8800</code> for a custom colour, and saved in the format Minecraft expects.
-                </p>
                 {onPickIcon && (
-                    <p css={tw`text-xs text-neutral-400 mt-2`}>
+                    <p className={'text-xs text-neutral-400 mt-3'}>
                         Click the icon in the preview to upload a server icon. Any image works, it is cropped to a
                         square and saved as a 64x64 PNG when you save. Restart the server to see it in the server list.
                         {icon && onRemoveIcon && (
-                            <button type={'button'} onClick={onRemoveIcon} css={tw`ml-2 text-red-600 hover:underline`}>
+                            <button
+                                type={'button'}
+                                onClick={onRemoveIcon}
+                                className={'ml-2 text-red-600 hover:underline'}
+                            >
                                 Remove icon
                             </button>
                         )}

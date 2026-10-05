@@ -104,7 +104,7 @@ api.get('/servers/:id/resources', (req, res) => res.json({ object: 'stats', attr
 api.get('/servers/:id/activity', (req, res) => res.json(paginated([])));
 
 files['/mods'] = [['sodium-fabric-0.5.0.jar', true, 1200000, 'application/jar'], ['lithium-fabric-0.14.jar', true, 900000, 'application/jar']];
-files['/plugins'] = [];
+files['/plugins'] = [['WorldEdit', false]];
 files['/world'] = [['level.dat', true, 2048, 'application/octet-stream'], ['region', false]];
 api.get('/servers/:id/files/list', (req, res) => res.json({ object: 'list', data: (files[req.query.directory] || (['/', ''].includes(String(req.query.directory)) ? files['/'] : [])).map(fileAttrs) }));
 const fileStore = {
@@ -201,7 +201,10 @@ app.get('/mock-world-gen', (req, res) => {
     res.type('application/octet-stream').send(require('node:zlib').gzipSync(nbt));
 });
 app.get('/mock-missing', (req, res) => res.status(404).end());
+const mockUploads = [];
+app.get('/mock-uploads', (req, res) => res.json(mockUploads));
 app.post('/mock-upload', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => {
+    mockUploads.push({ directory: req.query.directory, filename: (/filename="([^"]*)"/.exec(req.body.subarray(0, 400).toString('latin1')) || [])[1], bytes: req.body.length });
     const start = req.body.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     const end = req.body.indexOf(Buffer.from('IEND'));
     if (start >= 0 && end > start) mockIcon = req.body.subarray(start, end + 8);

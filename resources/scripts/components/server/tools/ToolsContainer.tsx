@@ -7,6 +7,8 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import detectCurrent from '@/components/server/versions/detectCurrent';
 import { readWorldSeed } from '@/lib/worldSeed';
+import { toolsTheme } from '@/lib/toolsTheme';
+import { findSchematicsFolder, MAX_SCHEMATIC_BYTES, saveSchematic } from '@/lib/worldEdit';
 import getFileContents from '@/api/server/files/getFileContents';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import { serializeProperties } from '@/lib/minecraft';
@@ -18,11 +20,13 @@ const TOOLS_URL = '/tools/index.html';
 /** Messages the tools app sends, see src/lib/panel.ts in that repository for the other half of the protocol. */
 interface ToolsMessage {
     source: 'mctools';
-    type: 'ready' | 'run' | 'save-property';
+    type: 'ready' | 'run' | 'save-property' | 'save-schematic';
     id?: string;
     commands?: unknown;
     key?: unknown;
     value?: unknown;
+    name?: unknown;
+    data?: unknown;
 }
 
 export default () => {
@@ -60,6 +64,19 @@ export default () => {
     }, [uuid]);
 
     const [seed, setSeed] = useState<string | null>(null);
+    const [schematics, setSchematics] = useState<string | null>(null);
+
+    // Where WorldEdit wants its schematics, when it is installed.
+    useEffect(() => {
+        let cancelled = false;
+        findSchematicsFolder(uuid)
+            .then((folder) => !cancelled && setSchematics(folder))
+            .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [uuid]);
 
     // The seed lives in the world files and never changes, so it is read once.
     useEffect(() => {
@@ -87,12 +104,14 @@ export default () => {
                 software: version.software,
                 server: name,
                 seed,
+                theme: toolsTheme,
+                worldEdit: schematics,
                 running,
                 canRun: canControl,
                 canEdit,
                 players: online,
             }),
-        [post, version, name, seed, running, canControl, canEdit, online]
+        [post, version, name, seed, schematics, running, canControl, canEdit, online]
     );
 
     // Tell the tools about the server whenever any of it changes.
@@ -122,6 +141,20 @@ export default () => {
                 if (!error)
                     commands.forEach((command) => instance!.send('send command', command.replace(/[\r\n]+/g, ' ')));
                 post({ type: 'run-result', id: data.id, ok: !error, error });
+            } else if (data.type === 'save-schematic') {
+                const reply = (error = '', path = '') =>
+                    post({ type: 'save-result', id: data.id, ok: !error, error, path });
+
+                if (!canEdit) return reply('You are not allowed to edit files on this server.');
+                if (!schematics) return reply('WorldEdit is not installed on this server.');
+                if (typeof data.name !== 'string' || !(data.data instanceof ArrayBuffer))
+                    return reply('That is not a schematic.');
+                if (data.data.byteLength > MAX_SCHEMATIC_BYTES)
+                    return reply('That schematic is too big to save from here.');
+
+                saveSchematic(uuid, schematics, data.name, data.data)
+                    .then((path) => reply('', path))
+                    .catch((e) => reply(httpErrorToHuman(e)));
             } else if (data.type === 'save-property') {
                 const reply = (error = '') => post({ type: 'save-result', id: data.id, ok: !error, error });
 
@@ -148,7 +181,7 @@ export default () => {
         window.addEventListener('message', listener);
 
         return () => window.removeEventListener('message', listener);
-    }, [pushState, post, canControl, canEdit, running, instance, uuid]);
+    }, [pushState, post, canControl, canEdit, running, instance, uuid, schematics]);
 
     return (
         <ServerContentBlock title={'Tools'}>
