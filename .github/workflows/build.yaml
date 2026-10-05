@@ -30,3 +30,24 @@ jobs:
       - run: yarn tsc
       - run: yarn lint
       - run: yarn build:production
+
+  helper-plugin:
+    name: Helper plugin
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Test and build the plugin
+        working-directory: helper-plugin
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test shadowJar
