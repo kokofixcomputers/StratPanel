@@ -8,7 +8,7 @@ import { Button } from '@/components/elements/button/index';
 import createServerAllocation from '@/api/server/network/createServerAllocation';
 import tw from 'twin.macro';
 import { ShareIcon } from '@heroicons/react/outline';
-import { MicrophoneIcon, PlusIcon } from '@heroicons/react/solid';
+import { MapIcon, MicrophoneIcon, PlusIcon } from '@heroicons/react/solid';
 import PageHeader, { ListHeader } from '@/components/elements/PageHeader';
 import Can from '@/components/elements/Can';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
@@ -18,6 +18,10 @@ import { useDeepCompareEffect } from '@/plugins/useDeepCompareEffect';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import setServerAllocationNotes from '@/api/server/network/setServerAllocationNotes';
 import { detectVoiceChat, VoiceChat, withAllocation } from '@/lib/voicechat';
+import { BlueMap, detectBlueMap, withPort } from '@/lib/bluemap';
+import { Allocation as ServerAllocation } from '@/api/server/getServer';
+
+type Detected = BlueMap | { path: string; waiting: true } | null;
 
 const NetworkContainer = () => {
     const [loading, setLoading] = useState(false);
@@ -29,6 +33,7 @@ const NetworkContainer = () => {
     const { clearFlashes, clearAndAddHttpError, addError } = useFlashKey('server:network');
     const { addFlash } = useFlash();
     const [voiceChat, setVoiceChat] = useState<VoiceChat | null>(null);
+    const [blueMap, setBlueMap] = useState<Detected>(null);
     const { data, error, mutate } = getServerAllocations();
 
     useEffect(() => {
@@ -62,12 +67,22 @@ const NetworkContainer = () => {
         detectVoiceChat(uuid)
             .then(setVoiceChat)
             .catch(() => setVoiceChat(null));
+        detectBlueMap(uuid)
+            .then(setBlueMap)
+            .catch(() => setBlueMap(null));
     }, [uuid]);
 
-    // Voice chat needs a port of its own: take a new allocation and point its config at it.
-    const onAddVoiceChatPort = async () => {
-        if (!voiceChat) return;
-
+    /**
+     * Takes a new allocation and points a service's config at it. The allocation is kept even when the config can not be
+     * written, with the line to set by hand in the message.
+     */
+    const addServicePort = async (service: {
+        note: string;
+        path: string;
+        write: (allocation: ServerAllocation) => Promise<void>;
+        success: (allocation: ServerAllocation) => string;
+        manual: (allocation: ServerAllocation) => string;
+    }) => {
         clearFlashes();
         setLoading(true);
         try {
@@ -76,32 +91,15 @@ const NetworkContainer = () => {
             await mutate(data?.concat(allocation), false);
 
             try {
-                await saveFileContents(
-                    uuid,
-                    voiceChat.path,
-                    withAllocation(voiceChat.content, allocation.port, allocation.alias || allocation.ip)
-                );
-                setVoiceChat({
-                    ...voiceChat,
-                    content: withAllocation(voiceChat.content, allocation.port, allocation.alias || allocation.ip),
-                    port: allocation.port,
-                });
-                await setServerAllocationNotes(uuid, allocation.id, 'Simple Voice Chat').catch(() => undefined);
-                addFlash({
-                    key: 'server:network',
-                    type: 'success',
-                    message: `Voice chat now uses port ${allocation.port} and tells players to connect to ${
-                        allocation.alias || allocation.ip
-                    }:${allocation.port}. Restart the server to apply it. Players need that UDP port open.`,
-                });
+                await service.write(allocation);
+                await setServerAllocationNotes(uuid, allocation.id, service.note).catch(() => undefined);
+                addFlash({ key: 'server:network', type: 'success', message: service.success(allocation) });
                 mutate();
             } catch (e) {
                 addError(
                     `The allocation ${allocation.port} was added, but ${
-                        voiceChat.path
-                    } could not be updated. Set port=${allocation.port} and voice_host=${
-                        allocation.alias || allocation.ip
-                    }:${allocation.port} there yourself.`
+                        service.path
+                    } could not be updated. ${service.manual(allocation)}`
                 );
             }
         } catch (e) {
@@ -111,8 +109,53 @@ const NetworkContainer = () => {
         }
     };
 
+    // Voice chat needs a port of its own: take a new allocation and point its config at it.
+    const onAddVoiceChatPort = () => {
+        if (!voiceChat) return;
+        const address = (a: ServerAllocation) => `${a.alias || a.ip}:${a.port}`;
+
+        return addServicePort({
+            note: 'Simple Voice Chat',
+            path: voiceChat.path,
+            write: async (a) => {
+                const content = withAllocation(voiceChat.content, a.port, a.alias || a.ip);
+                await saveFileContents(uuid, voiceChat.path, content);
+                setVoiceChat({ ...voiceChat, content, port: a.port });
+            },
+            success: (a) =>
+                `Voice chat now uses port ${a.port} and tells players to connect to ${address(
+                    a
+                )}. Restart the server to apply it. Players need that UDP port open.`,
+            manual: (a) => `Set port=${a.port} and voice_host=${address(a)} there yourself.`,
+        });
+    };
+
+    // BlueMap serves its map from a port of its own as well.
+    const onAddBlueMapPort = () => {
+        if (!blueMap || 'waiting' in blueMap) return;
+
+        return addServicePort({
+            note: 'BlueMap',
+            path: blueMap.path,
+            write: async (a) => {
+                const content = withPort(blueMap.content, a.port);
+                await saveFileContents(uuid, blueMap.path, content);
+                setBlueMap({ ...blueMap, content, port: a.port });
+            },
+            success: (a) =>
+                `BlueMap now serves its map on port ${a.port}, open http://${a.alias || a.ip}:${
+                    a.port
+                } once the server has restarted.${
+                    blueMap.enabled ? '' : ' Its web server is switched off, set enabled: true in webserver.conf.'
+                }`,
+            manual: (a) => `Set port: ${a.port} there yourself.`,
+        });
+    };
+
     const voicePortInUse =
         !!voiceChat?.port && voiceChat.port > 0 && allocations.some((a) => a.port === voiceChat.port);
+    const blueMapPort = blueMap && !('waiting' in blueMap) ? blueMap.port : null;
+    const blueMapInUse = !!blueMapPort && allocations.some((a) => a.port === blueMapPort);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
 
     return (
@@ -136,6 +179,24 @@ const NetworkContainer = () => {
                         >
                             <MicrophoneIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
                             {voicePortInUse ? `Voice chat: ${voiceChat.port}` : 'Add voice chat port'}
+                        </Button.Text>
+                    </Can>
+                )}
+                {blueMap && (
+                    <Can action={['allocation.create', 'file.update']}>
+                        <Button.Text
+                            disabled={'waiting' in blueMap || blueMapInUse || !data || allocationLimit <= data.length}
+                            onClick={onAddBlueMapPort}
+                            title={
+                                'waiting' in blueMap
+                                    ? 'Start the server once so BlueMap writes its webserver.conf'
+                                    : blueMapInUse
+                                    ? `BlueMap already uses port ${blueMapPort}`
+                                    : 'Add an allocation and set it as the BlueMap web server port'
+                            }
+                        >
+                            <MapIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                            {blueMapInUse ? `BlueMap: ${blueMapPort}` : 'Add BlueMap port'}
                         </Button.Text>
                     </Can>
                 )}

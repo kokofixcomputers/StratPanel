@@ -7,6 +7,10 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import detectCurrent from '@/components/server/versions/detectCurrent';
 import { readWorldSeed } from '@/lib/worldSeed';
+import getFileContents from '@/api/server/files/getFileContents';
+import saveFileContents from '@/api/server/files/saveFileContents';
+import { serializeProperties } from '@/lib/minecraft';
+import { httpErrorToHuman } from '@/api/http';
 
 // Where tools/install-mctools.sh puts the build, a static copy of https://github.com/kokofixcomputers/mctoolsv3.
 const TOOLS_URL = '/tools/index.html';
@@ -14,9 +18,11 @@ const TOOLS_URL = '/tools/index.html';
 /** Messages the tools app sends, see src/lib/panel.ts in that repository for the other half of the protocol. */
 interface ToolsMessage {
     source: 'mctools';
-    type: 'ready' | 'run';
+    type: 'ready' | 'run' | 'save-property';
     id?: string;
     commands?: unknown;
+    key?: unknown;
+    value?: unknown;
 }
 
 export default () => {
@@ -25,6 +31,7 @@ export default () => {
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const [canControl] = usePermissions(['control.console']);
+    const [canEdit] = usePermissions(['file.update']);
     const { online } = useOnlinePlayers(uuid);
 
     const frame = useRef<HTMLIFrameElement>(null);
@@ -82,9 +89,10 @@ export default () => {
                 seed,
                 running,
                 canRun: canControl,
+                canEdit,
                 players: online,
             }),
-        [post, version, name, seed, running, canControl, online]
+        [post, version, name, seed, running, canControl, canEdit, online]
     );
 
     // Tell the tools about the server whenever any of it changes.
@@ -114,13 +122,33 @@ export default () => {
                 if (!error)
                     commands.forEach((command) => instance!.send('send command', command.replace(/[\r\n]+/g, ' ')));
                 post({ type: 'run-result', id: data.id, ok: !error, error });
+            } else if (data.type === 'save-property') {
+                const reply = (error = '') => post({ type: 'save-result', id: data.id, ok: !error, error });
+
+                // Only the MOTD can be written this way, the tools are not trusted with the rest of the file.
+                if (!canEdit) return reply('You are not allowed to edit files on this server.');
+                if (data.key !== 'motd' || typeof data.value !== 'string')
+                    return reply('That property can not be saved.');
+
+                const value = data.value.replace(/[\r\n]+/g, ' ');
+                getFileContents(uuid, '/server.properties')
+                    .catch((e) => {
+                        // A server that never ran has no file yet, but any other failure must not end up overwriting it.
+                        if (e?.response?.status === 404) return '';
+                        throw e;
+                    })
+                    .then((content) =>
+                        saveFileContents(uuid, '/server.properties', serializeProperties(content, { motd: value }))
+                    )
+                    .then(() => reply())
+                    .catch((e) => reply(httpErrorToHuman(e)));
             }
         };
 
         window.addEventListener('message', listener);
 
         return () => window.removeEventListener('message', listener);
-    }, [pushState, post, canControl, running, instance]);
+    }, [pushState, post, canControl, canEdit, running, instance, uuid]);
 
     return (
         <ServerContentBlock title={'Tools'}>
