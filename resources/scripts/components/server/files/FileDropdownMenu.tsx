@@ -31,6 +31,8 @@ import { runArchiveTask, runExtractTask } from '@/lib/tasks';
 import isEqual from 'react-fast-compare';
 import ChmodFileModal from '@/components/server/files/ChmodFileModal';
 import { Dialog } from '@/components/elements/dialog';
+import StratPanelFileWarning from '@/components/server/files/StratPanelFileWarning';
+import { protectedFiles } from '@/lib/protectedFiles';
 
 type ModalType = 'rename' | 'move' | 'chmod';
 
@@ -68,7 +70,7 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
 
     useEventListener(`pterodactyl:files:ctx:${file.key}`, (e: CustomEvent) => {
         if (onClickRef.current) {
-            onClickRef.current.triggerMenu(e.detail);
+            onClickRef.current.triggerMenu(e.detail.x, e.detail.y);
         }
     });
 
@@ -124,11 +126,12 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 open={showConfirmation}
                 onClose={() => setShowConfirmation(false)}
                 title={`Delete ${file.isFile ? 'File' : 'Directory'}`}
-                confirm={'Delete'}
+                confirm={protectedFiles(directory, [file.name]).length ? 'Delete anyway' : 'Delete'}
                 onConfirmed={doDeletion}
             >
                 You will not be able to recover the contents of&nbsp;
                 <span className={'font-semibold text-neutral-50'}>{file.name}</span> once deleted.
+                <StratPanelFileWarning directory={directory} names={[file.name]} />
             </Dialog.Confirm>
             <DropdownMenu
                 ref={onClickRef}

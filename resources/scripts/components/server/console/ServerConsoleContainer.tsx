@@ -12,6 +12,7 @@ import { isProxyServer } from '@/components/server/versions/detectCurrent';
 import StatusBadge from '@/components/server/console/StatusBadge';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import ServerDetailsBlock from '@/components/server/console/ServerDetailsBlock';
+import HelperStatus from '@/components/server/console/HelperStatus';
 import ShareLogButton from '@/components/server/ShareLogButton';
 import { Alert } from '@/components/elements/alert';
 
@@ -58,6 +59,9 @@ const ServerConsoleContainer = () => {
                     <StatusBadge className={'mt-3'} />
                 </div>
                 <div className={'flex flex-wrap items-center gap-2'}>
+                    <Can action={'control.console'}>
+                        <HelperStatus />
+                    </Can>
                     <Can action={'file.read-content'}>
                         <ShareLogButton file={'/logs/latest.log'} />
                     </Can>

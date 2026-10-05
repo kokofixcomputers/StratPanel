@@ -12,6 +12,7 @@ import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
 import { Button } from '@/components/elements/button/index';
 import useFlash from '@/plugins/useFlash';
+import { deleteServerIcon, fetchServerIcon, toIconPng, uploadServerIcon } from '@/lib/serverIcon';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import { httpErrorToHuman } from '@/api/http';
 import { detectType, parseProperties, PropertyLine, readOptionalFile, serializeProperties } from '@/lib/minecraft';
@@ -89,6 +90,32 @@ export default () => {
     const [values, setValues] = useState<PropertyLine[]>([]);
     const [search, setSearch] = useState('');
     const [saving, setSaving] = useState(false);
+    // The icon on the server, and a change that is waiting for Save: a new image, or null to delete it.
+    const [icon, setIcon] = useState<string | null>(null);
+    const [pendingIcon, setPendingIcon] = useState<{ blob: Blob | null; url: string | null } | null>(null);
+
+    useEffect(() => {
+        let url: string | null = null;
+        fetchServerIcon(uuid).then((found) => {
+            url = found;
+            setIcon(found);
+        });
+
+        return () => {
+            if (url) URL.revokeObjectURL(url);
+        };
+    }, [uuid]);
+
+    const pickIcon = async (file: File) => {
+        try {
+            const blob = await toIconPng(file);
+            setPendingIcon({ blob, url: URL.createObjectURL(blob) });
+        } catch (e) {
+            addFlash({ key: 'properties', type: 'error', message: (e as Error).message });
+        }
+    };
+
+    const shownIcon = pendingIcon ? pendingIcon.url : icon;
 
     const load = () =>
         readOptionalFile(uuid, FILE).then((content) => {
@@ -108,7 +135,10 @@ export default () => {
         load();
     }, [uuid]);
 
-    const dirty = useMemo(() => values.some((line) => original[line.key] !== line.value), [values, original]);
+    const dirty = useMemo(
+        () => values.some((line) => original[line.key] !== line.value) || !!pendingIcon,
+        [values, original, pendingIcon]
+    );
 
     const filtered = useMemo(
         () =>
@@ -126,28 +156,38 @@ export default () => {
         [values, search]
     );
 
-    const save = (restart = false) => {
+    const save = async (restart = false) => {
         setSaving(true);
         clearFlashes('properties');
 
-        saveFileContents(
-            uuid,
-            FILE,
-            serializeProperties(raw || '', Object.fromEntries(values.map((l) => [l.key, l.value])))
-        )
-            .then(() => {
-                setOriginal(Object.fromEntries(values.map((line) => [line.key, line.value])));
-                if (restart) instance?.send('set state', 'restart');
-                addFlash({
-                    key: 'properties',
-                    type: 'success',
-                    message: restart
-                        ? 'Properties saved. The server is restarting to apply them.'
-                        : 'Properties saved. Restart the server for the changes to take effect.',
-                });
-            })
-            .catch((error) => addFlash({ key: 'properties', type: 'error', message: httpErrorToHuman(error) }))
-            .then(() => setSaving(false));
+        try {
+            await saveFileContents(
+                uuid,
+                FILE,
+                serializeProperties(raw || '', Object.fromEntries(values.map((l) => [l.key, l.value])))
+            );
+            setOriginal(Object.fromEntries(values.map((line) => [line.key, line.value])));
+
+            if (pendingIcon) {
+                if (pendingIcon.blob) await uploadServerIcon(uuid, pendingIcon.blob);
+                else await deleteServerIcon(uuid);
+                setIcon(pendingIcon.url);
+                setPendingIcon(null);
+            }
+
+            if (restart) instance?.send('set state', 'restart');
+            addFlash({
+                key: 'properties',
+                type: 'success',
+                message: restart
+                    ? 'Saved. The server is restarting to apply the changes.'
+                    : 'Saved. Restart the server for the changes to take effect.',
+            });
+        } catch (error) {
+            addFlash({ key: 'properties', type: 'error', message: httpErrorToHuman(error) });
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -163,6 +203,9 @@ export default () => {
             ) : (
                 <>
                     <MotdBuilder
+                        icon={shownIcon}
+                        onPickIcon={pickIcon}
+                        onRemoveIcon={() => setPendingIcon({ blob: null, url: null })}
                         value={values.find((line) => line.key === 'motd')?.value ?? 'A Minecraft Server'}
                         onChange={(encoded) =>
                             setValues((all) =>

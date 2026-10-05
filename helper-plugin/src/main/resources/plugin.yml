@@ -1,0 +1,11 @@
+main: ${PACKAGE}.${NAME}
+name: ${NAME}
+version: "${VERSION}"
+api-version: "1.21"
+authors: [kokodev]
+description: Shares the commands of the server with the panel so the console can tab complete them.
+
+commands:
+  stratpanelhidepanellogs:
+    description: Used by the panel to talk to this plugin (console only). The panel hides all lines that mention it.
+    usage: /stratpanelhidepanellogs <handshake|refresh|sync|scan>

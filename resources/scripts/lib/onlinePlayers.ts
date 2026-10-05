@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { stripAnsi } from '@/components/server/console/consoleChunks';
+import { BridgeMessage, toPlayer } from '@/lib/bridge';
 
 const LOGIN = /(?:^|\]: |\] )([^\s[\]]+)\[\/[^\]]+\] logged in with entity id/;
 const LOST = /(?:^|\]: |\] )([^\s[\]]+) lost connection: /;
@@ -61,6 +62,36 @@ export const handleLogLine = (server: string, line: string) => {
         }
     } else if (state.uuids[event.name] !== event.uuid) {
         write(server, { ...state, uuids: { ...state.uuids, [event.name]: event.uuid } });
+    }
+};
+
+/**
+ * What the plugin tells the panel about players: someone joined, someone left, or the whole list (answering a sync).
+ * Only call this with messages that passed the trust check of the bridge.
+ */
+export const handleBridgeMessage = (server: string, message: BridgeMessage) => {
+    const state = readOnlinePlayers(server);
+
+    if (message.event === 'player-join' || message.event === 'player-leave') {
+        const player = toPlayer(message);
+        if (!player) return;
+
+        const uuids =
+            player.uuid && state.uuids[player.name] !== player.uuid
+                ? { ...state.uuids, [player.name]: player.uuid }
+                : state.uuids;
+        const online =
+            message.event === 'player-join'
+                ? state.online.includes(player.name)
+                    ? state.online
+                    : [...state.online, player.name]
+                : state.online.filter((name) => name !== player.name);
+        if (online !== state.online || uuids !== state.uuids) write(server, { online, uuids });
+    } else if (message.event === 'players' && Array.isArray(message.players)) {
+        const players = message.players.map(toPlayer).filter((p): p is NonNullable<ReturnType<typeof toPlayer>> => !!p);
+        const uuids = { ...state.uuids };
+        players.forEach((p) => p.uuid && (uuids[p.name] = p.uuid));
+        write(server, { online: players.map((p) => p.name), uuids });
     }
 };
 

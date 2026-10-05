@@ -21,6 +21,7 @@ import Label from '@/components/elements/Label';
 import Spinner from '@/components/elements/Spinner';
 import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
+import { WORLDS_CHANGED } from '@/lib/worldImport';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
 const PROPERTIES = '/server.properties';
@@ -94,6 +95,10 @@ export default () => {
     useEffect(() => {
         isProxyServer(uuid).then(setProxy);
         load();
+        // A world that was added from somewhere else, such as a link, shows up without reloading the page.
+        window.addEventListener(WORLDS_CHANGED, load);
+
+        return () => window.removeEventListener(WORLDS_CHANGED, load);
     }, [load]);
 
     const writeSeed = async (value: string) => {

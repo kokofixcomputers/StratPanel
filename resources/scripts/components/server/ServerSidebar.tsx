@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, matchPath, useLocation } from 'react-router-dom';
 import classNames from 'classnames';
 import {
@@ -24,7 +24,10 @@ import CopyOnClick from '@/components/elements/CopyOnClick';
 import { ip } from '@/lib/formatters';
 import Can from '@/components/elements/Can';
 import { ServerContext } from '@/state/server';
+import { usePermissions } from '@/plugins/usePermissions';
 import StatusBadge from '@/components/server/console/StatusBadge';
+import { useOnlinePlayers } from '@/lib/onlinePlayers';
+import { parseProperties, readOptionalFile } from '@/lib/minecraft';
 import PowerButtons from '@/components/server/console/PowerButtons';
 
 export interface SidebarItem {
@@ -67,9 +70,34 @@ const link = (active: boolean) =>
     );
 
 /** The server navigation as a left sidebar on wide screens. Narrow screens keep the horizontal tabs. */
-export default ({ items, adminUrl }: { items: SidebarItem[]; adminUrl?: string }) => {
+export default ({
+    items,
+    adminUrl,
+    playersUrl,
+}: {
+    items: SidebarItem[];
+    adminUrl?: string;
+    // Where the player count links to, left out for servers that have no player list (proxies).
+    playersUrl?: string;
+}) => {
     const { pathname } = useLocation();
     const name = ServerContext.useStoreState((state) => state.server.data!.name);
+    const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const status = ServerContext.useStoreState((state) => state.status.value);
+    const { online } = useOnlinePlayers(uuid);
+    const [canOpenPlayers] = usePermissions(['control.console']);
+    const [maxPlayers, setMaxPlayers] = useState(20);
+
+    // The limit lives in server.properties, read it again whenever the server changes state in case it was edited.
+    useEffect(() => {
+        if (!playersUrl) return;
+
+        readOptionalFile(uuid, '/server.properties').then((content) => {
+            const value = parseProperties(content || '').find((line) => line.key === 'max-players')?.value;
+            const parsed = parseInt(value || '', 10);
+            if (!isNaN(parsed)) setMaxPlayers(parsed);
+        });
+    }, [uuid, status, playersUrl]);
     const address = ServerContext.useStoreState((state) => {
         const match = state.server.data!.allocations.find((allocation) => allocation.isDefault);
 
@@ -126,6 +154,24 @@ export default ({ items, adminUrl }: { items: SidebarItem[]; adminUrl?: string }
                                 </span>
                             </button>
                         </CopyOnClick>
+                    )}
+                    {playersUrl && (
+                        <Link
+                            to={canOpenPlayers ? playersUrl : '#'}
+                            onClick={(e) => !canOpenPlayers && e.preventDefault()}
+                            title={canOpenPlayers ? 'Open the player list' : undefined}
+                            className={
+                                'mb-3 flex items-center justify-between rounded-lg border border-neutral-500 bg-neutral-700/40 px-3 py-2 text-sm text-neutral-100 no-underline hover:bg-neutral-600'
+                            }
+                        >
+                            <span className={'flex items-center gap-2 text-neutral-300'}>
+                                <UsersIcon className={'h-4 w-4'} />
+                                Players
+                            </span>
+                            <span className={'font-semibold'}>
+                                {online.length}/{maxPlayers}
+                            </span>
+                        </Link>
                     )}
                     <Can action={['control.start', 'control.stop', 'control.restart']} matchAny>
                         <PowerButtons compact className={'flex gap-2'} />

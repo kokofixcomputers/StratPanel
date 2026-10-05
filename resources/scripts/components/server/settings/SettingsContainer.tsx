@@ -13,6 +13,7 @@ import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import isEqual from 'react-fast-compare';
 import CopyOnClick from '@/components/elements/CopyOnClick';
 import { ip } from '@/lib/formatters';
+import DockerImageBox from '@/components/server/settings/DockerImageBox';
 import ServerLimitsBox from '@/components/server/settings/ServerLimitsBox';
 import WorldManagerBox from '@/components/server/settings/WorldManagerBox';
 import { Button } from '@/components/elements/button/index';
@@ -76,6 +77,9 @@ export default () => {
                 <div css={tw`w-full mt-6 md:flex-1 md:mt-0`}>
                     <Can action={'file.read'}>
                         <WorldManagerBox />
+                    </Can>
+                    <Can action={'startup.docker-image'}>
+                        <DockerImageBox />
                     </Can>
                     <Can action={'settings.rename'}>
                         <div css={tw`mb-6 md:mb-10`}>

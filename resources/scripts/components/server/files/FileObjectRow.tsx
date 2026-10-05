@@ -78,7 +78,9 @@ const FileObjectRow = ({ file, icon }: { file: FileObject; icon?: JarIcon }) => 
             key={file.name}
             onContextMenu={(e) => {
                 e.preventDefault();
-                window.dispatchEvent(new CustomEvent(`pterodactyl:files:ctx:${file.key}`, { detail: e.clientX }));
+                window.dispatchEvent(
+                    new CustomEvent(`pterodactyl:files:ctx:${file.key}`, { detail: { x: e.clientX, y: e.clientY } })
+                );
             }}
         >
             <SelectFileCheckbox name={file.name} />

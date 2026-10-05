@@ -15,11 +15,34 @@ import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
 import { runTask } from '@/lib/tasks';
 import { ManagedProject } from '@/lib/pterodactylJson';
-import { MOD_LOADERS, ModrinthProject, PLUGIN_LOADERS, ProjectKind, searchModrinth } from '@/lib/minecraft';
+import {
+    MOD_LOADERS,
+    ModrinthProject,
+    ModrinthVersion,
+    PLUGIN_LOADERS,
+    ProjectKind,
+    searchModrinth,
+} from '@/lib/minecraft';
 import detectCurrent from '@/components/server/versions/detectCurrent';
 import useManagedMods from '@/components/server/mods/useManagedMods';
 import installModpack, { ModpackSpec } from '@/components/server/mods/installModpack';
 import { InstallModpackModal, ModpackSearch } from '@/components/server/mods/modpack';
+import InstallContentModal from '@/components/server/mods/InstallContentModal';
+import WorldsPanel from '@/components/server/mods/WorldsPanel';
+import useResourcePack from '@/components/server/mods/useResourcePack';
+import Switch from '@/components/elements/Switch';
+
+/** What the page can show: the Modrinth project types, plus worlds which come from a link or an upload. */
+type Tab = ProjectKind | 'world';
+
+const TABS: { id: Tab; label: string; unit: string }[] = [
+    { id: 'plugin', label: 'Plugins', unit: 'plugins' },
+    { id: 'mod', label: 'Mods', unit: 'mods' },
+    { id: 'datapack', label: 'Datapacks', unit: 'datapacks' },
+    { id: 'resourcepack', label: 'Resource packs', unit: 'resource packs' },
+    { id: 'world', label: 'Worlds', unit: 'worlds' },
+    { id: 'modpack', label: 'Modpacks', unit: 'modpacks' },
+];
 
 const compact = (value: number) =>
     new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
@@ -58,6 +81,84 @@ const Icon = ({ src, size = 14 }: { src: string | null; size?: number }) => (
     </div>
 );
 
+/** The resource pack the server hands out: what it is, whether players must accept it, and a way to remove it. */
+const ResourcePackCard = ({
+    state,
+    onFlash,
+}: {
+    state: ReturnType<typeof useResourcePack>;
+    onFlash: (type: 'success' | 'error', message: string) => void;
+}) => {
+    const { pack, loading } = state;
+    const [busy, setBusy] = useState(false);
+
+    const run = async (work: () => Promise<void>, done: string) => {
+        setBusy(true);
+        try {
+            await work();
+            onFlash('success', done);
+        } catch (e) {
+            onFlash('error', (e as any)?.response ? httpErrorToHuman(e) : (e as Error).message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    if (loading) return <Spinner size={'large'} centered />;
+    if (!pack) {
+        return <EmptyState>No resource pack is set. Pick one from the Browse tab.</EmptyState>;
+    }
+
+    return (
+        <div css={tw`bg-white border border-neutral-500 rounded-xl shadow-md p-5`}>
+            <div css={tw`flex flex-wrap items-center`}>
+                <Icon src={pack.info?.icon || null} size={12} />
+                <div css={tw`flex-1 min-w-0 mr-4`}>
+                    <p css={tw`text-sm font-semibold text-neutral-50 truncate`}>
+                        {pack.info?.title || 'Custom resource pack'}
+                    </p>
+                    <p css={tw`text-xs text-neutral-400 truncate`}>
+                        {pack.info ? `${pack.info.versionNumber} · ` : ''}
+                        <span css={tw`font-mono`}>{pack.url}</span>
+                    </p>
+                </div>
+                <Button.Danger
+                    variant={Button.Variants.Secondary}
+                    size={Button.Sizes.Small}
+                    disabled={busy}
+                    onClick={() => run(state.remove, 'The resource pack was removed. Restart the server to apply it.')}
+                >
+                    <TrashIcon css={tw`w-4 h-4 mr-1.5 -ml-1`} />
+                    Remove
+                </Button.Danger>
+            </div>
+            <div css={tw`mt-4 pt-4 border-t border-neutral-500 flex items-center justify-between gap-4`}>
+                <div>
+                    <p css={tw`text-sm font-medium text-neutral-50`}>Require players to install it</p>
+                    <p css={tw`text-xs text-neutral-400`}>
+                        Players who decline are disconnected. Restart the server to apply.
+                    </p>
+                </div>
+                <Switch
+                    name={'require-resource-pack'}
+                    readOnly={busy}
+                    defaultChecked={pack.required}
+                    onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        run(
+                            () => state.setRequired(checked),
+                            checked ? 'Players are now required to use it.' : 'Players can decline it now.'
+                        );
+                    }}
+                />
+            </div>
+            <p css={tw`mt-3 text-xs text-neutral-400`}>
+                Saved in server.properties as resource-pack, resource-pack-sha1 and require-resource-pack.
+            </p>
+        </div>
+    );
+};
+
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
@@ -73,7 +174,7 @@ export default () => {
     );
     const { addFlash, clearFlashes } = useFlash();
 
-    const [kind, setKind] = useState<ProjectKind>('plugin');
+    const [kind, setKind] = useState<Tab>('plugin');
     const picked = useRef(false);
     const [view, setView] = useState<'browse' | 'installed'>('browse');
     const [query, setQuery] = useState('');
@@ -85,15 +186,19 @@ export default () => {
     const [busy, setBusy] = useState<string | null>(null);
     const [removing, setRemoving] = useState<ManagedProject | null>(null);
     const [modpack, setModpack] = useState<ModrinthProject | null>(null);
+    const [installing, setInstalling] = useState<ModrinthProject | null>(null);
     const request = useRef(0);
 
     const managed = useManagedMods(uuid, detectedVersion);
+    const resourcePack = useResourcePack(uuid);
     const { mods, updates } = managed;
     const installedOfKind = Object.values(mods).filter((m) => m.kind === kind);
     const updatable = installedOfKind.filter((m) => updates[m.projectId]);
 
     const fetchPage = useCallback(
         (offset: number) => {
+            if (kind === 'world') return Promise.resolve();
+
             const id = ++request.current;
             setLoading(true);
 
@@ -120,7 +225,7 @@ export default () => {
     );
 
     useEffect(() => {
-        if (kind === 'modpack' || view !== 'browse') return;
+        if (kind === 'modpack' || kind === 'world' || view !== 'browse') return;
 
         const timeout = setTimeout(() => fetchPage(0), 350);
 
@@ -144,7 +249,7 @@ export default () => {
         };
     }, [uuid]);
     useEffect(() => {
-        if (kind === 'modpack') setView('browse');
+        if (kind === 'modpack' || kind === 'world') setView('browse');
     }, [kind]);
 
     /** Runs one action on a project and shows what happened. */
@@ -164,15 +269,33 @@ export default () => {
         }
     };
 
-    const install = (project: ModrinthProject) =>
-        act({ id: project.project_id, title: project.title }, async () => {
-            const record = await managed.install(project, kind as 'mod' | 'plugin', {
-                loader: loader || undefined,
-                version: version.trim() || undefined,
-            });
+    /** Called by the modal once a version was chosen and confirmed. */
+    const confirmInstall = async (version: ModrinthVersion, options: { required: boolean }) => {
+        const project = installing;
+        if (!project || kind === 'world' || kind === 'modpack') return;
 
-            return `${project.title} ${record.versionNumber} was downloaded to ${record.directory}. Restart the server to load it.`;
+        await act({ id: project.project_id, title: project.title }, async () => {
+            if (kind === 'resourcepack') {
+                await resourcePack.apply(project, version, options.required);
+
+                return `${project.title} is now the resource pack of the server${
+                    options.required ? ' and players are required to use it' : ''
+                }. Restart the server to hand it out.`;
+            }
+
+            const record = await managed.install(
+                project,
+                kind,
+                version,
+                version.game_versions.includes(detectedVersion) ? detectedVersion : null
+            );
+
+            return kind === 'datapack'
+                ? `${project.title} ${record.versionNumber} was added to ${record.directory}. Restart the server or run /reload to load it.`
+                : `${project.title} ${record.versionNumber} was downloaded to ${record.directory}. Restart the server to load it.`;
         });
+        setInstalling(null);
+    };
 
     const update = (record: ManagedProject) =>
         act({ id: record.projectId, title: record.title }, async () => {
@@ -229,7 +352,9 @@ export default () => {
     };
 
     const loaders = kind === 'plugin' ? PLUGIN_LOADERS : MOD_LOADERS;
-    const unit = kind === 'plugin' ? 'plugins' : 'mods';
+    const tab = TABS.find((t) => t.id === kind)!;
+    const unit = tab.unit;
+    const usesLoader = kind === 'plugin' || kind === 'mod';
 
     const ProjectButtons = ({
         id,
@@ -242,6 +367,7 @@ export default () => {
     }) => {
         const pending = busy === id;
         const upgrade = updates[id];
+        const inUse = kind === 'resourcepack' && resourcePack.pack?.info?.projectId === id;
 
         if (record) {
             return (
@@ -265,61 +391,59 @@ export default () => {
             );
         }
 
+        if (inUse) {
+            return (
+                <span css={tw`inline-flex items-center text-xs text-green-700`}>
+                    <CheckIcon css={tw`w-4 h-4 mr-1`} />
+                    In use
+                </span>
+            );
+        }
+
         return (
-            <Button size={Button.Sizes.Small} disabled={!!busy} onClick={() => project && install(project)}>
+            <Button size={Button.Sizes.Small} disabled={!!busy} onClick={() => project && setInstalling(project)}>
                 <DownloadIcon css={tw`w-4 h-4 mr-1.5 -ml-1`} />
-                {pending ? 'Installing...' : 'Install'}
+                {pending ? 'Installing...' : kind === 'resourcepack' ? 'Use pack' : 'Install'}
             </Button>
         );
     };
 
     return (
-        <ServerContentBlock title={'Mods & Plugins'}>
+        <ServerContentBlock title={'Content'}>
             <PageHeader
-                title={'Mods & Plugins'}
-                subtitle={`Browse Modrinth and install ${kind === 'modpack' ? 'modpacks' : unit} on ${serverName}`}
+                title={'Content'}
+                subtitle={
+                    kind === 'world'
+                        ? `Worlds on ${serverName}`
+                        : `Browse Modrinth and install ${unit} on ${serverName}`
+                }
             />
             <FlashMessageRender byKey={'mods'} css={tw`mb-4`} />
 
             <div css={tw`bg-white border border-neutral-500 rounded-xl shadow-md p-5 mb-4`}>
                 <div css={tw`flex flex-wrap items-center gap-3`}>
-                    <div css={tw`inline-flex p-1 bg-neutral-600 rounded-xl`}>
-                        <Segment
-                            active={kind === 'plugin'}
-                            onClick={() => {
-                                picked.current = true;
-                                setKind('plugin');
-                            }}
-                        >
-                            Plugins
-                        </Segment>
-                        <Segment
-                            active={kind === 'mod'}
-                            onClick={() => {
-                                picked.current = true;
-                                setKind('mod');
-                            }}
-                        >
-                            Mods
-                        </Segment>
-                        <Segment
-                            active={kind === 'modpack'}
-                            onClick={() => {
-                                picked.current = true;
-                                setKind('modpack');
-                            }}
-                        >
-                            Modpacks
-                        </Segment>
+                    <div css={tw`inline-flex flex-wrap p-1 bg-neutral-600 rounded-xl`}>
+                        {TABS.map((t) => (
+                            <Segment
+                                key={t.id}
+                                active={kind === t.id}
+                                onClick={() => {
+                                    picked.current = true;
+                                    setKind(t.id);
+                                }}
+                            >
+                                {t.label}
+                            </Segment>
+                        ))}
                     </div>
-                    {kind !== 'modpack' && (
+                    {kind !== 'modpack' && kind !== 'world' && (
                         <>
                             <div css={tw`inline-flex p-1 bg-neutral-600 rounded-xl`}>
                                 <Segment active={view === 'browse'} onClick={() => setView('browse')}>
                                     Browse
                                 </Segment>
                                 <Segment active={view === 'installed'} onClick={() => setView('installed')}>
-                                    Installed ({installedOfKind.length})
+                                    {kind === 'resourcepack' ? 'In use' : `Installed (${installedOfKind.length})`}
                                     {updatable.length > 0 && (
                                         <span css={tw`ml-2 rounded-full bg-primary-600 text-white px-1.5 text-2xs`}>
                                             {updatable.length}
@@ -341,18 +465,20 @@ export default () => {
                                             onChange={(e) => setQuery(e.currentTarget.value)}
                                         />
                                     </div>
-                                    <div css={tw`w-40`}>
-                                        <Select value={loader} onChange={(e) => setLoader(e.currentTarget.value)}>
-                                            <option value={''}>
-                                                {kind === 'plugin' ? 'Any platform' : 'Any loader'}
-                                            </option>
-                                            {loaders.map((l) => (
-                                                <option key={l} value={l}>
-                                                    {l.charAt(0).toUpperCase() + l.slice(1)}
+                                    {usesLoader && (
+                                        <div css={tw`w-40`}>
+                                            <Select value={loader} onChange={(e) => setLoader(e.currentTarget.value)}>
+                                                <option value={''}>
+                                                    {kind === 'plugin' ? 'Any platform' : 'Any loader'}
                                                 </option>
-                                            ))}
-                                        </Select>
-                                    </div>
+                                                {loaders.map((l) => (
+                                                    <option key={l} value={l}>
+                                                        {l.charAt(0).toUpperCase() + l.slice(1)}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        </div>
+                                    )}
                                     <div css={tw`w-36`}>
                                         <Input
                                             type={'text'}
@@ -368,8 +494,15 @@ export default () => {
                 </div>
             </div>
 
-            {kind === 'modpack' ? (
+            {kind === 'world' ? (
+                <WorldsPanel />
+            ) : kind === 'modpack' ? (
                 <ModpackSearch actionLabel={'Install'} onPick={setModpack} />
+            ) : kind === 'resourcepack' && view === 'installed' ? (
+                <ResourcePackCard
+                    state={resourcePack}
+                    onFlash={(type, message) => addFlash({ key: 'mods', type, message })}
+                />
             ) : view === 'installed' ? (
                 <>
                     {managed.untracked.length > 0 && (
@@ -495,6 +628,18 @@ export default () => {
                 that need it may stop working.
             </Dialog.Confirm>
 
+            <InstallContentModal
+                project={installing}
+                kind={kind === 'world' ? 'mod' : kind}
+                loader={loader || undefined}
+                gameVersion={version.trim() || detectedVersion}
+                confirmLabel={kind === 'resourcepack' ? 'Use this pack' : 'Install'}
+                allowRequire={kind === 'resourcepack'}
+                replaces={kind === 'resourcepack' && !!resourcePack.pack}
+                busy={!!busy}
+                onClose={() => setInstalling(null)}
+                onConfirm={confirmInstall}
+            />
             <InstallModpackModal project={modpack} onClose={() => setModpack(null)} onInstall={startModpack} />
         </ServerContentBlock>
     );

@@ -11,7 +11,7 @@ export const MARKER = 'pterodactyl.json';
 export const LEGACY_MARKER = '.panel-version.json';
 
 export interface ManagedProject {
-    kind: 'mod' | 'plugin';
+    kind: 'mod' | 'plugin' | 'datapack';
     projectId: string;
     slug: string;
     title: string;
@@ -22,6 +22,18 @@ export interface ManagedProject {
     directory: string;
     loaders: string[];
     gameVersion: string | null;
+    installedAt: string;
+}
+
+export interface ResourcePackInfo {
+    projectId: string;
+    title: string;
+    icon: string | null;
+    versionId: string;
+    versionNumber: string;
+    url: string;
+    sha1: string;
+    required: boolean;
     installedAt: string;
 }
 
@@ -44,6 +56,7 @@ export interface PterodactylJson {
     installedBy?: string;
     mods?: Record<string, ManagedProject>;
     modpack?: ModpackInfo;
+    resourcePack?: ResourcePackInfo;
     [key: string]: unknown;
 }
 

@@ -15,6 +15,36 @@
 
 @section('content')
 @include('admin.servers.partials.navigation')
+<div class="row stat-row">
+    <div class="col-xs-6 col-md-3">
+        <div class="stat-card {{ $server->isSuspended() ? 'stat-amber' : (! $server->isInstalled() ? 'stat-indigo' : 'stat-green') }}">
+            <span class="stat-icon"><i class="fa {{ $server->isSuspended() ? 'fa-pause' : (! $server->isInstalled() ? 'fa-download' : 'fa-check') }}"></i></span>
+            <span class="stat-number stat-text">{{ $server->isSuspended() ? 'Suspended' : (! $server->isInstalled() ? 'Installing' : 'Active') }}</span>
+            <span class="stat-label">Status</span>
+        </div>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <div class="stat-card stat-indigo">
+            <span class="stat-icon"><i class="fa fa-microchip"></i></span>
+            <span class="stat-number">{{ $server->cpu === 0 ? '∞' : $server->cpu . '%' }}</span>
+            <span class="stat-label">CPU limit</span>
+        </div>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <div class="stat-card stat-pink">
+            <span class="stat-icon"><i class="fa fa-tasks"></i></span>
+            <span class="stat-number">{{ $server->memory === 0 ? '∞' : $server->memory }}<small>{{ $server->memory === 0 ? '' : ' MiB' }}</small></span>
+            <span class="stat-label">Memory</span>
+        </div>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <span class="stat-icon"><i class="fa fa-hdd-o"></i></span>
+            <span class="stat-number">{{ $server->disk === 0 ? '∞' : $server->disk }}<small>{{ $server->disk === 0 ? '' : ' MiB' }}</small></span>
+            <span class="stat-label">Disk space</span>
+        </div>
+    </div>
+</div>
 <div class="row">
     <div class="col-sm-8">
         <div class="row">
@@ -125,53 +155,28 @@
         </div>
     </div>
     <div class="col-sm-4">
-        <div class="box box-primary">
-            <div class="box-body" style="padding-bottom: 0px;">
-                <div class="row">
-                    @if($server->isSuspended())
-                        <div class="col-sm-12">
-                            <div class="small-box bg-yellow">
-                                <div class="inner">
-                                    <h3 class="no-margin">Suspended</h3>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                    @if(!$server->isInstalled())
-                        <div class="col-sm-12">
-                            <div class="small-box {{ (! $server->isInstalled()) ? 'bg-blue' : 'bg-maroon' }}">
-                                <div class="inner">
-                                    <h3 class="no-margin">{{ (! $server->isInstalled()) ? 'Installing' : 'Install Failed' }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                    <div class="col-sm-12">
-                        <div class="small-box bg-gray">
-                            <div class="inner">
-                                <h3>{{ str_limit($server->user->username, 16) }}</h3>
-                                <p>Server Owner</p>
-                            </div>
-                            <div class="icon"><i class="fa fa-user"></i></div>
-                            <a href="{{ route('admin.users.view', $server->user->id) }}" class="small-box-footer">
-                                More info <i class="fa fa-arrow-circle-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="col-sm-12">
-                        <div class="small-box bg-gray">
-                            <div class="inner">
-                                <h3>{{ str_limit($server->node->name, 16) }}</h3>
-                                <p>Server Node</p>
-                            </div>
-                            <div class="icon"><i class="fa fa-codepen"></i></div>
-                            <a href="{{ route('admin.nodes.view', $server->node->id) }}" class="small-box-footer">
-                                More info <i class="fa fa-arrow-circle-right"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <a href="{{ route('admin.users.view', $server->user->id) }}" class="link-card">
+            <span class="link-card-icon"><i class="fa fa-user"></i></span>
+            <span class="link-card-text">
+                <span class="link-card-label">Server owner</span>
+                <span class="link-card-value">{{ str_limit($server->user->username, 24) }}</span>
+            </span>
+            <i class="fa fa-angle-right link-card-arrow"></i>
+        </a>
+        <a href="{{ route('admin.nodes.view', $server->node->id) }}" class="link-card">
+            <span class="link-card-icon"><i class="fa fa-sitemap"></i></span>
+            <span class="link-card-text">
+                <span class="link-card-label">Node</span>
+                <span class="link-card-value">{{ str_limit($server->node->name, 24) }}</span>
+            </span>
+            <i class="fa fa-angle-right link-card-arrow"></i>
+        </a>
+        <div class="link-card">
+            <span class="link-card-icon"><i class="fa fa-plug"></i></span>
+            <span class="link-card-text">
+                <span class="link-card-label">Connection</span>
+                <span class="link-card-value"><code>{{ $server->allocation->alias }}:{{ $server->allocation->port }}</code></span>
+            </span>
         </div>
     </div>
 </div>

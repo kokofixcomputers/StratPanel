@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -45,7 +47,13 @@ func TestReadHandshakeRejectsGarbage(t *testing.T) {
 func startRouter(t *testing.T, routes []mapping) string {
 	t.Helper()
 
-	r := &router{cfg: config{UnknownMOTD: "unknown", OfflineMOTD: "offline"}, routes: map[string]string{}}
+	return startRouterWith(t, config{UnknownMOTD: "unknown", OfflineMOTD: "offline", SuspendedMOTD: "suspended", StartingMOTD: "starting", InstallMOTD: "installing"}, routes)
+}
+
+func startRouterWith(t *testing.T, cfg config, routes []mapping) string {
+	t.Helper()
+
+	r := &router{cfg: cfg, routes: map[string]route{}}
 	r.set(routes)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -150,5 +158,95 @@ func TestStatusPingOfflineBackend(t *testing.T) {
 	n, _ := client.Read(buf)
 	if !bytes.Contains(buf[:n], []byte("offline")) {
 		t.Fatalf("expected the offline message, got %q", buf[:n])
+	}
+}
+
+// ask connects like a player would and returns everything the router answered.
+func ask(t *testing.T, addr, host string, next int) []byte {
+	t.Helper()
+
+	client, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	_, _ = client.Write(buildHandshake(host, 25565, next))
+	if next == 1 {
+		_, _ = client.Write([]byte{1, 0})
+	}
+	_ = client.SetReadDeadline(time.Now().Add(3 * time.Second))
+
+	buf := make([]byte, 1024)
+	n, _ := client.Read(buf)
+
+	return buf[:n]
+}
+
+func TestSuspendedServerIsNeverForwarded(t *testing.T) {
+	backend, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer backend.Close()
+	reached := make(chan struct{}, 1)
+	go func() {
+		if conn, err := backend.Accept(); err == nil {
+			conn.Close()
+			reached <- struct{}{}
+		}
+	}()
+
+	port := backend.Addr().(*net.TCPAddr).Port
+	router := startRouter(t, []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: port, Status: "suspended"}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("suspended")) {
+		t.Fatalf("expected the suspended message, got %q", answer)
+	}
+	if answer := ask(t, router, "mc.example.com", 1); !bytes.Contains(answer, []byte("Suspended")) {
+		t.Fatalf("expected the suspended label in the server list, got %q", answer)
+	}
+
+	select {
+	case <-reached:
+		t.Fatal("the router connected to a suspended server")
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+func TestStartingServerExplainsItself(t *testing.T) {
+	var asked string
+	panel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		asked = req.URL.Query().Get("domain") + "|" + req.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{"state":"starting"}`))
+	}))
+	defer panel.Close()
+
+	// Nothing listens on port 1, so the router has to find out why from the panel.
+	router := startRouterWith(t, config{PanelURL: panel.URL, Token: "secret", OfflineMOTD: "offline", StartingMOTD: "starting"},
+		[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("starting")) {
+		t.Fatalf("expected the starting message, got %q", answer)
+	}
+	if asked != "mc.example.com|Bearer secret" {
+		t.Fatalf("unexpected request to the panel: %q", asked)
+	}
+}
+
+func TestUnreachablePanelFallsBackToOffline(t *testing.T) {
+	router := startRouterWith(t, config{PanelURL: "http://127.0.0.1:1", Token: "x", OfflineMOTD: "offline"},
+		[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("offline")) {
+		t.Fatalf("expected the offline message, got %q", answer)
+	}
+}
+
+func TestMOTDsAcceptEscapedLineBreaks(t *testing.T) {
+	t.Setenv("OFFLINE_MOTD", `first\nsecond`)
+
+	if got := loadConfig().OfflineMOTD; got != "first\nsecond" {
+		t.Fatalf("got %q", got)
 	}
 }

@@ -10,18 +10,6 @@ use Pterodactyl\Tests\Integration\Api\Client\ClientApiIntegrationTestCase;
 class CreateNewAllocationTest extends ClientApiIntegrationTestCase
 {
     /**
-     * Setup tests.
-     */
-    public function setUp(): void
-    {
-        parent::setUp();
-
-        config()->set('pterodactyl.client_features.allocations.enabled', true);
-        config()->set('pterodactyl.client_features.allocations.range_start', 5000);
-        config()->set('pterodactyl.client_features.allocations.range_end', 5050);
-    }
-
-    /**
      * Tests that a new allocation can be properly assigned to a server.
      */
     #[\PHPUnit\Framework\Attributes\DataProvider('permissionDataProvider')]
@@ -30,6 +18,9 @@ class CreateNewAllocationTest extends ClientApiIntegrationTestCase
         /** @var \Pterodactyl\Models\Server $server */
         [$user, $server] = $this->generateTestAccount($permission);
         $server->update(['allocation_limit' => 2]);
+
+        // Allocations are taken from the ones the node has free, nothing is created on the fly.
+        Allocation::factory()->create(['node_id' => $server->node_id, 'ip' => $server->allocation->ip]);
 
         $response = $this->actingAs($user)->postJson($this->link($server, '/network/allocations'));
         $response->assertJsonPath('object', Allocation::RESOURCE_NAME);
@@ -51,23 +42,6 @@ class CreateNewAllocationTest extends ClientApiIntegrationTestCase
         $server->update(['allocation_limit' => 2]);
 
         $this->actingAs($user)->postJson($this->link($server, '/network/allocations'))->assertForbidden();
-    }
-
-    /**
-     * Test that an error is returned to the user if this feature is not enabled on the system.
-     */
-    public function testAllocationCannotBeCreatedIfNotEnabled()
-    {
-        config()->set('pterodactyl.client_features.allocations.enabled', false);
-
-        /** @var \Pterodactyl\Models\Server $server */
-        [$user, $server] = $this->generateTestAccount();
-        $server->update(['allocation_limit' => 2]);
-
-        $this->actingAs($user)->postJson($this->link($server, '/network/allocations'))
-            ->assertStatus(Response::HTTP_BAD_REQUEST)
-            ->assertJsonPath('errors.0.code', 'AutoAllocationNotEnabledException')
-            ->assertJsonPath('errors.0.detail', 'Server auto-allocation is not enabled for this instance.');
     }
 
     /**

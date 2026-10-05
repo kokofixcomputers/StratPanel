@@ -41,7 +41,17 @@ const FORMATS: { code: string; label: string; title: string; style: React.CSSPro
  * Builds the message of the day with colour and formatting buttons and a live preview that looks like the
  * multiplayer server list.
  */
-export default ({ value, onChange }: { value: string; onChange: (encoded: string) => void }) => {
+interface Props {
+    value: string;
+    onChange: (encoded: string) => void;
+    // The server icon shown in the preview, null for the placeholder.
+    icon?: string | null;
+    onPickIcon?: (file: File) => void;
+    onRemoveIcon?: () => void;
+}
+
+export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon }: Props) => {
+    const picker = useRef<HTMLInputElement>(null);
     const [text, setText] = useState(() => decodeMotd(value));
     const [tick, setTick] = useState(0);
     const [hex, setHex] = useState('#ff8800');
@@ -99,12 +109,47 @@ export default ({ value, onChange }: { value: string; onChange: (encoded: string
                     style={{ background: '#1c1c1c', border: '2px solid #3b3b3b' }}
                     aria-label={'MOTD preview'}
                 >
-                    <div
-                        css={tw`flex-shrink-0 rounded mr-3`}
+                    <button
+                        type={'button'}
+                        title={onPickIcon ? 'Click to upload a server icon' : undefined}
+                        aria-label={'Change server icon'}
+                        disabled={!onPickIcon}
+                        onClick={() => picker.current?.click()}
+                        className={'group'}
+                        css={tw`relative flex-shrink-0 rounded mr-3 overflow-hidden p-0 border-0`}
                         style={{
                             width: 56,
                             height: 56,
-                            background: 'linear-gradient(135deg, #5b8a3a 0 50%, #7a5a3a 50% 100%)',
+                            background: icon ? 'none' : 'linear-gradient(135deg, #5b8a3a 0 50%, #7a5a3a 50% 100%)',
+                            cursor: onPickIcon ? 'pointer' : 'default',
+                        }}
+                    >
+                        {icon && (
+                            <img
+                                src={icon}
+                                alt={'Server icon'}
+                                width={56}
+                                height={56}
+                                style={{ imageRendering: 'pixelated', width: 56, height: 56 }}
+                            />
+                        )}
+                        {onPickIcon && (
+                            <span
+                                css={tw`absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
+                            >
+                                Change
+                            </span>
+                        )}
+                    </button>
+                    <input
+                        ref={picker}
+                        type={'file'}
+                        accept={'image/*'}
+                        css={tw`hidden`}
+                        onChange={(e) => {
+                            const file = e.currentTarget.files?.[0];
+                            e.currentTarget.value = '';
+                            if (file && onPickIcon) onPickIcon(file);
                         }}
                     />
                     <div
@@ -194,6 +239,17 @@ export default ({ value, onChange }: { value: string; onChange: (encoded: string
                     Two lines at most. Codes are written with &amp; here, like <code>&amp;a</code> for green or{' '}
                     <code>&amp;#ff8800</code> for a custom colour, and saved in the format Minecraft expects.
                 </p>
+                {onPickIcon && (
+                    <p css={tw`text-xs text-neutral-400 mt-2`}>
+                        Click the icon in the preview to upload a server icon. Any image works, it is cropped to a
+                        square and saved as a 64x64 PNG when you save. Restart the server to see it in the server list.
+                        {icon && onRemoveIcon && (
+                            <button type={'button'} onClick={onRemoveIcon} css={tw`ml-2 text-red-600 hover:underline`}>
+                                Remove icon
+                            </button>
+                        )}
+                    </p>
+                )}
             </div>
         </div>
     );

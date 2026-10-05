@@ -13,6 +13,36 @@
 @endsection
 
 @section('content')
+<div class="row stat-row">
+    <div class="col-xs-6 col-md-3">
+        <a href="{{ route('admin.servers') }}" class="stat-card stat-indigo">
+            <span class="stat-icon"><i class="fa fa-server"></i></span>
+            <span class="stat-number">{{ $stats['servers'] }}</span>
+            <span class="stat-label">Servers</span>
+        </a>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <a href="{{ route('admin.users') }}" class="stat-card stat-pink">
+            <span class="stat-icon"><i class="fa fa-users"></i></span>
+            <span class="stat-number">{{ $stats['users'] }}</span>
+            <span class="stat-label">Users</span>
+        </a>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <a href="{{ route('admin.nodes') }}" class="stat-card stat-green">
+            <span class="stat-icon"><i class="fa fa-sitemap"></i></span>
+            <span class="stat-number">{{ $stats['nodes'] }}</span>
+            <span class="stat-label">Nodes</span>
+        </a>
+    </div>
+    <div class="col-xs-6 col-md-3">
+        <a href="{{ route('admin.servers') }}" class="stat-card stat-amber">
+            <span class="stat-icon"><i class="fa fa-globe"></i></span>
+            <span class="stat-number">{{ $stats['domains'] }}</span>
+            <span class="stat-label">Custom domains</span>
+        </a>
+    </div>
+</div>
 <div class="row">
     <div class="col-xs-12">
         <div class="box

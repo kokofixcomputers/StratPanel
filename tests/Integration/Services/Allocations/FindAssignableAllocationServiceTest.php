@@ -5,28 +5,14 @@ namespace Pterodactyl\Tests\Integration\Services\Allocations;
 use Pterodactyl\Models\Allocation;
 use Pterodactyl\Tests\Integration\IntegrationTestCase;
 use Pterodactyl\Services\Allocations\FindAssignableAllocationService;
-use Pterodactyl\Exceptions\Service\Allocation\AutoAllocationNotEnabledException;
 use Pterodactyl\Exceptions\Service\Allocation\NoAutoAllocationSpaceAvailableException;
 
 class FindAssignableAllocationServiceTest extends IntegrationTestCase
 {
     /**
-     * Setup tests.
+     * Test that a free allocation of the node is assigned to the server.
      */
-    public function setUp(): void
-    {
-        parent::setUp();
-
-        config()->set('pterodactyl.client_features.allocations.enabled', true);
-        config()->set('pterodactyl.client_features.allocations.range_start', 0);
-        config()->set('pterodactyl.client_features.allocations.range_end', 0);
-    }
-
-    /**
-     * Test that an unassigned allocation is preferred rather than creating an entirely new
-     * allocation for the server.
-     */
-    public function testExistingAllocationIsPreferred()
+    public function testFreeAllocationIsAssigned()
     {
         $server = $this->createServerModel();
 
@@ -45,124 +31,41 @@ class FindAssignableAllocationServiceTest extends IntegrationTestCase
     }
 
     /**
-     * Test that a new allocation is created if there is not a free one available.
+     * Test that an allocation on the IP address of the server wins over one on another address.
      */
-    public function testNewAllocationIsCreatedIfOneIsNotFound()
+    public function testAllocationOnTheSameIpIsPreferred()
     {
         $server = $this->createServerModel();
-        config()->set('pterodactyl.client_features.allocations.range_start', 5000);
-        config()->set('pterodactyl.client_features.allocations.range_end', 5005);
 
-        $response = $this->getService()->handle($server);
-        $this->assertSame($server->id, $response->server_id);
-        $this->assertSame($server->allocation->ip, $response->ip);
-        $this->assertSame($server->node_id, $response->node_id);
-        $this->assertNotSame($server->allocation_id, $response->id);
-        $this->assertTrue($response->port >= 5000 && $response->port <= 5005);
+        Allocation::factory()->times(5)->create(['node_id' => $server->node_id, 'ip' => '203.0.113.9']);
+        $same = Allocation::factory()->create(['node_id' => $server->node_id, 'ip' => $server->allocation->ip]);
+
+        $this->assertSame($same->id, $this->getService()->handle($server)->id);
     }
 
     /**
-     * Test that a currently assigned port is never assigned to a server.
+     * Test that a free allocation on another IP address of the node is used when there is none on the server's own.
      */
-    public function testOnlyPortNotInUseIsCreated()
+    public function testAllocationOnAnotherIpIsUsedWhenNothingElseIsFree()
     {
         $server = $this->createServerModel();
-        $server2 = $this->createServerModel(['node_id' => $server->node_id]);
 
-        config()->set('pterodactyl.client_features.allocations.range_start', 5000);
-        config()->set('pterodactyl.client_features.allocations.range_end', 5001);
+        $other = Allocation::factory()->create(['node_id' => $server->node_id, 'ip' => '203.0.113.9']);
 
-        Allocation::factory()->create([
-            'server_id' => $server2->id,
-            'node_id' => $server->node_id,
-            'ip' => $server->allocation->ip,
-            'port' => 5000,
-        ]);
-
-        $response = $this->getService()->handle($server);
-        $this->assertSame(5001, $response->port);
-    }
-
-    public function testExceptionIsThrownIfNoMoreAllocationsCanBeCreatedInRange()
-    {
-        $server = $this->createServerModel();
-        $server2 = $this->createServerModel(['node_id' => $server->node_id]);
-        config()->set('pterodactyl.client_features.allocations.range_start', 5000);
-        config()->set('pterodactyl.client_features.allocations.range_end', 5005);
-
-        for ($i = 5000; $i <= 5005; ++$i) {
-            Allocation::factory()->create([
-                'ip' => $server->allocation->ip,
-                'port' => $i,
-                'node_id' => $server->node_id,
-                'server_id' => $server2->id,
-            ]);
-        }
-
-        $this->expectException(NoAutoAllocationSpaceAvailableException::class);
-        $this->expectExceptionMessage('Cannot assign additional allocation: no more space available on node.');
-
-        $this->getService()->handle($server);
+        $this->assertSame($other->id, $this->getService()->handle($server)->id);
     }
 
     /**
-     * Test that we only auto-allocate from the current server's IP address space, and not a random
-     * IP address available on that node.
+     * Test that allocations that belong to other nodes or other servers are never taken.
      */
-    public function testExceptionIsThrownIfOnlyFreePortIsOnADifferentIp()
+    public function testExceptionIsThrownIfTheNodeHasNothingFree()
     {
         $server = $this->createServerModel();
 
-        Allocation::factory()->times(5)->create(['node_id' => $server->node_id]);
+        Allocation::factory()->create(['ip' => $server->allocation->ip]);
 
         $this->expectException(NoAutoAllocationSpaceAvailableException::class);
         $this->expectExceptionMessage('Cannot assign additional allocation: no more space available on node.');
-
-        $this->getService()->handle($server);
-    }
-
-    public function testExceptionIsThrownIfStartOrEndRangeIsNotDefined()
-    {
-        $server = $this->createServerModel();
-
-        $this->expectException(NoAutoAllocationSpaceAvailableException::class);
-        $this->expectExceptionMessage('Cannot assign additional allocation: no more space available on node.');
-
-        $this->getService()->handle($server);
-    }
-
-    public function testExceptionIsThrownIfStartOrEndRangeIsNotNumeric()
-    {
-        $server = $this->createServerModel();
-        config()->set('pterodactyl.client_features.allocations.range_start', 'hodor');
-        config()->set('pterodactyl.client_features.allocations.range_end', 10);
-
-        try {
-            $this->getService()->handle($server);
-            $this->fail('This assertion should not be reached.');
-        } catch (\Exception $exception) {
-            $this->assertInstanceOf(\InvalidArgumentException::class, $exception);
-            $this->assertSame('Expected an integerish value. Got: string', $exception->getMessage());
-        }
-
-        config()->set('pterodactyl.client_features.allocations.range_start', 10);
-        config()->set('pterodactyl.client_features.allocations.range_end', 'hodor');
-
-        try {
-            $this->getService()->handle($server);
-            $this->fail('This assertion should not be reached.');
-        } catch (\Exception $exception) {
-            $this->assertInstanceOf(\InvalidArgumentException::class, $exception);
-            $this->assertSame('Expected an integerish value. Got: string', $exception->getMessage());
-        }
-    }
-
-    public function testExceptionIsThrownIfFeatureIsNotEnabled()
-    {
-        config()->set('pterodactyl.client_features.allocations.enabled', false);
-        $server = $this->createServerModel();
-
-        $this->expectException(AutoAllocationNotEnabledException::class);
 
         $this->getService()->handle($server);
     }

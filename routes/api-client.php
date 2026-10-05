@@ -152,6 +152,9 @@ Route::group([
     Route::group(['prefix' => '/startup'], function () {
         Route::get('/', [Client\Servers\StartupController::class, 'index']);
         Route::put('/variable', [Client\Servers\StartupController::class, 'update']);
+        Route::get('/environment', [Client\Servers\EnvironmentVariableController::class, 'index']);
+        Route::post('/environment', [Client\Servers\EnvironmentVariableController::class, 'store']);
+        Route::delete('/environment/{key}', [Client\Servers\EnvironmentVariableController::class, 'destroy']);
     });
 
     Route::group(['prefix' => '/settings'], function () {

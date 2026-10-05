@@ -6,7 +6,6 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\ServerDomain;
-use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Domains\GetDomainsRequest;
@@ -20,7 +19,7 @@ class DomainController extends ClientApiController
      */
     public function index(GetDomainsRequest $request, Server $server): array
     {
-        $target = $this->targetIp();
+        $target = ServerDomain::routerTargetIp();
 
         return [
             'object' => 'list',
@@ -78,7 +77,7 @@ class DomainController extends ClientApiController
             ->property(['domain' => $domain, 'allocation' => $allocation->toString()])
             ->log();
 
-        return new JsonResponse(['object' => 'server_domain', 'attributes' => $this->transform($record, $this->targetIp())], 201);
+        return new JsonResponse(['object' => 'server_domain', 'attributes' => $this->transform($record, ServerDomain::routerTargetIp())], 201);
     }
 
     /**
@@ -95,21 +94,6 @@ class DomainController extends ClientApiController
     }
 
     /**
-     * The address a domain's A record has to point to, which is where the Minecraft router is listening.
-     */
-    private function targetIp(): string
-    {
-        $configured = (string) config('pterodactyl.domains.target_ip');
-        if ($configured !== '') {
-            return $configured;
-        }
-
-        $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
-
-        return $host === '' ? '' : (string) gethostbyname($host);
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function transform(ServerDomain $domain, string $target): array
@@ -121,25 +105,8 @@ class DomainController extends ClientApiController
             'domain' => $domain->domain,
             'allocation_id' => $domain->allocation_id,
             'allocation' => $allocation ? ($allocation->ip_alias ?: $allocation->ip) . ':' . $allocation->port : null,
-            'dns_ok' => $this->dnsPointsAt($domain->domain, $target),
+            'dns_ok' => $domain->pointsAtRouter($target),
             'created_at' => $domain->created_at?->toAtomString(),
         ];
-    }
-
-    /**
-     * Checks whether the domain currently has an A record pointing at the router. Results are cached for a short
-     * while so refreshing the page does not trigger a flood of DNS lookups.
-     */
-    private function dnsPointsAt(string $domain, string $target): bool
-    {
-        if ($target === '') {
-            return false;
-        }
-
-        return Cache::remember("domains:dns:$domain:$target", 60, function () use ($domain, $target) {
-            $records = @dns_get_record($domain, DNS_A);
-
-            return is_array($records) && collect($records)->contains(fn ($record) => ($record['ip'] ?? null) === $target);
-        });
     }
 }

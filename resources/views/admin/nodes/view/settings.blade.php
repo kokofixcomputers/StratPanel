@@ -15,19 +15,7 @@
 @endsection
 
 @section('content')
-<div class="row">
-    <div class="col-xs-12">
-        <div class="nav-tabs-custom nav-tabs-floating">
-            <ul class="nav nav-tabs">
-                <li><a href="{{ route('admin.nodes.view', $node->id) }}">About</a></li>
-                <li class="active"><a href="{{ route('admin.nodes.view.settings', $node->id) }}">Settings</a></li>
-                <li><a href="{{ route('admin.nodes.view.configuration', $node->id) }}">Configuration</a></li>
-                <li><a href="{{ route('admin.nodes.view.allocation', $node->id) }}">Allocation</a></li>
-                <li><a href="{{ route('admin.nodes.view.servers', $node->id) }}">Servers</a></li>
-            </ul>
-        </div>
-    </div>
-</div>
+@include('admin.nodes.partials.navigation')
 <form action="{{ route('admin.nodes.view.settings', $node->id) }}" method="POST">
     <div class="row">
         <div class="col-sm-6">

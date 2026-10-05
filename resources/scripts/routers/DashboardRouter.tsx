@@ -9,15 +9,17 @@ import SubNavigation from '@/components/elements/SubNavigation';
 import { useLocation } from 'react-router';
 import Spinner from '@/components/elements/Spinner';
 import routes from '@/routers/routes';
+import AccountSidebar from '@/components/dashboard/AccountSidebar';
 
 export default () => {
     const location = useLocation();
+    const isAccount = location.pathname.startsWith('/account');
 
     return (
         <>
             <NavigationBar />
-            {location.pathname.startsWith('/account') && (
-                <SubNavigation>
+            {isAccount && (
+                <SubNavigation className={'lg:hidden'}>
                     <div>
                         {routes.account
                             .filter((route) => !!route.name)
@@ -29,26 +31,31 @@ export default () => {
                     </div>
                 </SubNavigation>
             )}
-            <TransitionRouter>
-                <React.Suspense fallback={<Spinner centered />}>
-                    <Switch location={location}>
-                        <Route path={'/'} exact>
-                            <DashboardContainer />
-                        </Route>
-                        <Route path={'/create'} exact>
-                            <CreateServerContainer />
-                        </Route>
-                        {routes.account.map(({ path, component: Component }) => (
-                            <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
-                                <Component />
-                            </Route>
-                        ))}
-                        <Route path={'*'}>
-                            <NotFound />
-                        </Route>
-                    </Switch>
-                </React.Suspense>
-            </TransitionRouter>
+            <div className={isAccount ? 'lg:flex' : undefined}>
+                {isAccount && <AccountSidebar />}
+                <div className={isAccount ? 'min-w-0 flex-1 lg:px-4' : undefined}>
+                    <TransitionRouter>
+                        <React.Suspense fallback={<Spinner centered />}>
+                            <Switch location={location}>
+                                <Route path={'/'} exact>
+                                    <DashboardContainer />
+                                </Route>
+                                <Route path={'/create'} exact>
+                                    <CreateServerContainer />
+                                </Route>
+                                {routes.account.map(({ path, component: Component }) => (
+                                    <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
+                                        <Component />
+                                    </Route>
+                                ))}
+                                <Route path={'*'}>
+                                    <NotFound />
+                                </Route>
+                            </Switch>
+                        </React.Suspense>
+                    </TransitionRouter>
+                </div>
+            </div>
         </>
     );
 };

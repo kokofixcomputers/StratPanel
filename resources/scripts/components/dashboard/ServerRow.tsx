@@ -9,6 +9,8 @@ import tw, { TwStyle } from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 import Spinner from '@/components/elements/Spinner';
 import styled from 'styled-components/macro';
+import useServerSoftware from '@/components/dashboard/useServerSoftware';
+import { iconFor, SoftwareType } from '@/lib/mcjars';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
 // than the more faded default style.
@@ -80,6 +82,11 @@ export default ({ server, className }: { server: Server; className?: string }) =
         };
     }, [isSuspended, server.isNodeUnderMaintenance]);
 
+    // A faint logo of the software behind the card, only for servers that can be reached.
+    const software = useServerSoftware(server.uuid, !isSuspended && !server.isNodeUnderMaintenance && !server.status);
+    const [logoFailed, setLogoFailed] = useState(false);
+    const logo = software && software !== 'VANILLA' && !logoFailed ? iconFor(software as SoftwareType) : null;
+
     const alarms = { cpu: false, memory: false, disk: false };
     if (stats) {
         alarms.cpu = server.limits.cpu === 0 ? false : stats.cpuUsagePercent >= server.limits.cpu * 0.9;
@@ -102,7 +109,31 @@ export default ({ server, className }: { server: Server; className?: string }) =
     );
 
     return (
-        <StatusIndicatorBox as={Link} to={`/server/${server.id}`} className={className} $status={stats?.status}>
+        <StatusIndicatorBox
+            as={Link}
+            to={`/server/${server.id}`}
+            className={className}
+            $status={stats?.status}
+            style={{ isolation: 'isolate', overflow: 'hidden' }}
+        >
+            {logo && (
+                <img
+                    src={logo}
+                    alt={''}
+                    aria-hidden
+                    onError={() => setLogoFailed(true)}
+                    style={{
+                        position: 'absolute',
+                        right: '46%',
+                        top: '50%',
+                        height: '170%',
+                        transform: 'translateY(-50%)',
+                        opacity: 0.08,
+                        zIndex: -1,
+                        pointerEvents: 'none',
+                    }}
+                />
+            )}
             <div css={tw`flex items-center col-span-12 sm:col-span-6 lg:col-span-5 min-w-0`}>
                 <div className={'icon mr-4 !w-12 !h-12 flex-shrink-0'}>
                     <FontAwesomeIcon icon={faServer} />

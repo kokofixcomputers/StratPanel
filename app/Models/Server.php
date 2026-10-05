@@ -294,6 +294,16 @@ class Server extends Model implements Identifiable
     }
 
     /**
+     * Environment variables the owner added on top of the ones defined by the egg.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\ServerEnvironmentVariable, $this>
+     */
+    public function environmentVariables(): HasMany
+    {
+        return $this->hasMany(ServerEnvironmentVariable::class);
+    }
+
+    /**
      * Gets information for the service variables associated with this server.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\EggVariable, $this>

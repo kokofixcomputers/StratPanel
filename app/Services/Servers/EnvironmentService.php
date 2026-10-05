@@ -36,6 +36,11 @@ class EnvironmentService
             return [$variable->env_variable => $variable->server_value ?? $variable->default_value];
         });
 
+        // Variables the user added themselves go underneath everything else, so they can never replace a value the
+        // egg or the panel sets (the names that would clash are refused when they are created).
+        $custom = $server->environmentVariables()->pluck('value', 'key')->all();
+        $variables = collect($custom)->merge($variables);
+
         // Process environment variables defined in this file. This is done first
         // in order to allow run-time and config defined variables to take
         // priority over built-in values.

@@ -6,12 +6,13 @@ import loadDirectory from '@/api/server/files/loadDirectory';
 import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
 import { ManagedProject, readPterodactylJson, updatePterodactylJson } from '@/lib/pterodactylJson';
 import {
-    findDownload,
     getProjects,
     getProjectVersions,
     lookupHashes,
     ModrinthProject,
-    ProjectKind,
+    ModrinthVersion,
+    primaryFile,
+    readLevelName,
     sha1Hex,
 } from '@/lib/minecraft';
 
@@ -26,7 +27,16 @@ export interface UntrackedFile {
     size: number;
 }
 
-const DIRECTORIES = { mod: '/mods', plugin: '/plugins' } as const;
+export type ManagedKind = 'mod' | 'plugin' | 'datapack';
+
+/** Where each kind of content lives. Datapacks belong to a world, so they follow level-name. */
+export const directoriesFor = (level: string): Record<ManagedKind, string> => ({
+    mod: '/mods',
+    plugin: '/plugins',
+    datapack: `/${level}/datapacks`,
+});
+
+const FILE_DIRECTORIES = ['/mods', '/plugins'];
 const MAX_HASH_SIZE = 150 * 1024 * 1024;
 
 const runPool = async <T>(items: T[], size: number, work: (item: T, index: number) => Promise<void>) => {
@@ -80,12 +90,14 @@ export default (uuid: string, minecraftVersion: string) => {
         const json = await readPterodactylJson(uuid);
         const records = json.mods || {};
 
-        const lists = await Promise.all(
-            Object.values(DIRECTORIES).map((directory) => loadDirectory(uuid, directory).catch(() => []))
+        const level = await readLevelName(uuid);
+        const directories = Array.from(
+            new Set([...Object.values(directoriesFor(level)), ...Object.values(records).map((r) => r.directory)])
         );
+        const lists = await Promise.all(directories.map((directory) => loadDirectory(uuid, directory).catch(() => [])));
         const present = new Map<string, Map<string, number>>(
-            Object.values(DIRECTORIES).map((directory, i) => [
-                directory as string,
+            directories.map((directory, i) => [
+                directory,
                 new Map(lists[i].filter((f) => f.isFile).map((f) => [f.name, f.size])),
             ])
         );
@@ -104,7 +116,11 @@ export default (uuid: string, minecraftVersion: string) => {
         const loose: UntrackedFile[] = [];
         present.forEach((files, directory) =>
             files.forEach((size, file) => {
-                if (file.toLowerCase().endsWith('.jar') && !known.has(`${directory}/${file}`)) {
+                if (
+                    FILE_DIRECTORIES.includes(directory) &&
+                    file.toLowerCase().endsWith('.jar') &&
+                    !known.has(`${directory}/${file}`)
+                ) {
                     loose.push({ directory, file, size });
                 }
             })
@@ -126,21 +142,22 @@ export default (uuid: string, minecraftVersion: string) => {
             mods: { ...(current.mods || {}), [record.projectId]: record },
         }));
 
+    /** Downloads one chosen version of a project into the folder of its kind. */
     const install = async (
         project: ModrinthProject,
-        kind: Exclude<ProjectKind, 'modpack'>,
-        filters: { loader?: string; version?: string }
+        kind: ManagedKind,
+        chosen: ModrinthVersion,
+        gameVersion: string | null
     ) => {
-        const directory = DIRECTORIES[kind];
-        const { file, versionNumber, versionId, loaders } = await findDownload({
-            projectId: project.project_id,
-            kind,
-            loader: filters.loader,
-            version: filters.version,
-        });
+        const file = primaryFile(chosen);
+        const directory = directoriesFor(await readLevelName(uuid))[kind];
 
-        // The folder will not exist on a fresh server, creating it when it does is harmless.
-        await createDirectory(uuid, '/', directory.slice(1)).catch(() => undefined);
+        // Folders do not exist on a fresh server, creating one that does is harmless.
+        let parent = '/';
+        for (const segment of directory.split('/').filter(Boolean)) {
+            await createDirectory(uuid, parent, segment).catch(() => undefined);
+            parent = `${parent === '/' ? '' : parent}/${segment}`;
+        }
         await pullFile(uuid, file.url, directory, file.filename);
 
         const record: ManagedProject = {
@@ -149,14 +166,19 @@ export default (uuid: string, minecraftVersion: string) => {
             slug: project.slug,
             title: project.title,
             icon: project.icon_url,
-            versionId,
-            versionNumber,
+            versionId: chosen.id,
+            versionNumber: chosen.version_number,
             file: file.filename,
             directory,
-            loaders,
-            gameVersion: filters.version || null,
+            loaders: chosen.loaders,
+            gameVersion,
             installedAt: new Date().toISOString(),
         };
+        // Installing another version of the same project replaces the old file.
+        const previous = mods[record.projectId];
+        if (previous && (previous.file !== record.file || previous.directory !== record.directory)) {
+            await deleteFiles(uuid, previous.directory, [previous.file]).catch(() => undefined);
+        }
         await save(record);
         setMods((current) => ({ ...current, [record.projectId]: record }));
         setUntracked((current) => current.filter((f) => !(f.directory === directory && f.file === file.filename)));
@@ -255,7 +277,7 @@ export default (uuid: string, minecraftVersion: string) => {
             if (!item || !project) return;
 
             added.push({
-                kind: item.directory === DIRECTORIES.plugin ? 'plugin' : 'mod',
+                kind: item.directory === '/plugins' ? 'plugin' : 'mod',
                 projectId: project.id,
                 slug: project.slug,
                 title: project.title,

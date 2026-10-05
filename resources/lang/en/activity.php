@@ -127,6 +127,10 @@ return [
         'startup' => [
             'edit' => 'Changed the :variable variable from ":old" to ":new"',
             'image' => 'Updated the Docker Image for the server from :old to :new',
+            'env' => [
+                'set' => 'Set the custom environment variable :variable',
+                'delete' => 'Removed the custom environment variable :variable',
+            ],
         ],
         'subuser' => [
             'create' => 'Added :email as a subuser',

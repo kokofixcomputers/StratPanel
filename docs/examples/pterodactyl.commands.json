@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-05T12:00:00Z",
+  "generator": { "name": "StratPanel Bridge", "version": "1.0.0", "platform": "paper", "minecraft": "1.21.4" },
+  "plugins": [
+    { "name": "EssentialsX", "version": "2.20.1" },
+    { "name": "WorldEdit", "version": "7.3.8" }
+  ],
+  "root": {
+    "children": [
+      {
+        "name": "gamemode",
+        "type": "literal",
+        "aliases": ["gm"],
+        "description": "Sets a player's game mode",
+        "permission": "minecraft.command.gamemode",
+        "plugin": "minecraft",
+        "executable": false,
+        "children": [
+          {
+            "name": "gamemode",
+            "type": "argument",
+            "parser": "minecraft:gamemode",
+            "executable": true,
+            "children": [
+              { "name": "target", "type": "argument", "parser": "minecraft:entity", "executable": true }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "warp",
+        "type": "literal",
+        "description": "Teleports you to a warp",
+        "permission": "essentials.warp",
+        "plugin": "EssentialsX",
+        "executable": true,
+        "children": [
+          { "name": "name", "type": "argument", "parser": "brigadier:string", "suggestions": ["spawn", "mine"], "executable": true },
+          {
+            "name": "set",
+            "type": "literal",
+            "children": [{ "name": "name", "type": "argument", "parser": "brigadier:string", "executable": true }]
+          }
+        ]
+      },
+      {
+        "name": "execute",
+        "type": "literal",
+        "plugin": "minecraft",
+        "children": [
+          {
+            "name": "as",
+            "type": "literal",
+            "children": [
+              { "name": "targets", "type": "argument", "parser": "minecraft:entity", "redirect": ["execute"] }
+            ]
+          },
+          { "name": "run", "type": "literal", "redirect": [] }
+        ]
+      }
+    ]
+  }
+}

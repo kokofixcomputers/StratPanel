@@ -38,4 +38,16 @@ describe('console command completion', () => {
         expect(commonPrefix(['gamemode', 'gamerule'])).toBe('game');
         expect(commonPrefix([])).toBe('');
     });
+
+    it('completes the names of online players where a player goes', () => {
+        const online = ['Steve', 'Alex', 'steward'];
+
+        expect(complete('tp ', undefined, online).items).toEqual(expect.arrayContaining(['Steve', 'Alex', '@a']));
+        expect(complete('tp ste', undefined, online).items).toEqual(['Steve', 'steward']);
+        expect(complete('gamemode creative a', undefined, online).items).toEqual(['Alex']);
+        expect(complete('whitelist add ', undefined, online).items).toEqual(online);
+        // Not where a player makes no sense.
+        expect(complete('say ', undefined, online).items).toEqual([]);
+        expect(complete('gamemode ', undefined, online).items).not.toContain('Steve');
+    });
 });

@@ -48,6 +48,7 @@ const render = (reqPath, { title, header, body }) => {
         return reqPath.startsWith(prefix) ? 'active' : '';
     });
     out = out.replace(/\{\{ route\('([^']+)'\) \}\}/g, (m, name) => routeToPath(name));
+    out = out.replace(/\{\{ Auth::user\(\)->username \}\}/g, 'preview');
     out = out.replace(/\{\{ md5\([^}]*\) \}\}/g, 'preview');
     out = out.replace(/\{\{ config\('app\.name'[^}]*\) \}\}/g, 'Pterodactyl');
     out = out.replace(/\{\{ round\(microtime[^}]*\) \}\}/g, '0.042');
@@ -79,6 +80,12 @@ const pages = {
         title: 'Administration',
         header: head('Administrative Overview', 'A quick glance at your system.', 'Index'),
         body: `
+<div class="row stat-row">
+  <div class="col-xs-6 col-md-3"><a href="#" class="stat-card stat-indigo"><span class="stat-icon"><i class="fa fa-server"></i></span><span class="stat-number">12</span><span class="stat-label">Servers</span></a></div>
+  <div class="col-xs-6 col-md-3"><a href="#" class="stat-card stat-pink"><span class="stat-icon"><i class="fa fa-users"></i></span><span class="stat-number">34</span><span class="stat-label">Users</span></a></div>
+  <div class="col-xs-6 col-md-3"><a href="#" class="stat-card stat-green"><span class="stat-icon"><i class="fa fa-sitemap"></i></span><span class="stat-number">2</span><span class="stat-label">Nodes</span></a></div>
+  <div class="col-xs-6 col-md-3"><a href="#" class="stat-card stat-amber"><span class="stat-icon"><i class="fa fa-globe"></i></span><span class="stat-number">5</span><span class="stat-label">Custom domains</span></a></div>
+</div>
 <div class="row"><div class="col-xs-12"><div class="box box-success">
   <div class="box-header with-border"><h3 class="box-title">System Information</h3></div>
   <div class="box-body">You are running Pterodactyl Panel version <code>1.0-develop</code>. Your panel is up-to-date!</div>
@@ -151,17 +158,51 @@ const pages = {
 
     '/admin/servers/view/1': () => ({
         title: 'Server — kokotest',
-        header: head('kokotest', 'Manage this server.', 'Servers'),
+        header: head('kokotest', 'Fabric survival world with friends', 'Servers'),
         body: `
-<div class="row"><div class="col-xs-12"><div class="nav-tabs-custom nav-tabs-floating"><ul class="nav nav-tabs">
- <li class="active"><a href="#">About</a></li><li><a href="#">Details</a></li><li><a href="#">Build Configuration</a></li><li><a href="#">Startup</a></li><li><a href="#">Database</a></li><li><a href="#">Mounts</a></li><li><a href="#">Manage</a></li>
- <li class="tab-danger"><a href="#">Delete</a></li><li class="tab-success"><a href="#"><i class="fa fa-external-link"></i></a></li></ul></div></div></div>
-<div class="row"><div class="col-sm-8"><div class="box"><div class="box-header with-border"><h3 class="box-title">Allocation Management</h3></div>
- <div class="box-body row">
-  <div class="form-group col-sm-6"><label>Default Allocation</label><select id="pAllocation" class="form-control"><option>play.example.com:25565</option><option>play.example.com:25566</option></select></div>
-  <div class="form-group col-sm-6"><label>Additional Allocation(s)</label><select id="pAllocationAdditional" class="form-control" multiple><option selected>play.example.com:25567</option><option selected>play.example.com:25568</option><option>play.example.com:25569</option></select></div>
- </div></div></div></div>
-<script>window.addEventListener('load', function () { $('#pAllocation').select2(); $('#pAllocationAdditional').select2(); });</script>`,
+<div class="row"><div class="col-xs-12"><div class="nav-tabs-custom nav-tabs-floating nav-side"><ul class="nav nav-tabs">
+ <li class="active"><a href="#"><i class="fa fa-fw fa-info-circle"></i> About</a></li><li><a href="#"><i class="fa fa-fw fa-id-card-o"></i> Details</a></li><li><a href="#"><i class="fa fa-fw fa-sliders"></i> Build Configuration</a></li><li><a href="#"><i class="fa fa-fw fa-terminal"></i> Startup</a></li><li><a href="#"><i class="fa fa-fw fa-database"></i> Database</a></li><li><a href="#"><i class="fa fa-fw fa-hdd-o"></i> Mounts</a></li><li><a href="#"><i class="fa fa-fw fa-globe"></i> Domains</a></li><li><a href="#"><i class="fa fa-fw fa-wrench"></i> Manage</a></li>
+ <li class="tab-danger"><a href="#"><i class="fa fa-fw fa-trash"></i> Delete</a></li><li class="tab-success"><a href="#"><i class="fa fa-fw fa-external-link"></i> Open server</a></li></ul></div></div></div>
+<div class="row stat-row">
+  <div class="col-xs-6 col-md-3"><div class="stat-card stat-green"><span class="stat-icon"><i class="fa fa-check"></i></span><span class="stat-number stat-text">Active</span><span class="stat-label">Status</span></div></div>
+  <div class="col-xs-6 col-md-3"><div class="stat-card stat-indigo"><span class="stat-icon"><i class="fa fa-microchip"></i></span><span class="stat-number">300%</span><span class="stat-label">CPU limit</span></div></div>
+  <div class="col-xs-6 col-md-3"><div class="stat-card stat-pink"><span class="stat-icon"><i class="fa fa-tasks"></i></span><span class="stat-number">6144<small> MiB</small></span><span class="stat-label">Memory</span></div></div>
+  <div class="col-xs-6 col-md-3"><div class="stat-card stat-amber"><span class="stat-icon"><i class="fa fa-hdd-o"></i></span><span class="stat-number">20480<small> MiB</small></span><span class="stat-label">Disk space</span></div></div>
+</div>
+<div class="row"><div class="col-sm-8"><div class="box box-primary"><div class="box-header with-border"><h3 class="box-title">Information</h3></div>
+ <div class="box-body table-responsive no-padding"><table class="table table-hover">
+  <tr><td>Internal Identifier</td><td><code>1</code></td></tr>
+  <tr><td>External Identifier</td><td><span class="label label-default">Not Set</span></td></tr>
+  <tr><td>UUID / Docker Container ID</td><td><code>7f3c1d52-9a1e-4b7c-8d2f-1c5e6a9b0d11</code></td></tr>
+  <tr><td>Current Egg</td><td><a href="#">Minecraft</a> :: <a href="#">Java Server</a></td></tr>
+  <tr><td>Server Name</td><td>kokotest</td></tr>
+  <tr><td>Block IO Weight</td><td><code>500</code></td></tr>
+  <tr><td>Default Connection</td><td><code>10.0.0.4:26614</code></td></tr>
+ </table></div></div></div>
+ <div class="col-sm-4">
+  <a href="#" class="link-card"><span class="link-card-icon"><i class="fa fa-user"></i></span><span class="link-card-text"><span class="link-card-label">Server owner</span><span class="link-card-value">admin</span></span><i class="fa fa-angle-right link-card-arrow"></i></a>
+  <a href="#" class="link-card"><span class="link-card-icon"><i class="fa fa-sitemap"></i></span><span class="link-card-text"><span class="link-card-label">Node</span><span class="link-card-value">Pterodactyl</span></span><i class="fa fa-angle-right link-card-arrow"></i></a>
+  <div class="link-card"><span class="link-card-icon"><i class="fa fa-plug"></i></span><span class="link-card-text"><span class="link-card-label">Connection</span><span class="link-card-value"><code>play.example.com:26614</code></span></span></div>
+ </div></div>`,
+    }),
+    '/admin/nodes/view/1': () => ({
+        title: 'Pterodactyl',
+        header: head('Pterodactyl', 'A quick overview of your node.', 'Nodes'),
+        body: `
+<div class="row"><div class="col-xs-12"><div class="nav-tabs-custom nav-tabs-floating nav-side"><ul class="nav nav-tabs">
+ <li class="active"><a href="#"><i class="fa fa-fw fa-info-circle"></i> About</a></li><li><a href="#"><i class="fa fa-fw fa-cog"></i> Settings</a></li><li><a href="#"><i class="fa fa-fw fa-file-code-o"></i> Configuration</a></li><li><a href="#"><i class="fa fa-fw fa-plug"></i> Allocation</a></li><li><a href="#"><i class="fa fa-fw fa-server"></i> Servers</a></li></ul></div></div></div>
+<div class="row"><div class="col-sm-8"><div class="box box-primary"><div class="box-header with-border"><h3 class="box-title">Information</h3></div>
+ <div class="box-body table-responsive no-padding"><table class="table table-hover">
+  <tr><td>Daemon Version</td><td><code>1.11.13</code> (Latest: <code>1.11.13</code>)</td></tr>
+  <tr><td>System Information</td><td>linux (amd64) <code>6.8.0</code></td></tr>
+  <tr><td>Total CPU Threads</td><td>8</td></tr>
+ </table></div></div>
+ <div class="box box-danger"><div class="box-header with-border"><h3 class="box-title">Delete Node</h3></div><div class="box-body"><p class="no-margin">Deleting a node is a irreversible action and will immediately remove this node from the panel.</p></div><div class="box-footer"><button class="btn btn-danger btn-sm pull-right" disabled>Yes, Delete This Node</button></div></div></div>
+ <div class="col-sm-4"><div class="box box-primary"><div class="box-header with-border"><h3 class="box-title">At-a-Glance</h3></div><div class="box-body"><div class="row">
+  <div class="col-sm-12"><div class="info-box bg-green"><span class="info-box-icon"><i class="ion ion-ios-folder-outline"></i></span><div class="info-box-content" style="padding: 15px 10px 0;"><span class="info-box-text">Disk Space Allocated</span><span class="info-box-number">40960 / 122880 MiB</span><div class="progress"><div class="progress-bar" style="width: 33%"></div></div></div></div></div>
+  <div class="col-sm-12"><div class="info-box bg-yellow"><span class="info-box-icon"><i class="ion ion-ios-barcode-outline"></i></span><div class="info-box-content" style="padding: 15px 10px 0;"><span class="info-box-text">Memory Allocated</span><span class="info-box-number">26624 / 32768 MiB</span><div class="progress"><div class="progress-bar" style="width: 81%"></div></div></div></div></div>
+  <div class="col-sm-12"><div class="info-box bg-blue"><span class="info-box-icon"><i class="ion ion-social-buffer-outline"></i></span><div class="info-box-content" style="padding: 23px 10px 0;"><span class="info-box-text">Total Servers</span><span class="info-box-number">12</span></div></div></div>
+ </div></div></div></div></div>`,
     }),
     '/admin/servers': () => ({
         title: 'List Servers',

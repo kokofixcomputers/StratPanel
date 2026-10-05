@@ -26,7 +26,8 @@
             {!! Theme::css('vendor/sweetalert/sweetalert.min.css?t={cache-version}') !!}
             {!! Theme::css('vendor/animate/animate.min.css?t={cache-version}') !!}
             {!! Theme::css('css/pterodactyl.css?t={cache-version}') !!}
-            {!! Theme::css('css/admin-modern.css?t={cache-version}') !!}
+            {{-- The file's modification time busts browser and proxy caches whenever the theme changes. --}}
+            <link media="all" type="text/css" rel="stylesheet" href="/themes/pterodactyl/css/admin-modern.css?v={{ filemtime(public_path('themes/pterodactyl/css/admin-modern.css')) }}">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
 
@@ -37,59 +38,58 @@
         @show
     </head>
     <body class="hold-transition admin-modern">
-        <div class="wrapper">
-            <header class="main-header">
-                <div class="admin-header-inner">
-                    <a href="{{ route('admin.index') }}" class="logo">
-                        <span class="logo-mark"><i class="fa fa-cube"></i></span>
-                        <span class="logo-text">{{ config('app.name', 'Pterodactyl') }}</span>
-                        <span class="logo-badge">Admin</span>
-                    </a>
-                    <ul class="admin-actions">
-                        <li class="user-menu">
-                            <a href="{{ route('account') }}" data-toggle="tooltip" data-placement="bottom" title="Account Settings">
-                                <img src="https://www.gravatar.com/avatar/{{ md5(strtolower(Auth::user()->email)) }}?s=160" class="user-image" alt="User Image">
-                            </a>
-                        </li>
-                        <li><a href="{{ route('index') }}" data-toggle="tooltip" data-placement="bottom" title="Exit Admin Control"><i class="fa fa-server"></i></a></li>
-                        <li><a href="{{ route('auth.logout') }}" id="logoutButton" data-toggle="tooltip" data-placement="bottom" title="Logout"><i class="fa fa-sign-out"></i></a></li>
-                    </ul>
-                </div>
-                <nav class="admin-tabs">
-                    <ul class="admin-tab-list">
+        <div class="wrapper admin-shell">
+            <aside class="admin-sidebar">
+                <a href="{{ route('admin.index') }}" class="admin-brand">
+                    <span class="logo-mark"><i class="fa fa-cube"></i></span>
+                    <span class="logo-text">{{ config('app.name', 'Pterodactyl') }}</span>
+                    <span class="logo-badge">Admin</span>
+                </a>
+                <nav class="admin-nav">
+                    <ul class="admin-nav-list">
                         <li class="{{ Route::currentRouteName() !== 'admin.index' ?: 'active' }}">
-                            <a href="{{ route('admin.index') }}"><i class="fa fa-home"></i> <span>Overview</span></a>
+                            <a href="{{ route('admin.index') }}"><span class="nav-chip c-blue"><i class="fa fa-home"></i></span> <span>Overview</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.settings') ?: 'active' }}">
-                            <a href="{{ route('admin.settings') }}"><i class="fa fa-wrench"></i> <span>Settings</span></a>
+                            <a href="{{ route('admin.settings') }}"><span class="nav-chip c-slate"><i class="fa fa-wrench"></i></span> <span>Settings</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.api') ?: 'active' }}">
-                            <a href="{{ route('admin.api.index') }}"><i class="fa fa-gamepad"></i> <span>Application API</span></a>
+                            <a href="{{ route('admin.api.index') }}"><span class="nav-chip c-violet"><i class="fa fa-gamepad"></i></span> <span>Application API</span></a>
                         </li>
+                        <li class="nav-heading">Infrastructure</li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.databases') ?: 'active' }}">
-                            <a href="{{ route('admin.databases') }}"><i class="fa fa-database"></i> <span>Databases</span></a>
+                            <a href="{{ route('admin.databases') }}"><span class="nav-chip c-amber"><i class="fa fa-database"></i></span> <span>Databases</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.locations') ?: 'active' }}">
-                            <a href="{{ route('admin.locations') }}"><i class="fa fa-globe"></i> <span>Locations</span></a>
+                            <a href="{{ route('admin.locations') }}"><span class="nav-chip c-teal"><i class="fa fa-globe"></i></span> <span>Locations</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.nodes') ?: 'active' }}">
-                            <a href="{{ route('admin.nodes') }}"><i class="fa fa-sitemap"></i> <span>Nodes</span></a>
+                            <a href="{{ route('admin.nodes') }}"><span class="nav-chip c-green"><i class="fa fa-sitemap"></i></span> <span>Nodes</span></a>
                         </li>
+                        <li class="nav-heading">Management</li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.servers') ?: 'active' }}">
-                            <a href="{{ route('admin.servers') }}"><i class="fa fa-server"></i> <span>Servers</span></a>
+                            <a href="{{ route('admin.servers') }}"><span class="nav-chip c-indigo"><i class="fa fa-server"></i></span> <span>Servers</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.users') ?: 'active' }}">
-                            <a href="{{ route('admin.users') }}"><i class="fa fa-users"></i> <span>Users</span></a>
+                            <a href="{{ route('admin.users') }}"><span class="nav-chip c-pink"><i class="fa fa-users"></i></span> <span>Users</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.mounts') ?: 'active' }}">
-                            <a href="{{ route('admin.mounts') }}"><i class="fa fa-magic"></i> <span>Mounts</span></a>
+                            <a href="{{ route('admin.mounts') }}"><span class="nav-chip c-orange"><i class="fa fa-magic"></i></span> <span>Mounts</span></a>
                         </li>
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.nests') ?: 'active' }}">
-                            <a href="{{ route('admin.nests') }}"><i class="fa fa-th-large"></i> <span>Nests</span></a>
+                            <a href="{{ route('admin.nests') }}"><span class="nav-chip c-cyan"><i class="fa fa-th-large"></i></span> <span>Nests</span></a>
                         </li>
                     </ul>
                 </nav>
-            </header>
+                <div class="admin-user">
+                    <a href="{{ route('account') }}" class="admin-user-link" data-toggle="tooltip" data-placement="top" title="Account Settings">
+                        <img src="https://www.gravatar.com/avatar/{{ md5(strtolower(Auth::user()->email)) }}?s=160" class="user-image" alt="User Image">
+                        <span class="admin-user-name">{{ Auth::user()->username }}</span>
+                    </a>
+                    <a href="{{ route('index') }}" class="admin-user-action" data-toggle="tooltip" data-placement="top" title="Exit Admin Control"><i class="fa fa-server"></i></a>
+                    <a href="{{ route('auth.logout') }}" id="logoutButton" class="admin-user-action" data-toggle="tooltip" data-placement="top" title="Logout"><i class="fa fa-sign-out"></i></a>
+                </div>
+            </aside>
             <div class="content-wrapper">
                 <section class="content-header">
                     @yield('content-header')

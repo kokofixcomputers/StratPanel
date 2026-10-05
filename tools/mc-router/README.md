@@ -53,6 +53,10 @@ add the domain in a server's **Domains** tab.
 - The router can run anywhere that can reach both the panel and the nodes, the A records just have to point at it.
 - Players see the router's address instead of their own on the backend. Set `PROXY_PROTOCOL=1` only for backends that
   understand it (Velocity with `haproxy-protocol = true`), otherwise IP bans and IP logging see the router.
-- Players connecting with an unknown domain, or to a server that is offline, get a short message in the server list.
+- Players connecting with an unknown domain, or to a server they cannot join, get a short message in the server list and
+  when they try to join. The router asks the panel why, so the message is specific: the server is off, starting up,
+  shutting down, suspended or still being installed. Suspended and installing servers are never connected to. If the
+  panel cannot be reached the player is simply told the server is off. The wording can be changed with `OFFLINE_MOTD`,
+  `STARTING_MOTD`, `STOPPING_MOTD`, `SUSPENDED_MOTD` and `INSTALLING_MOTD` (see `mc-router.env.example`).
 - Java Edition only. Bedrock uses UDP and is not routed.
 - Build it yourself with `go build` (Go 1.21 or newer), run the tests with `go test ./...`.

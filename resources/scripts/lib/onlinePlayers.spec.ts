@@ -1,4 +1,10 @@
-import { clearOnlinePlayers, handleLogLine, parseLogLine, readOnlinePlayers } from './onlinePlayers';
+import {
+    clearOnlinePlayers,
+    handleBridgeMessage,
+    handleLogLine,
+    parseLogLine,
+    readOnlinePlayers,
+} from './onlinePlayers';
 
 describe('online player log parsing', () => {
     it('reads logins and disconnects written by the server', () => {
@@ -43,5 +49,20 @@ describe('online player log parsing', () => {
         expect(readOnlinePlayers('s').online).toEqual(['B']);
         clearOnlinePlayers('s');
         expect(readOnlinePlayers('s').online).toEqual([]);
+    });
+
+    it('follows the plugin: joins, leaves and a full list', () => {
+        handleBridgeMessage('b', { event: 'player-join', name: 'A', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03' });
+        handleBridgeMessage('b', { event: 'player-join', name: 'B' });
+        handleBridgeMessage('b', { event: 'player-join', name: 'A' });
+        handleBridgeMessage('b', { event: 'player-join', name: '<bad>' });
+        expect(readOnlinePlayers('b').online).toEqual(['A', 'B']);
+        expect(readOnlinePlayers('b').uuids.A).toBe('13bc7d5e-f906-41ff-a949-6c1eb677fe03');
+
+        handleBridgeMessage('b', { event: 'player-leave', name: 'A' });
+        expect(readOnlinePlayers('b').online).toEqual(['B']);
+
+        handleBridgeMessage('b', { event: 'players', players: [{ name: 'C' }, { name: 'D' }, { nope: 1 }] });
+        expect(readOnlinePlayers('b').online).toEqual(['C', 'D']);
     });
 });

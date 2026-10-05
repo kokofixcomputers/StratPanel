@@ -11,6 +11,8 @@
 
 export const TYPES: Record<string, string[]> = {
     sel: ['@a', '@e', '@p', '@r', '@s', '@n'],
+    // Names of players, filled in with whoever is online when completing.
+    player: [],
     pos: ['~', '^'],
     bool: ['true', 'false'],
     gm: ['survival', 'creative', 'adventure', 'spectator'],
@@ -159,7 +161,7 @@ export const PATTERNS: string[] = [
     'transfer <hostname> <port> <players:sel>',
     'trigger <objective> add|set',
     'weather clear|rain|thunder <duration>',
-    'whitelist add|remove <player>',
+    'whitelist add|remove <player:player>',
     'whitelist list|off|on|reload',
     'worldborder add|center|damage|get|set|warning',
     'worldborder damage amount|buffer <value>',
@@ -210,13 +212,16 @@ export const PATTERNS: string[] = [
     'end',
 ];
 
-interface Node {
+export interface Node {
     lit: Map<string, Node>;
     arg: Map<string, Node>;
     links: Node[];
+    // A fixed list of values to suggest for an argument, from a plugin that knows them.
+    suggestions?: string[];
+    description?: string;
 }
 
-const node = (): Node => ({ lit: new Map(), arg: new Map(), links: [] });
+export const node = (): Node => ({ lit: new Map(), arg: new Map(), links: [] });
 
 const child = (parent: Node, map: 'lit' | 'arg', key: string): Node => {
     const found = parent[map].get(key);
@@ -251,7 +256,7 @@ export const buildTree = (patterns: string[]): Node => {
     return root;
 };
 
-const TREE = buildTree(PATTERNS);
+export const BUILT_IN_TREE = buildTree(PATTERNS);
 
 /** A node plus everything reachable through jumps. */
 const expand = (nodes: Node[]): Node[] => {
@@ -272,9 +277,11 @@ export interface Completion {
     items: string[];
     // The name of the next value when there is nothing to suggest for it, e.g. "message".
     hint: string | null;
+    // What a plugin says about some of the items, shown as a tooltip.
+    descriptions?: Record<string, string>;
 }
 
-export const complete = (input: string, tree: Node = TREE): Completion => {
+export const complete = (input: string, tree: Node = BUILT_IN_TREE, players: string[] = []): Completion => {
     const text = input.startsWith('/') ? input.slice(1) : input;
     const offset = input.length - text.length;
     const words = text.split(' ');
@@ -300,16 +307,35 @@ export const complete = (input: string, tree: Node = TREE): Completion => {
         if (value.toLowerCase().startsWith(wanted) && value !== partial && !items.includes(value)) items.push(value);
     };
 
+    const descriptions: Record<string, string> = {};
     nodes.forEach((n) => {
-        n.lit.forEach((_, word) => add(word));
-        n.arg.forEach((_, key) => {
+        n.lit.forEach((child, word) => {
+            add(word);
+            if (child.description) descriptions[word] = child.description;
+        });
+        n.arg.forEach((child, key) => {
             const [name, type] = key.split(':');
-            if (type && TYPES[type]) TYPES[type].forEach(add);
-            else if (!hint) hint = name;
+            let suggested = false;
+            if (type && TYPES[type]) {
+                // Whoever is online comes first, a selector is rarely what is wanted when a name is being typed.
+                if (type === 'sel' || type === 'player') players.forEach(add);
+                TYPES[type].forEach(add);
+                suggested = true;
+            }
+            if (child.suggestions?.length) {
+                child.suggestions.forEach(add);
+                suggested = true;
+            }
+            if (!suggested && !hint) hint = name;
         });
     });
 
-    return { start, items, hint: items.length ? null : hint };
+    // Only the items that are shown need their description.
+    Object.keys(descriptions).forEach((word) => {
+        if (!items.includes(word)) delete descriptions[word];
+    });
+
+    return { start, items, hint: items.length ? null : hint, descriptions };
 };
 
 /** The longest text every candidate starts with, used by Tab to complete as far as is unambiguous. */

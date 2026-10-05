@@ -100,7 +100,7 @@ export default {
         {
             path: '/mods',
             permission: 'file.*',
-            name: 'Mods & Plugins',
+            name: 'Content',
             component: ModsContainer,
         },
         {
@@ -160,7 +160,7 @@ export default {
         {
             path: '/startup',
             permission: 'startup.*',
-            name: 'Startup',
+            name: 'Environment Variables',
             component: StartupContainer,
         },
         {

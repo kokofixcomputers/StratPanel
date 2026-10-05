@@ -446,3 +446,182 @@ body.admin-modern ::selection { background: rgba(20, 71, 230, 0.18); }
 .select2-container--default .select2-results__option--highlighted[aria-selected] {
     background: var(--primary) !important; color: #fff !important;
 }
+
+
+/* =====================================================================================================
+ * Sidebar shell. Same look as the server pages of the panel: white surfaces, thin borders and flat, solid
+ * colours only where they carry meaning (buttons, status, the stat icons).
+ * ===================================================================================================== */
+:root {
+    --sidebar-width: 248px;
+}
+
+.admin-modern .admin-shell { display: block; }
+
+/* ---- sidebar ----------------------------------------------------------------------------------- */
+.admin-modern .admin-sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; width: var(--sidebar-width); z-index: 1030;
+    display: flex; flex-direction: column; padding: 16px 12px 12px; overflow-y: auto;
+    background: var(--card); border-right: 1px solid var(--border);
+}
+.admin-modern .admin-brand {
+    display: flex; align-items: center; padding: 4px 8px 16px; color: var(--text) !important; text-decoration: none;
+    font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+}
+.admin-modern .admin-brand .logo-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.admin-modern .admin-nav { flex: 1; }
+.admin-modern .admin-nav-list { list-style: none; margin: 0; padding: 0; }
+.admin-modern .admin-nav-list > li > a {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 2px; padding: 9px 12px; border-radius: 10px;
+    color: var(--muted) !important; font-size: 14px; font-weight: 500; text-decoration: none; transition: background 0.15s, color 0.15s;
+}
+.admin-modern .admin-nav-list > li > a:hover { background: #f3f4f6; color: var(--text) !important; }
+.admin-modern .admin-nav-list > li.active > a { background: var(--primary-soft); color: var(--primary) !important; font-weight: 600; }
+.admin-modern .admin-nav-list > li.nav-heading {
+    margin: 16px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #94a3b8;
+}
+
+/* The icon chips of the markup are plain icons here, the colour classes stay for anyone who wants them back. */
+.admin-modern .nav-chip { display: inline-flex; align-items: center; justify-content: center; width: 20px; flex-shrink: 0; font-size: 16px; color: inherit; }
+.admin-modern .nav-chip .fa { margin: 0; }
+
+.admin-modern .admin-user {
+    display: flex; align-items: center; gap: 4px; margin-top: 12px; padding: 12px 4px 0; border-top: 1px solid var(--border);
+}
+.admin-modern .admin-user-link { display: flex; align-items: center; flex: 1; min-width: 0; padding: 4px 8px; border-radius: 10px; color: var(--text) !important; text-decoration: none; }
+.admin-modern .admin-user-link:hover { background: #f3f4f6; }
+.admin-modern .admin-user .user-image { width: 28px; height: 28px; border-radius: 50%; margin-right: 10px; }
+.admin-modern .admin-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.admin-modern .admin-user-action {
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px;
+    color: var(--muted) !important; transition: background 0.15s, color 0.15s;
+}
+.admin-modern .admin-user-action:hover { background: #f3f4f6; color: var(--text) !important; }
+
+/* ---- page shell ------------------------------------------------------------------------------- */
+.admin-modern .content-wrapper, .admin-modern .main-footer {
+    margin-left: var(--sidebar-width) !important; max-width: none; padding-left: 32px; padding-right: 32px;
+}
+.admin-modern .content-wrapper { min-height: calc(100vh - 80px) !important; }
+
+/* ---- stat tiles: white cards, the colour is only in the icon ---------------------------------- */
+.admin-modern .stat-row > div { margin-bottom: 16px; }
+.admin-modern .stat-card {
+    position: relative; display: flex; flex-direction: column; padding: 18px 20px; border-radius: var(--radius);
+    background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--text) !important;
+    text-decoration: none; transition: border-color 0.15s;
+}
+.admin-modern .stat-card:hover { border-color: #c7d2fe; }
+.admin-modern .stat-icon {
+    position: absolute; right: 18px; top: 18px; display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 10px; font-size: 18px;
+}
+.admin-modern .stat-number { font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--text); }
+.admin-modern .stat-label { margin-top: 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.admin-modern .stat-indigo .stat-icon { background: #eef2ff; color: #4f46e5; }
+.admin-modern .stat-pink .stat-icon { background: #fdf2f8; color: #db2777; }
+.admin-modern .stat-green .stat-icon { background: #f0fdf4; color: #16a34a; }
+.admin-modern .stat-amber .stat-icon { background: #fffbeb; color: #d97706; }
+
+/* ---- buttons: flat, solid and a bit bolder, like the power buttons of a server ---------------- */
+.admin-modern .btn { font-weight: 600; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.admin-modern .btn-default { box-shadow: none; }
+.admin-modern .btn-lg { padding: 11px 22px; }
+.admin-modern .btn:focus, .admin-modern .btn:active:focus { box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.2); }
+.admin-modern .btn-success:focus { box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25); }
+.admin-modern .btn-danger:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25); }
+.admin-modern .btn-warning:focus { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
+
+/* ---- tables ----------------------------------------------------------------------------------- */
+.admin-modern .table > tbody > tr > th, .admin-modern .table > thead > tr > th {
+    background: #f8fafc; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+.admin-modern .table-hover > tbody > tr:hover > td { background: #f8fafc; }
+.admin-modern .table > tbody > tr > td { vertical-align: middle; }
+
+/* ---- small screens: the sidebar becomes a strip at the top ------------------------------------ */
+@media (max-width: 991px) {
+    .admin-modern .admin-sidebar { position: static; width: 100%; padding: 12px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--border); }
+    .admin-modern .admin-brand { padding-bottom: 10px; }
+    .admin-modern .admin-nav-list { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+    .admin-modern .admin-nav-list > li { flex-shrink: 0; }
+    .admin-modern .admin-nav-list > li.nav-heading { display: none; }
+    .admin-modern .admin-nav-list > li > a { margin: 0; white-space: nowrap; }
+    .admin-modern .admin-user { margin-top: 6px; }
+    .admin-modern .content-wrapper, .admin-modern .main-footer { margin-left: 0 !important; padding-left: 16px; padding-right: 16px; }
+}
+
+/* =====================================================================================================
+ * Server and node pages: the tabs become a side menu next to the content, like the server pages of the
+ * panel itself. Narrow screens fall back to a row of tabs above the content.
+ * ===================================================================================================== */
+@media (min-width: 992px) {
+    .admin-modern .content:has(.nav-side) {
+        display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 24px; align-items: start;
+    }
+    .admin-modern .content:has(.nav-side)::before, .admin-modern .content:has(.nav-side)::after { display: none; }
+    .admin-modern .content:has(.nav-side) > * { grid-column: 2; min-width: 0; }
+    /* The row that holds the menu spans the whole height of the page so everything else flows beside it. */
+    .admin-modern .content:has(.nav-side) > .row:has(.nav-side) {
+        grid-column: 1; grid-row: 1 / span 40; position: sticky; top: 16px; margin: 0; width: 100%;
+    }
+    .admin-modern .content:has(.nav-side) > .row:has(.nav-side) > [class*='col-'] { padding: 0; width: 100%; }
+}
+
+.admin-modern .nav-tabs-custom.nav-side { background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px; margin-bottom: 20px; overflow: visible; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 0; overflow: visible; background: transparent; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li { float: none; margin: 0 !important; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li > a {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 0 !important; border-radius: 10px !important;
+    background: transparent !important; box-shadow: none !important; color: var(--muted); font-size: 14px; font-weight: 500; opacity: 1;
+}
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li > a .fa { width: 18px; text-align: center; font-size: 15px; margin: 0; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li > a:hover { background: #f3f4f6 !important; color: var(--text); }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.active > a,
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.active > a:hover { background: var(--primary-soft) !important; color: var(--primary) !important; font-weight: 600; box-shadow: none !important; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-danger > a { color: #dc2626; opacity: 1; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-danger > a:hover { background: #fef2f2 !important; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-danger.active > a { background: #fef2f2 !important; color: #dc2626 !important; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-success { margin: 6px 0 0 !important; padding-top: 6px; border-top: 1px solid var(--border) !important; border-radius: 0 !important; }
+.admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-success > a { color: var(--primary); }
+
+@media (max-width: 991px) {
+    .admin-modern .nav-tabs-custom.nav-side { padding: 6px; }
+    .admin-modern .nav-tabs-custom.nav-side > .nav-tabs { flex-direction: row; overflow-x: auto; white-space: nowrap; }
+    .admin-modern .nav-tabs-custom.nav-side > .nav-tabs > li.tab-success { margin: 0 !important; padding: 0; border-top: 0 !important; }
+}
+
+/* ---- info boxes and small boxes: white cards, only the icon carries the colour ------------------- */
+.admin-modern .info-box, .admin-modern .small-box {
+    background: var(--card) !important; color: var(--text) !important; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 12px;
+}
+.admin-modern .info-box .info-box-text, .admin-modern .info-box .info-box-number, .admin-modern .small-box h3, .admin-modern .small-box p { color: var(--text) !important; }
+.admin-modern .info-box .info-box-text, .admin-modern .small-box p { color: var(--muted) !important; font-size: 12px; font-weight: 500; text-transform: none; }
+.admin-modern .info-box .info-box-icon { background: #eef2ff !important; color: #4f46e5 !important; }
+.admin-modern .info-box.bg-green .info-box-icon, .admin-modern .info-box.bg-olive .info-box-icon { background: #f0fdf4 !important; color: #16a34a !important; }
+.admin-modern .info-box.bg-yellow .info-box-icon, .admin-modern .info-box.bg-orange .info-box-icon { background: #fffbeb !important; color: #d97706 !important; }
+.admin-modern .info-box.bg-red .info-box-icon, .admin-modern .info-box.bg-maroon .info-box-icon { background: #fef2f2 !important; color: #dc2626 !important; }
+.admin-modern .info-box.bg-aqua .info-box-icon, .admin-modern .info-box.bg-blue .info-box-icon { background: #eff6ff !important; color: #1447e6 !important; }
+.admin-modern .info-box .progress { height: 6px; margin: 6px 0 0; border-radius: 999px; background: #eef2f7; box-shadow: none; }
+.admin-modern .info-box .progress .progress-bar { background: #1447e6 !important; border-radius: 999px; }
+.admin-modern .info-box.bg-green .progress-bar, .admin-modern .info-box.bg-olive .progress-bar { background: #16a34a !important; }
+.admin-modern .info-box.bg-yellow .progress-bar, .admin-modern .info-box.bg-orange .progress-bar { background: #f59e0b !important; }
+.admin-modern .info-box.bg-red .progress-bar, .admin-modern .info-box.bg-maroon .progress-bar { background: #dc2626 !important; }
+
+/* ---- link cards (owner, node...) and wider stat text ------------------------------------------ */
+.admin-modern .link-card {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 14px 16px; border-radius: var(--radius);
+    background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--text) !important; text-decoration: none;
+}
+.admin-modern a.link-card:hover { border-color: #c7d2fe; }
+.admin-modern .link-card-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; background: #eef2ff; color: #4f46e5; font-size: 17px; }
+.admin-modern .link-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.admin-modern .link-card-label { font-size: 12px; font-weight: 500; color: var(--muted); }
+.admin-modern .link-card-value { font-size: 15px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-modern .link-card-arrow { color: #94a3b8; font-size: 20px; }
+.admin-modern .stat-number small { font-size: 14px; font-weight: 600; color: var(--muted); }
+.admin-modern .stat-number.stat-text { font-size: 24px; padding-top: 6px; }
+.admin-modern .info-box .info-box-number { font-size: 16px; font-weight: 700; white-space: nowrap; }
+.admin-modern .info-box .info-box-content { margin-left: 70px; }

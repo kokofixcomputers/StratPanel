@@ -60,6 +60,18 @@ export const readOptionalFile = async (uuid: string, path: string): Promise<stri
     }
 };
 
+/** The name of the world folder, from level-name in server.properties. */
+export const readLevelName = async (uuid: string): Promise<string> => {
+    const content = await readOptionalFile(uuid, '/server.properties');
+    const name = content
+        ? parseProperties(content)
+              .find((line) => line.key === 'level-name')
+              ?.value.trim()
+        : '';
+
+    return name || 'world';
+};
+
 export const readJsonList = async <T>(uuid: string, path: string): Promise<T[]> => {
     const raw = await readOptionalFile(uuid, path);
     if (!raw || !raw.trim()) return [];
@@ -98,7 +110,7 @@ export const lookupPlayer = async (name: string): Promise<Player> => {
 
 // ---- modrinth ----------------------------------------------------------------------------------
 
-export type ProjectKind = 'mod' | 'plugin' | 'modpack';
+export type ProjectKind = 'mod' | 'plugin' | 'modpack' | 'datapack' | 'resourcepack';
 
 export interface ModrinthProject {
     // eslint-disable-next-line camelcase
@@ -134,7 +146,7 @@ export const searchModrinth = async (opts: {
     const facets: string[][] = [[`project_type:${opts.kind}`]];
     if (opts.kind === 'plugin') {
         facets.push((opts.loader ? [opts.loader] : PLUGIN_LOADERS).map((l) => `categories:${l}`));
-    } else if (opts.loader) {
+    } else if (opts.loader && opts.kind !== 'datapack' && opts.kind !== 'resourcepack') {
         facets.push([`categories:${opts.loader}`]);
     }
     if (opts.version) facets.push([`versions:${opts.version}`]);
@@ -158,6 +170,7 @@ export interface ModrinthFile {
     filename: string;
     primary: boolean;
     size?: number;
+    hashes?: { sha1?: string; sha512?: string };
 }
 
 export interface ModrinthVersion {
@@ -173,6 +186,10 @@ export interface ModrinthVersion {
     files: ModrinthFile[];
     // eslint-disable-next-line camelcase
     date_published: string;
+    // eslint-disable-next-line camelcase
+    version_type?: 'release' | 'beta' | 'alpha';
+    changelog?: string | null;
+    downloads?: number;
 }
 
 const modrinthError = () => new Error('Modrinth could not be reached, please try again in a moment.');
@@ -192,8 +209,28 @@ export const getProjectVersions = async (
     return response.json();
 };
 
+/** The loaders to ask Modrinth for. Datapacks have their own, resource packs have none worth filtering on. */
 export const loadersFor = (kind: ProjectKind, loader?: string): string[] =>
-    loader ? [loader] : kind === 'plugin' ? PLUGIN_LOADERS : MOD_LOADERS;
+    kind === 'datapack'
+        ? ['datapack']
+        : kind === 'resourcepack'
+        ? []
+        : loader
+        ? [loader]
+        : kind === 'plugin'
+        ? PLUGIN_LOADERS
+        : MOD_LOADERS;
+
+/** A short description of the Minecraft versions of a release, such as "1.21.1" or "1.20.4 - 1.21.1". */
+export const versionRange = (versions: string[]): string => {
+    if (versions.length === 0) return 'any version';
+    const numeric = versions.filter((v) => /^\d+(\.\d+)+$/.test(v));
+    const sorted = (numeric.length ? numeric : versions)
+        .slice()
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    return sorted.length === 1 ? sorted[0] : `${sorted[0]} - ${sorted[sorted.length - 1]}`;
+};
 
 export const primaryFile = (version: ModrinthVersion): ModrinthFile =>
     version.files.find((file) => file.primary) || version.files[0];

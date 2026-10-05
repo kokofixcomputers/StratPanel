@@ -58,7 +58,7 @@ const files = {
     '/': [
         ...(process.env.PREVIEW_PROXY ? [['velocity.toml', true, 2400, 'text/plain']] : []), ['.cache', false], ['.fabric', false], ['libraries', false], ['logs', false], ['mods', false], ['world', false],
         ['eula.txt', true, 10, 'text/plain'], ['fabric-server-launch.jar', true, 182000, 'application/jar'], ['server.jar', true, 54000000, 'application/jar'],
-        ['server.properties', true, 1360, 'text/plain'], ['ops.json', true, 120, 'application/json'], ['backup.tar.gz', true, 9100000, 'application/gzip'],
+        ['server.properties', true, 1360, 'text/plain'], ['ops.json', true, 120, 'application/json'], ['pterodactyl.commands.json', true, 2400, 'application/json'], ['backup.tar.gz', true, 9100000, 'application/gzip'],
     ],
 };
 const fileAttrs = ([name, isFile, size = 4096, mimetype]) => item('file_object', {
@@ -168,6 +168,7 @@ log-player-connections = true
     } }, null, 4),
     '/usercache.json': JSON.stringify([{ uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', name: 'kokofixcomputers', expiresOn: '2026-11-03 02:09:12 +0000' }, { uuid: '03e95ced-267e-4147-8ea0-5f55c00be51c', name: 'juseewan', expiresOn: '2026-11-02 23:21:01 +0000' }, { uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Notch', expiresOn: '2026-10-30 12:00:00 +0000' }]),
     '/banned-players.json': '[]',
+    '/pterodactyl.commands.json': "{\n  \"version\": 1,\n  \"generatedAt\": \"2026-10-05T12:00:00Z\",\n  \"generator\": { \"name\": \"StratPanel Bridge\", \"version\": \"1.0.0\", \"platform\": \"paper\", \"minecraft\": \"1.21.4\" },\n  \"plugins\": [\n    { \"name\": \"EssentialsX\", \"version\": \"2.20.1\" },\n    { \"name\": \"WorldEdit\", \"version\": \"7.3.8\" }\n  ],\n  \"root\": {\n    \"children\": [\n      {\n        \"name\": \"gamemode\",\n        \"type\": \"literal\",\n        \"aliases\": [\"gm\"],\n        \"description\": \"Sets a player's game mode\",\n        \"permission\": \"minecraft.command.gamemode\",\n        \"plugin\": \"minecraft\",\n        \"executable\": false,\n        \"children\": [\n          {\n            \"name\": \"gamemode\",\n            \"type\": \"argument\",\n            \"parser\": \"minecraft:gamemode\",\n            \"executable\": true,\n            \"children\": [\n              { \"name\": \"target\", \"type\": \"argument\", \"parser\": \"minecraft:entity\", \"executable\": true }\n            ]\n          }\n        ]\n      },\n      {\n        \"name\": \"warp\",\n        \"type\": \"literal\",\n        \"description\": \"Teleports you to a warp\",\n        \"permission\": \"essentials.warp\",\n        \"plugin\": \"EssentialsX\",\n        \"executable\": true,\n        \"children\": [\n          { \"name\": \"name\", \"type\": \"argument\", \"parser\": \"brigadier:string\", \"suggestions\": [\"spawn\", \"mine\"], \"executable\": true },\n          {\n            \"name\": \"set\",\n            \"type\": \"literal\",\n            \"children\": [{ \"name\": \"name\", \"type\": \"argument\", \"parser\": \"brigadier:string\", \"executable\": true }]\n          }\n        ]\n      },\n      {\n        \"name\": \"execute\",\n        \"type\": \"literal\",\n        \"plugin\": \"minecraft\",\n        \"children\": [\n          {\n            \"name\": \"as\",\n            \"type\": \"literal\",\n            \"children\": [\n              { \"name\": \"targets\", \"type\": \"argument\", \"parser\": \"minecraft:entity\", \"redirect\": [\"execute\"] }\n            ]\n          },\n          { \"name\": \"run\", \"type\": \"literal\", \"redirect\": [] }\n        ]\n      }\n    ]\n  }\n}\n",
     '/config/voicechat/voicechat-server.properties': '# Simple Voice Chat server config\nport=24454\nmax_voice_distance=48.0\n',
     '/ops.json': JSON.stringify([{ uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Notch', level: 4, bypassesPlayerLimit: false }], null, 2),
     '/whitelist.json': JSON.stringify([{ uuid: '853c80ef-3c37-49fd-aa49-938b674adae6', name: 'jeb_' }], null, 2),
@@ -183,9 +184,20 @@ api.post('/servers/:id/files/compress', (req, res) => startTask(res, 7000, fileA
 api.post('/servers/:id/files/decompress', (req, res) => startTask(res, 5000, null));
 api.get('/servers/:id/files/task/:task', (req, res) => res.json({ error: null, file: null, ...(fileTasks[req.params.task] || { status: 'unknown' }) }));
 api.get('/servers/:id/files/contents', (req, res) => (req.query.file in fileStore ? res.type('text/plain').send(fileStore[req.query.file]) : res.status(404).json({ errors: [{ detail: 'not found' }] })));
-api.post('/servers/:id/files/write', express.text({ type: '*/*' }), (req, res) => { fileStore[req.query.file] = req.body; res.status(204).end(); });
-api.get('/servers/:id/files/download', (req, res) => res.json({ attributes: { url: '#' } }));
-api.get('/servers/:id/files/upload', (req, res) => res.json({ attributes: { url: '#' } }));
+api.post('/servers/:id/files/write', express.text({ type: '*/*' }), (req, res) => { fileStore['/' + String(req.query.file).replace(/^\/+/, '')] = req.body; res.status(204).end(); });
+let mockIcon = null;
+api.get('/servers/:id/files/download', (req, res) => {
+    if (String(req.query.file).endsWith('server-icon.png')) return mockIcon ? res.json({ attributes: { url: '/mock-icon' } }) : res.status(404).json({ errors: [{ detail: 'not found' }] });
+    res.json({ attributes: { url: '#' } });
+});
+app.post('/mock-upload', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => {
+    const start = req.body.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    const end = req.body.indexOf(Buffer.from('IEND'));
+    if (start >= 0 && end > start) mockIcon = req.body.subarray(start, end + 8);
+    res.status(204).end();
+});
+app.get('/mock-icon', (req, res) => res.type('png').send(mockIcon));
+api.get('/servers/:id/files/upload', (req, res) => res.json({ attributes: { url: '/mock-upload' } }));
 
 api.get('/servers/:id/databases', (req, res) => res.json({ object: 'list', data: state.databases.map((d) => item('server_database', { ...d, relationships: { password: item('database_password', { password: d.password }) } })) }));
 api.post('/servers/:id/databases', (req, res) => {
@@ -200,6 +212,15 @@ state.domains = [{ id: 1, domain: 'play.example.com', allocation_id: 1, allocati
 api.get('/servers/:id/domains', (req, res) => res.json({ object: 'list', data: state.domains, meta: { enabled: true, target_ip: '203.0.113.10', max: 5 } }));
 api.post('/servers/:id/domains', (req, res) => { const d = { id: state.nextId++, domain: String(req.body.domain).toLowerCase(), allocation_id: req.body.allocation_id, allocation: 'play.example.com:26614', dns_ok: false }; if (state.domains.some((x) => x.domain === d.domain)) return res.status(422).json({ errors: [{ detail: 'That domain is already in use.' }] }); state.domains.push(d); res.status(201).json({ object: 'server_domain', attributes: d }); });
 api.delete('/servers/:id/domains/:d', (req, res) => { state.domains = state.domains.filter((x) => x.id != req.params.d); res.status(204).end(); });
+state.env = [{ key: 'JAVA_TOOL_OPTIONS', value: '-XX:+UseZGC' }];
+api.get('/servers/:id/startup/environment', (req, res) => res.json({ object: 'list', data: state.env, meta: { max: 50 } }));
+api.post('/servers/:id/startup/environment', (req, res) => {
+    const { key, value } = req.body;
+    if (['STARTUP', 'SERVER_PORT'].includes(String(key).toUpperCase())) return res.status(400).json({ errors: [{ detail: `${key} is used by the panel or by the egg of this server and cannot be changed here.` }] });
+    state.env = state.env.filter((v) => v.key !== key).concat({ key, value });
+    res.json({ key, value });
+});
+api.delete('/servers/:id/startup/environment/:key', (req, res) => { state.env = state.env.filter((v) => v.key !== req.params.key); res.status(204).end(); });
 api.get('/servers/:id/network/allocations', (req, res) => res.json({ object: 'list', data: state.allocations.map((a) => item('allocation', a)) }));
 api.post('/servers/:id/network/allocations', (req, res) => { const a = { id: state.nextId++, ip: '10.0.0.4', ip_alias: 'play.example.com', port: 26615 + state.allocations.length, notes: null, is_default: false }; state.allocations.push(a); res.json(item('allocation', a)); });
 api.post('/servers/:id/network/allocations/:a', (req, res) => { const a = state.allocations.find((x) => x.id == req.params.a); a.notes = req.body.notes; res.json(item('allocation', a)); });
@@ -229,6 +250,7 @@ const page = (title) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta 
 app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false }));
 const renderAdmin = require('./admin');
 app.use('/themes', express.static(path.join(root, 'public/themes')));
+app.use('/helper', express.static(path.join(root, 'public/helper')));
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));
@@ -268,7 +290,29 @@ wss.on('connection', (ws) => {
         if (event === 'auth') { send('auth success'); setStatus(state.status); }
         if (event === 'send logs') { boot.concat(warnings).forEach((l) => send('console output', l)); send('console output', '[17:00:00] [Server thread/INFO]: kokofixcomputers[/203.0.113.7:51234] logged in with entity id 41 at (0.5, 64.0, 0.5)'); send('console output', '[17:00:05] [Server thread/INFO]: Notch[/203.0.113.8:5000] logged in with entity id 42 at (0.5, 64.0, 0.5)'); send('console output', '[17:01:00] [Server thread/INFO]: Notch lost connection: Disconnected'); }
         if (event === 'send stats') stats();
-        if (event === 'send command') send('console output', `> ${args[0]}`), send('console output', '[17:05:01] [Server thread/INFO]: Unknown or incomplete command, see below for error');
+        if (event === 'send command' && String(args[0]).startsWith('stratpanelhidepanellogs')) {
+            const prefix = '[17:10:00] [Server thread/INFO]: [StratPanel] ::stratpanel:: ';
+            const sub = String(args[0]).split(' ')[1];
+            const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
+            if (sub === 'handshake') {
+                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":1}');
+                send('console output', prefix + players);
+            } else if (sub === 'refresh') {
+                setTimeout(() => {
+                    send('console output', prefix + players);
+                    send('console output', prefix + '{"event":"commands-updated","generatedAt":"2026-10-07T00:00:00Z"}');
+                    send('console output', prefix + '{"event":"refreshed","generatedAt":"2026-10-07T00:00:00Z"}');
+                }, 1200);
+            }
+        } else if (event === 'send command' && args[0] === 'sp-test') {
+            const doc = JSON.parse(fileStore['/pterodactyl.commands.json']);
+            doc.root.children.push({ name: 'newcmd', type: 'literal', description: 'Added after the plugin announced a change', children: [{ name: 'option', type: 'argument', parser: 'brigadier:string', suggestions: ['fast', 'slow'] }] });
+            doc.generatedAt = '2026-10-06T00:00:00Z';
+            fileStore['/pterodactyl.commands.json'] = JSON.stringify(doc, null, 2);
+            const entry = files['/'].find((f) => f[0] === 'pterodactyl.commands.json');
+            if (entry) entry[2] = fileStore['/pterodactyl.commands.json'].length;
+            send('console output', '[17:10:00] [Server thread/INFO]: ::stratpanel:: {"event":"commands-updated","generatedAt":"2026-10-06T00:00:00Z"}');
+        } else if (event === 'send command') send('console output', `> ${args[0]}`), send('console output', '[17:05:01] [Server thread/INFO]: Unknown or incomplete command, see below for error');
         if (event === 'set state') {
             const a = args[0];
             if (a === 'start') { setStatus('starting'); startup.forEach((l, i) => setTimeout(() => send('console output', l), 400 * (i + 1))); setTimeout(() => { setStatus('running'); setTimeout(() => send('console output', '[17:00:00] [Server thread/INFO]: kokofixcomputers[/203.0.113.7:51234] logged in with entity id 41 at (0.5, 64.0, 0.5)'), 500); }, 1500); }

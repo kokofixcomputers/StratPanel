@@ -136,6 +136,7 @@ export default () => {
                                     exact: route.exact,
                                 }))}
                             adminUrl={rootAdmin ? `/admin/servers/view/${serverId}` : undefined}
+                            playersUrl={isProxy ? undefined : to('/players', true)}
                         />
                         <div className={'min-w-0 flex-1 lg:px-4'}>
                             {inConflictState &&

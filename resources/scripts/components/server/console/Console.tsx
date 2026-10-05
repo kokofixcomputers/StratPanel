@@ -15,6 +15,9 @@ import { usePersistedState } from '@/plugins/usePersistedState';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
 import { commonPrefix, complete } from '@/lib/commandComplete';
+import { isBridgeLine, isProbeNoise } from '@/lib/bridge';
+import { useOnlinePlayers } from '@/lib/onlinePlayers';
+import useCommandTree from '@/components/server/console/useCommandTree';
 import {
     ArrowDownIcon,
     ArrowsExpandIcon,
@@ -106,6 +109,9 @@ export default () => {
     const { connected, instance } = ServerContext.useStoreState((state) => state.socket);
     const [canSendCommands] = usePermissions(['control.console']);
     const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
+    const serverUuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const commands = useCommandTree(serverUuid);
+    const { online } = useOnlinePlayers(serverUuid);
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
     const [history, setHistory] = usePersistedState<string[]>(`${serverId}:command_history`, []);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -144,6 +150,9 @@ export default () => {
     };
 
     const handleConsoleOutput = (line: string, prelude = false) => {
+        // Messages from the plugin to the panel are not for people to read.
+        if (!prelude && (isBridgeLine(line) || isProbeNoise(line))) return;
+
         const text = line.replace(/(?:\r\n|\r|\n)$/im, '');
         if (prelude) {
             chunkState.current = null;
@@ -220,7 +229,13 @@ export default () => {
         terminal.writeln(TERMINAL_PRELUDE + 'Server marked as ' + state + '...\u001b[0m');
 
     // Tab completion: the candidates for the word being typed, and which one Tab has cycled to.
-    const [suggest, setSuggest] = useState<{ items: string[]; start: number; hint: string | null; active: number }>({
+    const [suggest, setSuggest] = useState<{
+        items: string[];
+        start: number;
+        hint: string | null;
+        active: number;
+        descriptions?: Record<string, string>;
+    }>({
         items: [],
         start: 0,
         hint: null,
@@ -229,7 +244,7 @@ export default () => {
     const closeSuggest = () => setSuggest({ items: [], start: 0, hint: null, active: -1 });
     const updateSuggest = (value: string) => {
         if (!value.trim()) return closeSuggest();
-        setSuggest({ ...complete(value), active: -1 });
+        setSuggest({ ...complete(value, commands?.tree, online), active: -1 });
     };
     const applySuggestion = (input: HTMLInputElement, item: string, finish: boolean) => {
         input.value = input.value.slice(0, suggest.start) + item + (finish ? ' ' : '');
@@ -585,6 +600,7 @@ export default () => {
                                 <button
                                     key={item}
                                     type={'button'}
+                                    title={suggest.descriptions?.[item]}
                                     className={classNames(styles.suggestion, {
                                         [styles.suggestion_active]: index === suggest.active,
                                     })}
@@ -601,7 +617,10 @@ export default () => {
                                 </button>
                             ))}
                             {suggest.items.length > 0 && (
-                                <span className={styles.suggestion_hint}>Tab to complete</span>
+                                <span className={styles.suggestion_hint}>
+                                    Tab to complete
+                                    {commands?.stale ? ' · command list may be out of date, restart to refresh' : ''}
+                                </span>
                             )}
                         </div>
                     )}

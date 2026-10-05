@@ -17,6 +17,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -30,6 +31,18 @@ type mapping struct {
 	Domain string `json:"domain"`
 	Host   string `json:"host"`
 	Port   int    `json:"port"`
+	// Set by the panel when the server cannot be joined at all: "suspended", "installing" or "restoring".
+	Status string `json:"status"`
+}
+
+type route struct {
+	Target string
+	Status string
+}
+
+type cachedState struct {
+	state string
+	at    time.Time
 }
 
 type config struct {
@@ -41,12 +54,19 @@ type config struct {
 	ProxyProtocol bool
 	UnknownMOTD   string
 	OfflineMOTD   string
+	StartingMOTD  string
+	StoppingMOTD  string
+	SuspendedMOTD string
+	InstallMOTD   string
 }
 
 type router struct {
 	cfg    config
 	mu     sync.RWMutex
-	routes map[string]string
+	routes map[string]route
+
+	stateMu sync.Mutex
+	states  map[string]cachedState
 }
 
 func envOr(key, fallback string) string {
@@ -55,6 +75,11 @@ func envOr(key, fallback string) string {
 	}
 
 	return fallback
+}
+
+// motdOr reads a message from the environment. Environment files cannot hold a real line break, so "\n" is accepted.
+func motdOr(key, fallback string) string {
+	return strings.ReplaceAll(envOr(key, fallback), `\n`, "\n")
 }
 
 func loadConfig() config {
@@ -70,8 +95,12 @@ func loadConfig() config {
 		MappingFile:   os.Getenv("MAPPING_FILE"),
 		Refresh:       refresh,
 		ProxyProtocol: os.Getenv("PROXY_PROTOCOL") == "1",
-		UnknownMOTD:   envOr("UNKNOWN_MOTD", "§cNo server is set up for this address."),
-		OfflineMOTD:   envOr("OFFLINE_MOTD", "§eThis server is offline right now."),
+		UnknownMOTD:   motdOr("UNKNOWN_MOTD", "§cNo server is set up for this address."),
+		OfflineMOTD:   motdOr("OFFLINE_MOTD", "§eThis server is off.\n§7Come back once it has been started."),
+		StartingMOTD:  motdOr("STARTING_MOTD", "§aThis server is starting...\n§7See you soon!"),
+		StoppingMOTD:  motdOr("STOPPING_MOTD", "§eThis server is shutting down.\n§7Try again in a moment."),
+		SuspendedMOTD: motdOr("SUSPENDED_MOTD", "§cThis server is suspended.\n§7Contact the owner or an administrator."),
+		InstallMOTD:   motdOr("INSTALLING_MOTD", "§eThis server is being set up.\n§7Check back soon."),
 	}
 }
 
@@ -209,7 +238,7 @@ func chatJSON(text string) string {
 
 // reply answers a player the router cannot send anywhere. Status pings get a server list entry that explains why,
 // logins get a disconnect message.
-func reply(conn net.Conn, br *bufio.Reader, hs *handshake, message string) {
+func reply(conn net.Conn, br *bufio.Reader, hs *handshake, label, message string) {
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 
 	if hs.NextState == 1 {
@@ -219,7 +248,7 @@ func reply(conn net.Conn, br *bufio.Reader, hs *handshake, message string) {
 		}
 
 		status, _ := json.Marshal(map[string]interface{}{
-			"version":     map[string]interface{}{"name": "Router", "protocol": -1},
+			"version":     map[string]interface{}{"name": label, "protocol": -1},
 			"players":     map[string]interface{}{"max": 0, "online": 0},
 			"description": map[string]string{"text": message},
 		})
@@ -260,20 +289,23 @@ func readPacket(br *bufio.Reader) ([]byte, error) {
 
 // ---- routing ----------------------------------------------------------------------------------------------------
 
-func (r *router) lookup(host string) (string, bool) {
+func (r *router) lookup(host string) (route, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	target, ok := r.routes[host]
+	found, ok := r.routes[host]
 
-	return target, ok
+	return found, ok
 }
 
 func (r *router) set(list []mapping) {
-	routes := make(map[string]string, len(list))
+	routes := make(map[string]route, len(list))
 	for _, m := range list {
 		if m.Domain != "" && m.Host != "" && m.Port > 0 {
-			routes[strings.ToLower(m.Domain)] = net.JoinHostPort(m.Host, strconv.Itoa(m.Port))
+			routes[strings.ToLower(m.Domain)] = route{
+				Target: net.JoinHostPort(m.Host, strconv.Itoa(m.Port)),
+				Status: m.Status,
+			}
 		}
 	}
 
@@ -347,6 +379,78 @@ func (r *router) poll(ctx context.Context) {
 	}
 }
 
+// liveState asks the panel what the server behind a domain is doing right now: "running", "starting", "stopping",
+// "offline" or "unknown". Answers are remembered for a few seconds so server list refreshes do not flood the panel.
+func (r *router) liveState(domain string) string {
+	if r.cfg.MappingFile != "" || r.cfg.PanelURL == "" {
+		return "unknown"
+	}
+
+	r.stateMu.Lock()
+	if cached, ok := r.states[domain]; ok && time.Since(cached.at) < 3*time.Second {
+		r.stateMu.Unlock()
+		return cached.state
+	}
+	r.stateMu.Unlock()
+
+	state := r.fetchState(domain)
+
+	r.stateMu.Lock()
+	if r.states == nil {
+		r.states = map[string]cachedState{}
+	}
+	r.states[domain] = cachedState{state: state, at: time.Now()}
+	r.stateMu.Unlock()
+
+	return state
+}
+
+func (r *router) fetchState(domain string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.cfg.PanelURL+"/api/router/state?domain="+url.QueryEscape(domain), nil)
+	if err != nil {
+		return "unknown"
+	}
+	req.Header.Set("Authorization", "Bearer "+r.cfg.Token)
+	req.Header.Set("Accept", "application/json")
+
+	res, err := (&http.Client{Timeout: 2 * time.Second}).Do(req)
+	if err != nil {
+		return "unknown"
+	}
+	defer res.Body.Close()
+
+	var body struct {
+		State string `json:"state"`
+	}
+	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&body) != nil || body.State == "" {
+		return "unknown"
+	}
+
+	return body.State
+}
+
+// notice is what a player is told when a server cannot be reached, with a short label for the server list.
+func (r *router) notice(status, state string) (string, string) {
+	switch status {
+	case "suspended":
+		return "Suspended", r.cfg.SuspendedMOTD
+	case "installing", "restoring":
+		return "Setting up", r.cfg.InstallMOTD
+	}
+
+	switch state {
+	case "starting":
+		return "Starting", r.cfg.StartingMOTD
+	case "stopping":
+		return "Stopping", r.cfg.StoppingMOTD
+	}
+
+	return "Offline", r.cfg.OfflineMOTD
+}
+
 func (r *router) handle(client net.Conn) {
 	defer client.Close()
 
@@ -358,16 +462,24 @@ func (r *router) handle(client net.Conn) {
 		return
 	}
 
-	target, ok := r.lookup(hs.Host)
+	found, ok := r.lookup(hs.Host)
 	if !ok {
-		reply(client, br, hs, r.cfg.UnknownMOTD)
+		reply(client, br, hs, "Unknown", r.cfg.UnknownMOTD)
 		return
 	}
 
-	backend, err := net.DialTimeout("tcp", target, 5*time.Second)
+	// Servers that are suspended or still being installed are never forwarded to.
+	if found.Status != "" {
+		label, message := r.notice(found.Status, "")
+		reply(client, br, hs, label, message)
+		return
+	}
+
+	backend, err := net.DialTimeout("tcp", found.Target, 5*time.Second)
 	if err != nil {
-		log.Printf("%s -> %s: %v", hs.Host, target, err)
-		reply(client, br, hs, r.cfg.OfflineMOTD)
+		log.Printf("%s -> %s: %v", hs.Host, found.Target, err)
+		label, message := r.notice("", r.liveState(hs.Host))
+		reply(client, br, hs, label, message)
 		return
 	}
 	defer backend.Close()
@@ -418,7 +530,7 @@ func main() {
 		log.Fatal("set PANEL_URL and ROUTER_TOKEN (or MAPPING_FILE for a static list)")
 	}
 
-	r := &router{cfg: cfg, routes: map[string]string{}}
+	r := &router{cfg: cfg, routes: map[string]route{}}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

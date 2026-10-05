@@ -10,7 +10,10 @@ import { Button } from '@/components/elements/button/index';
 import { Dialog } from '@/components/elements/dialog';
 import { PlayerHead } from '@/components/server/players/PlayerListCard';
 import { usePermissions } from '@/plugins/usePermissions';
-import { readJsonList } from '@/lib/minecraft';
+import { dashUuid, lookupPlayer, readJsonList } from '@/lib/minecraft';
+import { setBanned as writeBan, setOperator, UUID_PATTERN } from '@/lib/playerFiles';
+import useFlash from '@/plugins/useFlash';
+import { httpErrorToHuman } from '@/api/http';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 
 interface CacheEntry {
@@ -37,6 +40,8 @@ export default () => {
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const [canControl] = usePermissions(['control.console']);
+    const [canEditFiles] = usePermissions(['file.update']);
+    const { addFlash, clearFlashes } = useFlash();
     const { online, uuids } = useOnlinePlayers(server);
 
     const [cache, setCache] = useState<CacheEntry[]>([]);
@@ -61,7 +66,10 @@ export default () => {
     }, [load, online.length]);
 
     const running = status === 'running';
-    const disabled = !canControl || !running;
+    const offline = status === 'offline';
+    // A running server is sent commands, a stopped one has its json files edited. Kicking needs a running server.
+    const disabled = running ? !canControl : !(offline && canEditFiles);
+    const kickDisabled = !canControl || !running;
     const uuidOf = (name: string) => uuids[name] || cache.find((c) => c.name === name)?.uuid || name;
 
     const run = (command: string) => {
@@ -70,10 +78,34 @@ export default () => {
         setTimeout(load, 1200);
     };
 
+    /** Bans and ops: commands while running, straight into the json files while stopped. */
+    const change = async (action: 'ban' | 'pardon' | 'op' | 'deop', name: string, why = '') => {
+        if (running) return run(`${action} ${name}${why ? ` ${why}` : ''}`);
+
+        clearFlashes('players');
+        try {
+            let id = uuidOf(name);
+            if (!UUID_PATTERN.test(id)) id = (await lookupPlayer(name)).uuid;
+            const player = { uuid: dashUuid(id), name };
+
+            if (action === 'op' || action === 'deop') await setOperator(server, player, action === 'op');
+            else await writeBan(server, player, action === 'ban', why || undefined);
+
+            await load();
+        } catch (e) {
+            addFlash({
+                key: 'players',
+                type: 'error',
+                message: (e as any)?.response ? httpErrorToHuman(e) : (e as Error).message,
+            });
+        }
+    };
+
     const confirm = () => {
         if (!pending) return;
         const text = clean(reason);
-        run(`${pending.action} ${pending.name}${text ? ` ${text}` : ''}`);
+        if (pending.action === 'kick') run(`kick ${pending.name}${text ? ` ${text}` : ''}`);
+        else change('ban', pending.name, text);
         setPending(null);
         setReason('');
     };
@@ -94,13 +126,13 @@ export default () => {
         return (
             <div className={'flex flex-wrap items-center gap-2'}>
                 {isOnline && (
-                    <Button.Text disabled={disabled} onClick={() => setPending({ action: 'kick', name })}>
+                    <Button.Text disabled={kickDisabled} onClick={() => setPending({ action: 'kick', name })}>
                         <UserRemoveIcon className={'mr-2 h-4 w-4'} />
                         Kick
                     </Button.Text>
                 )}
                 {isBanned ? (
-                    <Button.Text disabled={disabled} onClick={() => run(`pardon ${name}`)}>
+                    <Button.Text disabled={disabled} onClick={() => change('pardon', name)}>
                         <BanIcon className={'mr-2 h-4 w-4'} />
                         Unban
                     </Button.Text>
@@ -114,7 +146,7 @@ export default () => {
                         Ban
                     </Button.Danger>
                 )}
-                <Button.Text disabled={disabled} onClick={() => run(`${isOp ? 'deop' : 'op'} ${name}`)}>
+                <Button.Text disabled={disabled} onClick={() => change(isOp ? 'deop' : 'op', name)}>
                     <ShieldCheckIcon className={'mr-2 h-4 w-4'} />
                     {isOp ? 'Deop' : 'Op'}
                 </Button.Text>
@@ -158,10 +190,17 @@ export default () => {
         <ServerContentBlock title={'Players'}>
             <FlashMessageRender byKey={'players'} className={'mb-4'} />
             <PageHeader title={'Players'} subtitle={'See who is online and manage their access'} />
-            {!running && (
-                <p className={'mb-4 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800'}>
-                    The server needs to be running to kick, ban or op players.
+            {offline ? (
+                <p className={'mb-4 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800'}>
+                    The server is stopped, so bans and operators are written straight to banned-players.json and
+                    ops.json. Kicking needs the server to be running.
                 </p>
+            ) : (
+                !running && (
+                    <p className={'mb-4 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800'}>
+                        Wait for the server to finish starting or stopping to change bans and operators.
+                    </p>
+                )
             )}
 
             <ListHeader icon={<UsersIcon className={'h-6 w-6'} />} title={'Online'} count={String(online.length)} />

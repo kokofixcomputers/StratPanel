@@ -9,6 +9,8 @@ import { ServerContext } from '@/state/server';
 import deleteFiles from '@/api/server/files/deleteFiles';
 import RenameFileModal from '@/components/server/files/RenameFileModal';
 import { Dialog } from '@/components/elements/dialog';
+import StratPanelFileWarning from '@/components/server/files/StratPanelFileWarning';
+import { protectedFiles } from '@/lib/protectedFiles';
 
 const MassActionsBar = ({ floating = false }: { floating?: boolean }) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -80,7 +82,7 @@ const MassActionsBar = ({ floating = false }: { floating?: boolean }) => {
             <Dialog.Confirm
                 title={'Delete Files'}
                 open={showConfirm}
-                confirm={'Delete'}
+                confirm={protectedFiles(directory, selectedFiles).length ? 'Delete anyway' : 'Delete'}
                 onClose={() => setShowConfirm(false)}
                 onConfirmed={onClickConfirmDeletion}
             >
@@ -95,6 +97,7 @@ const MassActionsBar = ({ floating = false }: { floating?: boolean }) => {
                     ))}
                     {selectedFiles.length > 15 && <li>and {selectedFiles.length - 15} others</li>}
                 </ul>
+                <StratPanelFileWarning directory={directory} names={selectedFiles} />
             </Dialog.Confirm>
             {showMove && (
                 <RenameFileModal
