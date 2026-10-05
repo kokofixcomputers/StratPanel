@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import tw from 'twin.macro';
-import classNames from 'classnames';
 import { Reorder, useDragControls } from 'framer-motion';
 import {
     ChevronDownIcon,
@@ -12,6 +11,7 @@ import {
     PlusIcon,
     RefreshIcon,
     SaveIcon,
+    ServerIcon,
     TrashIcon,
 } from '@heroicons/react/solid';
 import copy from 'copy-to-clipboard';
@@ -25,13 +25,13 @@ import Input, { Textarea } from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
 import Label from '@/components/elements/Label';
 import { Button } from '@/components/elements/button/index';
+import AddServersDialog from '@/components/server/proxy/AddServersDialog';
 import useFlash from '@/plugins/useFlash';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import { httpErrorToHuman } from '@/api/http';
 import { readOptionalFile } from '@/lib/minecraft';
 import {
     FORWARDING_MODES,
-    ForcedHost,
     parseVelocity,
     ProxyConfig,
     ProxyServer,
@@ -189,69 +189,6 @@ const ServerItem = ({
     );
 };
 
-const ForcedHostRow = ({
-    entry,
-    servers,
-    onChange,
-    onRemove,
-}: {
-    entry: ForcedHost;
-    servers: ProxyServer[];
-    onChange: (patch: Partial<ForcedHost>) => void;
-    onRemove: () => void;
-}) => (
-    <div css={tw`flex flex-wrap items-center gap-3 border border-neutral-500 rounded-xl px-3 py-3 bg-white`}>
-        <div css={tw`w-72 max-w-full`}>
-            <Input
-                type={'text'}
-                value={entry.host}
-                placeholder={'survival.example.com'}
-                aria-label={'Hostname'}
-                css={tw`font-mono`}
-                onChange={(e) => onChange({ host: e.currentTarget.value.trim() })}
-            />
-        </div>
-        <span css={tw`text-neutral-400 text-sm`}>sends players to</span>
-        <div css={tw`flex flex-wrap gap-2 flex-1`}>
-            {servers
-                .filter((s) => s.name)
-                .map((s) => {
-                    const active = entry.servers.includes(s.name);
-
-                    return (
-                        <button
-                            key={s.id}
-                            type={'button'}
-                            onClick={() =>
-                                onChange({
-                                    servers: active
-                                        ? entry.servers.filter((n) => n !== s.name)
-                                        : [...entry.servers, s.name],
-                                })
-                            }
-                            className={classNames(
-                                'rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150',
-                                active
-                                    ? 'bg-primary-600 border-primary-600 text-white'
-                                    : 'bg-white border-neutral-500 text-neutral-300 hover:border-neutral-400'
-                            )}
-                        >
-                            {s.name}
-                        </button>
-                    );
-                })}
-        </div>
-        <button
-            type={'button'}
-            aria-label={'Remove forced host'}
-            onClick={onRemove}
-            css={tw`p-2 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors duration-150`}
-        >
-            <TrashIcon css={tw`w-4 h-4`} />
-        </button>
-    </div>
-);
-
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
@@ -269,6 +206,7 @@ export default () => {
     const [secret, setSecret] = useState<string | null>(null);
     const [showSecret, setShowSecret] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [picking, setPicking] = useState(false);
 
     const load = () =>
         Promise.all([readOptionalFile(uuid, FILE), readOptionalFile(uuid, SECRET_FILE)]).then(
@@ -489,61 +427,36 @@ export default () => {
                     </Reorder.Group>
                 )}
                 {hasDuplicate && <p css={tw`mt-3 text-sm text-red-600`}>Server names must be unique.</p>}
-                <Button.Text
-                    css={tw`mt-4`}
-                    onClick={() =>
-                        update({
-                            servers: [
-                                ...config.servers,
-                                {
-                                    id: uid(),
-                                    name: `server${config.servers.length + 1}`,
-                                    address: '127.0.0.1:25566',
-                                    join: false,
-                                },
-                            ],
-                        })
-                    }
-                >
-                    <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
-                    Add server
-                </Button.Text>
-            </Card>
-
-            <Card
-                title={'Forced hosts'}
-                description={
-                    'Send players straight to a server depending on the address they connected with, for example survival.example.com.'
-                }
-            >
-                <div css={tw`space-y-2`}>
-                    {config.forcedHosts.map((entry) => (
-                        <ForcedHostRow
-                            key={entry.id}
-                            entry={entry}
-                            servers={config.servers}
-                            onChange={(patch) =>
-                                update({
-                                    forcedHosts: config.forcedHosts.map((f) =>
-                                        f.id === entry.id ? { ...f, ...patch } : f
-                                    ),
-                                })
-                            }
-                            onRemove={() =>
-                                update({ forcedHosts: config.forcedHosts.filter((f) => f.id !== entry.id) })
-                            }
-                        />
-                    ))}
+                <div css={tw`mt-4 flex flex-wrap gap-2`}>
+                    <Button onClick={() => setPicking(true)}>
+                        <ServerIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                        Add from my servers
+                    </Button>
+                    <Button.Text
+                        onClick={() =>
+                            update({
+                                servers: [
+                                    ...config.servers,
+                                    {
+                                        id: uid(),
+                                        name: `server${config.servers.length + 1}`,
+                                        address: '127.0.0.1:25566',
+                                        join: false,
+                                    },
+                                ],
+                            })
+                        }
+                    >
+                        <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                        Add manually
+                    </Button.Text>
                 </div>
-                <Button.Text
-                    css={tw`mt-4`}
-                    onClick={() =>
-                        update({ forcedHosts: [...config.forcedHosts, { id: uid(), host: '', servers: [] }] })
-                    }
-                >
-                    <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
-                    Add forced host
-                </Button.Text>
+                <AddServersDialog
+                    open={picking}
+                    existing={config.servers}
+                    onClose={() => setPicking(false)}
+                    onAdd={(added) => update({ servers: [...config.servers, ...added] })}
+                />
             </Card>
 
             <div css={tw`grid gap-4 lg:grid-cols-2`}>

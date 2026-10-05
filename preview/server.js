@@ -90,7 +90,8 @@ const app = express();
 app.use(express.json());
 
 const api = express.Router();
-api.get('/', (req, res) => res.json(paginated([item('server', serverAttrs())])));
+const otherServer = (name, uuid, port) => ({ ...serverAttrs(), name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
+api.get('/', (req, res) => res.json(paginated([item('server', serverAttrs()), item('server', otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570)), item('server', otherServer('Creative Plots!', 'b1b2c3d4-0000-4000-8000-000000000002', 25571))])));
 api.get('/self-service', (req, res) => res.json({ object: 'self_service', attributes: { enabled: true, can_create: true, max_servers: 3, owned: 1, limits: { memory: 2048, disk: 10240, cpu: 200 }, max: { memory: 8192, disk: 51200, cpu: 400 }, nodes: [{ id: 1, name: 'Frankfurt-1', location: 'fra', description: 'Frankfurt', ping_url: `http://localhost:${PORT}`, memory_free: 16384, disk_free: 200000, free_allocations: 40 }, { id: 2, name: 'Singapore-1', location: 'sgp', description: 'Singapore', ping_url: 'http://10.255.255.1:8080', memory_free: 1024, disk_free: 200000, free_allocations: 10 }, { id: 3, name: 'Dallas-1', location: 'dal', description: 'Dallas', ping_url: `http://127.0.0.1:${PORT}`, memory_free: 8192, disk_free: 90000, free_allocations: 0 }] } }));
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 api.get('/permissions', (req, res) => res.json({ object: 'system_permissions', attributes: { permissions: {} } }));
@@ -102,7 +103,10 @@ api.get('/servers/:id/websocket', (req, res) => res.json({ data: { token: 'previ
 api.get('/servers/:id/resources', (req, res) => res.json({ object: 'stats', attributes: { current_state: state.status, is_suspended: false, resources: { memory_bytes: 0, cpu_absolute: 0, disk_bytes: 201457664, network_rx_bytes: 0, network_tx_bytes: 0, uptime: 0 } } }));
 api.get('/servers/:id/activity', (req, res) => res.json(paginated([])));
 
-api.get('/servers/:id/files/list', (req, res) => res.json({ object: 'list', data: (files[req.query.directory] || files['/']).map(fileAttrs) }));
+files['/mods'] = [['sodium-fabric-0.5.0.jar', true, 1200000, 'application/jar'], ['lithium-fabric-0.14.jar', true, 900000, 'application/jar']];
+files['/plugins'] = [];
+files['/world'] = [['level.dat', true, 2048, 'application/octet-stream'], ['region', false]];
+api.get('/servers/:id/files/list', (req, res) => res.json({ object: 'list', data: (files[req.query.directory] || (['/', ''].includes(String(req.query.directory)) ? files['/'] : [])).map(fileAttrs) }));
 const fileStore = {
     ...(process.env.PREVIEW_PROXY ? { '/velocity.toml': `# Config version. Do not change this
 config-version = "2.7"
@@ -159,11 +163,25 @@ tcp-fast-open = false
 log-player-connections = true
 `, '/forwarding.secret': 'aB3dE5gH7jK9' } : {}),
     '/server.properties': ['#Minecraft server properties', 'accepts-transfers=false', 'allow-flight=false', 'broadcast-console-to-ops=true', 'broadcast-rcon-to-ops=true', 'bug-report-link=', 'chat-spam-threshold-seconds=10', 'difficulty=normal', 'enable-command-block=false', 'gamemode=survival', 'hardcore=false', 'level-name=world', 'max-players=20', 'motd=A Minecraft Server', 'online-mode=true', 'pvp=true', 'server-port=26614', 'simulation-distance=10', 'spawn-protection=16', 'view-distance=10', 'white-list=false', ''].join('\n'),
+    '/pterodactyl.json': JSON.stringify({ software: process.env.PREVIEW_PROXY ? 'VELOCITY' : 'FABRIC', name: process.env.PREVIEW_PROXY ? 'Velocity' : 'Fabric', minecraftVersion: '1.21.4', build: '0.16.9', java: 21, mods: {
+        AANobbMI: { kind: 'mod', projectId: 'AANobbMI', slug: 'sodium', title: 'Sodium', icon: 'https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp', versionId: 'oldversion', versionNumber: '0.5.0', file: 'sodium-fabric-0.5.0.jar', directory: '/mods', loaders: ['fabric'], gameVersion: '1.21.4', installedAt: '2026-09-01T10:00:00Z' },
+    } }, null, 4),
+    '/usercache.json': JSON.stringify([{ uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', name: 'kokofixcomputers', expiresOn: '2026-11-03 02:09:12 +0000' }, { uuid: '03e95ced-267e-4147-8ea0-5f55c00be51c', name: 'juseewan', expiresOn: '2026-11-02 23:21:01 +0000' }, { uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Notch', expiresOn: '2026-10-30 12:00:00 +0000' }]),
+    '/banned-players.json': '[]',
+    '/config/voicechat/voicechat-server.properties': '# Simple Voice Chat server config\nport=24454\nmax_voice_distance=48.0\n',
     '/ops.json': JSON.stringify([{ uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Notch', level: 4, bypassesPlayerLimit: false }], null, 2),
     '/whitelist.json': JSON.stringify([{ uuid: '853c80ef-3c37-49fd-aa49-938b674adae6', name: 'jeb_' }], null, 2),
 };
-api.post('/servers/:id/files/compress', (req, res) => setTimeout(() => res.status(200).json(fileAttrs([`archive-2026-10-02T170000Z.tar.gz`, true, 48392011, 'application/gzip'])), 7000));
-api.post('/servers/:id/files/decompress', (req, res) => setTimeout(() => res.status(204).end(), 5000));
+const fileTasks = {};
+const startTask = (res, delay, file) => {
+    const id = `t${Date.now()}${Math.random()}`;
+    fileTasks[id] = { status: 'running', file: null };
+    setTimeout(() => (fileTasks[id] = { status: 'done', file }), delay);
+    res.status(202).json({ task: id });
+};
+api.post('/servers/:id/files/compress', (req, res) => startTask(res, 7000, fileAttrs([`archive-2026-10-02T170000Z.tar.gz`, true, 48392011, 'application/gzip'])));
+api.post('/servers/:id/files/decompress', (req, res) => startTask(res, 5000, null));
+api.get('/servers/:id/files/task/:task', (req, res) => res.json({ error: null, file: null, ...(fileTasks[req.params.task] || { status: 'unknown' }) }));
 api.get('/servers/:id/files/contents', (req, res) => (req.query.file in fileStore ? res.type('text/plain').send(fileStore[req.query.file]) : res.status(404).json({ errors: [{ detail: 'not found' }] })));
 api.post('/servers/:id/files/write', express.text({ type: '*/*' }), (req, res) => { fileStore[req.query.file] = req.body; res.status(204).end(); });
 api.get('/servers/:id/files/download', (req, res) => res.json({ attributes: { url: '#' } }));
@@ -248,12 +266,12 @@ wss.on('connection', (ws) => {
     ws.on('message', (raw) => {
         const { event, args } = JSON.parse(raw);
         if (event === 'auth') { send('auth success'); setStatus(state.status); }
-        if (event === 'send logs') boot.concat(warnings).forEach((l) => send('console output', l));
+        if (event === 'send logs') { boot.concat(warnings).forEach((l) => send('console output', l)); send('console output', '[17:00:00] [Server thread/INFO]: kokofixcomputers[/203.0.113.7:51234] logged in with entity id 41 at (0.5, 64.0, 0.5)'); send('console output', '[17:00:05] [Server thread/INFO]: Notch[/203.0.113.8:5000] logged in with entity id 42 at (0.5, 64.0, 0.5)'); send('console output', '[17:01:00] [Server thread/INFO]: Notch lost connection: Disconnected'); }
         if (event === 'send stats') stats();
         if (event === 'send command') send('console output', `> ${args[0]}`), send('console output', '[17:05:01] [Server thread/INFO]: Unknown or incomplete command, see below for error');
         if (event === 'set state') {
             const a = args[0];
-            if (a === 'start') { setStatus('starting'); startup.forEach((l, i) => setTimeout(() => send('console output', l), 400 * (i + 1))); setTimeout(() => setStatus('running'), 1500); }
+            if (a === 'start') { setStatus('starting'); startup.forEach((l, i) => setTimeout(() => send('console output', l), 400 * (i + 1))); setTimeout(() => { setStatus('running'); setTimeout(() => send('console output', '[17:00:00] [Server thread/INFO]: kokofixcomputers[/203.0.113.7:51234] logged in with entity id 41 at (0.5, 64.0, 0.5)'), 500); }, 1500); }
             if (a === 'restart') { setStatus('stopping'); setTimeout(() => { setStatus('starting'); setTimeout(() => setStatus('running'), 1200); }, 1000); }
             if (a === 'stop' || a === 'kill') { setStatus('stopping'); setTimeout(() => { uptime = 0; setStatus('offline'); }, 1000); }
         }

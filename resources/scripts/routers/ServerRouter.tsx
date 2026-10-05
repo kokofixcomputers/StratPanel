@@ -12,6 +12,8 @@ import { NotFound, ServerError } from '@/components/elements/ScreenBlock';
 import { httpErrorToHuman } from '@/api/http';
 import { useStoreState } from 'easy-peasy';
 import SubNavigation from '@/components/elements/SubNavigation';
+import ServerSidebar from '@/components/server/ServerSidebar';
+import PlayerTracker from '@/components/server/PlayerTracker';
 import InstallListener from '@/components/server/InstallListener';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { ExternalLinkIcon } from '@heroicons/react/outline';
@@ -90,10 +92,12 @@ export default () => {
             ) : (
                 <>
                     <CSSTransition timeout={150} classNames={'fade'} appear in>
-                        <SubNavigation>
+                        <SubNavigation className={'lg:hidden'}>
                             <div>
                                 {routes.server
                                     .filter((route) => !!route.name)
+                                    // Proxies have no player list of their own to manage.
+                                    .filter((route) => !(isProxy && route.path === '/players'))
                                     .map((route) =>
                                         route.permission ? (
                                             <Can key={route.path} action={route.permission} matchAny>
@@ -119,24 +123,47 @@ export default () => {
                     <InstallListener />
                     <TransferListener />
                     <WebsocketHandler />
-                    {inConflictState && (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
-                        <ConflictStateRenderer />
-                    ) : (
-                        <ErrorBoundary>
-                            <TransitionRouter>
-                                <Switch location={location}>
-                                    {routes.server.map(({ path, permission, component: Component }) => (
-                                        <PermissionRoute key={path} permission={permission} path={to(path)} exact>
-                                            <Spinner.Suspense>
-                                                <Component />
-                                            </Spinner.Suspense>
-                                        </PermissionRoute>
-                                    ))}
-                                    <Route path={'*'} component={NotFound} />
-                                </Switch>
-                            </TransitionRouter>
-                        </ErrorBoundary>
-                    )}
+                    <PlayerTracker />
+                    <div className={'lg:flex'}>
+                        <ServerSidebar
+                            items={routes.server
+                                .filter((route) => !!route.name && !(isProxy && route.path === '/players'))
+                                .map((route) => ({
+                                    path: route.path,
+                                    url: to(route.path, true),
+                                    label: route.path === '/properties' && isProxy ? 'Proxy' : route.name!,
+                                    permission: route.permission,
+                                    exact: route.exact,
+                                }))}
+                            adminUrl={rootAdmin ? `/admin/servers/view/${serverId}` : undefined}
+                        />
+                        <div className={'min-w-0 flex-1 lg:px-4'}>
+                            {inConflictState &&
+                            (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
+                                <ConflictStateRenderer />
+                            ) : (
+                                <ErrorBoundary>
+                                    <TransitionRouter>
+                                        <Switch location={location}>
+                                            {routes.server.map(({ path, permission, component: Component }) => (
+                                                <PermissionRoute
+                                                    key={path}
+                                                    permission={permission}
+                                                    path={to(path)}
+                                                    exact
+                                                >
+                                                    <Spinner.Suspense>
+                                                        <Component />
+                                                    </Spinner.Suspense>
+                                                </PermissionRoute>
+                                            ))}
+                                            <Route path={'*'} component={NotFound} />
+                                        </Switch>
+                                    </TransitionRouter>
+                                </ErrorBoundary>
+                            )}
+                        </div>
+                    </div>
                 </>
             )}
         </React.Fragment>

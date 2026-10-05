@@ -14,7 +14,9 @@ import { debounce } from 'debounce';
 import { usePersistedState } from '@/plugins/usePersistedState';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import classNames from 'classnames';
+import { commonPrefix, complete } from '@/lib/commandComplete';
 import {
+    ArrowDownIcon,
     ArrowsExpandIcon,
     CheckIcon,
     ChevronDoubleRightIcon,
@@ -91,6 +93,11 @@ export default () => {
     const chunks = useRef<Chunk[]>([]);
     const chunkSeq = useRef(0);
     const frame = useRef(0);
+    // With auto scroll off the view stays where the user left it instead of following new output.
+    const [autoScroll, setAutoScroll] = useState(true);
+    const autoScrollRef = useRef(true);
+    const pin = useRef<IMarker | null>(null);
+    const lastUserScroll = useRef(0);
     const [buttons, setButtons] = useState<{ id: number; top: number }[]>([]);
     const [copiedChunk, setCopiedChunk] = useState<number | null>(null);
     const webLinksAddon = new WebLinksAddon();
@@ -125,11 +132,22 @@ export default () => {
         });
     };
 
+    const pinViewport = () => {
+        const buffer = terminal.buffer.active;
+        pin.current?.dispose();
+        pin.current = terminal.registerMarker(buffer.viewportY - (buffer.baseY + buffer.cursorY)) || null;
+    };
+
+    const keepPosition = () => {
+        if (autoScrollRef.current) return;
+        terminal.scrollToLine(pin.current && !pin.current.isDisposed ? Math.max(pin.current.line, 0) : 0);
+    };
+
     const handleConsoleOutput = (line: string, prelude = false) => {
         const text = line.replace(/(?:\r\n|\r|\n)$/im, '');
         if (prelude) {
             chunkState.current = null;
-            terminal.writeln(TERMINAL_PRELUDE + text + '\u001b[0m');
+            terminal.writeln(TERMINAL_PRELUDE + text + '\u001b[0m', keepPosition);
             return;
         }
 
@@ -154,7 +172,7 @@ export default () => {
             chunks.current[chunks.current.length - 1].text += '\n' + plain;
         }
 
-        terminal.writeln(state && belongs ? colorize(text, state.level) : text + '\u001b[0m');
+        terminal.writeln(state && belongs ? colorize(text, state.level) : text + '\u001b[0m', keepPosition);
     };
 
     const copyChunk = (id: number) => {
@@ -201,7 +219,53 @@ export default () => {
     const handlePowerChangeEvent = (state: string) =>
         terminal.writeln(TERMINAL_PRELUDE + 'Server marked as ' + state + '...\u001b[0m');
 
+    // Tab completion: the candidates for the word being typed, and which one Tab has cycled to.
+    const [suggest, setSuggest] = useState<{ items: string[]; start: number; hint: string | null; active: number }>({
+        items: [],
+        start: 0,
+        hint: null,
+        active: -1,
+    });
+    const closeSuggest = () => setSuggest({ items: [], start: 0, hint: null, active: -1 });
+    const updateSuggest = (value: string) => {
+        if (!value.trim()) return closeSuggest();
+        setSuggest({ ...complete(value), active: -1 });
+    };
+    const applySuggestion = (input: HTMLInputElement, item: string, finish: boolean) => {
+        input.value = input.value.slice(0, suggest.start) + item + (finish ? ' ' : '');
+        input.focus();
+    };
+
     const handleCommandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape' && suggest.items.length) {
+            e.stopPropagation();
+            return closeSuggest();
+        }
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const input = e.currentTarget;
+            const { items, start } = suggest;
+            if (!items.length) return updateSuggest(input.value);
+
+            if (items.length === 1) {
+                applySuggestion(input, items[0], true);
+                return updateSuggest(input.value);
+            }
+
+            // Complete as far as the candidates agree first, then cycle through them.
+            const typed = input.value.slice(start);
+            const shared = commonPrefix(items);
+            if (suggest.active < 0 && shared.length > typed.length) {
+                applySuggestion(input, shared, false);
+                return updateSuggest(input.value);
+            }
+
+            const active = (suggest.active + (e.shiftKey ? items.length - 1 : 1)) % items.length;
+            applySuggestion(input, items[active], false);
+            return setSuggest({ ...suggest, active });
+        }
+
         if (e.key === 'ArrowUp') {
             const newIndex = Math.min(historyIndex + 1, history!.length - 1);
 
@@ -227,6 +291,7 @@ export default () => {
 
             instance && instance.send('send command', command);
             e.currentTarget.value = '';
+            closeSuggest();
         }
     };
 
@@ -309,6 +374,47 @@ export default () => {
             }
         };
     }, [connected, instance]);
+
+    const applyAutoScroll = (next: boolean) => {
+        autoScrollRef.current = next;
+        setAutoScroll(next);
+        if (next) {
+            pin.current?.dispose();
+            pin.current = null;
+        } else {
+            pinViewport();
+        }
+    };
+
+    // Scrolling up by hand turns auto scroll off, returning to the bottom turns it back on. With it off, the
+    // position the user scrolled to is remembered so new output does not pull the view away.
+    useEffect(() => {
+        // xterm's own scroll event only fires for output, so user scrolling is read from its viewport element.
+        const viewport = terminal.element?.querySelector('.xterm-viewport') as HTMLElement | null;
+        if (!viewport) return;
+
+        const onScroll = () => {
+            if (Date.now() - lastUserScroll.current > 400) return;
+
+            const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2;
+            if (atBottom && !autoScrollRef.current) applyAutoScroll(true);
+            else if (!atBottom && autoScrollRef.current) applyAutoScroll(false);
+            else if (!autoScrollRef.current) pinViewport();
+        };
+        viewport.addEventListener('scroll', onScroll, { passive: true });
+
+        return () => viewport.removeEventListener('scroll', onScroll);
+    }, [terminal, connected]);
+
+    const stampUserScroll = () => {
+        lastUserScroll.current = Date.now();
+    };
+
+    const toggleAutoScroll = () => {
+        const next = !autoScroll;
+        applyAutoScroll(next);
+        if (next) terminal.scrollToBottom();
+    };
 
     // Go full screen: lock page scrolling, use a bigger font and let xterm recalculate its rows and columns.
     useEffect(() => {
@@ -402,6 +508,21 @@ export default () => {
                     <SearchIcon className={'w-5 h-5'} />
                 </button>
             )}
+            {!searchOpen && (
+                <button
+                    type={'button'}
+                    onClick={toggleAutoScroll}
+                    aria-pressed={autoScroll}
+                    title={autoScroll ? 'Auto scroll is on' : 'Auto scroll is off'}
+                    className={classNames(
+                        styles.auto_scroll,
+                        autoScroll ? styles.auto_scroll_on : styles.auto_scroll_off
+                    )}
+                >
+                    <ArrowDownIcon className={'w-4 h-4'} />
+                    Auto Scroll
+                </button>
+            )}
             <button
                 type={'button'}
                 onClick={() => setExpanded((v) => !v)}
@@ -413,7 +534,14 @@ export default () => {
             </button>
             <SpinnerOverlay visible={!connected} size={'large'} />
             <div className={styles.container}>
-                <div className={'h-full relative'} ref={overlay}>
+                <div
+                    className={'h-full relative'}
+                    ref={overlay}
+                    onWheelCapture={stampUserScroll}
+                    onMouseDownCapture={stampUserScroll}
+                    onTouchMoveCapture={stampUserScroll}
+                    onKeyDownCapture={stampUserScroll}
+                >
                     <div id={styles.terminal} ref={ref} />
                     {buttons.map((b) => (
                         <button
@@ -443,9 +571,40 @@ export default () => {
                         aria-label={'Console command input.'}
                         disabled={!instance || !connected}
                         onKeyDown={handleCommandKeyDown}
+                        onChange={(e) => updateSuggest(e.currentTarget.value)}
+                        onBlur={() => setTimeout(closeSuggest, 150)}
                         autoCorrect={'off'}
                         autoCapitalize={'none'}
                     />
+                    {(suggest.items.length > 0 || suggest.hint) && (
+                        <div className={styles.suggestions}>
+                            {suggest.items.length === 0 && (
+                                <span className={styles.suggestion_hint}>&lt;{suggest.hint}&gt;</span>
+                            )}
+                            {suggest.items.slice(0, 40).map((item, index) => (
+                                <button
+                                    key={item}
+                                    type={'button'}
+                                    className={classNames(styles.suggestion, {
+                                        [styles.suggestion_active]: index === suggest.active,
+                                    })}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        const input = e.currentTarget
+                                            .closest('div')!
+                                            .parentElement!.querySelector('input')!;
+                                        applySuggestion(input, item, true);
+                                        updateSuggest(input.value);
+                                    }}
+                                >
+                                    {item}
+                                </button>
+                            ))}
+                            {suggest.items.length > 0 && (
+                                <span className={styles.suggestion_hint}>Tab to complete</span>
+                            )}
+                        </div>
+                    )}
                     <div className={classNames('text-neutral-400 peer-focus:text-primary-600', styles.command_icon)}>
                         <ChevronDoubleRightIcon className={'w-4 h-4'} />
                     </div>

@@ -9,6 +9,7 @@ import NetworkContainer from '@/components/server/network/NetworkContainer';
 import StartupContainer from '@/components/server/startup/StartupContainer';
 import VersionsContainer from '@/components/server/versions/VersionsContainer';
 import PropertiesContainer from '@/components/server/properties/PropertiesContainer';
+import PlayersContainer from '@/components/server/players/PlayersContainer';
 import ModsContainer from '@/components/server/mods/ModsContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
@@ -77,6 +78,12 @@ export default {
             name: 'Console',
             component: ServerConsole,
             exact: true,
+        },
+        {
+            path: '/players',
+            permission: 'control.*',
+            name: 'Players',
+            component: PlayersContainer,
         },
         {
             path: '/versions',

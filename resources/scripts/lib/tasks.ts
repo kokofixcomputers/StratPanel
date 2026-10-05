@@ -14,10 +14,12 @@ import { bytesToString } from '@/lib/formatters';
 
 export interface Task {
     id: string;
-    kind: 'archive' | 'extract';
+    kind: 'archive' | 'extract' | 'modpack';
     title: string;
     detail: string;
     status: 'running' | 'done' | 'failed';
+    // Shown as a real progress bar when a task knows how far it is.
+    progress?: { done: number; total: number };
     startedAt: number;
     endedAt?: number;
 }
@@ -122,4 +124,29 @@ export const runExtractTask = (uuid: string, directory: string, file: string): P
             finish(id, uuid, directory);
         })
         .catch((error) => finish(id, uuid, directory, error));
+};
+
+export type TaskReporter = (detail: string, progress?: { done: number; total: number }) => void;
+
+/** Runs any long job as a task, the job reports what it is doing through the callback it is given. */
+export const runTask = (
+    kind: Task['kind'],
+    title: string,
+    work: (report: TaskReporter) => Promise<void>
+): Promise<void> => {
+    const id = begin(kind, title, 'Starting...');
+
+    return work((detail, progress) => patch(id, { detail, progress }))
+        .then(() => {
+            patch(id, { status: 'done', endedAt: Date.now(), detail: 'Finished', progress: undefined });
+            setTimeout(() => dismissTask(id), 10000);
+        })
+        .catch((error) => {
+            patch(id, {
+                status: 'failed',
+                endedAt: Date.now(),
+                progress: undefined,
+                detail: (error as any)?.response ? httpErrorToHuman(error) : (error as Error).message,
+            });
+        });
 };

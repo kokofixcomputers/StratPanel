@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import tw from 'twin.macro';
-import { SearchIcon, SaveIcon } from '@heroicons/react/solid';
+import { RefreshIcon, SearchIcon, SaveIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
+import { usePermissions } from '@/plugins/usePermissions';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader, { EmptyState } from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
@@ -78,6 +79,8 @@ const PropertyCard = ({
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
+    const instance = ServerContext.useStoreState((state) => state.socket.instance);
+    const [canRestart] = usePermissions(['control.restart']);
     const { addFlash, clearFlashes } = useFlash();
 
     const [raw, setRaw] = useState<string | null>(null);
@@ -123,7 +126,7 @@ export default () => {
         [values, search]
     );
 
-    const save = () => {
+    const save = (restart = false) => {
         setSaving(true);
         clearFlashes('properties');
 
@@ -134,10 +137,13 @@ export default () => {
         )
             .then(() => {
                 setOriginal(Object.fromEntries(values.map((line) => [line.key, line.value])));
+                if (restart) instance?.send('set state', 'restart');
                 addFlash({
                     key: 'properties',
                     type: 'success',
-                    message: 'Properties saved. Restart the server for the changes to take effect.',
+                    message: restart
+                        ? 'Properties saved. The server is restarting to apply them.'
+                        : 'Properties saved. Restart the server for the changes to take effect.',
                 });
             })
             .catch((error) => addFlash({ key: 'properties', type: 'error', message: httpErrorToHuman(error) }))
@@ -179,10 +185,21 @@ export default () => {
                                     onChange={(e) => setSearch(e.currentTarget.value)}
                                 />
                             </div>
-                            <Button onClick={save} disabled={!dirty || saving}>
+                            <Button onClick={() => save()} disabled={!dirty || saving}>
                                 <SaveIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
                                 {saving ? 'Saving...' : 'Save'}
                             </Button>
+                            {canRestart && (
+                                <Button
+                                    variant={Button.Variants.Secondary}
+                                    onClick={() => save(true)}
+                                    disabled={!dirty || saving || !instance}
+                                    title={'Save the changes and restart the server'}
+                                >
+                                    <RefreshIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                                    Save &amp; Restart
+                                </Button>
+                            )}
                         </div>
                     </div>
                     {filtered.length === 0 ? (

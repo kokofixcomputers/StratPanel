@@ -3,7 +3,10 @@
 namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 use Illuminate\Http\Response;
+use Pterodactyl\Jobs\ArchiveFilesJob;
+use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Enum\JwtScope;
 use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
@@ -170,43 +173,62 @@ class FileController extends ClientApiController
     }
 
     /**
-     * @throws \Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException
+     * Queues a compress job and responds right away; poll the task endpoint for the result.
      */
-    public function compress(CompressFilesRequest $request, Server $server): array
+    public function compress(CompressFilesRequest $request, Server $server): JsonResponse
     {
-        $file = $this->fileRepository->setServer($server)->compressFiles(
-            $request->input('root'),
-            $request->input('files')
-        );
+        $id = $this->queueArchiveJob($server, 'compress', $request->input('root'), $request->input('files'));
 
         Activity::event('server:file.compress')
             ->property('directory', $request->input('root'))
             ->property('files', $request->input('files'))
             ->log();
 
-        return $this->fractal->item($file)
-            ->transformWith($this->getTransformer(FileObjectTransformer::class))
-            ->toArray();
+        return new JsonResponse(['task' => $id], Response::HTTP_ACCEPTED);
     }
 
     /**
-     * @throws \Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException
+     * Queues a decompress job and responds right away; poll the task endpoint for the result.
      */
     public function decompress(DecompressFilesRequest $request, Server $server): JsonResponse
     {
-        set_time_limit(300);
-
-        $this->fileRepository->setServer($server)->decompressFile(
-            $request->input('root'),
-            $request->input('file')
-        );
+        $id = $this->queueArchiveJob($server, 'decompress', $request->input('root'), [$request->input('file')]);
 
         Activity::event('server:file.decompress')
             ->property('directory', $request->input('root'))
             ->property('files', $request->input('file'))
             ->log();
 
-        return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
+        return new JsonResponse(['task' => $id], Response::HTTP_ACCEPTED);
+    }
+
+    /**
+     * Reports on a queued compress or decompress job.
+     */
+    public function task(ListFilesRequest $request, Server $server, string $task): JsonResponse
+    {
+        $state = Cache::get(ArchiveFilesJob::key($server->uuid, $task));
+        if (is_null($state)) {
+            return new JsonResponse(['status' => 'unknown'], Response::HTTP_NOT_FOUND);
+        }
+
+        $response = ['status' => $state['status'], 'error' => $state['error'] ?? null, 'file' => null];
+        if (!empty($state['file'])) {
+            $response['file'] = $this->fractal->item($state['file'])
+                ->transformWith($this->getTransformer(FileObjectTransformer::class))
+                ->toArray();
+        }
+
+        return new JsonResponse($response);
+    }
+
+    private function queueArchiveJob(Server $server, string $action, ?string $root, array $items): string
+    {
+        $id = Str::uuid()->toString();
+        Cache::put(ArchiveFilesJob::key($server->uuid, $id), ['status' => 'queued'], ArchiveFilesJob::TTL);
+        ArchiveFilesJob::dispatch($id, $server, $action, $root, $items);
+
+        return $id;
     }
 
     /**

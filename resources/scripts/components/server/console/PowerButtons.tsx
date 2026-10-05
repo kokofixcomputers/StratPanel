@@ -8,12 +8,20 @@ import { Dialog } from '@/components/elements/dialog';
 
 interface PowerButtonProps {
     className?: string;
+    // Icon only buttons that share the width equally, for the sidebar.
+    compact?: boolean;
 }
 
-const base =
-    'inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed';
+const baseFor = (compact: boolean) =>
+    classNames(
+        'inline-flex items-center justify-center rounded-lg text-sm font-semibold text-white shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed',
+        compact ? 'flex-1 px-2 py-2' : 'px-5 py-2.5'
+    );
 
-export default ({ className }: PowerButtonProps) => {
+export default ({ className, compact = false }: PowerButtonProps) => {
+    const base = baseFor(compact);
+    const icon = compact ? 'w-5 h-5' : 'w-5 h-5 mr-1.5 -ml-1';
+    const label = (text: string) => <span className={compact ? 'sr-only' : undefined}>{text}</span>;
     const [open, setOpen] = useState(false);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
@@ -59,10 +67,11 @@ export default ({ className }: PowerButtonProps) => {
                         'bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/30 disabled:opacity-50'
                     )}
                     disabled={status !== 'offline'}
+                    title={'Start'}
                     onClick={onButtonClick.bind(this, 'start')}
                 >
-                    <PlayIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
-                    Start
+                    <PlayIcon className={icon} />
+                    {label('Start')}
                 </button>
             </Can>
             <Can action={'control.stop'}>
@@ -72,10 +81,11 @@ export default ({ className }: PowerButtonProps) => {
                         'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600/30 disabled:bg-red-300 disabled:opacity-70'
                     )}
                     disabled={status === 'offline' || !status}
+                    title={killable ? 'Kill' : 'Stop'}
                     onClick={onButtonClick.bind(this, killable ? 'kill' : 'stop')}
                 >
-                    <StopIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
-                    {killable ? 'Kill' : 'Stop'}
+                    <StopIcon className={icon} />
+                    {label(killable ? 'Kill' : 'Stop')}
                 </button>
             </Can>
             <Can action={'control.restart'}>
@@ -85,10 +95,11 @@ export default ({ className }: PowerButtonProps) => {
                         'bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-500/30 disabled:opacity-50'
                     )}
                     disabled={!status}
+                    title={'Restart'}
                     onClick={onButtonClick.bind(this, 'restart')}
                 >
-                    <RefreshIcon className={'w-5 h-5 mr-1.5 -ml-1'} />
-                    Restart
+                    <RefreshIcon className={icon} />
+                    {label('Restart')}
                 </button>
             </Can>
         </div>

@@ -39,6 +39,9 @@ export const serializeProperties = (original: string, values: Record<string, str
         return `${key}=${values[key]}`;
     });
 
+    // New keys go right after the last line of content, not after the blank line a trailing newline leaves.
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+
     Object.keys(values)
         .filter((key) => !seen.has(key))
         .forEach((key) => lines.push(`${key}=${values[key]}`));
@@ -95,7 +98,7 @@ export const lookupPlayer = async (name: string): Promise<Player> => {
 
 // ---- modrinth ----------------------------------------------------------------------------------
 
-export type ProjectKind = 'mod' | 'plugin';
+export type ProjectKind = 'mod' | 'plugin' | 'modpack';
 
 export interface ModrinthProject {
     // eslint-disable-next-line camelcase
@@ -154,27 +157,104 @@ export interface ModrinthFile {
     url: string;
     filename: string;
     primary: boolean;
+    size?: number;
 }
+
+export interface ModrinthVersion {
+    id: string;
+    // eslint-disable-next-line camelcase
+    project_id: string;
+    // eslint-disable-next-line camelcase
+    version_number: string;
+    name: string;
+    // eslint-disable-next-line camelcase
+    game_versions: string[];
+    loaders: string[];
+    files: ModrinthFile[];
+    // eslint-disable-next-line camelcase
+    date_published: string;
+}
+
+const modrinthError = () => new Error('Modrinth could not be reached, please try again in a moment.');
+
+/** All versions of a project, newest first, optionally limited to loaders and Minecraft versions. */
+export const getProjectVersions = async (
+    projectId: string,
+    opts: { loaders?: string[]; gameVersions?: string[] } = {}
+): Promise<ModrinthVersion[]> => {
+    const params = new URLSearchParams();
+    if (opts.loaders?.length) params.set('loaders', JSON.stringify(opts.loaders));
+    if (opts.gameVersions?.length) params.set('game_versions', JSON.stringify(opts.gameVersions));
+
+    const response = await fetch(`${API}/project/${projectId}/version?${params.toString()}`);
+    if (!response.ok) throw modrinthError();
+
+    return response.json();
+};
+
+export const loadersFor = (kind: ProjectKind, loader?: string): string[] =>
+    loader ? [loader] : kind === 'plugin' ? PLUGIN_LOADERS : MOD_LOADERS;
+
+export const primaryFile = (version: ModrinthVersion): ModrinthFile =>
+    version.files.find((file) => file.primary) || version.files[0];
 
 export const findDownload = async (opts: {
     projectId: string;
     kind: ProjectKind;
     loader?: string;
     version?: string;
-}): Promise<{ file: ModrinthFile; versionNumber: string }> => {
-    const loaders = opts.loader ? [opts.loader] : opts.kind === 'plugin' ? PLUGIN_LOADERS : MOD_LOADERS;
-    const params = new URLSearchParams({ loaders: JSON.stringify(loaders) });
-    if (opts.version) params.set('game_versions', JSON.stringify([opts.version]));
-
-    const response = await fetch(`${API}/project/${opts.projectId}/version?${params.toString()}`);
-    if (!response.ok) throw new Error('Modrinth could not be reached, please try again in a moment.');
-
-    const versions: { files: ModrinthFile[]; version_number: string }[] = await response.json();
+}): Promise<{ file: ModrinthFile; versionNumber: string; versionId: string; loaders: string[] }> => {
+    const versions = await getProjectVersions(opts.projectId, {
+        loaders: loadersFor(opts.kind, opts.loader),
+        gameVersions: opts.version ? [opts.version] : undefined,
+    });
     const match = versions.find((version) => version.files.length > 0);
     if (!match) throw new Error('No compatible version was found for this server.');
 
     return {
-        file: match.files.find((file) => file.primary) || match.files[0],
+        file: primaryFile(match),
         versionNumber: match.version_number,
+        versionId: match.id,
+        loaders: match.loaders,
     };
+};
+
+// ---- recognising files that are already on the server ----------------------------------------------------------
+
+export const sha1Hex = async (data: ArrayBuffer): Promise<string> =>
+    Array.from(new Uint8Array(await crypto.subtle.digest('SHA-1', data)))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
+/** Finds the Modrinth versions that belong to the given file hashes, keyed by hash. */
+export const lookupHashes = async (hashes: string[]): Promise<Record<string, ModrinthVersion>> => {
+    if (!hashes.length) return {};
+
+    const response = await fetch(`${API}/version_files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes, algorithm: 'sha1' }),
+    });
+    if (!response.ok) throw modrinthError();
+
+    return response.json();
+};
+
+export interface ModrinthProjectInfo {
+    id: string;
+    slug: string;
+    title: string;
+    // eslint-disable-next-line camelcase
+    icon_url: string | null;
+    // eslint-disable-next-line camelcase
+    project_type: string;
+}
+
+export const getProjects = async (ids: string[]): Promise<ModrinthProjectInfo[]> => {
+    if (!ids.length) return [];
+
+    const response = await fetch(`${API}/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+    if (!response.ok) throw modrinthError();
+
+    return response.json();
 };

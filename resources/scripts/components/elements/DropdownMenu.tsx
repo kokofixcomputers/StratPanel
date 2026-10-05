@@ -40,7 +40,10 @@ class DropdownMenu extends React.PureComponent<Props, State> {
         if (this.state.visible && !prevState.visible && menu) {
             document.addEventListener('click', this.windowListener);
             document.addEventListener('contextmenu', this.contextMenuListener);
-            menu.style.left = `${Math.round(this.state.posX - menu.clientWidth)}px`;
+            // The menu is absolutely positioned, so the viewport coordinate of the click has to be made relative to
+            // whatever element it is positioned against (which is no longer at the left edge now there is a sidebar).
+            const origin = (menu.offsetParent as HTMLElement | null)?.getBoundingClientRect().left ?? 0;
+            menu.style.left = `${Math.round(this.state.posX - menu.clientWidth - origin)}px`;
         }
 
         if (!this.state.visible && prevState.visible) {

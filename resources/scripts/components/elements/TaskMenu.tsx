@@ -99,11 +99,19 @@ const Row = ({ task }: { task: Task }) => (
                 </button>
             )}
         </div>
-        {task.status === 'running' && (
-            <Bar className={'mt-3'}>
-                <div />
-            </Bar>
-        )}
+        {task.status === 'running' &&
+            (task.progress && task.progress.total > 0 ? (
+                <div className={'mt-3 h-1.5 rounded-full bg-primary-50 overflow-hidden'}>
+                    <div
+                        className={'h-full rounded-full bg-primary-600 transition-all duration-300'}
+                        style={{ width: `${Math.min(100, (task.progress.done / task.progress.total) * 100)}%` }}
+                    />
+                </div>
+            ) : (
+                <Bar className={'mt-3'}>
+                    <div />
+                </Bar>
+            ))}
     </li>
 );
 

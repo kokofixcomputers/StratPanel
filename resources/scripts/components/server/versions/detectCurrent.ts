@@ -1,11 +1,9 @@
 import loadDirectory from '@/api/server/files/loadDirectory';
-import saveFileContents from '@/api/server/files/saveFileContents';
 import { readOptionalFile } from '@/lib/minecraft';
 import { SoftwareType } from '@/lib/mcjars';
+import { MARKER, readPterodactylJson, updatePterodactylJson } from '@/lib/pterodactylJson';
 
-export const MARKER = 'pterodactyl.json';
-// Earlier versions of the panel wrote the same information to this hidden file.
-const LEGACY_MARKER = '.panel-version.json';
+export { MARKER };
 
 export interface CurrentVersion {
     type: SoftwareType | 'VANILLA' | null;
@@ -29,23 +27,22 @@ interface Marker {
 
 /** Remembers what the Versions tab last installed, which is the only fully reliable source of truth. */
 export const writeMarker = (uuid: string, marker: Omit<Marker, 'installedAt' | 'installedBy'>) =>
-    saveFileContents(
-        uuid,
-        MARKER,
-        JSON.stringify({ ...marker, installedAt: new Date().toISOString(), installedBy: 'pterodactyl-panel' }, null, 4)
-    ).then(() => {
-        window.dispatchEvent(new CustomEvent('pterodactyl:software-changed'));
-    });
+    updatePterodactylJson(uuid, (current) => ({
+        ...current,
+        ...marker,
+        // Installing software replaces whatever modpack was there, the modpack installer writes its own entry after this.
+        modpack: undefined,
+        installedAt: new Date().toISOString(),
+        installedBy: 'pterodactyl-panel',
+    }));
 
 const readMarker = async (uuid: string): Promise<CurrentVersion | null> => {
-    const raw = (await readOptionalFile(uuid, `/${MARKER}`)) || (await readOptionalFile(uuid, `/${LEGACY_MARKER}`));
-    if (!raw) return null;
-
     try {
         // Be lenient so the file can also be written by hand or by other tooling.
-        const data = JSON.parse(raw);
+        const data = await readPterodactylJson(uuid);
+        if (!Object.keys(data).length) return null;
         const type = String(data.software || data.type || '').toUpperCase();
-        const version = data.minecraftVersion || data.version || data.mc_version || null;
+        const version = String(data.minecraftVersion || data.version || data.mc_version || '') || null;
         if (!type && !version) return null;
 
         return {
@@ -54,7 +51,7 @@ const readMarker = async (uuid: string): Promise<CurrentVersion | null> => {
             build: data.build ? String(data.build) : null,
             java: data.java ? Number(data.java) : null,
             source: 'panel',
-            installedAt: data.installedAt,
+            installedAt: data.installedAt as string | undefined,
         };
     } catch (e) {
         return null;

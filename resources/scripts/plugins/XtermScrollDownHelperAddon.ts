@@ -38,15 +38,22 @@ export class ScrollDownHelperAddon implements ITerminalAddon {
         this.terminal.element.style.position = 'relative';
 
         this.element = document.createElement('div');
+        this.element.title = 'Jump to the latest output';
         this.element.innerHTML =
-            '<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="arrow-down" class="svg-inline--fa fa-bell fa-w-14" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="currentColor" d="M374.6 310.6l-160 160C208.4 476.9 200.2 480 192 480s-16.38-3.125-22.62-9.375l-160-160c-12.5-12.5-12.5-32.75 0-45.25s32.75-12.5 45.25 0L160 370.8V64c0-17.69 14.33-31.1 31.1-31.1S224 46.31 224 64v306.8l105.4-105.4c12.5-12.5 32.75-12.5 45.25 0S387.1 298.1 374.6 310.6z"/></svg>';
+            '<svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
         this.element.style.position = 'absolute';
         this.element.style.right = '1.5rem';
-        this.element.style.bottom = '.5rem';
-        this.element.style.padding = '.5rem';
-        this.element.style.fontSize = '1.25em';
-        this.element.style.boxShadow = '0 2px 8px #000';
-        this.element.style.backgroundColor = '#252526';
+        this.element.style.bottom = '.75rem';
+        this.element.style.display = 'flex';
+        this.element.style.alignItems = 'center';
+        this.element.style.justifyContent = 'center';
+        this.element.style.width = '2.25rem';
+        this.element.style.height = '2.25rem';
+        this.element.style.borderRadius = '0.5rem';
+        this.element.style.border = '1px solid #dbe2ee';
+        this.element.style.color = '#1447e6';
+        this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+        this.element.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.12)';
         this.element.style.zIndex = '999';
         this.element.style.cursor = 'pointer';
 

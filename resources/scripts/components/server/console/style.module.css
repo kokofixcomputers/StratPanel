@@ -18,6 +18,24 @@
         }
     }
 
+    & .suggestions {
+        @apply absolute bottom-full left-3 right-3 mb-2 z-30 flex flex-wrap items-center gap-1.5 p-2 rounded-xl;
+        @apply bg-white border border-neutral-500 shadow-lg max-h-40 overflow-y-auto;
+    }
+
+    & .suggestion {
+        @apply px-2.5 py-1 rounded-lg font-mono text-xs text-neutral-100 bg-neutral-600 border border-neutral-500;
+        @apply transition-colors duration-100 hover:bg-primary-50 hover:border-primary-200;
+    }
+
+    & .suggestion_active {
+        @apply bg-primary-600 border-primary-600 text-white hover:bg-primary-600 hover:border-primary-600;
+    }
+
+    & .suggestion_hint {
+        @apply px-1.5 text-xs text-neutral-300;
+    }
+
     & .command_icon {
         @apply flex items-center top-0 left-0 absolute z-10 select-none h-full px-4 transition-colors duration-100;
     }
@@ -39,6 +57,20 @@
     @apply absolute top-3 right-3 z-20 flex items-center justify-center w-9 h-9 rounded-lg;
     @apply bg-white/90 border border-neutral-500 text-neutral-300 shadow-sm backdrop-blur;
     @apply transition-colors duration-150 hover:text-neutral-50 hover:bg-neutral-600;
+}
+
+.terminal .auto_scroll {
+    @apply absolute top-3 z-20 flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium shadow-sm border;
+    @apply transition-colors duration-150;
+    right: 6.5rem;
+}
+
+.terminal .auto_scroll_on {
+    @apply bg-primary-600 border-primary-600 text-white hover:bg-primary-700;
+}
+
+.terminal .auto_scroll_off {
+    @apply bg-white/90 border-neutral-500 text-neutral-300 hover:text-neutral-50 hover:bg-neutral-600;
 }
 
 /* The search button sits next to the full screen button and expands into a bar. */
@@ -105,6 +137,11 @@
 
     & .search_button {
         right: 4.5rem;
+    }
+
+    & .auto_scroll {
+        @apply top-4;
+        right: 8rem;
     }
 
     & .search_bar {

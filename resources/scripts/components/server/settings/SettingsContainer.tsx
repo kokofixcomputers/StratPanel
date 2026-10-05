@@ -13,6 +13,8 @@ import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import isEqual from 'react-fast-compare';
 import CopyOnClick from '@/components/elements/CopyOnClick';
 import { ip } from '@/lib/formatters';
+import ServerLimitsBox from '@/components/server/settings/ServerLimitsBox';
+import WorldManagerBox from '@/components/server/settings/WorldManagerBox';
 import { Button } from '@/components/elements/button/index';
 
 export default () => {
@@ -25,6 +27,7 @@ export default () => {
     return (
         <ServerContentBlock title={'Settings'}>
             <FlashMessageRender byKey={'settings'} css={tw`mb-4`} />
+            <ServerLimitsBox />
             <div css={tw`md:flex`}>
                 <div css={tw`w-full md:flex-1 md:mr-10`}>
                     <Can action={'file.sftp'}>
@@ -71,6 +74,9 @@ export default () => {
                     </TitledGreyBox>
                 </div>
                 <div css={tw`w-full mt-6 md:flex-1 md:mt-0`}>
+                    <Can action={'file.read'}>
+                        <WorldManagerBox />
+                    </Can>
                     <Can action={'settings.rename'}>
                         <div css={tw`mb-6 md:mb-10`}>
                             <RenameServerBox />

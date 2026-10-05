@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { httpErrorToHuman } from '@/api/http';
 import { CSSTransition } from 'react-transition-group';
 import Spinner from '@/components/elements/Spinner';
@@ -22,6 +22,7 @@ import { useStoreActions } from '@/state/hooks';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { FileActionCheckbox } from '@/components/server/files/SelectFileCheckbox';
 import { hashToPath } from '@/helpers';
+import useJarIcons from '@/components/server/files/useJarIcons';
 import style from './style.module.css';
 
 const sortFiles = (files: FileObject[]): FileObject[] => {
@@ -33,6 +34,7 @@ const sortFiles = (files: FileObject[]): FileObject[] => {
 
 export default () => {
     const id = ServerContext.useStoreState((state) => state.server.data!.id);
+    const serverUuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const { hash } = useLocation();
     const { data: files, error, mutate } = useFileManagerSwr();
     const directory = ServerContext.useStoreState((state) => state.files.directory);
@@ -54,6 +56,21 @@ export default () => {
         mutate();
     }, [directory]);
 
+    // Once the toolbar has scrolled out of view, selection actions follow the user in a floating panel.
+    const toolbar = useRef<HTMLDivElement>(null);
+    const [toolbarVisible, setToolbarVisible] = useState(true);
+    useEffect(() => {
+        const element = toolbar.current;
+        if (!element || typeof IntersectionObserver === 'undefined') return;
+
+        const observer = new IntersectionObserver(([entry]) => setToolbarVisible(entry.isIntersecting));
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [!!error]);
+    const floatingBar = !toolbarVisible && selectedFilesLength > 0;
+    const icons = useJarIcons(serverUuid, directory, files);
+
     const onSelectAllClick = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedFiles(e.currentTarget.checked ? files?.map((file) => file.name) || [] : []);
     };
@@ -74,7 +91,7 @@ export default () => {
                     <FileManagerBreadcrumbs />
                 </div>
                 <Can action={'file.create'}>
-                    <div className={style.toolbar}>
+                    <div className={style.toolbar} ref={toolbar}>
                         <NewDirectoryButton />
                         <NavLink to={`/server/${id}/files/new${window.location.hash}`}>
                             <Button>
@@ -88,6 +105,7 @@ export default () => {
                         <FileManagerStatus />
                     </div>
                 </Can>
+                <Can action={'file.create'}>{floatingBar && <MassActionsBar floating />}</Can>
                 <div css={tw`relative mb-4`}>
                     <SearchIcon css={tw`absolute left-4 top-0 bottom-0 my-auto w-5 h-5 text-neutral-400`} />
                     <input
@@ -130,7 +148,7 @@ export default () => {
                                 {files.length ? 'No files match your search.' : 'This directory seems to be empty.'}
                             </p>
                         ) : (
-                            filtered.map((file) => <FileObjectRow key={file.key} file={file} />)
+                            filtered.map((file) => <FileObjectRow key={file.key} file={file} icon={icons[file.name]} />)
                         )}
                     </div>
                 </CSSTransition>

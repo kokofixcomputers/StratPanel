@@ -1,7 +1,7 @@
 import { encodePathSegments } from '@/helpers';
 import { differenceInHours, format, formatDistanceToNow } from 'date-fns';
 import React, { memo } from 'react';
-import { DocumentIcon, DocumentTextIcon, FolderIcon, LinkIcon, ArchiveIcon } from '@heroicons/react/solid';
+import { DocumentIcon, DocumentTextIcon, FolderIcon, LinkIcon, ArchiveIcon, PuzzleIcon } from '@heroicons/react/solid';
 import classNames from 'classnames';
 import { FileObject } from '@/api/server/files/loadDirectory';
 import FileDropdownMenu from '@/components/server/files/FileDropdownMenu';
@@ -13,6 +13,7 @@ import SelectFileCheckbox from '@/components/server/files/SelectFileCheckbox';
 import { usePermissions } from '@/plugins/usePermissions';
 import { join } from 'pathe';
 import { bytesToString } from '@/lib/formatters';
+import { JarIcon } from '@/components/server/files/useJarIcons';
 import styles from './style.module.css';
 
 const Clickable: React.FC<{ file: FileObject }> = memo(({ file, children }) => {
@@ -34,8 +35,31 @@ const Clickable: React.FC<{ file: FileObject }> = memo(({ file, children }) => {
     );
 }, isEqual);
 
-const FileIcon = ({ file }: { file: FileObject }) => {
+const ProjectIcon = ({ icon }: { icon: JarIcon }) => {
+    const [failed, setFailed] = React.useState(false);
+
+    return failed ? (
+        <PuzzleIcon className={'w-5 h-5 text-primary-600'} />
+    ) : (
+        <img
+            src={icon.url}
+            alt={icon.title}
+            title={icon.title}
+            width={20}
+            height={20}
+            className={'h-5 w-5 rounded object-cover'}
+            onError={() => setFailed(true)}
+        />
+    );
+};
+
+const FileIcon = ({ file, icon }: { file: FileObject; icon?: JarIcon }) => {
     const className = 'w-5 h-5';
+
+    if (icon) return <ProjectIcon icon={icon} />;
+    if (file.isFile && file.name.toLowerCase().endsWith('.jar')) {
+        return <PuzzleIcon className={classNames(className, 'text-neutral-400')} />;
+    }
 
     if (!file.isFile) return <FolderIcon className={classNames(className, 'text-primary-600')} />;
     if (file.isSymlink) return <LinkIcon className={classNames(className, 'text-neutral-400')} />;
@@ -45,7 +69,7 @@ const FileIcon = ({ file }: { file: FileObject }) => {
     return <DocumentIcon className={classNames(className, 'text-neutral-400')} />;
 };
 
-const FileObjectRow = ({ file }: { file: FileObject }) => {
+const FileObjectRow = ({ file, icon }: { file: FileObject; icon?: JarIcon }) => {
     const selected = ServerContext.useStoreState((state) => state.files.selectedFiles.indexOf(file.name) >= 0);
 
     return (
@@ -60,7 +84,7 @@ const FileObjectRow = ({ file }: { file: FileObject }) => {
             <SelectFileCheckbox name={file.name} />
             <Clickable file={file}>
                 <div css={tw`flex-none ml-12 mr-3`}>
-                    <FileIcon file={file} />
+                    <FileIcon file={file} icon={icon} />
                 </div>
                 <div css={tw`flex-1 truncate font-medium`}>{file.name}</div>
                 <div css={tw`w-32 mr-4 hidden sm:block text-neutral-300`}>
@@ -85,5 +109,5 @@ export default memo(FileObjectRow, (prevProps, nextProps) => {
     const { isArchiveType: nextIsArchiveType, isEditable: nextIsEditable, ...nextFile } = nextProps.file;
     /* eslint-enable @typescript-eslint/no-unused-vars */
 
-    return isEqual(prevFile, nextFile);
+    return isEqual(prevFile, nextFile) && isEqual(prevProps.icon, nextProps.icon);
 });

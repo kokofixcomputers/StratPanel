@@ -11,6 +11,7 @@ import FlashMessageRender from '@/components/FlashMessageRender';
 import PageContentBlock from '@/components/elements/PageContentBlock';
 import { ServerError } from '@/components/elements/ScreenBlock';
 import tw from 'twin.macro';
+import ShareLogButton from '@/components/server/ShareLogButton';
 import Button from '@/components/elements/Button';
 import Select from '@/components/elements/Select';
 import useFlash from '@/plugins/useFlash';
@@ -36,8 +37,9 @@ export default () => {
 
     const id = ServerContext.useStoreState((state) => state.server.data!.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const setDirectory = ServerContext.useStoreActions((actions) => actions.files.setDirectory);
-    const { addError, clearFlashes } = useFlash();
+    const { addError, addFlash, clearFlashes } = useFlash();
 
     const filePath = hashToPath(hash);
     const directory = action === 'new' ? filePath : dirname(filePath);
@@ -81,20 +83,22 @@ export default () => {
             .then(() => setLoading(false));
     }, [action, uuid, filePath]);
 
-    const save = async (name?: string) => {
+    const save = async (name?: string): Promise<boolean> => {
         if (!fetchFileContent) {
-            return;
+            return false;
         }
 
         setLoading(true);
         clearFlashes('files:view');
 
         let redirecting = false;
+        let saved = false;
 
         try {
             const content = await fetchFileContent();
 
             await saveFileContents(uuid, name || filePath, content);
+            saved = true;
 
             if (name) {
                 if (draftKey) {
@@ -103,7 +107,7 @@ export default () => {
 
                 history.push(`/server/${id}/files/edit#/${encodePathSegments(name)}`);
                 redirecting = true;
-                return;
+                return true;
             }
         } catch (error) {
             console.error(error);
@@ -113,6 +117,15 @@ export default () => {
                 setLoading(false);
             }
         }
+
+        return saved;
+    };
+
+    const saveAndRestart = async () => {
+        if (!(await save())) return;
+
+        instance?.send('set state', 'restart');
+        addFlash({ key: 'files:view', type: 'success', message: 'File saved. The server is restarting.' });
     };
 
     if (error) {
@@ -176,11 +189,24 @@ export default () => {
                         ))}
                     </Select>
                 </div>
+                {action === 'edit' && /(\.log|crash-reports\/[^/]+\.txt)$/.test(filePath) && (
+                    <ShareLogButton file={filePath} className={'mr-4'} />
+                )}
                 {action === 'edit' ? (
                     <Can action={'file.update'}>
                         <Button css={tw`flex-1 sm:flex-none`} onClick={() => save()}>
                             Save Content
                         </Button>
+                        <Can action={'control.restart'}>
+                            <Button
+                                isSecondary
+                                css={tw`flex-1 sm:flex-none ml-4`}
+                                disabled={!instance}
+                                onClick={() => saveAndRestart()}
+                            >
+                                Save &amp; Restart
+                            </Button>
+                        </Can>
                     </Can>
                 ) : (
                     <Can action={'file.create'}>
