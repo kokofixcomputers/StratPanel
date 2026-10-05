@@ -6,6 +6,7 @@ import Spinner from '@/components/elements/Spinner';
 import { usePermissions } from '@/plugins/usePermissions';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import detectCurrent from '@/components/server/versions/detectCurrent';
+import { readWorldSeed } from '@/lib/worldSeed';
 
 // Where tools/install-mctools.sh puts the build, a static copy of https://github.com/kokofixcomputers/mctoolsv3.
 const TOOLS_URL = '/tools/index.html';
@@ -51,6 +52,20 @@ export default () => {
         };
     }, [uuid]);
 
+    const [seed, setSeed] = useState<string | null>(null);
+
+    // The seed lives in the world files and never changes, so it is read once.
+    useEffect(() => {
+        let cancelled = false;
+        readWorldSeed(uuid)
+            .then((value) => !cancelled && setSeed(value))
+            .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [uuid]);
+
     const running = status === 'running';
 
     const post = useCallback((message: Record<string, unknown>) => {
@@ -64,11 +79,12 @@ export default () => {
                 version: version.version,
                 software: version.software,
                 server: name,
+                seed,
                 running,
                 canRun: canControl,
                 players: online,
             }),
-        [post, version, name, running, canControl, online]
+        [post, version, name, seed, running, canControl, online]
     );
 
     // Tell the tools about the server whenever any of it changes.

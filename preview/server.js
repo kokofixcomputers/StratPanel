@@ -188,8 +188,18 @@ api.post('/servers/:id/files/write', express.text({ type: '*/*' }), (req, res) =
 let mockIcon = null;
 api.get('/servers/:id/files/download', (req, res) => {
     if (String(req.query.file).endsWith('server-icon.png')) return mockIcon ? res.json({ attributes: { url: '/mock-icon' } }) : res.status(404).json({ errors: [{ detail: 'not found' }] });
-    res.json({ attributes: { url: '#' } });
+    if (String(req.query.file).endsWith('/overworld/data/minecraft/world_gen_settings.dat')) return res.json({ attributes: { url: '/mock-world-gen' } });
+    res.json({ attributes: { url: '/mock-missing' } });
 });
+// A gzipped world_gen_settings.dat of the 26.x layout with the seed 3618440937952319688 in it.
+app.get('/mock-world-gen', (req, res) => {
+    const name = (n) => Buffer.concat([Buffer.from([0, n.length]), Buffer.from(n)]);
+    const seed = Buffer.alloc(8);
+    seed.writeBigInt64BE(3618440937952319688n);
+    const nbt = Buffer.concat([Buffer.from([10]), name(''), Buffer.from([10]), name('data'), Buffer.from([4]), name('seed'), seed, Buffer.from([0, 0])]);
+    res.type('application/octet-stream').send(require('node:zlib').gzipSync(nbt));
+});
+app.get('/mock-missing', (req, res) => res.status(404).end());
 app.post('/mock-upload', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => {
     const start = req.body.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     const end = req.body.indexOf(Buffer.from('IEND'));
