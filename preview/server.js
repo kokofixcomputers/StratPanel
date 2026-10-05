@@ -251,6 +251,7 @@ app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false
 const renderAdmin = require('./admin');
 app.use('/themes', express.static(path.join(root, 'public/themes')));
 app.use('/helper', express.static(path.join(root, 'public/helper')));
+app.use('/tools', express.static(path.join(root, 'public/tools')));
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));

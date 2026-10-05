@@ -97,7 +97,9 @@ export default () => {
                                 {routes.server
                                     .filter((route) => !!route.name)
                                     // Proxies have no player list of their own to manage.
-                                    .filter((route) => !(isProxy && route.path === '/players'))
+                                    .filter(
+                                        (route) => !(isProxy && (route.path === '/players' || route.path === '/tools'))
+                                    )
                                     .map((route) =>
                                         route.permission ? (
                                             <Can key={route.path} action={route.permission} matchAny>
@@ -127,7 +129,11 @@ export default () => {
                     <div className={'lg:flex'}>
                         <ServerSidebar
                             items={routes.server
-                                .filter((route) => !!route.name && !(isProxy && route.path === '/players'))
+                                .filter(
+                                    (route) =>
+                                        !!route.name &&
+                                        !(isProxy && (route.path === '/players' || route.path === '/tools'))
+                                )
                                 .map((route) => ({
                                     path: route.path,
                                     url: to(route.path, true),

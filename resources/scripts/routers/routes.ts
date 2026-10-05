@@ -11,6 +11,7 @@ import VersionsContainer from '@/components/server/versions/VersionsContainer';
 import PropertiesContainer from '@/components/server/properties/PropertiesContainer';
 import PlayersContainer from '@/components/server/players/PlayersContainer';
 import ModsContainer from '@/components/server/mods/ModsContainer';
+import ToolsContainer from '@/components/server/tools/ToolsContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
 import AccountOverviewContainer from '@/components/dashboard/AccountOverviewContainer';
@@ -102,6 +103,12 @@ export default {
             permission: 'file.*',
             name: 'Content',
             component: ModsContainer,
+        },
+        {
+            path: '/tools',
+            permission: null,
+            name: 'Tools',
+            component: ToolsContainer,
         },
         {
             path: '/files',

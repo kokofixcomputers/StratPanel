@@ -41,3 +41,5 @@ result
 /panel.tar.gz
 .serena
 /tools/mc-router/dist
+/public/tools
+/.cache

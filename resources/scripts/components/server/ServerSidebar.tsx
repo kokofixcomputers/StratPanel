@@ -14,6 +14,7 @@ import {
     GlobeAltIcon,
     LightningBoltIcon,
     PuzzleIcon,
+    SparklesIcon,
     TerminalIcon,
     UserGroupIcon,
     UsersIcon,
@@ -44,6 +45,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     '/versions': CloudDownloadIcon,
     '/properties': AdjustmentsIcon,
     '/mods': PuzzleIcon,
+    '/tools': SparklesIcon,
     '/files': FolderIcon,
     '/databases': DatabaseIcon,
     '/schedules': ClockIcon,
@@ -58,7 +60,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const GROUPS: { title: string; paths: string[] }[] = [
     { title: 'Server', paths: ['/', '/players'] },
-    { title: 'Minecraft', paths: ['/versions', '/properties', '/mods'] },
+    { title: 'Minecraft', paths: ['/versions', '/properties', '/mods', '/tools'] },
     { title: 'Manage', paths: ['/files', '/databases', '/schedules', '/backups', '/users'] },
     { title: 'Configuration', paths: ['/network', '/domains', '/startup', '/settings', '/activity'] },
 ];
