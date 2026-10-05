@@ -140,8 +140,8 @@ export default () => {
                     ref={frame}
                     title={'Minecraft tools'}
                     src={`${TOOLS_URL}?embed=1`}
-                    className={'w-full rounded-xl border border-neutral-500 bg-white shadow-md'}
-                    style={{ height: 'calc(100vh - 14rem)', minHeight: '28rem' }}
+                    className={'block w-full border-0 bg-transparent'}
+                    style={{ height: 'calc(100vh - 12rem)', minHeight: '28rem' }}
                     // Same origin, so scripts run as the panel; sandbox would only cripple the wasm and clipboard.
                     allow={'clipboard-write'}
                 />
