@@ -148,8 +148,8 @@ export const findLanguageByFilename = (filename: string): string => {
 };
 
 const EditorContainer = styled.div`
-    min-height: 16rem;
-    height: calc(100vh - 22rem);
+    min-height: 20rem;
+    height: calc(100vh - 11.5rem);
     ${tw`relative overflow-hidden rounded-xl border border-neutral-500 bg-white shadow-md`};
 `;
 

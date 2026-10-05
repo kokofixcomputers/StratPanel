@@ -8,7 +8,6 @@ import { useHistory, useLocation, useParams } from 'react-router';
 import FileNameModal from '@/components/server/files/FileNameModal';
 import Can from '@/components/elements/Can';
 import FlashMessageRender from '@/components/FlashMessageRender';
-import PageContentBlock from '@/components/elements/PageContentBlock';
 import { ServerError } from '@/components/elements/ScreenBlock';
 import tw from 'twin.macro';
 import ShareLogButton from '@/components/server/ShareLogButton';
@@ -21,6 +20,19 @@ import { encodePathSegments, hashToPath } from '@/helpers';
 import { dirname } from 'pathe';
 import MonacoEditor, { getLanguages } from '@/components/elements/MonacoEditor';
 
+const PRETTIFY_KEY = 'pterodactyl:editor:prettify-json';
+
+/** Returns the formatted json, or null when the text is not strict json (comments, trailing commas, empty). */
+const prettifyJson = (text: string): string | null => {
+    if (!text.trim()) return null;
+
+    try {
+        return JSON.stringify(JSON.parse(text), null, 2) + '\n';
+    } catch {
+        return null;
+    }
+};
+
 const getNewFileDraftKey = (uuid: string, directory: string) => `pterodactyl:new-file:${uuid}:${directory}`;
 
 export default () => {
@@ -30,6 +42,7 @@ export default () => {
     const [content, setContent] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
     const [mode, setMode] = useState('plaintext');
+    const [prettify, setPrettify] = useState(() => localStorage.getItem(PRETTIFY_KEY) === '1');
     const languages = useMemo(() => getLanguages(), []);
 
     const history = useHistory();
@@ -95,7 +108,15 @@ export default () => {
         let saved = false;
 
         try {
-            const content = await fetchFileContent();
+            let content = await fetchFileContent();
+
+            if (prettify && mode === 'json') {
+                const pretty = prettifyJson(content);
+                if (pretty !== null && pretty !== content) {
+                    content = pretty;
+                    setContent(pretty);
+                }
+            }
 
             await saveFileContents(uuid, name || filePath, content);
             saved = true;
@@ -132,25 +153,90 @@ export default () => {
         return <ServerError message={error} onBack={() => history.goBack()} />;
     }
 
-    return (
-        <PageContentBlock>
-            <FlashMessageRender byKey={'files:view'} css={tw`mb-4`} />
-            <ErrorBoundary>
-                <div css={tw`mb-4`}>
-                    <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
-                </div>
-            </ErrorBoundary>
-            {hash.replace(/^#/, '').endsWith('.pteroignore') && (
-                <div css={tw`mb-4 p-4 border bg-primary-50 rounded-xl border-primary-200`}>
-                    <p css={tw`text-primary-800 text-sm`}>
-                        You&apos;re editing a <code css={tw`font-mono bg-white rounded py-px px-1`}>.pteroignore</code>{' '}
-                        file. Any files or directories listed in here will be excluded from backups. Wildcards are
-                        supported by using an asterisk (<code css={tw`font-mono bg-white rounded py-px px-1`}>*</code>).
-                        You can negate a prior rule by prepending an exclamation point (
-                        <code css={tw`font-mono bg-white rounded py-px px-1`}>!</code>).
-                    </p>
-                </div>
+    const togglePrettify = async (checked: boolean) => {
+        setPrettify(checked);
+        localStorage.setItem(PRETTIFY_KEY, checked ? '1' : '0');
+        if (!checked || !fetchFileContent) return;
+
+        // Format what is in the editor right now, saving does it from then on.
+        const pretty = prettifyJson(await fetchFileContent());
+        if (pretty !== null) setContent(pretty);
+    };
+
+    const isBinary = useMemo(() => content.indexOf('\u0000') >= 0, [content]);
+
+    const buttons = (
+        <div css={tw`flex flex-wrap items-center justify-end gap-2`}>
+            {mode === 'json' && (
+                <label css={tw`flex items-center text-sm text-neutral-200 cursor-pointer mr-2`}>
+                    <input
+                        type={'checkbox'}
+                        css={tw`mr-2`}
+                        checked={prettify}
+                        onChange={(e) => togglePrettify(e.currentTarget.checked)}
+                    />
+                    Prettify JSON
+                </label>
             )}
+            <div css={tw`w-40`}>
+                <Select value={mode} onChange={(e) => setMode(e.currentTarget.value)}>
+                    {languages.map((language) => (
+                        <option key={language.id} value={language.id}>
+                            {language.name}
+                        </option>
+                    ))}
+                </Select>
+            </div>
+            {action === 'edit' && /(\.log|crash-reports\/[^/]+\.txt)$/.test(filePath) && (
+                <ShareLogButton file={filePath} />
+            )}
+            {action === 'edit' ? (
+                <Can action={'file.update'}>
+                    <Can action={'control.restart'}>
+                        <Button isSecondary disabled={!instance} onClick={() => saveAndRestart()}>
+                            Save &amp; Restart
+                        </Button>
+                    </Can>
+                    <Button onClick={() => save()}>Save Content</Button>
+                </Can>
+            ) : (
+                <Can action={'file.create'}>
+                    <Button onClick={() => setModalVisible(true)}>Create File</Button>
+                </Can>
+            )}
+        </div>
+    );
+
+    return (
+        <>
+            <div className={'px-4 pt-4 lg:px-0'}>
+                <FlashMessageRender byKey={'files:view'} css={tw`mb-3`} />
+                <div css={tw`flex flex-wrap items-center justify-between gap-3 mb-3`}>
+                    <ErrorBoundary>
+                        <div css={tw`min-w-0`}>
+                            <FileManagerBreadcrumbs withinFileEditor isNewFile={action !== 'edit'} />
+                        </div>
+                    </ErrorBoundary>
+                    {buttons}
+                </div>
+                {hash.replace(/^#/, '').endsWith('.pteroignore') && (
+                    <div css={tw`mb-3 p-3 border bg-primary-50 rounded-xl border-primary-200`}>
+                        <p css={tw`text-primary-800 text-sm`}>
+                            You&apos;re editing a{' '}
+                            <code css={tw`font-mono bg-white rounded py-px px-1`}>.pteroignore</code> file. Anything
+                            listed in here is excluded from backups. Wildcards are supported with an asterisk, and you
+                            can negate a rule by prepending an exclamation point.
+                        </p>
+                    </div>
+                )}
+                {isBinary && (
+                    <div css={tw`mb-3 p-3 border bg-yellow-50 rounded-xl border-yellow-200`}>
+                        <p css={tw`text-yellow-800 text-sm`}>
+                            This looks like a binary file. Saving it from the editor will probably corrupt it.
+                        </p>
+                    </div>
+                )}
+            </div>
             <FileNameModal
                 visible={modalVisible}
                 onDismissed={() => setModalVisible(false)}
@@ -159,7 +245,7 @@ export default () => {
                     save(name);
                 }}
             />
-            <div css={tw`relative`}>
+            <div css={tw`relative px-4 lg:px-0 pb-4`}>
                 <SpinnerOverlay visible={loading} />
                 <MonacoEditor
                     mode={mode}
@@ -179,43 +265,6 @@ export default () => {
                     onContentChanged={action === 'new' ? saveDraft : undefined}
                 />
             </div>
-            <div css={tw`flex justify-end mt-4`}>
-                <div css={tw`flex-1 sm:flex-none mr-4`}>
-                    <Select value={mode} onChange={(e) => setMode(e.currentTarget.value)}>
-                        {languages.map((language) => (
-                            <option key={language.id} value={language.id}>
-                                {language.name}
-                            </option>
-                        ))}
-                    </Select>
-                </div>
-                {action === 'edit' && /(\.log|crash-reports\/[^/]+\.txt)$/.test(filePath) && (
-                    <ShareLogButton file={filePath} className={'mr-4'} />
-                )}
-                {action === 'edit' ? (
-                    <Can action={'file.update'}>
-                        <Button css={tw`flex-1 sm:flex-none`} onClick={() => save()}>
-                            Save Content
-                        </Button>
-                        <Can action={'control.restart'}>
-                            <Button
-                                isSecondary
-                                css={tw`flex-1 sm:flex-none ml-4`}
-                                disabled={!instance}
-                                onClick={() => saveAndRestart()}
-                            >
-                                Save &amp; Restart
-                            </Button>
-                        </Can>
-                    </Can>
-                ) : (
-                    <Can action={'file.create'}>
-                        <Button css={tw`flex-1 sm:flex-none`} onClick={() => setModalVisible(true)}>
-                            Create File
-                        </Button>
-                    </Can>
-                )}
-            </div>
-        </PageContentBlock>
+        </>
     );
 };
