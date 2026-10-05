@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { PlusIcon, SparklesIcon, XIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
+import '@/assets/fonts/monocraft.css';
+import { PING_5, UNKNOWN_SERVER } from '@/lib/minecraftIcons';
 import { CharFormat, COLORS, encodeMotdLines, FLAGS, MAX_LINES, MotdLine, parseMotdLines } from '@/lib/motd';
 import { interpolateColors } from '@/lib/gradient';
 import { GRADIENT_PRESETS, QUICK_PRESETS } from '@/lib/gradientPresets';
@@ -10,7 +12,8 @@ type Flag = typeof FLAGS[number];
 
 const OBFUSCATION = 'abcdefghijklmnopqrstuvwxyz0123456789#%&?!';
 const DEFAULT_COLOR = '#aaaaaa';
-const FONT = '"Minecraft", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+// Monocraft, a free pixel font that looks like the game's, see assets/fonts.
+const FONT = '"Monocraft", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
 // The dark surfaces of the editor. The page around it is light, this is meant to look like the game.
 const INK = { surface: '#161616', raised: '#202020', line: '#343434', text: '#e4e4e4', muted: '#8a8a8a' };
@@ -26,13 +29,17 @@ const sameFormat = (a: CharFormat, b: CharFormat) =>
     a.color === b.color && FLAGS.every((flag) => !!a[flag] === !!b[flag]);
 
 /** Runs of characters that share their formatting, which are what the preview draws as one piece. */
-const runs = (line: MotdLine): { text: string; format: CharFormat }[] => {
-    const out: { text: string; format: CharFormat }[] = [];
+const runs = (
+    line: MotdLine,
+    selection: { s: number; e: number } | null = null
+): { text: string; format: CharFormat; selected: boolean }[] => {
+    const out: { text: string; format: CharFormat; selected: boolean }[] = [];
     for (let i = 0; i < line.text.length; i++) {
         const format = line.fmts[i] || {};
+        const selected = !!selection && i >= selection.s && i < selection.e;
         const last = out[out.length - 1];
-        if (last && sameFormat(last.format, format)) last.text += line.text[i];
-        else out.push({ text: line.text[i], format });
+        if (last && last.selected === selected && sameFormat(last.format, format)) last.text += line.text[i];
+        else out.push({ text: line.text[i], format, selected });
     }
 
     return out;
@@ -341,14 +348,30 @@ const LINE: React.CSSProperties = {
     letterSpacing: 0,
 };
 
-const Overlay = ({ line, tick, placeholder }: { line: MotdLine; tick: number; placeholder: string }) => (
+const Overlay = ({
+    line,
+    tick,
+    placeholder,
+    selection,
+}: {
+    line: MotdLine;
+    tick: number;
+    placeholder: string;
+    selection: { s: number; e: number } | null;
+}) => (
     <div
         aria-hidden
         className={'select-none overflow-hidden'}
-        style={{ ...LINE, gridArea: '1 / 1', pointerEvents: 'none', zIndex: 1 }}
+        style={{
+            ...LINE,
+            gridArea: '1 / 1',
+            pointerEvents: 'none',
+            zIndex: 1,
+            textAlign: line.center ? 'center' : 'left',
+        }}
     >
         {line.text ? (
-            runs(line).map((run, index) => {
+            runs(line, selection).map((run, index) => {
                 const color = run.format.color || DEFAULT_COLOR;
 
                 return (
@@ -363,6 +386,10 @@ const Overlay = ({ line, tick, placeholder }: { line: MotdLine; tick: number; pl
                                     .filter(Boolean)
                                     .join(' ') || 'none',
                             textShadow: `2px 2px 0 ${shadowOf(color)}`,
+                            // Drawn here and not by the browser, the input's own highlight is too faint on black and
+                            // goes away when the colour picker takes the focus.
+                            background: run.selected ? 'rgba(96, 139, 250, 0.7)' : 'none',
+                            boxShadow: run.selected ? '0 0 0 1px rgba(147, 180, 253, 0.9)' : 'none',
                         }}
                     >
                         {run.format.obfuscated
@@ -394,6 +421,8 @@ interface Props {
     onPickIcon?: (file: File) => void;
     onRemoveIcon?: () => void;
     maxPlayers?: number;
+    // Buttons for the top right of the card, the properties page puts Save and Save & Restart here.
+    actions?: React.ReactNode;
 }
 
 interface Selection {
@@ -406,7 +435,7 @@ interface Selection {
  * Builds the message of the day. The two lines are edited right where they show up in the multiplayer server list,
  * with a toolbar for colours, formats and gradients that works on the selected text.
  */
-export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPlayers = 20 }: Props) => {
+export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPlayers = 20, actions }: Props) => {
     const serverName = ServerContext.useStoreState((state) => state.server.data?.name || 'A Minecraft Server');
     const picker = useRef<HTMLInputElement>(null);
     const inputs = useRef<(HTMLInputElement | null)[]>([null, null]);
@@ -419,6 +448,8 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
     const [lines, setLines] = useState<MotdLine[]>(() => parseMotdLines(value));
     const [sel, setSel] = useState<Selection | null>(null);
     const [focused, setFocused] = useState<number | null>(null);
+    // The line the toolbar's centre button works on: the one being edited, or else the one edited last.
+    const [current, setCurrent] = useState(0);
     const [tick, setTick] = useState(0);
     const [stops, setStops] = useState(['#ff0000', '#0000ff']);
     const [gradient, setGradient] = useState(false);
@@ -450,6 +481,54 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
 
         return () => clearInterval(timer);
     }, [animated]);
+
+    // The highlight follows the selection while it is being made. React only reports a selection once the mouse is let go,
+    // so a drag is followed by hand, and the browser's own event covers the keyboard (shift and the arrow keys).
+    useEffect(() => {
+        const remove: (() => void)[] = [];
+        inputs.current.forEach((el, index) => {
+            if (!el) return;
+            const read = () => {
+                if (document.activeElement !== el) return;
+                const start = el.selectionStart ?? 0;
+                const end = el.selectionEnd ?? 0;
+                setSel((previous) =>
+                    start >= end
+                        ? previous && previous.line === index
+                            ? null
+                            : previous
+                        : previous && previous.line === index && previous.s === start && previous.e === end
+                        ? previous
+                        : { line: index, s: start, e: end }
+                );
+            };
+            let frame = 0;
+            const move = () => {
+                cancelAnimationFrame(frame);
+                frame = requestAnimationFrame(read);
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                read();
+            };
+            const down = () => {
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+            };
+            el.addEventListener('mousedown', down);
+            el.addEventListener('selectionchange', read);
+            remove.push(() => {
+                cancelAnimationFrame(frame);
+                el.removeEventListener('mousedown', down);
+                el.removeEventListener('selectionchange', read);
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+            });
+        });
+
+        return () => remove.forEach((fn) => fn());
+    }, []);
 
     // The selection before a character goes in is needed to know which formatting a typed character inherits.
     useEffect(() => {
@@ -486,7 +565,13 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
         if (!el) return;
         const s = el.selectionStart ?? 0;
         const e = el.selectionEnd ?? 0;
-        setSel(s < e ? { line: index, s, e } : null);
+        setSel((previous) =>
+            s >= e
+                ? null
+                : previous && previous.line === index && previous.s === s && previous.e === e
+                ? previous
+                : { line: index, s, e }
+        );
     };
 
     const typed = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -503,7 +588,7 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
         ].slice(0, next.length);
         while (fmts.length < next.length) fmts.push({ ...inherit });
 
-        commit(lines.map((l, i) => (i === index ? { text: next, fmts } : l)));
+        commit(lines.map((l, i) => (i === index ? { ...l, text: next, fmts } : l)));
     };
 
     const patch = (change: (format: CharFormat) => CharFormat) => {
@@ -574,17 +659,23 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
         }
     };
 
+    const setCentered = (which: number[], center: boolean) =>
+        commit(lines.map((line, i) => (which.includes(i) ? { ...line, center } : line)));
+
     const colorList = useMemo(() => Object.keys(COLORS), []);
     const hasSel = sel !== null;
 
     return (
         <div className={'bg-white border border-neutral-500 rounded-xl shadow-md mb-4'}>
-            <div className={'px-5 py-4 border-b border-neutral-500'}>
-                <h2 className={'text-base font-semibold text-neutral-50'}>MOTD Builder</h2>
-                <p className={'text-sm text-neutral-400 mt-0.5'}>
-                    The message shown in the multiplayer server list. Type straight into the preview, select text and
-                    pick a colour, a format or a gradient.
-                </p>
+            <div className={'px-5 py-4 border-b border-neutral-500 flex flex-wrap items-center justify-between gap-3'}>
+                <div className={'min-w-0'}>
+                    <h2 className={'text-base font-semibold text-neutral-50'}>MOTD Builder</h2>
+                    <p className={'text-sm text-neutral-400 mt-0.5'}>
+                        The message shown in the multiplayer server list. Type straight into the preview, select text
+                        and pick a colour, a format or a gradient.
+                    </p>
+                </div>
+                {actions && <div className={'flex flex-wrap items-center gap-2'}>{actions}</div>}
             </div>
             <div className={'p-5'}>
                 <div className={'rounded-xl p-3'} style={{ background: INK.surface, border: `1px solid ${INK.line}` }}>
@@ -693,6 +784,21 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                         </div>
                         <Divider />
                         <Tool
+                            title={'Centre this line. Minecraft has no alignment, so spaces are put in front of it.'}
+                            active={!!lines[current].center}
+                            onClick={() => setCentered([current], !lines[current].center)}
+                        >
+                            Center
+                        </Tool>
+                        <Tool
+                            title={'Centre both lines'}
+                            active={lines.every((line) => line.center)}
+                            onClick={() => setCentered([0, 1], !lines.every((line) => line.center))}
+                        >
+                            Center both
+                        </Tool>
+                        <Divider />
+                        <Tool
                             title={'Clear formatting of the selection'}
                             disabled={!hasSel}
                             onClick={() => patch(() => ({}))}
@@ -701,6 +807,7 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                         </Tool>
                     </div>
 
+                    <style>{'.motd-input::selection { background: transparent; }'}</style>
                     {/* The server list entry */}
                     <div
                         className={'flex items-start rounded-sm p-1'}
@@ -721,19 +828,17 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                             style={{
                                 width: 64,
                                 height: 64,
-                                background: icon ? 'none' : 'linear-gradient(135deg, #5b8a3a 0 50%, #7a5a3a 50% 100%)',
+                                background: 'none',
                                 cursor: onPickIcon ? 'pointer' : 'default',
                             }}
                         >
-                            {icon && (
-                                <img
-                                    src={icon}
-                                    alt={'Server icon'}
-                                    width={64}
-                                    height={64}
-                                    style={{ imageRendering: 'pixelated', width: 64, height: 64 }}
-                                />
-                            )}
+                            <img
+                                src={icon || UNKNOWN_SERVER}
+                                alt={'Server icon'}
+                                width={64}
+                                height={64}
+                                style={{ imageRendering: 'pixelated', width: 64, height: 64 }}
+                            />
                             {onPickIcon && (
                                 <span
                                     className={
@@ -768,24 +873,14 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                                         0<span style={{ color: '#555555' }}>/</span>
                                         {maxPlayers}
                                     </span>
-                                    <svg
+                                    <img
+                                        src={PING_5}
+                                        alt={'Connection strength'}
                                         width={20}
                                         height={16}
-                                        viewBox={'0 0 10 8'}
                                         className={'ml-2'}
-                                        shapeRendering={'crispEdges'}
-                                    >
-                                        {[0, 1, 2, 3, 4].map((bar) => (
-                                            <rect
-                                                key={bar}
-                                                x={bar * 2}
-                                                y={7 - (bar + 3)}
-                                                width={1.4}
-                                                height={bar + 3}
-                                                fill={'#55ff55'}
-                                            />
-                                        ))}
-                                    </svg>
+                                        style={{ imageRendering: 'pixelated' }}
+                                    />
                                 </span>
                             </div>
                             {lines.map((line, index) => (
@@ -797,7 +892,12 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                                         outlineOffset: 1,
                                     }}
                                 >
-                                    <Overlay line={line} tick={tick} placeholder={`Line ${index + 1}`} />
+                                    <Overlay
+                                        line={line}
+                                        tick={tick}
+                                        placeholder={`Line ${index + 1}`}
+                                        selection={sel && sel.line === index ? sel : null}
+                                    />
                                     <input
                                         ref={(el) => {
                                             inputs.current[index] = el;
@@ -811,15 +911,19 @@ export default ({ value, onChange, icon = null, onPickIcon, onRemoveIcon, maxPla
                                         onMouseUp={() => report(index)}
                                         onKeyUp={() => report(index)}
                                         onKeyDown={keys(index)}
-                                        onFocus={() => setFocused(index)}
+                                        onFocus={() => {
+                                            setFocused(index);
+                                            setCurrent(index);
+                                        }}
                                         onBlur={() => setFocused((current) => (current === index ? null : current))}
-                                        className={'border-0 outline-none w-full'}
+                                        className={'motd-input border-0 outline-none w-full'}
                                         style={{
                                             ...LINE,
                                             gridArea: '1 / 1',
                                             background: 'transparent',
                                             color: 'transparent',
                                             caretColor: '#ffffff',
+                                            textAlign: line.center ? 'center' : 'left',
                                         }}
                                     />
                                 </div>

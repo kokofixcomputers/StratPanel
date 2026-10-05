@@ -190,6 +190,26 @@ export default () => {
         }
     };
 
+    const saveButtons = (
+        <>
+            <Button onClick={() => save()} disabled={!dirty || saving}>
+                <SaveIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                {saving ? 'Saving...' : 'Save'}
+            </Button>
+            {canRestart && (
+                <Button
+                    variant={Button.Variants.Secondary}
+                    onClick={() => save(true)}
+                    disabled={!dirty || saving || !instance}
+                    title={'Save the changes and restart the server'}
+                >
+                    <RefreshIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                    Save &amp; Restart
+                </Button>
+            )}
+        </>
+    );
+
     return (
         <ServerContentBlock title={'Server Properties'}>
             <PageHeader title={'Server Properties'} subtitle={`View and edit server.properties for ${serverName}`} />
@@ -203,6 +223,7 @@ export default () => {
             ) : (
                 <>
                     <MotdBuilder
+                        actions={saveButtons}
                         icon={shownIcon}
                         onPickIcon={pickIcon}
                         onRemoveIcon={() => setPendingIcon({ blob: null, url: null })}
@@ -229,21 +250,7 @@ export default () => {
                                     onChange={(e) => setSearch(e.currentTarget.value)}
                                 />
                             </div>
-                            <Button onClick={() => save()} disabled={!dirty || saving}>
-                                <SaveIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
-                                {saving ? 'Saving...' : 'Save'}
-                            </Button>
-                            {canRestart && (
-                                <Button
-                                    variant={Button.Variants.Secondary}
-                                    onClick={() => save(true)}
-                                    disabled={!dirty || saving || !instance}
-                                    title={'Save the changes and restart the server'}
-                                >
-                                    <RefreshIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
-                                    Save &amp; Restart
-                                </Button>
-                            )}
+                            {saveButtons}
                         </div>
                     </div>
                     {filtered.length === 0 ? (

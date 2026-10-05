@@ -165,6 +165,8 @@ export interface MotdLine {
     text: string;
     // One entry per UTF-16 unit of text, so it lines up with the selection of the input.
     fmts: CharFormat[];
+    // Minecraft has no alignment, a centred line is stored with spaces in front of it that are worked out from its width.
+    center?: boolean;
 }
 
 export const FLAGS = ['bold', 'italic', 'underlined', 'strikethrough', 'obfuscated'] as const;
@@ -243,9 +245,44 @@ export const parseLegacyLine = (source: string): MotdLine => {
     return { text, fmts };
 };
 
+// Width of a character in the game's default font in pixels, with the pixel between characters. Everything else is 6.
+const NARROW: Record<number, string> = {
+    2: '!,.:;i|',
+    3: "'`l",
+    4: ' I[]t(){}*"',
+    5: 'fk<>',
+    7: '@~',
+};
+const charWidths: Record<string, number> = {};
+Object.keys(NARROW).forEach((width) => NARROW[Number(width)].split('').forEach((c) => (charWidths[c] = Number(width))));
+
+/** The pixels a line takes up in the server list, bold characters are one pixel wider. */
+export const lineWidth = (line: MotdLine): number =>
+    line.text.split('').reduce((total, char, i) => total + (charWidths[char] ?? 6) + (line.fmts[i]?.bold ? 1 : 0), 0);
+
+// What fits next to the icon in the server list, and the width of a space. Close enough, the client does not wrap.
+export const LINE_PIXELS = 270;
+const SPACE = 4;
+
+/** How many spaces put the line in the middle. */
+export const centerPadding = (line: MotdLine): number =>
+    Math.max(0, Math.round((LINE_PIXELS - lineWidth(line)) / 2 / SPACE));
+
 /** The raw value of the motd property into the formatted lines of the editor. */
 export const parseMotdLines = (raw: string): MotdLine[] => {
-    const lines = unescapeMotd(raw).split('\n').slice(0, MAX_LINES).map(parseLegacyLine);
+    const lines = unescapeMotd(raw)
+        .split('\n')
+        .slice(0, MAX_LINES)
+        .map(parseLegacyLine)
+        .map((line) => {
+            // Spaces in front that are about what centring would add are brought back as the centre setting.
+            const lead = line.text.length - line.text.trimStart().length;
+            if (lead < 2 || lead === line.text.length) return line;
+
+            const rest = { text: line.text.slice(lead), fmts: line.fmts.slice(lead) };
+
+            return Math.abs(lead - centerPadding(rest)) <= 1 ? { ...rest, center: true } : line;
+        });
 
     while (lines.length < MAX_LINES) lines.push({ text: '', fmts: [] });
 
@@ -273,7 +310,7 @@ export const encodeMotdLines = (lines: MotdLine[]): string => {
     while (used.length > 1 && !used[used.length - 1].text) used.pop();
 
     const encoded = used.map((line) => {
-        let out = '';
+        let out = line.center && line.text ? ' '.repeat(centerPadding(line)) : '';
         let previous: CharFormat = {};
 
         for (let i = 0; i < line.text.length; i++) {

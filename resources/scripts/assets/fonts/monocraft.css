@@ -1,0 +1,36 @@
+/*
+ * Monocraft by Idrees Hassan, https://github.com/IdreesInc/Monocraft, SIL Open Font License 1.1 (Monocraft-OFL.txt).
+ * Cut down to Latin text for the MOTD builder, see components/server/properties/MotdBuilder.tsx. The browser only
+ * downloads these once something is drawn with the font.
+ */
+@font-face {
+    font-family: 'Monocraft';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('./Monocraft-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Monocraft';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('./Monocraft-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Monocraft';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('./Monocraft-Italic.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Monocraft';
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url('./Monocraft-BoldItalic.woff2') format('woff2');
+}

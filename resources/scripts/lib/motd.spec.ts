@@ -1,4 +1,4 @@
-import { decodeMotd, encodeMotd, encodeMotdLines, parseMotd, parseMotdLines } from './motd';
+import { centerPadding, decodeMotd, encodeMotd, encodeMotdLines, lineWidth, parseMotd, parseMotdLines } from './motd';
 
 describe('motd', () => {
     it('round trips colour codes through the properties format', () => {
@@ -78,5 +78,43 @@ describe('formatted lines', () => {
         ];
 
         expect(parseMotdLines(encodeMotdLines(lines))[0].text).toBe('Q&A &a');
+    });
+});
+
+describe('centred lines', () => {
+    const plain = (text: string, center = false) => ({
+        text,
+        fmts: Array.from({ length: text.length }, () => ({})),
+        center,
+    });
+
+    it('measures text with the width of the game font', () => {
+        expect(lineWidth(plain('iii'))).toBe(6);
+        expect(lineWidth(plain('abc'))).toBe(18);
+        expect(lineWidth({ text: 'a', fmts: [{ bold: true }] })).toBe(7);
+    });
+
+    it('pads a centred line with spaces and leaves the others alone', () => {
+        const centred = encodeMotdLines([plain('Hello', true), plain('Hello')]);
+        const [first, second] = centred.split('\\n');
+
+        expect(first.startsWith(' '.repeat(centerPadding(plain('Hello'))) + 'Hello')).toBe(true);
+        expect(second).toBe('Hello');
+    });
+
+    it('does not pad an empty line', () => {
+        expect(encodeMotdLines([plain('', true)])).toBe('');
+    });
+
+    it('turns the padding back into the centre setting', () => {
+        const back = parseMotdLines(encodeMotdLines([plain('Welcome', true), plain('Bye')]));
+
+        expect(back[0]).toMatchObject({ text: 'Welcome', center: true });
+        expect(back[1].center).toBeUndefined();
+    });
+
+    it('keeps a few spaces typed by hand as text', () => {
+        expect(parseMotdLines('   hi')[0]).toMatchObject({ text: '   hi' });
+        expect(parseMotdLines('   hi')[0].center).toBeUndefined();
     });
 });
