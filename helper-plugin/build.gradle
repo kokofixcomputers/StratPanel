@@ -80,6 +80,8 @@ test {
 }
 
 processResources {
+    // The version is written into plugin.yml, tell Gradle so it does not reuse an old plugin.yml when only the time changed.
+    inputs.property('pluginVersion', version.toString())
     filesMatching("**/plugin.yml") {
         expand ( NAME: rootProject.name, VERSION: version, PACKAGE: rootProject.group.toString() )
     }

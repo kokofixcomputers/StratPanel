@@ -4,14 +4,24 @@ import { PlusIcon, SparklesIcon, XIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
 import '@/assets/fonts/monocraft.css';
 import { PING_5, UNKNOWN_SERVER } from '@/lib/minecraftIcons';
-import { CharFormat, COLORS, encodeMotdLines, FLAGS, MAX_LINES, MotdLine, parseMotdLines } from '@/lib/motd';
+import {
+    CharFormat,
+    COLORS,
+    DEFAULT_MOTD_COLOR,
+    encodeMotdLines,
+    FLAGS,
+    MAX_LINES,
+    MotdLine,
+    parseMotdLines,
+} from '@/lib/motd';
 import { interpolateColors } from '@/lib/gradient';
 import { GRADIENT_PRESETS, QUICK_PRESETS } from '@/lib/gradientPresets';
 
 type Flag = typeof FLAGS[number];
 
 const OBFUSCATION = 'abcdefghijklmnopqrstuvwxyz0123456789#%&?!';
-const DEFAULT_COLOR = '#aaaaaa';
+// What the server list draws a MOTD in when nothing says otherwise.
+const DEFAULT_COLOR = DEFAULT_MOTD_COLOR;
 // Monocraft, a free pixel font that looks like the game's, see assets/fonts.
 const FONT = '"Monocraft", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
@@ -348,6 +358,40 @@ const LINE: React.CSSProperties = {
     letterSpacing: 0,
 };
 
+/**
+ * Wraps neighbouring selected pieces in one highlight. Each piece with its own background and outline would show a
+ * seam between every two characters of a gradient, which has a colour per character.
+ */
+const groupSelected = (pieces: { selected: boolean; node: React.ReactNode }[]): React.ReactNode[] => {
+    const out: React.ReactNode[] = [];
+    let group: React.ReactNode[] = [];
+    const flush = (key: number) => {
+        if (!group.length) return;
+        // Drawn here and not by the browser, the input's own highlight is too faint on black and goes away when the
+        // colour picker takes the focus.
+        out.push(
+            <span
+                key={`selected-${key}`}
+                style={{ background: 'rgba(96, 139, 250, 0.7)', boxShadow: '0 0 0 1px rgba(147, 180, 253, 0.9)' }}
+            >
+                {group}
+            </span>
+        );
+        group = [];
+    };
+
+    pieces.forEach((piece, index) => {
+        if (piece.selected) group.push(piece.node);
+        else {
+            flush(index);
+            out.push(piece.node);
+        }
+    });
+    flush(pieces.length);
+
+    return out;
+};
+
 const Overlay = ({
     line,
     tick,
@@ -371,40 +415,46 @@ const Overlay = ({
         }}
     >
         {line.text ? (
-            runs(line, selection).map((run, index) => {
-                const color = run.format.color || DEFAULT_COLOR;
+            groupSelected(
+                runs(line, selection).map((run, index) => {
+                    const color = run.format.color || DEFAULT_COLOR;
 
-                return (
-                    <span
-                        key={index}
-                        style={{
-                            color,
-                            fontWeight: run.format.bold ? 700 : 400,
-                            fontStyle: run.format.italic ? 'italic' : 'normal',
-                            textDecoration:
-                                [run.format.underlined && 'underline', run.format.strikethrough && 'line-through']
-                                    .filter(Boolean)
-                                    .join(' ') || 'none',
-                            textShadow: `2px 2px 0 ${shadowOf(color)}`,
-                            // Drawn here and not by the browser, the input's own highlight is too faint on black and
-                            // goes away when the colour picker takes the focus.
-                            background: run.selected ? 'rgba(96, 139, 250, 0.7)' : 'none',
-                            boxShadow: run.selected ? '0 0 0 1px rgba(147, 180, 253, 0.9)' : 'none',
-                        }}
-                    >
-                        {run.format.obfuscated
-                            ? run.text
-                                  .split('')
-                                  .map((c, i) =>
-                                      c === ' '
-                                          ? ' '
-                                          : OBFUSCATION[(c.charCodeAt(0) + tick * 7 + i * 13) % OBFUSCATION.length]
-                                  )
-                                  .join('')
-                            : run.text}
-                    </span>
-                );
-            })
+                    return {
+                        selected: run.selected,
+                        node: (
+                            <span
+                                key={index}
+                                style={{
+                                    color,
+                                    fontWeight: run.format.bold ? 700 : 400,
+                                    fontStyle: run.format.italic ? 'italic' : 'normal',
+                                    textDecoration:
+                                        [
+                                            run.format.underlined && 'underline',
+                                            run.format.strikethrough && 'line-through',
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ') || 'none',
+                                    textShadow: `2px 2px 0 ${shadowOf(color)}`,
+                                }}
+                            >
+                                {run.format.obfuscated
+                                    ? run.text
+                                          .split('')
+                                          .map((c, i) =>
+                                              c === ' '
+                                                  ? ' '
+                                                  : OBFUSCATION[
+                                                        (c.charCodeAt(0) + tick * 7 + i * 13) % OBFUSCATION.length
+                                                    ]
+                                          )
+                                          .join('')
+                                    : run.text}
+                            </span>
+                        ),
+                    };
+                })
+            )
         ) : (
             <span style={{ color: '#4a4a4a' }}>{placeholder}</span>
         )}

@@ -93,7 +93,7 @@
                     <div class="form-group col-sm-4">
                         <label for="pAllocationAdditional">Additional Allocation(s)</label>
                         <select id="pAllocationAdditional" name="allocation_additional[]" class="form-control" multiple></select>
-                        <p class="small text-muted no-margin">Additional allocations to assign to this server on creation.</p>
+                        <p class="small text-muted no-margin">Additional allocations to assign to this server on creation. One is picked for you so a server starts with two, for example for Simple Voice Chat or BlueMap. You can change or clear it.</p>
                     </div>
                 </div>
             </div>
@@ -338,7 +338,7 @@
         // END Persist 'Service Variables'
     </script>
 
-    {!! Theme::js('js/admin/new-server.js?v=20220530') !!}
+    {!! Theme::js('js/admin/new-server.js?v=20261014') !!}
 
     <script type="application/javascript">
         $(document).ready(function() {

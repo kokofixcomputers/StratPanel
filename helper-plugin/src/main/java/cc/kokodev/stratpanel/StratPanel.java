@@ -50,6 +50,7 @@ public class StratPanel extends JavaPlugin implements Listener {
     if (pending != null) {
       pending.cancel();
     }
+    scanner.cancel();
   }
 
   public Bridge getBridge() {

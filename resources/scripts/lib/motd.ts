@@ -172,6 +172,9 @@ export interface MotdLine {
 export const FLAGS = ['bold', 'italic', 'underlined', 'strikethrough', 'obfuscated'] as const;
 export const MAX_LINES = 2;
 
+// The colour the server list draws a MOTD in when nothing says otherwise.
+export const DEFAULT_MOTD_COLOR = '#808080';
+
 const FLAG_CODES: Record<string, typeof FLAGS[number]> = {
     l: 'bold',
     o: 'italic',
@@ -309,9 +312,25 @@ export const encodeMotdLines = (lines: MotdLine[]): string => {
     const used = lines.slice(0, MAX_LINES);
     while (used.length > 1 && !used[used.length - 1].text) used.pop();
 
-    const encoded = used.map((line) => {
-        let out = line.center && line.text ? ' '.repeat(centerPadding(line)) : '';
+    const encoded = used.map((line, index) => {
+        let out = '';
         let previous: CharFormat = {};
+
+        if (line.center && line.text) {
+            const padding = ' '.repeat(centerPadding(line));
+
+            if (padding && index === 0) {
+                // Spaces at the very start of the value do not survive: the property is read without them, and Wings and
+                // the server both write the file again when the server starts, each time dropping what it can. A colour
+                // in front of them is not whitespace and means something, so it stays. It is the colour the text starts
+                // with, or the game's own default for text without one.
+                const color = (line.fmts[0] && line.fmts[0].color) || DEFAULT_MOTD_COLOR;
+                out = colorCode(color) + padding;
+                previous = { color };
+            } else {
+                out = padding;
+            }
+        }
 
         for (let i = 0; i < line.text.length; i++) {
             const format = line.fmts[i] || {};

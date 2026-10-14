@@ -95,10 +95,11 @@ describe('centred lines', () => {
     });
 
     it('pads a centred line with spaces and leaves the others alone', () => {
-        const centred = encodeMotdLines([plain('Hello', true), plain('Hello')]);
-        const [first, second] = centred.split('\\n');
+        const pad = ' '.repeat(centerPadding(plain('Hello')));
+        const [first, second] = encodeMotdLines([plain('Hello', true), plain('Hello')]).split('\\n');
 
-        expect(first.startsWith(' '.repeat(centerPadding(plain('Hello'))) + 'Hello')).toBe(true);
+        // The first line starts with the game's default colour, then the padding, then a reset for the plain text.
+        expect(first).toBe('\\u00A7x\\u00A78\\u00A70\\u00A78\\u00A70\\u00A78\\u00A70' + pad + '\\u00A7rHello');
         expect(second).toBe('Hello');
     });
 
@@ -116,5 +117,21 @@ describe('centred lines', () => {
     it('keeps a few spaces typed by hand as text', () => {
         expect(parseMotdLines('   hi')[0]).toMatchObject({ text: '   hi' });
         expect(parseMotdLines('   hi')[0].center).toBeUndefined();
+    });
+
+    it('puts the colour of the text before the padding, so the value never starts with a space', () => {
+        const green = { text: 'Hello', fmts: Array.from({ length: 5 }, () => ({ color: '#55ff55' })), center: true };
+        const value = encodeMotdLines([green, plain('')]);
+
+        expect(value).toBe('\\u00A7a' + ' '.repeat(centerPadding(green)) + 'Hello');
+        expect(parseMotdLines(value)[0]).toMatchObject({ text: 'Hello', center: true });
+        expect(parseMotdLines(value)[0].fmts[0]).toEqual({ color: '#55ff55' });
+    });
+
+    it('never starts a value with whitespace', () => {
+        ['Hi', 'A long first line that is nearly full'].forEach((text) => {
+            expect(encodeMotdLines([plain(text, true)])[0]).not.toBe(' ');
+            expect(encodeMotdLines([plain(text, true)]).startsWith('\\u00A7')).toBe(true);
+        });
     });
 });

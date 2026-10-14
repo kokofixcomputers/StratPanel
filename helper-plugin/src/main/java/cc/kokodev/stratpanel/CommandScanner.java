@@ -17,12 +17,17 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.command.PluginCommand;
 
 /**
@@ -33,11 +38,19 @@ public class CommandScanner {
 
   static final String FILE_NAME = "pterodactyl.commands.json";
   private static final int WARN_BYTES = 2 * 1024 * 1024;
+  // How long the main thread may be kept busy asking plugin tab completers in one tick, and how long one command may
+  // take at most. A scan that takes longer than the overall limit is written with what it has.
+  private static final long TICK_NANOS = 12_000_000L;
+  private static final long COMMAND_NANOS = 300_000_000L;
+  private static final long OVERALL_NANOS = 90_000_000_000L;
 
   private final StratPanel plugin;
   private final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
   // What was written last, without its timestamp, so an unchanged tree is not announced again.
   private String lastContent = "";
+  private BukkitTask probing;
+  // Changes when a scan starts, so work of an older scan notices it has been replaced.
+  private int generation;
 
   public CommandScanner(StratPanel plugin) {
     this.plugin = plugin;
@@ -57,6 +70,8 @@ public class CommandScanner {
    */
   public void scan(boolean force, java.util.function.Consumer<String> done) {
     try {
+      cancel();
+
       CommandMap commandMap = Bukkit.getCommandMap();
       Map<String, Command> known = commandMap.getKnownCommands();
 
@@ -71,6 +86,26 @@ public class CommandScanner {
       }
       addMissingBukkitCommands(children, known);
 
+      // Asking the plugins for their subcommands takes a while on a server with many commands, so it is done a little
+      // on every tick and the file is written when it is finished.
+      probeSubcommands(children, known, () -> finish(children, force, done));
+    } catch (Exception e) {
+      plugin.getLogger().log(Level.SEVERE, "Command scan failed", e);
+    }
+  }
+
+  /** Stops a scan that is still asking plugins for their subcommands, a newer one replaces it. */
+  public void cancel() {
+    generation++;
+    if (probing != null) {
+      probing.cancel();
+      probing = null;
+    }
+  }
+
+  private void finish(List<Map<String, Object>> children, boolean force,
+      java.util.function.Consumer<String> done) {
+    try {
       Map<String, Object> rootNode = new LinkedHashMap<>();
       rootNode.put("children", children);
 
@@ -186,6 +221,87 @@ public class CommandScanner {
       children.add(node);
     });
     children.sort((a, b) -> ((String) a.get("name")).compareTo((String) b.get("name")));
+  }
+
+  /**
+   * Paper has a Bukkit style command in the tree as its name and one argument that takes any text, its subcommands are
+   * only known to the plugin's tab completer. So the completer is asked, as the console would while typing, and what
+   * it answers becomes the nodes after the command. Commands of the game itself are in the tree with all their nodes.
+   *
+   * <p>Some completers answer with thousands of entries (WorldEdit's block lists), so this works through the commands
+   * a few milliseconds per tick and calls {@code finished} on the main thread when it is done.
+   */
+  private void probeSubcommands(List<Map<String, Object>> children, Map<String, Command> known, Runnable finished) {
+    CommandSender sender = Bukkit.getConsoleSender();
+    Set<String> players = new HashSet<>();
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      players.add(player.getName());
+    }
+
+    java.util.ArrayDeque<Map<String, Object>> queue = new java.util.ArrayDeque<>();
+    for (Map<String, Object> node : children) {
+      Command command = known.get((String) node.get("name"));
+      if (command != null && !command.getClass().getName().contains("Vanilla") && onlyTakesAnyText(node)) {
+        queue.add(node);
+      }
+    }
+    if (queue.isEmpty()) {
+      finished.run();
+      return;
+    }
+
+    boolean debug = Boolean.getBoolean("stratpanel.debug");
+    int mine = generation;
+    long started = System.nanoTime();
+    BukkitTask[] self = new BukkitTask[1];
+    self[0] = probing = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+      if (mine != generation) {
+        self[0].cancel();
+        return;
+      }
+
+      long tickEnds = System.nanoTime() + TICK_NANOS;
+      while (!queue.isEmpty() && System.nanoTime() < tickEnds && System.nanoTime() - started < OVERALL_NANOS) {
+        Map<String, Object> node = queue.poll();
+        String name = (String) node.get("name");
+        Command command = known.get(name);
+        SubcommandProbe probe = new SubcommandProbe(players, System.nanoTime() + COMMAND_NANOS);
+
+        List<Map<String, Object>> found = probe.probe(typed -> {
+          List<String> args = new ArrayList<>(typed);
+          args.add("");
+          return command.tabComplete(sender, name, args.toArray(new String[0]));
+        });
+        if (debug) {
+          System.err.println("[StratPanel] /" + name + " (" + command.getClass().getName() + ") -> " + found.size()
+              + " nodes, " + probe.calls() + " calls");
+        }
+        if (!found.isEmpty()) {
+          node.put("children", found);
+        }
+      }
+
+      if (queue.isEmpty() || System.nanoTime() - started >= OVERALL_NANOS) {
+        self[0].cancel();
+        probing = null;
+        if (!queue.isEmpty()) {
+          plugin.getLogger().warning("Asking the plugins for their subcommands took too long, " + queue.size()
+              + " commands were left out.");
+        }
+        finished.run();
+      }
+    }, 1L, 1L);
+  }
+
+  /** True for a command that has one argument below it and nothing else, which is how Bukkit commands show up. */
+  @SuppressWarnings("unchecked")
+  private static boolean onlyTakesAnyText(Map<String, Object> node) {
+    Object children = node.get("children");
+    if (!(children instanceof List) || ((List<?>) children).size() != 1) {
+      return false;
+    }
+    Map<String, Object> only = (Map<String, Object>) ((List<?>) children).get(0);
+    return "argument".equals(only.get("type")) && only.get("children") == null;
   }
 
   private CommandTreeBuilder.Meta metaFor(Command command) {

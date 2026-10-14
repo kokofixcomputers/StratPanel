@@ -1,0 +1,61 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-10-14T13:31:27-07:00",
+    "name": "Java",
+    "author": "stratpanel@kokodev.cc",
+    "description": "Runs any Java server: Vanilla, Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt, Velocity, BungeeCord and more. The software is chosen on the Versions tab of the server.",
+    "features": [
+        "eula",
+        "java_version",
+        "pid_limit"
+    ],
+    "docker_images": {
+        "Java 25": "ghcr.io/pterodactyl/yolks:java_25",
+        "Java 21": "ghcr.io/pterodactyl/yolks:java_21",
+        "Java 17": "ghcr.io/pterodactyl/yolks:java_17",
+        "Java 16": "ghcr.io/pterodactyl/yolks:java_16",
+        "Java 11": "ghcr.io/pterodactyl/yolks:java_11",
+        "Java 8": "ghcr.io/pterodactyl/yolks:java_8"
+    },
+    "file_denylist": [],
+    "startup": "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true $( [[  ! -f unix_args.txt ]] && printf %s \"-jar {{SERVER_JARFILE}}\" || printf %s \"@unix_args.txt\" )",
+    "config": {
+        "files": "{\n    \"server.properties\": {\n        \"parser\": \"properties\",\n        \"find\": {\n            \"server-ip\": \"0.0.0.0\",\n            \"server-port\": \"{{server.build.default.port}}\",\n            \"query.port\": \"{{server.build.default.port}}\"\n        }\n    }\n}",
+        "startup": "{\n    \"done\": [\n        \")! For help, type \",\n        \"Listening on \",\n        \"regex:Done \\\\(\\\\d+([.,]\\\\d+)?s\\\\)!\"\n    ]\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/ash\n# Java server installation script\n#\n# Server Files: /mnt/server\n#\n# This egg runs any Java server. It only prepares the folder: the software (Paper, Purpur, Fabric, Forge, NeoForge,\n# Velocity, BungeeCord, ...) is chosen and installed on the Versions tab of the server afterwards.\nmkdir -p /mnt/server\ncd /mnt/server\n\necho \"The server folder is ready.\"\necho \"Open the Versions tab of the server to choose and install the server software before starting it.\"\n",
+            "container": "ghcr.io/pterodactyl/installers:alpine",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Server Jar File",
+            "description": "The name of the server jarfile to run the server with. The Versions tab installs the software as server.jar.",
+            "env_variable": "SERVER_JARFILE",
+            "default_value": "server.jar",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|regex:/^([\\w\\d._-]+)(\\.jar)$/",
+            "field_type": "text"
+        },
+        {
+            "name": "Minecraft Version",
+            "description": "The Minecraft version of the server software. The Versions tab keeps this up to date, it is only shown for reference.",
+            "env_variable": "MC_VERSION",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:20",
+            "field_type": "text"
+        }
+    ]
+}

@@ -41,3 +41,17 @@ export const installHelperPlugin = async (uuid: string): Promise<void> => {
         { headers: { 'Content-Type': 'multipart/form-data' }, params: { directory: '/plugins' } }
     );
 };
+
+/** The version of the plugin that ships with this panel, null when the panel has none. */
+export const bundledHelperVersion = async (): Promise<string | null> => {
+    try {
+        const response = await fetch('/helper/version.json', { cache: 'no-cache' });
+        if (!response.ok) return null;
+
+        const version = (await response.json()).version;
+
+        return typeof version === 'string' && version ? version : null;
+    } catch (e) {
+        return null;
+    }
+};

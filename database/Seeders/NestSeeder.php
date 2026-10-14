@@ -40,10 +40,9 @@ class NestSeeder extends Seeder
             'author' => 'support@pterodactyl.io',
         ])->keyBy('name')->toArray();
 
+        // StratPanel is about Minecraft, so Java servers are the only thing that is set up out of the box. Other games
+        // can still be added with their own eggs from the admin area.
         $this->createMinecraftNest(array_get($items, 'Minecraft'));
-        $this->createSourceEngineNest(array_get($items, 'Source Engine'));
-        $this->createVoiceServersNest(array_get($items, 'Voice Servers'));
-        $this->createRustNest(array_get($items, 'Rust'));
     }
 
     /**
@@ -57,51 +56,6 @@ class NestSeeder extends Seeder
             $this->creationService->handle([
                 'name' => 'Minecraft',
                 'description' => 'Minecraft - the classic game from Mojang. With support for Vanilla MC, Spigot, and many others!',
-            ], 'support@pterodactyl.io');
-        }
-    }
-
-    /**
-     * Create the Source Engine Games nest to be used later on.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     */
-    private function createSourceEngineNest(?array $nest = null)
-    {
-        if (is_null($nest)) {
-            $this->creationService->handle([
-                'name' => 'Source Engine',
-                'description' => 'Includes support for most Source Dedicated Server games.',
-            ], 'support@pterodactyl.io');
-        }
-    }
-
-    /**
-     * Create the Voice Servers nest to be used later on.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     */
-    private function createVoiceServersNest(?array $nest = null)
-    {
-        if (is_null($nest)) {
-            $this->creationService->handle([
-                'name' => 'Voice Servers',
-                'description' => 'Voice servers such as Mumble and Teamspeak 3.',
-            ], 'support@pterodactyl.io');
-        }
-    }
-
-    /**
-     * Create the Rust nest to be used later on.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     */
-    private function createRustNest(?array $nest = null)
-    {
-        if (is_null($nest)) {
-            $this->creationService->handle([
-                'name' => 'Rust',
-                'description' => 'Rust - A game where you must fight to survive.',
             ], 'support@pterodactyl.io');
         }
     }

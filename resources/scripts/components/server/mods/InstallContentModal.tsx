@@ -21,6 +21,7 @@ import {
     ProjectKind,
     versionRange,
 } from '@/lib/minecraft';
+import { DependencyPlan, planDependencies, PlannedDependency } from '@/lib/modDependencies';
 
 const TYPE_STYLES: Record<string, string> = {
     release: 'bg-green-50 text-green-700 border-green-200',
@@ -62,8 +63,10 @@ interface Props {
     // True when a resource pack is already set and would be replaced.
     replaces?: boolean;
     busy?: boolean;
+    // Ids of the projects that are installed already, so their dependencies are not downloaded again.
+    installed?: string[];
     onClose: () => void;
-    onConfirm: (version: ModrinthVersion, options: { required: boolean }) => void;
+    onConfirm: (version: ModrinthVersion, options: { required: boolean; dependencies: PlannedDependency[] }) => void;
 }
 
 /**
@@ -79,6 +82,7 @@ export default ({
     allowRequire,
     replaces,
     busy,
+    installed = [],
     onClose,
     onConfirm,
 }: Props) => {
@@ -88,6 +92,9 @@ export default ({
     const [changing, setChanging] = useState(false);
     const [changelog, setChangelog] = useState(false);
     const [required, setRequired] = useState(false);
+    const [plan, setPlan] = useState<DependencyPlan | null>(null);
+    const [planning, setPlanning] = useState(false);
+    const [withDependencies, setWithDependencies] = useState(true);
 
     useEffect(() => {
         setVersions(null);
@@ -95,6 +102,7 @@ export default ({
         setChanging(false);
         setChangelog(false);
         setRequired(false);
+        setWithDependencies(true);
         if (!project) return;
 
         let cancelled = false;
@@ -127,6 +135,24 @@ export default ({
     }, [project?.project_id, kind, loader, gameVersion]);
 
     const selected = versions?.find((v) => v.id === selectedId);
+
+    // What the chosen version needs to run. Resource packs have no dependencies.
+    useEffect(() => {
+        setPlan(null);
+        if (!selected || !['mod', 'plugin', 'datapack'].includes(kind)) return;
+
+        let cancelled = false;
+        setPlanning(true);
+        planDependencies({ version: selected, kind, loader, gameVersion, installed })
+            .then((result) => !cancelled && setPlan(result))
+            .catch(() => !cancelled && setPlan(null))
+            .then(() => !cancelled && setPlanning(false));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selected?.id, kind, loader, gameVersion, installed.join(',')]);
+
     const file = selected ? primaryFile(selected) : null;
     const fits = !selected || !gameVersion || selected.game_versions.includes(gameVersion);
 
@@ -287,6 +313,67 @@ export default ({
                                     )}
                                 </div>
 
+                                {planning && <p css={tw`mt-3 text-xs text-neutral-400`}>Checking what it needs...</p>}
+                                {plan && plan.install.length > 0 && (
+                                    <div css={tw`mt-3 rounded-xl border border-neutral-500 bg-neutral-700 px-4 py-3`}>
+                                        <p css={tw`text-sm font-semibold text-neutral-50`}>
+                                            Needs {plan.install.length}{' '}
+                                            {plan.install.length === 1 ? 'dependency' : 'dependencies'}
+                                        </p>
+                                        <ul css={tw`mt-2 space-y-1.5`}>
+                                            {plan.install.map(({ project: dependency, version: dependencyVersion }) => (
+                                                <li key={dependency.id} css={tw`flex items-center text-sm`}>
+                                                    <span
+                                                        css={tw`flex items-center justify-center flex-shrink-0 rounded-md bg-neutral-600 overflow-hidden mr-2`}
+                                                        style={{ width: 24, height: 24 }}
+                                                    >
+                                                        {dependency.icon_url && (
+                                                            <img
+                                                                src={dependency.icon_url}
+                                                                alt={''}
+                                                                css={tw`w-full h-full object-cover`}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                    <span css={tw`text-neutral-50 truncate`}>{dependency.title}</span>
+                                                    <span css={tw`ml-2 text-xs text-neutral-400 flex-shrink-0`}>
+                                                        {dependencyVersion.version_number}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <label css={tw`mt-3 flex items-center cursor-pointer`}>
+                                            <input
+                                                type={'checkbox'}
+                                                checked={withDependencies}
+                                                onChange={(e) => setWithDependencies(e.currentTarget.checked)}
+                                                css={tw`mr-2`}
+                                            />
+                                            <span css={tw`text-sm text-neutral-50`}>Install them as well</span>
+                                        </label>
+                                        {!withDependencies && (
+                                            <p css={tw`mt-1 text-xs text-yellow-700`}>
+                                                {selected.name || selected.version_number} may not start without them.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                {plan && plan.missing.length > 0 && (
+                                    <div
+                                        css={tw`mt-3 flex items-start rounded-xl bg-yellow-50 border border-yellow-200 p-3`}
+                                    >
+                                        <ExclamationIcon css={tw`w-5 h-5 text-yellow-600 mr-2 flex-shrink-0`} />
+                                        <p css={tw`text-sm text-yellow-800`}>
+                                            It also needs{' '}
+                                            {plan.missing
+                                                .map((m) => `${m.title} (${m.reason.toLowerCase()})`)
+                                                .join(', ')}
+                                            . Install {plan.missing.length === 1 ? 'that' : 'those'} by hand or it may
+                                            not start.
+                                        </p>
+                                    </div>
+                                )}
+
                                 {!fits && (
                                     <div
                                         css={tw`mt-3 flex items-start rounded-xl bg-yellow-50 border border-yellow-200 p-3`}
@@ -333,8 +420,14 @@ export default ({
                                 Cancel
                             </LegacyButton>
                             <LegacyButton
-                                disabled={!selected || busy}
-                                onClick={() => selected && onConfirm(selected, { required })}
+                                disabled={!selected || busy || planning}
+                                onClick={() =>
+                                    selected &&
+                                    onConfirm(selected, {
+                                        required,
+                                        dependencies: withDependencies && plan ? plan.install : [],
+                                    })
+                                }
                             >
                                 <CheckIcon css={tw`w-4 h-4 mr-1.5 -ml-1`} />
                                 {busy ? 'Working...' : confirmLabel}

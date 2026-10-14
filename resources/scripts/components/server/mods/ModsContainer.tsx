@@ -28,6 +28,7 @@ import useManagedMods from '@/components/server/mods/useManagedMods';
 import installModpack, { ModpackSpec } from '@/components/server/mods/installModpack';
 import { InstallModpackModal, ModpackSearch } from '@/components/server/mods/modpack';
 import InstallContentModal from '@/components/server/mods/InstallContentModal';
+import { PlannedDependency } from '@/lib/modDependencies';
 import WorldsPanel from '@/components/server/mods/WorldsPanel';
 import useResourcePack from '@/components/server/mods/useResourcePack';
 import Switch from '@/components/elements/Switch';
@@ -270,7 +271,10 @@ export default () => {
     };
 
     /** Called by the modal once a version was chosen and confirmed. */
-    const confirmInstall = async (version: ModrinthVersion, options: { required: boolean }) => {
+    const confirmInstall = async (
+        version: ModrinthVersion,
+        options: { required: boolean; dependencies: PlannedDependency[] }
+    ) => {
         const project = installing;
         if (!project || kind === 'world' || kind === 'modpack') return;
 
@@ -283,16 +287,25 @@ export default () => {
                 }. Restart the server to hand it out.`;
             }
 
-            const record = await managed.install(
+            const { record, dependencies } = await managed.install(
                 project,
                 kind,
                 version,
-                version.game_versions.includes(detectedVersion) ? detectedVersion : null
+                version.game_versions.includes(detectedVersion) ? detectedVersion : null,
+                options.dependencies
             );
+            const extra = dependencies.length
+                ? ` It needs ${dependencies.map((d) => d.title).join(', ')}, which ${
+                      dependencies.length === 1 ? 'was' : 'were'
+                  } installed with it.`
+                : '';
 
-            return kind === 'datapack'
-                ? `${project.title} ${record.versionNumber} was added to ${record.directory}. Restart the server or run /reload to load it.`
-                : `${project.title} ${record.versionNumber} was downloaded to ${record.directory}. Restart the server to load it.`;
+            return (
+                (kind === 'datapack'
+                    ? `${project.title} ${record.versionNumber} was added to ${record.directory}. Restart the server or run /reload to load it.`
+                    : `${project.title} ${record.versionNumber} was downloaded to ${record.directory}. Restart the server to load it.`) +
+                extra
+            );
         });
         setInstalling(null);
     };
@@ -637,6 +650,7 @@ export default () => {
                 allowRequire={kind === 'resourcepack'}
                 replaces={kind === 'resourcepack' && !!resourcePack.pack}
                 busy={!!busy}
+                installed={Object.keys(managed.mods)}
                 onClose={() => setInstalling(null)}
                 onConfirm={confirmInstall}
             />

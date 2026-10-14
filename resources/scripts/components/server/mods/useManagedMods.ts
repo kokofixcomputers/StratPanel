@@ -5,6 +5,7 @@ import createDirectory from '@/api/server/files/createDirectory';
 import loadDirectory from '@/api/server/files/loadDirectory';
 import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
 import { ManagedProject, readPterodactylJson, updatePterodactylJson } from '@/lib/pterodactylJson';
+import { PlannedDependency } from '@/lib/modDependencies';
 import {
     getProjects,
     getProjectVersions,
@@ -143,11 +144,12 @@ export default (uuid: string, minecraftVersion: string) => {
         }));
 
     /** Downloads one chosen version of a project into the folder of its kind. */
-    const install = async (
-        project: ModrinthProject,
+    const installOne = async (
+        project: { project_id: string; slug: string; title: string; icon_url: string | null },
         kind: ManagedKind,
         chosen: ModrinthVersion,
-        gameVersion: string | null
+        gameVersion: string | null,
+        dependencyOf?: string
     ) => {
         const file = primaryFile(chosen);
         const directory = directoriesFor(await readLevelName(uuid))[kind];
@@ -173,6 +175,7 @@ export default (uuid: string, minecraftVersion: string) => {
             loaders: chosen.loaders,
             gameVersion,
             installedAt: new Date().toISOString(),
+            ...(dependencyOf ? { dependencyOf } : {}),
         };
         // Installing another version of the same project replaces the old file.
         const previous = mods[record.projectId];
@@ -184,6 +187,40 @@ export default (uuid: string, minecraftVersion: string) => {
         setUntracked((current) => current.filter((f) => !(f.directory === directory && f.file === file.filename)));
 
         return record;
+    };
+
+    /**
+     * Installs a chosen version, after the dependencies it was planned with. Those go first so that a failure halfway
+     * leaves nothing that is missing what it needs. The result lists the dependencies that were installed.
+     */
+    const install = async (
+        project: ModrinthProject,
+        kind: ManagedKind,
+        chosen: ModrinthVersion,
+        gameVersion: string | null,
+        dependencies: PlannedDependency[] = []
+    ) => {
+        const installedDependencies: ManagedProject[] = [];
+        for (const dependency of dependencies) {
+            installedDependencies.push(
+                await installOne(
+                    {
+                        project_id: dependency.project.id,
+                        slug: dependency.project.slug,
+                        title: dependency.project.title,
+                        icon_url: dependency.project.icon_url,
+                    },
+                    kind,
+                    dependency.version,
+                    gameVersion && dependency.version.game_versions.includes(gameVersion) ? gameVersion : null,
+                    project.project_id
+                )
+            );
+        }
+
+        const record = await installOne(project, kind, chosen, gameVersion);
+
+        return { record, dependencies: installedDependencies };
     };
 
     const uninstall = async (projectId: string) => {

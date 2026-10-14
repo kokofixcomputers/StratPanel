@@ -173,6 +173,17 @@ export interface ModrinthFile {
     hashes?: { sha1?: string; sha512?: string };
 }
 
+export interface ModrinthDependency {
+    // eslint-disable-next-line camelcase
+    version_id: string | null;
+    // eslint-disable-next-line camelcase
+    project_id: string | null;
+    // eslint-disable-next-line camelcase
+    file_name?: string | null;
+    // eslint-disable-next-line camelcase
+    dependency_type: 'required' | 'optional' | 'incompatible' | 'embedded';
+}
+
 export interface ModrinthVersion {
     id: string;
     // eslint-disable-next-line camelcase
@@ -190,6 +201,7 @@ export interface ModrinthVersion {
     version_type?: 'release' | 'beta' | 'alpha';
     changelog?: string | null;
     downloads?: number;
+    dependencies?: ModrinthDependency[];
 }
 
 const modrinthError = () => new Error('Modrinth could not be reached, please try again in a moment.');
@@ -204,6 +216,14 @@ export const getProjectVersions = async (
     if (opts.gameVersions?.length) params.set('game_versions', JSON.stringify(opts.gameVersions));
 
     const response = await fetch(`${API}/project/${projectId}/version?${params.toString()}`);
+    if (!response.ok) throw modrinthError();
+
+    return response.json();
+};
+
+/** One version by its id, which is how a dependency can ask for an exact release. */
+export const getVersion = async (versionId: string): Promise<ModrinthVersion> => {
+    const response = await fetch(`${API}/version/${versionId}`);
     if (!response.ok) throw modrinthError();
 
     return response.json();

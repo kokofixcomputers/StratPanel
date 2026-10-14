@@ -23,6 +23,8 @@ export interface ManagedProject {
     loaders: string[];
     gameVersion: string | null;
     installedAt: string;
+    // Installed because another project needs it, the id of that project.
+    dependencyOf?: string;
 }
 
 export interface ResourcePackInfo {

@@ -32,7 +32,7 @@ $(document).ready(function() {
 
     $('#pNodeId').select2({
         placeholder: 'Select a Node',
-    }).change();
+    });
 
     $('#pAllocation').select2({
         placeholder: 'Select a Default Allocation',
@@ -41,6 +41,10 @@ $(document).ready(function() {
     $('#pAllocationAdditional').select2({
         placeholder: 'Select Additional Allocations',
     });
+
+    // Last, so the allocations of the first node are filled in (and two of them picked) after their selects are set
+    // up, setting them up again would have emptied them.
+    $('#pNodeId').change();
 });
 
 let lastActiveBox = null;
@@ -142,6 +146,12 @@ $('#pAllocation').on('change', function () {
     updateAdditionalAllocations();
 });
 
+// Set once the person has chosen or cleared the additional allocations themselves.
+let additionalTouched = false;
+$('#pAllocationAdditional').on('select2:select select2:unselect', function () {
+    additionalTouched = true;
+});
+
 function updateAdditionalAllocations() {
     let currentAllocation = $('#pAllocation').val();
     let currentNode = $('#pNodeId').val();
@@ -158,10 +168,25 @@ function updateAdditionalAllocations() {
                 }
             }
 
+            // Keep what was picked and is still free, a changed default allocation must not drop the other ones.
+            const picked = ($('#pAllocationAdditional').val() || []).filter(function (id) {
+                return allocations.some(function (allocation) {
+                    return allocation.id == id;
+                });
+            });
+
             $('#pAllocationAdditional').html('').select2({
                 data: allocations,
                 placeholder: 'Select Additional Allocations',
             });
+
+            // A server gets two allocations to begin with: the default one and one more, for things like a voice chat or
+            // a web map. This only fills the field in, it can be emptied and the choice is not taken again afterwards.
+            if (picked.length) {
+                $('#pAllocationAdditional').val(picked).trigger('change');
+            } else if (allocations.length && !additionalTouched) {
+                $('#pAllocationAdditional').val([allocations[0].id]).trigger('change');
+            }
         }
     });
 }
