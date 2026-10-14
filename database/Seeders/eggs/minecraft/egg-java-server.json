@@ -5,8 +5,8 @@
         "update_url": null
     },
     "exported_at": "2026-10-14T13:31:27-07:00",
-    "name": "Java",
-    "author": "stratpanel@kokodev.cc",
+    "name": "Java Server",
+    "author": "admin@example.com",
     "description": "Runs any Java server: Vanilla, Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt, Velocity, BungeeCord and more. The software is chosen on the Versions tab of the server.",
     "features": [
         "eula",

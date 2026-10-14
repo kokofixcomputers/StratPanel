@@ -97,6 +97,7 @@
                 <section class="content">
                     <div class="row">
                         <div class="col-xs-12">
+                            @include('admin.partials.ui-update')
                             @if (count($errors) > 0)
                                 <div class="alert alert-danger">
                                     There was an error validating the data provided.<br><br>

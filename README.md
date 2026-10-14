@@ -68,11 +68,42 @@ Hard refresh the browser afterwards (Ctrl+Shift+R).
 
 The archive never touches your `.env`, your database or your server files.
 
+### Update only the web interface
+
+`panel.tar.gz` replaces the whole panel. When all you want is the newest interface (the scripts and styles, the themes,
+the helper plugin jar and the Minecraft tools), every build also publishes a small `panel-ui.tar.gz`, and one command
+fetches it (a release from before that only has `panel.tar.gz`, then the interface folders are taken out of that one and
+nothing else in it is unpacked):
+
+```bash
+cd /var/www/pterodactyl
+sudo php artisan p:update-ui --check               # is there something newer?
+sudo php artisan p:update-ui                       # newest release
+sudo php artisan p:update-ui --channel=nightly     # the build of the latest push
+sudo php artisan p:update-ui --rollback            # the interface from before the last update
+```
+
+It asks the GitHub API for the newest build, downloads `panel-ui.tar.gz`, checks its size and the SHA-256 checksum GitHub
+lists, makes sure the archive only holds the interface folders, then swaps them into `public/` and keeps the previous
+ones in `storage/app/ui-backup` for `--rollback`. It does not touch PHP files, the database or `.env`, so a build that
+needs a migration still needs the full update above. Run as root it gives the new files the owner of `public/`.
+
+The admin area also shows a notice with this command and a copy button when GitHub has a newer interface than the one
+installed. It looks at most every six hours, and only reads, it never installs anything by itself.
+
+To update every night, put `0 4 * * * cd /var/www/pterodactyl && php artisan p:update-ui` in the crontab of the web
+user (add `--channel=nightly` to follow every push, `release` only has something once a `v*` tag was published). This is a command on purpose and not a button in the panel: replacing files needs the rights of whoever
+runs it, and a web request that can rewrite the panel's own files is not worth the risk.
+
 ### Optional: let users create their own servers
 
-Import `eggs/egg-java-server.json` in **Admin → Nests → Minecraft → Import Egg**. It is a plain Java container with no
-install script, which is what the Versions tab and the create wizard expect. The wizard automatically uses an egg whose
-name starts with `Java`. Then add any of these to `.env` (all optional):
+The panel comes with a single **Java Server** egg in the Minecraft nest, a plain Java container that runs any Java
+server software: Vanilla, Paper, Purpur, Fabric, Forge, NeoForge, Velocity and so on. Its install script only creates
+the folder, the Versions tab and the create wizard put the software in place. It is added by the seeder (`php artisan migrate --seed`),
+and an existing panel that imported the old `eggs/egg-java-server.json` by hand gets that egg updated in place. The
+wizard automatically uses an egg whose name starts with `Java`. A server it creates starts with two allocations, the
+one it is played on and one more for things like Simple Voice Chat or BlueMap. Then add any of these to `.env` (all
+optional):
 
 | Variable | Default | |
 |---|---|---|
@@ -80,6 +111,7 @@ name starts with `Java`. Then add any of these to `.env` (all optional):
 | `PTERODACTYL_SELF_SERVICE_EGG` | auto | Egg id to create servers from |
 | `PTERODACTYL_SELF_SERVICE_LOCATIONS` | any | Comma separated location ids |
 | `PTERODACTYL_SELF_SERVICE_MAX_SERVERS` | `3` | Servers per user, `0` for no limit (admins are never limited) |
+| `PTERODACTYL_SELF_SERVICE_ALLOCATIONS` | `4` | Allocations a server may have in total (it starts with two) |
 | `PTERODACTYL_SELF_SERVICE_MEMORY` / `_DISK` / `_CPU` | `2048` / `10240` / `200` | Default specs |
 | `PTERODACTYL_SELF_SERVICE_MAX_MEMORY` / `_MAX_DISK` / `_MAX_CPU` | `8192` / `51200` / `400` | Upper limit of the spec sliders |
 

@@ -217,7 +217,9 @@ return [
         'max_disk' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_DISK', 51200),
         'max_cpu' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_CPU', 400),
         'databases' => (int) env('PTERODACTYL_SELF_SERVICE_DATABASES', 1),
-        'allocations' => (int) env('PTERODACTYL_SELF_SERVICE_ALLOCATIONS', 1),
+        // How many allocations a server may have in total. It starts with two, so leave room for the ones that voice chat
+        // and a web map need.
+        'allocations' => (int) env('PTERODACTYL_SELF_SERVICE_ALLOCATIONS', 4),
         'backups' => (int) env('PTERODACTYL_SELF_SERVICE_BACKUPS', 2),
     ],
 

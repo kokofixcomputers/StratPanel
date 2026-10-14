@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds panel.tar.gz in the repository root. Expects the frontend to be built already (yarn build:production).
+# Builds panel.tar.gz and panel-ui.tar.gz in the repository root. Expects the frontend to be built already (yarn build:production).
 #   .github/scripts/package.sh [version]
 set -euo pipefail
 
@@ -49,3 +49,8 @@ rm -rf node_modules .cache tests preview helper-plugin docs CONTRIBUTING.md flak
 # Same layout as the official Pterodactyl release archive, plus the router, the egg and the bundled helper plugin.
 tar -czf panel.tar.gz * .editorconfig .env.example .eslintignore .eslintrc.js .gitignore .prettierrc.json
 ls -lh panel.tar.gz
+
+# Only the web interface, for php artisan p:update-ui: the built scripts and styles, the themes, the helper plugin and the
+# Minecraft tools. It is made after panel.tar.gz so that it does not end up inside it.
+tar -czf panel-ui.tar.gz public/assets public/themes public/helper public/tools
+ls -lh panel-ui.tar.gz

@@ -43,3 +43,4 @@ jobs:
           body_path: RELEASE_CHANGELOG
           files: |
             panel.tar.gz
+            panel-ui.tar.gz

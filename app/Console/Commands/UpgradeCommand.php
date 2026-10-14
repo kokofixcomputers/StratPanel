@@ -9,13 +9,13 @@ use Symfony\Component\Console\Helper\ProgressBar;
 
 class UpgradeCommand extends Command
 {
-    protected const DEFAULT_URL = 'https://github.com/pterodactyl/panel/releases/%s/panel.tar.gz';
+    protected const DEFAULT_URL = 'https://github.com/kokofixcomputers/StratPanel/releases/%s/panel.tar.gz';
 
     protected $signature = 'p:upgrade
         {--user= : The user that PHP runs under. All files will be owned by this user.}
         {--group= : The group that PHP runs under. All files will be owned by this group.}
         {--url= : The specific archive to download.}
-        {--release= : A specific Pterodactyl version to download from GitHub. Leave blank to use latest.}
+        {--release= : A specific StratPanel version to download from GitHub, or "nightly" for the build of the latest push. Leave blank to use latest.}
         {--skip-download : If set no archive will be downloaded.}';
 
     protected $description = 'Downloads a new archive for Pterodactyl from GitHub and then executes the normal upgrade commands.';
@@ -190,6 +190,8 @@ class UpgradeCommand extends Command
             return $this->option('url');
         }
 
-        return sprintf(self::DEFAULT_URL, $this->option('release') ? 'download/v' . $this->option('release') : 'latest/download');
+        $release = $this->option('release');
+
+        return sprintf(self::DEFAULT_URL, $release ? 'download/' . ($release === 'nightly' ? 'nightly' : 'v' . $release) : 'latest/download');
     }
 }

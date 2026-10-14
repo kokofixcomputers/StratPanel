@@ -11,6 +11,9 @@ use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Models\Objects\DeploymentObject;
 use Pterodactyl\Services\Servers\ServerCreationService;
 use Pterodactyl\Services\Deployment\AllocationSelectionService;
+use Pterodactyl\Services\Allocations\FindAssignableAllocationService;
+use Pterodactyl\Exceptions\Service\Allocation\NoAutoAllocationSpaceAvailableException;
+use Illuminate\Support\Facades\DB;
 use Pterodactyl\Transformers\Api\Client\ServerTransformer;
 use Pterodactyl\Http\Requests\Api\Client\ClientApiRequest;
 use Pterodactyl\Http\Requests\Api\Client\CreateServerRequest;
@@ -23,6 +26,7 @@ class SelfServiceController extends ClientApiController
     public function __construct(
         private ServerCreationService $creationService,
         private AllocationSelectionService $allocationSelectionService,
+        private FindAssignableAllocationService $findAssignableAllocationService,
     ) {
         parent::__construct();
     }
@@ -148,10 +152,22 @@ class SelfServiceController extends ClientApiController
             'skip_scripts' => $skipScripts,
             'oom_disabled' => true,
             'database_limit' => (int) $config['databases'],
-            'allocation_limit' => (int) $config['allocations'],
+            // At least the two allocations a server starts with, the setting is how many it may have in total.
+            'allocation_limit' => max(2, (int) $config['allocations']),
             'backup_limit' => (int) $config['backups'],
             'start_on_completion' => false,
         ], $placement), $deployment);
+
+        // A server starts with two allocations: the one it is played on and one more, for things like a voice chat plugin
+        // or a web map. A node with a single free port gives a server with just that one.
+        try {
+            DB::transaction(function () use ($server) {
+                $this->findAssignableAllocationService->handle($server->loadMissing(['node', 'allocation']));
+            });
+            $server->unsetRelation('allocations');
+        } catch (NoAutoAllocationSpaceAvailableException) {
+            // Nothing to add, the server keeps its first allocation.
+        }
 
         return $this->fractal->item($server)
             ->transformWith($this->getTransformer(ServerTransformer::class))
