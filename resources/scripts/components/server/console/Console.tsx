@@ -31,6 +31,16 @@ import {
 } from '@heroicons/react/solid';
 import copy from 'copy-to-clipboard';
 import { ChunkState, colorize, Level, nextChunk, stripAnsi } from '@/components/server/console/consoleChunks';
+import {
+    appendLog,
+    clearLog,
+    LogEntry,
+    LogFilter,
+    logCounts,
+    matchesFilter,
+    readLog,
+    useLogVersion,
+} from '@/lib/consoleLog';
 
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
@@ -65,6 +75,8 @@ const terminalProps: ITerminalOptions = {
     fontSize: 12,
     fontFamily: th('fontFamily.mono'),
     rows: 30,
+    // The console keeps more than the default thousand lines, a filter writes them again from the log of the server.
+    scrollback: 3000,
     theme: theme,
 };
 
@@ -103,6 +115,9 @@ export default () => {
     const lastUserScroll = useRef(0);
     const [buttons, setButtons] = useState<{ id: number; top: number }[]>([]);
     const [copiedChunk, setCopiedChunk] = useState<number | null>(null);
+    // Which lines are shown: all of them, or only the info, warning or error ones.
+    const [filter, setFilter] = useState<LogFilter>('all');
+    const filterRef = useRef<LogFilter>('all');
     const webLinksAddon = new WebLinksAddon();
     const unicode11Addon = new Unicode11Addon();
     const scrollDownHelperAddon = new ScrollDownHelperAddon();
@@ -113,6 +128,8 @@ export default () => {
     const commands = useCommandTree(serverUuid);
     const { online } = useOnlinePlayers(serverUuid);
     const isTransferring = ServerContext.useStoreState((state) => state.server.data!.isTransferring);
+    const { entries: logEntries, version: logVersion } = useLogVersion(serverUuid);
+    const counts = useMemo(() => logCounts(logEntries), [logEntries, logVersion]);
     const [history, setHistory] = usePersistedState<string[]>(`${serverId}:command_history`, []);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const updateButtons = () => {
@@ -149,23 +166,10 @@ export default () => {
         terminal.scrollToLine(pin.current && !pin.current.isDisposed ? Math.max(pin.current.line, 0) : 0);
     };
 
-    const handleConsoleOutput = (line: string, prelude = false) => {
-        // Messages from the plugin to the panel are not for people to read.
-        if (!prelude && (isBridgeLine(line) || isProbeNoise(line))) return;
-
-        const text = line.replace(/(?:\r\n|\r|\n)$/im, '');
-        if (prelude) {
-            chunkState.current = null;
-            terminal.writeln(TERMINAL_PRELUDE + text + '\u001b[0m', keepPosition);
-            return;
-        }
-
-        const plain = stripAnsi(text);
-        const { state, start, belongs } = nextChunk(chunkState.current, plain);
-        chunkState.current = state;
-
-        if (start && state) {
-            const chunk: Chunk = { id: ++chunkSeq.current, level: state.level, text: plain };
+    /** Writes one line to the terminal, and gives the first line of a warning or error its copy button. */
+    const emit = (entry: LogEntry) => {
+        if (entry.start && entry.level !== 'info') {
+            const chunk: Chunk = { id: ++chunkSeq.current, level: entry.level, text: entry.plain };
             chunks.current = [...chunks.current.slice(-299), chunk];
             // The callback runs once everything written before this has been parsed, so the marker lands on the
             // row where the first line of the chunk is about to be printed.
@@ -177,11 +181,62 @@ export default () => {
                 });
                 updateButtons();
             });
-        } else if (belongs && chunks.current.length) {
-            chunks.current[chunks.current.length - 1].text += '\n' + plain;
+        } else if (entry.belongs && chunks.current.length) {
+            chunks.current[chunks.current.length - 1].text += '\n' + entry.plain;
         }
 
-        terminal.writeln(state && belongs ? colorize(text, state.level) : text + '\u001b[0m', keepPosition);
+        terminal.writeln(entry.text, keepPosition);
+    };
+
+    /** Keeps the line in the log of the server, and shows it when the filter lets it through. */
+    const record = (entry: LogEntry) => {
+        appendLog(serverUuid, entry);
+        if (matchesFilter(filterRef.current, entry.level)) emit(entry);
+    };
+
+    // A line made by the panel itself.
+    const note = (text: string, level: LogEntry['level'] = 'info') =>
+        record({ text, plain: stripAnsi(text), level, start: false, belongs: false });
+
+    const handleConsoleOutput = (line: string, prelude = false) => {
+        // Messages from the plugin to the panel are not for people to read.
+        if (!prelude && (isBridgeLine(line) || isProbeNoise(line))) return;
+
+        const text = line.replace(/(?:\r\n|\r|\n)$/im, '');
+        if (prelude) {
+            chunkState.current = null;
+            note(TERMINAL_PRELUDE + text + '\u001b[0m');
+            return;
+        }
+
+        const plain = stripAnsi(text);
+        const { state, start, belongs } = nextChunk(chunkState.current, plain);
+        chunkState.current = state;
+
+        const inChunk = !!state && belongs;
+        record({
+            text: inChunk ? colorize(text, state!.level) : text + '\u001b[0m',
+            plain,
+            level: inChunk ? state!.level : 'info',
+            start: start && !!state,
+            belongs,
+        });
+    };
+
+    /** Draws the terminal again with the lines the filter lets through. */
+    const redraw = () => {
+        terminal.clear();
+        chunks.current = [];
+        updateButtons();
+        readLog(serverUuid).forEach((entry) => matchesFilter(filterRef.current, entry.level) && emit(entry));
+        if (autoScrollRef.current) terminal.scrollToBottom();
+    };
+
+    const applyFilter = (next: LogFilter) => {
+        if (next === filterRef.current) return;
+        filterRef.current = next;
+        setFilter(next);
+        redraw();
     };
 
     const copyChunk = (id: number) => {
@@ -215,18 +270,19 @@ export default () => {
         switch (status) {
             // Sent by either the source or target node if a failure occurs.
             case 'failure':
-                terminal.writeln(TERMINAL_PRELUDE + 'Transfer has failed.\u001b[0m');
+                note(TERMINAL_PRELUDE + 'Transfer has failed.\u001b[0m', 'error');
                 return;
         }
     };
 
     const handleDaemonErrorOutput = (line: string) =>
-        terminal.writeln(
-            TERMINAL_PRELUDE + '\u001b[1m\u001b[41m\u001b[97m' + line.replace(/(?:\r\n|\r|\n)$/im, '') + '\u001b[0m'
+        note(
+            TERMINAL_PRELUDE + '\u001b[1m\u001b[41m\u001b[97m' + line.replace(/(?:\r\n|\r|\n)$/im, '') + '\u001b[0m',
+            'error'
         );
 
     const handlePowerChangeEvent = (state: string) =>
-        terminal.writeln(TERMINAL_PRELUDE + 'Server marked as ' + state + '...\u001b[0m');
+        note(TERMINAL_PRELUDE + 'Server marked as ' + state + '...\u001b[0m');
 
     // Tab completion: the candidates for the word being typed, and which one Tab has cycled to.
     const [suggest, setSuggest] = useState<{
@@ -372,6 +428,7 @@ export default () => {
                 terminal.clear();
                 chunks.current = [];
                 chunkState.current = null;
+                clearLog(serverUuid);
                 updateButtons();
             }
 
@@ -548,6 +605,35 @@ export default () => {
                 {expanded ? <XIcon className={'w-5 h-5'} /> : <ArrowsExpandIcon className={'w-5 h-5'} />}
             </button>
             <SpinnerOverlay visible={!connected} size={'large'} />
+            <div className={styles.filter_bar} role={'group'} aria-label={'Show console lines'}>
+                {(
+                    [
+                        ['all', 'All'],
+                        ['info', 'Info'],
+                        ['warn', 'Warning'],
+                        ['error', 'Error'],
+                    ] as const
+                ).map(([id, label]) => {
+                    const count = id === 'warn' ? counts.warn : id === 'error' ? counts.error : 0;
+
+                    return (
+                        <button
+                            key={id}
+                            type={'button'}
+                            aria-pressed={filter === id}
+                            onClick={() => applyFilter(id)}
+                            className={classNames(styles.filter_pill, {
+                                [styles.filter_pill_on]: filter === id,
+                                [styles.filter_pill_warn]: id === 'warn' && count > 0 && filter !== id,
+                                [styles.filter_pill_error]: id === 'error' && count > 0 && filter !== id,
+                            })}
+                        >
+                            {label}
+                            {count > 0 && <span className={styles.filter_count}>{count > 99 ? '99+' : count}</span>}
+                        </button>
+                    );
+                })}
+            </div>
             <div className={styles.container}>
                 <div
                     className={'h-full relative'}

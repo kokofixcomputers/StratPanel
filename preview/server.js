@@ -369,6 +369,8 @@ const warnings = [
     '[19:36:40] [Server thread/ERROR]: Could not load chunk at 12, 4',
     '\tat net.minecraft.server.Chunk.load(Chunk.java:42)',
     '[19:36:41] [Server thread/INFO]: Done (3.412s)! For help, type "help"',
+    '[19:40:02] [Server thread/ERROR]: java.lang.OutOfMemoryError: Java heap space',
+    '[19:40:03] [Server thread/WARN]: Can\'t keep up! Is the server overloaded? Running 5123ms or 102 ticks behind',
 ];
 const startup = ['[17:04:11] [main/INFO]: Loading Minecraft 1.21.4 with Fabric Loader 0.16.9', '[17:04:13] [main/INFO]: Preparing spawn area: 100%', '[17:04:14] [Server thread/INFO]: Done (3.412s)! For help, type "help"'];
 wss.on('connection', (ws) => {

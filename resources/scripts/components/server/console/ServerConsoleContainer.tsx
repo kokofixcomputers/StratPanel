@@ -13,8 +13,10 @@ import StatusBadge from '@/components/server/console/StatusBadge';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import ServerDetailsBlock from '@/components/server/console/ServerDetailsBlock';
 import HelperStatus from '@/components/server/console/HelperStatus';
+import ProblemsCard from '@/components/server/console/ProblemsCard';
 import ShareLogButton from '@/components/server/ShareLogButton';
 import { Alert } from '@/components/elements/alert';
+import { Button } from '@/components/elements/button/index';
 
 export type PowerAction = 'start' | 'stop' | 'restart' | 'kill';
 
@@ -23,6 +25,8 @@ const ServerConsoleContainer = () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     // Proxies such as Velocity have no operators or whitelist, so those cards are hidden for them.
     const [isProxy, setIsProxy] = useState<boolean | null>(null);
+    // Counts up when the person asks to look for problems in latest.log.
+    const [scanRequest, setScanRequest] = useState(0);
 
     useEffect(() => {
         const check = () =>
@@ -63,6 +67,7 @@ const ServerConsoleContainer = () => {
                         <HelperStatus />
                     </Can>
                     <Can action={'file.read-content'}>
+                        <Button.Text onClick={() => setScanRequest((n) => n + 1)}>Check for problems</Button.Text>
                         <ShareLogButton file={'/logs/latest.log'} />
                     </Can>
                     <Can action={['control.start', 'control.stop', 'control.restart']} matchAny>
@@ -71,6 +76,7 @@ const ServerConsoleContainer = () => {
                 </div>
             </div>
             <ServerDetailsBlock className={'mb-4'} />
+            <ProblemsCard scanRequest={scanRequest} />
             <Spinner.Suspense>
                 <Console />
             </Spinner.Suspense>
