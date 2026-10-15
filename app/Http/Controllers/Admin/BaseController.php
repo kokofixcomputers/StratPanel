@@ -3,11 +3,8 @@
 namespace Pterodactyl\Http\Controllers\Admin;
 
 use Illuminate\View\View;
-use Pterodactyl\Models\Node;
-use Pterodactyl\Models\User;
-use Pterodactyl\Models\Server;
-use Pterodactyl\Models\ServerDomain;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\Admin\OverviewService;
 use Pterodactyl\Services\Helpers\SoftwareVersionService;
 
 class BaseController extends Controller
@@ -15,7 +12,7 @@ class BaseController extends Controller
     /**
      * BaseController constructor.
      */
-    public function __construct(private SoftwareVersionService $version)
+    public function __construct(private SoftwareVersionService $version, private OverviewService $overview)
     {
     }
 
@@ -24,14 +21,17 @@ class BaseController extends Controller
      */
     public function index(): View
     {
+        $nodes = $this->overview->nodes();
+
         return view('admin.index', [
             'version' => $this->version,
-            'stats' => [
-                'servers' => Server::query()->count(),
-                'users' => User::query()->count(),
-                'nodes' => Node::query()->count(),
-                'domains' => ServerDomain::query()->count(),
-            ],
+            'totals' => $this->overview->totals(),
+            'nodes' => $nodes,
+            'capacity' => $this->overview->capacity($nodes),
+            'eggs' => $this->overview->eggs(),
+            'recentServers' => $this->overview->recentServers(),
+            'recentUsers' => $this->overview->recentUsers(),
+            'activity' => $this->overview->recentActivity(),
         ]);
     }
 }

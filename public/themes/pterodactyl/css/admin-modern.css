@@ -683,3 +683,22 @@ body.admin-modern ::selection { background: rgba(20, 71, 230, 0.18); }
 .admin-modern .checkbox input[type='checkbox']:checked + label::before { background: var(--primary); border-color: var(--primary); }
 .admin-modern .checkbox input[type='checkbox']:focus + label::before { outline: none; box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.2); }
 .admin-modern .checkbox label { font-weight: 500; color: var(--text-2); font-size: 13px; }
+
+/* ---- the overview: a line of detail on the stat cards, usage bars, short lists ---------------------------------------- */
+.admin-modern .stat-sub { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.admin-modern .ov-sub { font-size: 12px; color: var(--muted); }
+.admin-modern .ov-table > tbody > tr > td { vertical-align: top; }
+.admin-modern .ov-bar { height: 8px; border-radius: 999px; background: #eef2f7; overflow: hidden; margin: 6px 0 4px; }
+.admin-modern .ov-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--primary); }
+.admin-modern .ov-bar.ov-warning > span { background: var(--amber); }
+.admin-modern .ov-bar.ov-danger > span { background: var(--red); }
+.admin-modern .ov-meter { margin-bottom: 18px; }
+.admin-modern .ov-meter:last-child { margin-bottom: 0; }
+.admin-modern .ov-meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; font-weight: 500; color: var(--text-2); }
+.admin-modern .ov-meter-head strong { color: var(--text); }
+.admin-modern .ov-list { padding: 8px; }
+.admin-modern .ov-item { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; color: var(--text) !important; text-decoration: none; }
+.admin-modern .ov-item:hover { background: #f8fafc; }
+.admin-modern .ov-item-main { font-weight: 600; font-size: 14px; }
+.admin-modern .ov-empty { padding: 22px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.admin-modern .ov-empty i { display: block; font-size: 20px; margin-bottom: 8px; color: #94a3b8; }
