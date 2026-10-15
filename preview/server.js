@@ -330,8 +330,18 @@ wss.on('connection', (ws) => {
             const sub = String(args[0]).split(' ')[1];
             const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
             if (sub === 'handshake') {
-                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":1}');
+                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":3}');
                 send('console output', prefix + players);
+            } else if (sub === 'vitals') {
+                const food = 8 + Math.floor(Math.random() * 13);
+                send('console output', prefix + JSON.stringify({ event: 'vitals', players: [
+                    { name: 'kokofixcomputers', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', health: +(1 + Math.random() * 19).toFixed(1), maxHealth: 20, absorption: 0, food, saturation: +Math.min(food, Math.random() * 12).toFixed(2), level: 27, exp: 0.42 },
+                    { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', health: 20, maxHealth: 40, absorption: 4, food: 20, saturation: 5, level: 3, exp: 0.9 },
+                ] }));
+            } else if (sub === 'perf') {
+                const wobble = 17 + Math.random() * 3;
+                const avg = 8 + Math.random() * 40;
+                send('console output', prefix + JSON.stringify({ event: 'performance', tps: [Math.min(20, +wobble.toFixed(2)), 19.97, 20], mspt: { avg: +avg.toFixed(2), min: 2.35, max: +(avg * 2.4).toFixed(2) }, supported: true }));
             } else if (sub === 'refresh') {
                 setTimeout(() => {
                     send('console output', prefix + players);

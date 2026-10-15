@@ -12,6 +12,8 @@ import {
     resetBridgeStatus,
 } from '@/lib/bridge';
 import { findCommandsFile } from '@/lib/commandTree';
+import { clearPerformance, handlePerformanceMessage } from '@/lib/performance';
+import { clearVitals, handleVitalsMessage } from '@/lib/vitals';
 
 /**
  * Follows the console for the whole time a server is open, so the Players tab is right when it is opened. Players come
@@ -59,6 +61,9 @@ export default () => {
         if (message) {
             handleBridgeStatusMessage(uuid, message);
 
+            handlePerformanceMessage(uuid, message);
+            handleVitalsMessage(uuid, message);
+
             return handleBridgeMessage(uuid, message);
         }
 
@@ -66,7 +71,11 @@ export default () => {
         if (!isBridgeLine(line)) handleLogLine(uuid, line);
     });
     useWebsocketEvent(SocketEvent.STATUS, (state: string) => {
-        if (state === 'offline' || state === 'starting') clearOnlinePlayers(uuid);
+        if (state === 'offline' || state === 'starting') {
+            clearOnlinePlayers(uuid);
+            clearPerformance(uuid);
+            clearVitals(uuid);
+        }
     });
 
     return null;

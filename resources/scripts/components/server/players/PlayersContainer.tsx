@@ -26,6 +26,9 @@ import { setBanned as writeBan, setOperator, setWhitelisted, UUID_PATTERN } from
 import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
+import PlayerVitals from '@/components/server/players/PlayerVitals';
+import useVitalsPolling from '@/plugins/useVitalsPolling';
+import { useVitals } from '@/lib/vitals';
 
 interface CacheEntry {
     uuid: string;
@@ -92,6 +95,8 @@ export default () => {
     const [canEditFiles] = usePermissions(['file.update']);
     const { addFlash, clearFlashes } = useFlash();
     const { online, uuids } = useOnlinePlayers(server);
+    const vitals = useVitals(server);
+    useVitalsPolling();
 
     const [cache, setCache] = useState<CacheEntry[]>([]);
     const [ops, setOps] = useState<NamedEntry[]>([]);
@@ -327,14 +332,15 @@ export default () => {
         >
             <div className={'relative'}>
                 <PlayerHead uuid={uuidOf(player.name)} name={player.name} />
-                {player.online && (
-                    <span
-                        className={
-                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500'
-                        }
-                        title={'Online'}
-                    />
-                )}
+                <span
+                    className={classNames(
+                        'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white',
+                        player.online ? 'bg-green-500' : player.banned ? 'bg-red-500' : 'bg-neutral-400'
+                    )}
+                    title={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
+                    role={'img'}
+                    aria-label={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
+                />
             </div>
             <div className={'min-w-0 flex-1'}>
                 <p className={'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-50'}>
@@ -359,6 +365,11 @@ export default () => {
                 </p>
                 <p className={'text-xs text-neutral-300'}>{detail(player)}</p>
             </div>
+            {player.online && vitals[player.name] && (
+                <div className={'flex flex-1 justify-center'}>
+                    <PlayerVitals vitals={vitals[player.name]} />
+                </div>
+            )}
             {actions(player)}
         </div>
     );

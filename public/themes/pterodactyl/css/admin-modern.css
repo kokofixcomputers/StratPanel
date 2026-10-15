@@ -625,3 +625,60 @@ body.admin-modern ::selection { background: rgba(20, 71, 230, 0.18); }
 .admin-modern .stat-number.stat-text { font-size: 24px; padding-top: 6px; }
 .admin-modern .info-box .info-box-number { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .admin-modern .info-box .info-box-content { margin-left: 70px; }
+
+/* ---- custom controls: segmented choice, item cards (used by Settings > Branding) ------------------------------ */
+.admin-modern .seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.admin-modern .seg-opt { position: relative; margin: 0; cursor: pointer; }
+.admin-modern .seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.admin-modern .seg-opt span {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+    background: #fff; color: var(--text-2); font-size: 12px; font-weight: 500; transition: all 0.15s;
+}
+.admin-modern .seg-opt:hover span { border-color: #cbd5e1; background: #f8fafc; }
+.admin-modern .seg-opt input:checked + span { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.admin-modern .seg-opt input:focus-visible + span { box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.2); }
+.admin-modern .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.admin-modern .dot-info { background: #3b82f6; } .admin-modern .dot-success { background: #22c55e; }
+.admin-modern .dot-warning { background: #f59e0b; } .admin-modern .dot-danger { background: #ef4444; }
+
+.admin-modern .bx-item { border: 1px solid var(--border); border-radius: 12px; background: #fff; margin-bottom: 12px; overflow: hidden; }
+.admin-modern .bx-item-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fafafa; border-bottom: 1px solid var(--border); }
+.admin-modern .bx-item-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-modern .bx-item-body { padding: 16px 16px 4px; }
+.admin-modern .bx-icon-btn {
+    width: 28px; height: 28px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0;
+}
+.admin-modern .bx-icon-btn:hover { background: #f1f5f9; color: var(--text); }
+.admin-modern .bx-icon-btn.danger:hover { background: #fef2f2; color: var(--red); }
+.admin-modern .bx-icon-btn[disabled] { opacity: 0.3; pointer-events: none; }
+.admin-modern .bx-empty { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.admin-modern .bx-empty i { display: block; font-size: 20px; margin-bottom: 8px; color: #94a3b8; }
+.admin-modern .bx-hint { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+
+.admin-modern .bx-preview { display: flex; align-items: flex-start; gap: 10px; margin: 0 16px 16px; padding: 11px 14px; border: 1px solid; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+.admin-modern .bx-preview i { margin-top: 2px; }
+.admin-modern .bx-preview strong { display: block; }
+.admin-modern .bx-preview .bx-link { text-decoration: underline; font-weight: 500; }
+.admin-modern .bx-preview.t-info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+.admin-modern .bx-preview.t-success { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+.admin-modern .bx-preview.t-warning { background: #fefce8; border-color: #fde68a; color: #713f12; }
+.admin-modern .bx-preview.t-danger { background: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+.admin-modern .bx-off { opacity: 0.55; }
+
+.admin-modern .bx-favicon { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.admin-modern .bx-favicon-box {
+    width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--border); background: #f8fafc; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; color: #94a3b8; font-size: 22px;
+}
+.admin-modern .bx-favicon-box img { width: 40px; height: 40px; object-fit: contain; image-rendering: auto; }
+.admin-modern .bx-file { position: relative; overflow: hidden; margin: 0; }
+.admin-modern .bx-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+/* The custom checkbox of the admin (.checkbox with an input and a label), in the colours of this theme. */
+.admin-modern .checkbox label::before { width: 18px; height: 18px; top: 1px; border: 1.5px solid #cbd5e1; border-radius: 5px; background: #fff; transition: all 0.15s; }
+.admin-modern .checkbox label:hover::before { border-color: var(--primary); }
+.admin-modern .checkbox label::after { width: 18px; height: 18px; top: 1px; padding: 1px 0 0 3px; font-size: 11px; color: #fff; }
+.admin-modern .checkbox input[type='checkbox']:checked + label::before { background: var(--primary); border-color: var(--primary); }
+.admin-modern .checkbox input[type='checkbox']:focus + label::before { outline: none; box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.2); }
+.admin-modern .checkbox label { font-weight: 500; color: var(--text-2); font-size: 13px; }

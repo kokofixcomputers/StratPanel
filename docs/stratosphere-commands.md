@@ -179,10 +179,12 @@ panel**, that is why the name is so long. Register it in `plugin.yml`.
 
 | Subcommand | The plugin answers with |
 |---|---|
-| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":1}`, then a `players` event. The panel sends it when it connects to a running server that has `stratosphere.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
+| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":3}`, then a `players` event. `protocol` is 2 for a plugin that knows `perf` and 3 for one that also knows `vitals`; the panel only asks what the plugin says it can answer. The panel sends it when it connects to a running server that has `stratosphere.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
 | `refresh` | A `players` event, then it writes `stratosphere.commands.json` again **even when nothing changed** (new `generatedAt`) and announces `commands-updated`, then `{"event":"refreshed","generatedAt":"…"}` as the "done" message. The panel's status button sends it; on `refreshed` the panel reloads the command list. |
 | `sync` | A `players` event only. |
 | `scan` | Rescans the commands (debounced), announces `commands-updated` when the content changed. |
+| `perf` | `{"event":"performance","tps":[19.98,20.0,20.0],"mspt":{"avg":12.4,"min":3.1,"max":41.0},"supported":true}`. `tps` is the average of the last 1, 5 and 15 minutes (never above 20), `mspt` is over the last 100 ticks (just `avg` when the software cannot give more). A server that can report neither answers `{"event":"performance","supported":false}` (Folia). The panel asks every 5 seconds while somebody has the console page open and the server is running, so each answer is one line in the server log. |
+| `vitals` | `{"event":"vitals","players":[{"name":"Steve","uuid":"…","health":18.5,"maxHealth":20,"absorption":0,"food":17,"saturation":5.2,"level":12,"exp":0.33}]}`, one entry for everybody who is online. The panel draws the hearts and hunger bar of the Players tab from it and asks every 3 seconds while that tab is open and the server is running, so each answer is one line in the server log. |
 
 ## What the panel does with it
 

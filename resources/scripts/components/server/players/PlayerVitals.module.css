@@ -1,0 +1,30 @@
+/* One pixel of the game's texture is --s screen pixels, like the game's own GUI scale. */
+.hud {
+    --s: 1;
+    position: relative;
+    flex-shrink: 0;
+    width: calc(182px * var(--s));
+    cursor: help;
+}
+
+/* Only whole multiples, a texture scaled by a half would be blurry. Bigger screens have the room for bigger bars. */
+@media (min-width: 768px) {
+    .hud {
+        --s: 2;
+    }
+}
+
+@media (min-width: 1700px) {
+    .hud {
+        --s: 3;
+    }
+}
+
+.icon {
+    position: absolute;
+    width: calc(9px * var(--s));
+    height: calc(9px * var(--s));
+    image-rendering: pixelated;
+    user-select: none;
+    pointer-events: none;
+}

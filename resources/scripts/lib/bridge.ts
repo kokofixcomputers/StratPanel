@@ -74,6 +74,8 @@ export interface BridgeStatus {
     version?: string;
     platform?: string;
     minecraft?: string;
+    // What the plugin can do: 2 and up answers "perf" with TPS and MSPT.
+    protocol?: number;
     refreshing: boolean;
     lastRefreshed?: number;
 }
@@ -116,6 +118,10 @@ export const useBridgeStatus = (server: string): BridgeStatus => {
     return status;
 };
 
+/** Asks the plugin for TPS and MSPT, it answers with a "performance" message. Cheap, but meant for a few seconds apart. */
+export const askPerformance = (instance: { send: (event: string, ...args: string[]) => void }) =>
+    instance.send('send command', `${BRIDGE_COMMAND} perf`);
+
 /**
  * Asks the plugin something. "handshake" finds out whether it is there (and sends the players), "refresh" makes it send
  * the players again and write the command list again, then say it is done.
@@ -157,6 +163,8 @@ export const handleBridgeStatusMessage = (server: string, message: BridgeMessage
         if (typeof message.version === 'string') patch.version = message.version.slice(0, 40);
         if (typeof message.platform === 'string') patch.platform = message.platform.slice(0, 20);
         if (typeof message.minecraft === 'string') patch.minecraft = message.minecraft.slice(0, 20);
+        if (typeof message.protocol === 'number' && Number.isInteger(message.protocol))
+            patch.protocol = message.protocol;
     } else if (message.event === 'refreshed') {
         patch.refreshing = false;
         patch.lastRefreshed = Date.now();

@@ -89,7 +89,8 @@ public class StratPanel extends JavaPlugin implements Listener {
   /**
    * The console command the panel uses to talk to the plugin. The panel hides every console line that mentions its name,
    * which is why it is so long. Subcommands: {@code handshake} (who am I, and who is online), {@code refresh} (send the
-   * players again, write the command list again and say when that is done), {@code sync} and {@code scan}.
+   * players again, write the command list again and say when that is done), {@code sync}, {@code scan}, {@code perf}
+   * (TPS and MSPT) and {@code vitals} (health and hunger of the players).
    */
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -115,6 +116,12 @@ public class StratPanel extends JavaPlugin implements Listener {
       case "sync":
         sendPlayers();
         break;
+      case "perf":
+        sendPerformance();
+        break;
+      case "vitals":
+        sendVitals();
+        break;
       case "scan":
         scheduleScan();
         break;
@@ -129,8 +136,67 @@ public class StratPanel extends JavaPlugin implements Listener {
     fields.put("version", getPluginMeta().getVersion());
     fields.put("platform", Bukkit.getName().toLowerCase());
     fields.put("minecraft", Bukkit.getMinecraftVersion());
-    fields.put("protocol", 1);
+    // 2: the "perf" subcommand and the "performance" message. 3: "vitals".
+    fields.put("protocol", 3);
     bridge.send("handshake", fields);
+  }
+
+  /** Health, hunger and experience of everybody who is online, for the player list of the panel. */
+  @SuppressWarnings("deprecation")
+  private void sendVitals() {
+    List<Map<String, Object>> players = new ArrayList<>();
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      players.add(
+          PlayerVitals.fields(
+              player.getName(),
+              player.getUniqueId().toString(),
+              player.getHealth(),
+              // The attribute's name changed between versions, this method exists in all of them.
+              player.getMaxHealth(),
+              player.getAbsorptionAmount(),
+              player.getFoodLevel(),
+              player.getSaturation(),
+              player.getLevel(),
+              player.getExp()));
+    }
+    bridge.send("vitals", Map.of("players", players));
+  }
+
+  /** TPS and MSPT, as far as the server software can tell. Paper has both, Spigot only the TPS, Folia neither. */
+  private void sendPerformance() {
+    bridge.send(
+        "performance", PerformanceSample.fields(readTps(), readTickTimes(), readAverageTickTime()));
+  }
+
+  private static double[] readTps() {
+    try {
+      return Bukkit.getTPS();
+    } catch (UnsupportedOperationException | LinkageError e) {
+      // Folia has no single server tick, Spigot has the method elsewhere.
+    }
+    try {
+      // Spigot has it on its own object, which the Paper API this is built against does not declare.
+      Object spigot = Bukkit.class.getMethod("spigot").invoke(null);
+      return (double[]) spigot.getClass().getMethod("getTPS").invoke(spigot);
+    } catch (ReflectiveOperationException | ClassCastException | UnsupportedOperationException e) {
+      return null;
+    }
+  }
+
+  private static long[] readTickTimes() {
+    try {
+      return Bukkit.getTickTimes();
+    } catch (UnsupportedOperationException | LinkageError e) {
+      return null;
+    }
+  }
+
+  private static double readAverageTickTime() {
+    try {
+      return Bukkit.getAverageTickTime();
+    } catch (UnsupportedOperationException | LinkageError e) {
+      return Double.NaN;
+    }
   }
 
   private void sendPlayers() {
