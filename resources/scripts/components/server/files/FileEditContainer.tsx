@@ -17,8 +17,12 @@ import useFlash from '@/plugins/useFlash';
 import { ServerContext } from '@/state/server';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { encodePathSegments, hashToPath } from '@/helpers';
-import { dirname } from 'pathe';
+import { basename, dirname } from 'pathe';
 import MonacoEditor, { getLanguages } from '@/components/elements/MonacoEditor';
+import FileTooLarge from '@/components/server/files/FileTooLarge';
+import loadDirectory from '@/api/server/files/loadDirectory';
+import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
+import { canEdit, isTooLargeError, MAX_EDIT_BYTES } from '@/lib/fileLimits';
 
 const PRETTIFY_KEY = 'pterodactyl:editor:prettify-json';
 
@@ -37,6 +41,9 @@ const getNewFileDraftKey = (uuid: string, directory: string) => `pterodactyl:new
 
 export default () => {
     const [error, setError] = useState('');
+    // Set for a file that is not opened because it is too big, the size is null when it is not known.
+    const [tooLarge, setTooLarge] = useState<{ size: number | null } | null>(null);
+    const [downloading, setDownloading] = useState(false);
     const { action } = useParams<{ action: 'new' | string }>();
     const [loading, setLoading] = useState(action === 'edit');
     const [content, setContent] = useState('');
@@ -85,16 +92,54 @@ export default () => {
     useEffect(() => {
         if (action === 'new') return;
 
+        let cancelled = false;
         setError('');
+        setTooLarge(null);
+        setContent('');
         setLoading(true);
-        getFileContents(uuid, filePath)
-            .then(setContent)
+
+        // The size is in the list of the folder. A file over the limit is not downloaded at all, the browser would only be
+        // slowed down by text it can not edit.
+        loadDirectory(uuid, dirname(filePath))
+            .then((files) => files.find((file) => file.isFile && file.name === basename(filePath)))
+            .catch(() => undefined)
+            .then((file) => {
+                if (cancelled) return;
+                if (file && !canEdit(file.size)) {
+                    setTooLarge({ size: file.size });
+
+                    return;
+                }
+
+                return getFileContents(uuid, filePath).then((text) => {
+                    if (cancelled) return;
+                    // The size was not known, or the file grew since the list was made.
+                    if (new Blob([text]).size > MAX_EDIT_BYTES) setTooLarge({ size: null });
+                    else setContent(text);
+                });
+            })
             .catch((error) => {
+                if (cancelled) return;
+                if (isTooLargeError(error)) return setTooLarge({ size: null });
                 console.error(error);
                 setError(httpErrorToHuman(error));
             })
-            .then(() => setLoading(false));
+            .then(() => !cancelled && setLoading(false));
+
+        return () => {
+            cancelled = true;
+        };
     }, [action, uuid, filePath]);
+
+    const download = () => {
+        setDownloading(true);
+        getFileDownloadUrl(uuid, filePath)
+            .then((url) => {
+                window.location.href = url;
+            })
+            .catch((error) => addError({ message: httpErrorToHuman(error), key: 'files:view' }))
+            .then(() => setDownloading(false));
+    };
 
     const save = async (name?: string): Promise<boolean> => {
         if (!fetchFileContent) {
@@ -149,10 +194,6 @@ export default () => {
         addFlash({ key: 'files:view', type: 'success', message: 'File saved. The server is restarting.' });
     };
 
-    if (error) {
-        return <ServerError message={error} onBack={() => history.goBack()} />;
-    }
-
     const togglePrettify = async (checked: boolean) => {
         setPrettify(checked);
         localStorage.setItem(PRETTIFY_KEY, checked ? '1' : '0');
@@ -164,6 +205,29 @@ export default () => {
     };
 
     const isBinary = useMemo(() => content.indexOf('\u0000') >= 0, [content]);
+
+    // After every hook, a hook that is skipped on one render and not on the next breaks React.
+    if (tooLarge) {
+        return (
+            <>
+                <div className={'px-4 pt-4 lg:px-0'}>
+                    <FlashMessageRender byKey={'files:view'} css={tw`mb-3`} />
+                </div>
+                <FileTooLarge
+                    name={filePath}
+                    size={tooLarge.size}
+                    limit={MAX_EDIT_BYTES}
+                    downloading={downloading}
+                    onDownload={download}
+                    onBack={() => history.push(`/server/${id}/files#${encodePathSegments(directory)}`)}
+                />
+            </>
+        );
+    }
+
+    if (error) {
+        return <ServerError message={error} onBack={() => history.goBack()} />;
+    }
 
     const buttons = (
         <div css={tw`flex flex-wrap items-center justify-end gap-2`}>
