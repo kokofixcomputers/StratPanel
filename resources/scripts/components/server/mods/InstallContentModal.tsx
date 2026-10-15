@@ -14,6 +14,7 @@ import LegacyButton from '@/components/elements/Button';
 import { bytesToString } from '@/lib/formatters';
 import {
     getProjectVersions,
+    getVersion,
     loadersFor,
     ModrinthProject,
     ModrinthVersion,
@@ -65,6 +66,8 @@ interface Props {
     busy?: boolean;
     // Ids of the projects that are installed already, so their dependencies are not downloaded again.
     installed?: string[];
+    // A version to start on instead of the newest one, such as the one picked from the versions of the project.
+    versionId?: string;
     onClose: () => void;
     onConfirm: (version: ModrinthVersion, options: { required: boolean; dependencies: PlannedDependency[] }) => void;
 }
@@ -83,6 +86,7 @@ export default ({
     replaces,
     busy,
     installed = [],
+    versionId,
     onClose,
     onConfirm,
 }: Props) => {
@@ -120,10 +124,23 @@ export default ({
                     });
                 }
                 list = list.filter((v) => v.files.length > 0);
+
+                // The picked version may be one the filters hid, it is added at the top then.
+                let first = list[0]?.id || '';
+                if (versionId) {
+                    if (list.some((v) => v.id === versionId)) first = versionId;
+                    else {
+                        const picked = await getVersion(versionId).catch(() => null);
+                        if (picked && picked.files.length) {
+                            list = [picked, ...list];
+                            first = picked.id;
+                        }
+                    }
+                }
                 if (cancelled) return;
 
                 setVersions(list);
-                setSelectedId(list[0]?.id || '');
+                setSelectedId(first);
             } catch (e) {
                 if (!cancelled) setError((e as Error).message);
             }
@@ -132,7 +149,7 @@ export default ({
         return () => {
             cancelled = true;
         };
-    }, [project?.project_id, kind, loader, gameVersion]);
+    }, [project?.project_id, kind, loader, gameVersion, versionId]);
 
     const selected = versions?.find((v) => v.id === selectedId);
 

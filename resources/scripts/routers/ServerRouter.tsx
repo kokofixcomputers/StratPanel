@@ -13,6 +13,7 @@ import { httpErrorToHuman } from '@/api/http';
 import { useStoreState } from 'easy-peasy';
 import SubNavigation from '@/components/elements/SubNavigation';
 import ServerSidebar from '@/components/server/ServerSidebar';
+import ContentSidebar from '@/components/server/content/ContentSidebar';
 import PlayerTracker from '@/components/server/PlayerTracker';
 import InstallListener from '@/components/server/InstallListener';
 import ErrorBoundary from '@/components/elements/ErrorBoundary';
@@ -52,6 +53,9 @@ export default () => {
 
         return () => window.removeEventListener('pterodactyl:software-changed', check);
     }, [uuid]);
+
+    // While Content is open its filters take the place of the server navigation, so it knows nothing of the page it is on.
+    const inContent = location.pathname.startsWith(`${match.url.replace(/\/*$/, '')}/mods`);
 
     const to = (value: string, url = false) => {
         if (value === '/') {
@@ -127,23 +131,27 @@ export default () => {
                     <WebsocketHandler />
                     <PlayerTracker />
                     <div className={'lg:flex'}>
-                        <ServerSidebar
-                            items={routes.server
-                                .filter(
-                                    (route) =>
-                                        !!route.name &&
-                                        !(isProxy && (route.path === '/players' || route.path === '/tools'))
-                                )
-                                .map((route) => ({
-                                    path: route.path,
-                                    url: to(route.path, true),
-                                    label: route.path === '/properties' && isProxy ? 'Proxy' : route.name!,
-                                    permission: route.permission,
-                                    exact: route.exact,
-                                }))}
-                            adminUrl={rootAdmin ? `/admin/servers/view/${serverId}` : undefined}
-                            playersUrl={isProxy ? undefined : to('/players', true)}
-                        />
+                        {inContent ? (
+                            <ContentSidebar backUrl={to('/', true)} />
+                        ) : (
+                            <ServerSidebar
+                                items={routes.server
+                                    .filter(
+                                        (route) =>
+                                            !!route.name &&
+                                            !(isProxy && (route.path === '/players' || route.path === '/tools'))
+                                    )
+                                    .map((route) => ({
+                                        path: route.path,
+                                        url: to(route.path, true),
+                                        label: route.path === '/properties' && isProxy ? 'Proxy' : route.name!,
+                                        permission: route.permission,
+                                        exact: route.exact,
+                                    }))}
+                                adminUrl={rootAdmin ? `/admin/servers/view/${serverId}` : undefined}
+                                playersUrl={isProxy ? undefined : to('/players', true)}
+                            />
+                        )}
                         <div className={'min-w-0 flex-1 lg:px-4'}>
                             {inConflictState &&
                             (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (

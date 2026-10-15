@@ -268,7 +268,7 @@ app.get('/locales/locale.json', (req, res) => res.json({}));
 
 const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, use_totp: false, language: 'en', updated_at: now(), created_at: now() };
 const page = (title) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
-<script>window.PterodactylUser=${JSON.stringify(user)};window.SiteConfiguration=${JSON.stringify({ name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' } })};</script></head>
+<script>window.fetch=(function(f){return function(u,o){return f(typeof u==='string'?u.replace('https://api.modrinth.com/v2','/mr'):u,o)}})(window.fetch.bind(window));</script><script>window.PterodactylUser=${JSON.stringify(user)};window.SiteConfiguration=${JSON.stringify({ name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' } })};</script></head>
 <body><div id="modal-portal"></div><div id="app"></div><script src="/assets/bundle.js"></script></body></html>`;
 
 app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false }));
@@ -276,6 +276,16 @@ const renderAdmin = require('./admin');
 app.use('/themes', express.static(path.join(root, 'public/themes')));
 app.use('/helper', express.static(path.join(root, 'public/helper')));
 app.use('/tools', express.static(path.join(root, 'public/tools')));
+// Modrinth is asked through here: the browser pane of the preview can not reach it, this process can. The page is told to
+// use it by the script that is put in front of the panel's own.
+app.use('/mr', async (req, res) => {
+    try {
+        const response = await fetch('https://api.modrinth.com/v2' + req.url, { headers: { 'User-Agent': 'stratosphere-preview/1.0' } });
+        res.status(response.status).type('json').send(await response.text());
+    } catch (e) {
+        res.status(502).json({ error: String(e) });
+    }
+});
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));

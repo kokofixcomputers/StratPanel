@@ -1,5 +1,5 @@
 /**
- * Bans and operators live in banned-players.json and ops.json. While the server is stopped they can be edited
+ * Bans, operators and the whitelist live in banned-players.json, ops.json and whitelist.json. While the server is stopped they can be edited
  * directly, a running server keeps them in memory and would overwrite the files, so it is sent commands instead.
  */
 import saveFileContents from '@/api/server/files/saveFileContents';
@@ -7,6 +7,7 @@ import { readJsonList } from '@/lib/minecraft';
 
 export const OPS_FILE = '/ops.json';
 export const BANS_FILE = '/banned-players.json';
+export const WHITELIST_FILE = '/whitelist.json';
 
 interface Entry {
     uuid: string;
@@ -54,4 +55,11 @@ export const setBanned = async (
     }
 
     await write(server, BANS_FILE, entries);
+};
+
+export const setWhitelisted = async (server: string, player: { uuid: string; name: string }, whitelisted: boolean) => {
+    const entries = without(await readJsonList<Entry>(server, WHITELIST_FILE), player.name);
+    if (whitelisted) entries.push({ uuid: player.uuid, name: player.name });
+
+    await write(server, WHITELIST_FILE, entries);
 };

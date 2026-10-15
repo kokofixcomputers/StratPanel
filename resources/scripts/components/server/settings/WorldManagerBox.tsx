@@ -18,11 +18,21 @@ import { Button } from '@/components/elements/button/index';
 import { Dialog } from '@/components/elements/dialog';
 import Input from '@/components/elements/Input';
 import Label from '@/components/elements/Label';
+import Select from '@/components/elements/Select';
 import Spinner from '@/components/elements/Spinner';
 import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
 import { WORLDS_CHANGED } from '@/lib/worldImport';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
+import SuperflatEditor from '@/components/server/settings/SuperflatEditor';
+import {
+    FLAT_PRESETS,
+    matchFlatPreset,
+    parseWorldType,
+    WORLD_TYPES,
+    WorldType,
+    worldTypeProperties,
+} from '@/lib/worldType';
 
 const PROPERTIES = '/server.properties';
 const TEMP = '.world-upload';
@@ -53,6 +63,14 @@ export default () => {
     const [levelName, setLevelName] = useState('world');
     const [seed, setSeed] = useState('');
     const [savedSeed, setSavedSeed] = useState('');
+    // The type of world new worlds are made as. null is a type this page does not know, which is left alone.
+    const [rawType, setRawType] = useState('');
+    const [rawLayers, setRawLayers] = useState('');
+    const [type, setType] = useState<WorldType | null>('normal');
+    const [flat, setFlat] = useState('');
+    const [resetType, setResetType] = useState<WorldType>('normal');
+    const [resetFlat, setResetFlat] = useState('');
+    const [editingLayers, setEditingLayers] = useState(false);
     const [worlds, setWorlds] = useState<World[]>([]);
     const [resetting, setResetting] = useState<World | null>(null);
     const [resetSeed, setResetSeed] = useState('');
@@ -68,6 +86,10 @@ export default () => {
         setLevelName(level);
         setSeed(values['level-seed'] || '');
         setSavedSeed(values['level-seed'] || '');
+        setRawType(values['level-type'] || '');
+        setRawLayers(values['generator-settings'] || '');
+        setType(parseWorldType(values['level-type'] || ''));
+        setFlat(matchFlatPreset(values['generator-settings'] || ''));
 
         const root = await loadDirectory(uuid, '/').catch(() => [] as FileObject[]);
         const folders = root.filter((file) => !file.isFile && !IGNORED.has(file.name) && !file.name.startsWith('.'));
@@ -101,9 +123,45 @@ export default () => {
         return () => window.removeEventListener(WORLDS_CHANGED, load);
     }, [load]);
 
-    const writeSeed = async (value: string) => {
+    const writeProperties = async (values: Record<string, string>) => {
         const current = (await readOptionalFile(uuid, PROPERTIES)) || '';
-        await saveFileContents(uuid, PROPERTIES, serializeProperties(current, { 'level-seed': value }));
+        await saveFileContents(uuid, PROPERTIES, serializeProperties(current, values));
+    };
+
+    const writeSeed = (value: string) => writeProperties({ 'level-seed': value });
+
+    const savedType = parseWorldType(rawType);
+    const typeChanged =
+        type !== null && (type !== savedType || (type === 'flat' && flat !== matchFlatPreset(rawLayers)));
+
+    const saveType = () => {
+        if (type === null) return;
+        clearFlashes('settings');
+        writeProperties(worldTypeProperties(type, flat, { levelType: rawType, generatorSettings: rawLayers }))
+            .then(() => {
+                addFlash({
+                    key: 'settings',
+                    type: 'success',
+                    message: 'World type saved. It applies to the next world that is generated.',
+                });
+
+                return load();
+            })
+            .catch(error);
+    };
+
+    /** Layers built in the editor: Superflat, with exactly those layers. */
+    const saveLayers = async (settings: string) => {
+        await writeProperties(
+            worldTypeProperties('flat', 'custom', { levelType: rawType, generatorSettings: rawLayers })
+        );
+        await writeProperties({ 'generator-settings': settings });
+        await load();
+        addFlash({
+            key: 'settings',
+            type: 'success',
+            message: 'Superflat layers saved. They apply to the next world that is generated.',
+        });
     };
 
     const saveSeed = () => {
@@ -132,7 +190,10 @@ export default () => {
         try {
             await deleteFiles(uuid, '/', folderSet(world));
             if (world.name === levelName) {
-                await writeSeed(resetSeed.trim());
+                await writeProperties({
+                    'level-seed': resetSeed.trim(),
+                    ...worldTypeProperties(resetType, resetFlat, { levelType: rawType, generatorSettings: rawLayers }),
+                });
                 setSeed(resetSeed.trim());
                 setSavedSeed(resetSeed.trim());
             }
@@ -295,6 +356,8 @@ export default () => {
                                             disabled={!offline}
                                             onClick={() => {
                                                 setResetSeed(seed);
+                                                setResetType(type ?? 'normal');
+                                                setResetFlat(type === 'flat' ? flat : '');
                                                 setResetting(world);
                                             }}
                                         >
@@ -328,8 +391,63 @@ export default () => {
                         generated, so existing worlds are not changed.
                     </p>
                 </div>
+                <div className={'mt-5'}>
+                    <Label>World type</Label>
+                    <div className={'flex gap-2'}>
+                        <Select
+                            value={type ?? ''}
+                            aria-label={'World type'}
+                            onChange={(e) => setType(e.currentTarget.value as WorldType)}
+                        >
+                            {type === null && <option value={''}>Custom ({rawType.replace(/\\/g, '')})</option>}
+                            {WORLD_TYPES.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.label}
+                                </option>
+                            ))}
+                        </Select>
+                        <Button.Text disabled={!typeChanged} onClick={saveType}>
+                            Save
+                        </Button.Text>
+                    </div>
+                    {type === 'flat' && (
+                        <div className={'mt-3'}>
+                            <Label>Superflat layers</Label>
+                            <Select
+                                value={flat}
+                                aria-label={'Superflat layers'}
+                                onChange={(e) => setFlat(e.currentTarget.value)}
+                            >
+                                <option value={''}>Default layers</option>
+                                {FLAT_PRESETS.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.label}
+                                    </option>
+                                ))}
+                                {matchFlatPreset(rawLayers) === 'custom' && (
+                                    <option value={'custom'}>Custom (kept as it is in server.properties)</option>
+                                )}
+                            </Select>
+                            <p className={'mt-1 text-xs text-neutral-300'}>
+                                {FLAT_PRESETS.find((p) => p.id === flat)?.description ||
+                                    'The layers Minecraft makes a Superflat world from, written to generator-settings.'}
+                            </p>
+                            <Button.Text className={'mt-2'} onClick={() => setEditingLayers(true)}>
+                                Edit layers
+                            </Button.Text>
+                        </div>
+                    )}
+                    <p className={'mt-1 text-xs text-neutral-300'}>
+                        {WORLD_TYPES.find((t) => t.id === type)?.description} Written to <code>level-type</code> in
+                        server.properties. It only applies when a new world is generated, a world that exists keeps the
+                        type it was made with. Reset the world above to make a new one.
+                    </p>
+                </div>
             </div>
 
+            {editingLayers && (
+                <SuperflatEditor settings={rawLayers} onClose={() => setEditingLayers(false)} onSave={saveLayers} />
+            )}
             <Dialog.Confirm
                 open={!!resetting}
                 title={resetting?.name === levelName ? 'Reset world' : 'Delete world'}
@@ -345,14 +463,50 @@ export default () => {
                     . Download it first if you may want it back.
                 </p>
                 {resetting?.name === levelName && (
-                    <div className={'mt-4'}>
-                        <Label>Seed for the new world</Label>
-                        <Input
-                            value={resetSeed}
-                            onChange={(e) => setResetSeed(e.currentTarget.value)}
-                            placeholder={'Leave empty for a random seed'}
-                        />
-                    </div>
+                    <>
+                        <div className={'mt-4'}>
+                            <Label>Seed for the new world</Label>
+                            <Input
+                                value={resetSeed}
+                                onChange={(e) => setResetSeed(e.currentTarget.value)}
+                                placeholder={'Leave empty for a random seed'}
+                            />
+                        </div>
+                        <div className={'mt-4'}>
+                            <Label>Type of the new world</Label>
+                            <Select
+                                value={resetType}
+                                aria-label={'Type of the new world'}
+                                onChange={(e) => setResetType(e.currentTarget.value as WorldType)}
+                            >
+                                {WORLD_TYPES.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.label}
+                                    </option>
+                                ))}
+                            </Select>
+                        </div>
+                        {resetType === 'flat' && (
+                            <div className={'mt-4'}>
+                                <Label>Superflat layers</Label>
+                                <Select
+                                    value={resetFlat}
+                                    aria-label={'Superflat layers of the new world'}
+                                    onChange={(e) => setResetFlat(e.currentTarget.value)}
+                                >
+                                    <option value={''}>Default layers</option>
+                                    {FLAT_PRESETS.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.label}
+                                        </option>
+                                    ))}
+                                    {matchFlatPreset(rawLayers) === 'custom' && (
+                                        <option value={'custom'}>Custom (kept as it is in server.properties)</option>
+                                    )}
+                                </Select>
+                            </div>
+                        )}
+                    </>
                 )}
             </Dialog.Confirm>
             <Dialog.Confirm

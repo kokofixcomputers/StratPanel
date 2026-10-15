@@ -10,7 +10,8 @@ import StartupContainer from '@/components/server/startup/StartupContainer';
 import VersionsContainer from '@/components/server/versions/VersionsContainer';
 import PropertiesContainer from '@/components/server/properties/PropertiesContainer';
 import PlayersContainer from '@/components/server/players/PlayersContainer';
-import ModsContainer from '@/components/server/mods/ModsContainer';
+import ContentContainer from '@/components/server/content/ContentContainer';
+import ProjectPage from '@/components/server/content/ProjectPage';
 import ToolsContainer from '@/components/server/tools/ToolsContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
@@ -102,7 +103,14 @@ export default {
             path: '/mods',
             permission: 'file.*',
             name: 'Content',
-            component: ModsContainer,
+            component: ContentContainer,
+        },
+        {
+            // One project of Modrinth, opened from the results of Content.
+            path: '/mods/project/:project',
+            permission: 'file.*',
+            name: undefined,
+            component: ProjectPage,
         },
         {
             path: '/tools',
