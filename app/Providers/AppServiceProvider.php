@@ -56,6 +56,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One instance per request, it keeps what it read from the settings.
+        $this->app->singleton(\Pterodactyl\Services\Branding\BrandingService::class);
+
         // Only load the settings service provider if the environment
         // is configured to allow it.
         if (!config('pterodactyl.load_environment_only', false) && $this->app->environment() !== 'testing') {

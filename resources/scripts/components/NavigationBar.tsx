@@ -11,6 +11,8 @@ import http from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import Tooltip from '@/components/elements/tooltip/Tooltip';
 import Avatar from '@/components/Avatar';
+import useBranding from '@/plugins/useBranding';
+import { linksAt } from '@/lib/branding';
 
 const RightNavigation = styled.div`
     ${tw`flex items-center space-x-1`};
@@ -39,6 +41,7 @@ export default () => {
     const name = useStoreState((state: ApplicationStore) => state.settings.data!.name);
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.rootAdmin);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const navbarLinks = linksAt(useBranding().links, 'navbar');
 
     const onTriggerLogout = () => {
         setIsLoggingOut(true);
@@ -65,6 +68,23 @@ export default () => {
                         {name}
                     </Link>
                 </div>
+                {navbarLinks.length > 0 && (
+                    <div className={'mr-2 hidden items-center space-x-1 md:flex'}>
+                        {navbarLinks.map((custom, index) => (
+                            <a
+                                key={`${custom.url}:${index}`}
+                                href={custom.url}
+                                target={custom.newTab ? '_blank' : undefined}
+                                rel={'noopener noreferrer'}
+                                className={
+                                    'rounded-lg px-3 py-1.5 text-sm font-medium no-underline text-neutral-300 transition-colors duration-150 hover:bg-neutral-600 hover:text-neutral-50'
+                                }
+                            >
+                                {custom.label}
+                            </a>
+                        ))}
+                    </div>
+                )}
                 <RightNavigation>
                     <SearchContainer />
                     <Tooltip placement={'bottom'} content={'Dashboard'}>

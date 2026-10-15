@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/solid';
 import Button from '@/components/elements/Button';
 import { getSelfService, SelfService } from '@/api/selfService';
+import Announcements from '@/components/dashboard/Announcements';
 
 export default () => {
     const { search } = useLocation();
@@ -64,6 +65,7 @@ export default () => {
 
     return (
         <PageContentBlock title={'Dashboard'} showFlashKey={'dashboard'}>
+            <Announcements css={tw`mb-6`} />
             <div css={tw`flex flex-wrap items-end justify-between gap-4 mb-6`}>
                 <div>
                     <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>Your servers</h1>

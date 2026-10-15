@@ -30,6 +30,8 @@ import StatusBadge from '@/components/server/console/StatusBadge';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import { parseProperties, readOptionalFile } from '@/lib/minecraft';
 import PowerButtons from '@/components/server/console/PowerButtons';
+import useBranding from '@/plugins/useBranding';
+import { linksAt } from '@/lib/branding';
 
 export interface SidebarItem {
     path: string;
@@ -105,6 +107,7 @@ export default ({
 
         return match ? `${match.alias || ip(match.ip)}:${match.port}` : null;
     });
+    const customLinks = linksAt(useBranding().links, 'sidebar');
     const known = new Set(GROUPS.flatMap((g) => g.paths));
     const groups = [...GROUPS, { title: 'More', paths: items.map((i) => i.path).filter((path) => !known.has(path)) }];
 
@@ -198,6 +201,22 @@ export default ({
                         </div>
                     );
                 })}
+                {customLinks.length > 0 && (
+                    <div className={'mb-2 mt-2 border-t border-neutral-500 pt-1'}>
+                        {customLinks.map((custom, index) => (
+                            <a
+                                key={`${custom.url}:${index}`}
+                                href={custom.url}
+                                target={custom.newTab ? '_blank' : undefined}
+                                rel={'noopener noreferrer'}
+                                className={link(false)}
+                            >
+                                <ExternalLinkIcon className={'h-5 w-5 flex-shrink-0'} />
+                                <span className={'truncate'}>{custom.label}</span>
+                            </a>
+                        ))}
+                    </div>
+                )}
                 {adminUrl && (
                     <a
                         href={adminUrl}

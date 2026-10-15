@@ -3,6 +3,8 @@ import { action, Action } from 'easy-peasy';
 export interface SiteSettings {
     name: string;
     locale: string;
+    // What the admin set under Settings > Branding, as the server sends it (see parseBranding).
+    branding?: unknown;
     recaptcha: {
         enabled: boolean;
         siteKey: string;
