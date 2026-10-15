@@ -81,7 +81,7 @@ const serverAttrs = () => ({
 });
 const variables = [
     { name: 'Server Jar File', description: 'The name of the server jarfile to run the server with.', env_variable: 'SERVER_JARFILE', default_value: 'server.jar', server_value: 'server.jar', is_editable: true, rules: 'required|string|max:20' },
-    { name: 'Minecraft Version', description: 'The version of Minecraft to download.', env_variable: 'MC_VERSION', default_value: 'latest', server_value: '1.21.4', is_editable: true, rules: 'required|string|max:20' },
+    { name: 'Minecraft Version', description: 'The version of Minecraft to download.', env_variable: 'MC_VERSION', default_value: 'latest', server_value: '26.3', is_editable: true, rules: 'required|string|max:20' },
     { name: 'Build Number', description: 'The build number for the selected version.', env_variable: 'BUILD_NUMBER', default_value: 'latest', server_value: 'latest', is_editable: false, rules: 'required|string|max:20' },
 ];
 
@@ -109,6 +109,52 @@ files['/world'] = [['level.dat', true, 2048, 'application/octet-stream'], ['regi
 files['/world/dimensions'] = [['minecraft', false]];
 files['/world/dimensions/minecraft'] = [['overworld', false], ['the_end', false], ['the_nether', false]];
 api.get('/servers/:id/files/list', (req, res) => res.json({ object: 'list', data: (files[req.query.directory] || (['/', ''].includes(String(req.query.directory)) ? files['/'] : [])).map(fileAttrs) }));
+const mockPlayer = {
+    ender: [
+        { slot: 0, id: 'minecraft:shulker_box', count: 1 },
+        { slot: 1, id: 'minecraft:netherite_ingot', count: 9 },
+        { slot: 2, id: 'minecraft:enchanted_golden_apple', count: 4 },
+        { slot: 3, id: 'minecraft:obsidian', count: 64 },
+        { slot: 9, id: 'minecraft:totem_of_undying', count: 1 },
+        { slot: 10, id: 'minecraft:emerald_block', count: 20 },
+        { slot: 11, id: 'minecraft:netherrack', count: 64 },
+        { slot: 26, id: 'minecraft:dragon_egg', count: 1 },
+    ],
+    health: 14.5, food: 12, saturation: 5.4, level: 27, mode: 'survival',
+    items: [
+        { slot: 0, id: 'minecraft:diamond_sword', count: 1, damage: 120, maxDamage: 1561, name: 'Excalibur', enchants: { sharpness: 5, fire_aspect: 2 } },
+        { slot: 1, id: 'minecraft:diamond_pickaxe', count: 1, damage: 900, maxDamage: 1561, enchants: { efficiency: 5, unbreaking: 3 } },
+        { slot: 2, id: 'minecraft:cooked_beef', count: 64 },
+        { slot: 3, id: 'minecraft:torch', count: 48 },
+        { slot: 4, id: 'minecraft:oak_planks', count: 32 },
+        { slot: 5, id: 'minecraft:bow', count: 1, damage: 300, maxDamage: 384, enchants: { power: 4, infinity: 1 } },
+        { slot: 8, id: 'minecraft:ender_pearl', count: 12 },
+        { slot: 9, id: 'minecraft:cobblestone', count: 64 },
+        { slot: 10, id: 'minecraft:iron_ingot', count: 33 },
+        { slot: 11, id: 'minecraft:grass_block', count: 16 },
+        { slot: 12, id: 'minecraft:golden_apple', count: 3 },
+        { slot: 20, id: 'minecraft:diamond', count: 7 },
+        { slot: 13, id: 'minecraft:stone', count: 64 },
+        { slot: 14, id: 'minecraft:oak_log', count: 20 },
+        { slot: 15, id: 'minecraft:oak_slab', count: 8 },
+        { slot: 16, id: 'minecraft:oak_stairs', count: 12 },
+        { slot: 17, id: 'minecraft:furnace', count: 1 },
+        { slot: 18, id: 'minecraft:oak_leaves', count: 32 },
+        { slot: 19, id: 'minecraft:tnt', count: 4 },
+        { slot: 21, id: 'minecraft:crafting_table', count: 1 },
+        { slot: 22, id: 'minecraft:short_grass', count: 9 },
+        { slot: 23, id: 'minecraft:chest', count: 2 },
+        { slot: 24, id: 'minecraft:diamond_block', count: 5 },
+        { slot: 25, id: 'minecraft:glass', count: 16 },
+        { slot: 26, id: 'minecraft:bookshelf', count: 3 },
+        { slot: 27, id: 'minecraft:torch', count: 64 },
+        { slot: 36, id: 'minecraft:diamond_boots', count: 1, damage: 10, maxDamage: 429, enchants: { protection: 4, feather_falling: 4 } },
+        { slot: 37, id: 'minecraft:diamond_leggings', count: 1, damage: 200, maxDamage: 495, enchants: { protection: 4 } },
+        { slot: 38, id: 'minecraft:elytra', count: 1, damage: 100, maxDamage: 432 },
+        { slot: 39, id: 'minecraft:diamond_helmet', count: 1, damage: 400, maxDamage: 363, enchants: { respiration: 3 } },
+        { slot: 40, id: 'minecraft:shield', count: 1, damage: 5, maxDamage: 336 },
+    ],
+};
 const fileStore = {
     ...(process.env.PREVIEW_PROXY ? { '/velocity.toml': `# Config version. Do not change this
 config-version = "2.7"
@@ -344,14 +390,54 @@ wss.on('connection', (ws) => {
             const sub = String(args[0]).split(' ')[1];
             const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
             if (sub === 'handshake') {
-                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":3}');
+                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":7}');
                 send('console output', prefix + players);
             } else if (sub === 'vitals') {
-                const food = 8 + Math.floor(Math.random() * 13);
                 send('console output', prefix + JSON.stringify({ event: 'vitals', players: [
-                    { name: 'kokofixcomputers', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', health: +(1 + Math.random() * 19).toFixed(1), maxHealth: 20, absorption: 0, food, saturation: +Math.min(food, Math.random() * 12).toFixed(2), level: 27, exp: 0.42 },
+                    { name: 'kokofixcomputers', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', health: mockPlayer.health, maxHealth: 20, absorption: 0, food: mockPlayer.food, saturation: Math.min(mockPlayer.food, mockPlayer.saturation), level: mockPlayer.level, exp: 0.42, gameMode: mockPlayer.mode },
                     { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', health: 20, maxHealth: 40, absorption: 4, food: 20, saturation: 5, level: 3, exp: 0.9 },
                 ] }));
+            } else if (['inventory', 'heal', 'feed', 'swap', 'delete', 'ender', 'enderswap', 'enderdelete', 'health', 'hunger', 'levels', 'gamemode'].includes(sub)) {
+                const [, , who, a, b] = String(args[0]).split(' ');
+                if (who !== 'kokofixcomputers') return send('console output', prefix + JSON.stringify({ event: 'player-error', name: who, action: sub, error: 'That player is not online.' }));
+                const wears = { 39: /_helmet$|^carved_pumpkin$|_head$|_skull$/, 38: /_chestplate$|^elytra$/, 37: /_leggings$/, 36: /_boots$/ };
+                const fits = (slot, item) => !item || !wears[slot] || wears[slot].test(item.id.replace('minecraft:', ''));
+                const at = (slot) => mockPlayer.items.find((i) => i.slot === slot);
+                if (sub === 'ender' || sub === 'enderswap' || sub === 'enderdelete') {
+                    const from = Number(a), to = Number(b);
+                    if (sub === 'enderswap') {
+                        const x = mockPlayer.ender.find((i) => i.slot === from), y = mockPlayer.ender.find((i) => i.slot === to);
+                        mockPlayer.ender = mockPlayer.ender.filter((i) => i.slot !== from && i.slot !== to);
+                        if (x) mockPlayer.ender.push({ ...x, slot: to });
+                        if (y) mockPlayer.ender.push({ ...y, slot: from });
+                    }
+                    if (sub === 'enderdelete') mockPlayer.ender = mockPlayer.ender.filter((i) => i.slot !== from);
+                    return send('console output', prefix + JSON.stringify({ event: 'enderchest', name: who, uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', items: mockPlayer.ender }));
+                }
+                if (sub === 'gamemode') {
+                    if (['survival', 'creative', 'adventure', 'spectator'].includes(a)) mockPlayer.mode = a;
+                    return setTimeout(() => ws.emit('message', JSON.stringify({ event: 'send command', args: ['stratpanelhidepanellogs vitals'] })), 50);
+                }
+                if (sub === 'health' || sub === 'hunger' || sub === 'levels') {
+                    const delta = Number(a);
+                    if (sub === 'health') mockPlayer.health = Math.min(20, Math.max(1, mockPlayer.health + delta));
+                    if (sub === 'hunger') { mockPlayer.food = Math.min(20, Math.max(0, mockPlayer.food + delta)); mockPlayer.saturation = Math.min(mockPlayer.saturation, mockPlayer.food); }
+                    if (sub === 'levels') mockPlayer.level = Math.min(100000, Math.max(0, mockPlayer.level + delta));
+                    return setTimeout(() => ws.emit('message', JSON.stringify({ event: 'send command', args: ['stratpanelhidepanellogs vitals'] })), 50);
+                }
+                if (sub === 'heal') { mockPlayer.health = 20; return setTimeout(() => ws.emit('message', JSON.stringify({ event: 'send command', args: ['stratpanelhidepanellogs vitals'] })), 50); }
+                if (sub === 'feed') { mockPlayer.food = 20; mockPlayer.saturation = 20; return setTimeout(() => ws.emit('message', JSON.stringify({ event: 'send command', args: ['stratpanelhidepanellogs vitals'] })), 50); }
+                if (sub === 'swap') {
+                    const from = Number(a), to = Number(b), x = at(from), y = at(to);
+                    if (!fits(to, x) || !fits(from, y)) send('console output', prefix + JSON.stringify({ event: 'player-error', name: who, action: 'swap', error: 'That item can not go in that slot.' }));
+                    else {
+                        mockPlayer.items = mockPlayer.items.filter((i) => i.slot !== from && i.slot !== to);
+                        if (x) mockPlayer.items.push({ ...x, slot: to });
+                        if (y) mockPlayer.items.push({ ...y, slot: from });
+                    }
+                }
+                if (sub === 'delete') mockPlayer.items = mockPlayer.items.filter((i) => i.slot !== Number(a));
+                send('console output', prefix + JSON.stringify({ event: 'inventory', name: who, uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', items: mockPlayer.items }));
             } else if (sub === 'perf') {
                 const wobble = 17 + Math.random() * 3;
                 const avg = 8 + Math.random() * 40;

@@ -7,6 +7,7 @@
 #   MCTOOLS_REPO  where to clone from (default: the GitHub repository)
 #   MCTOOLS_SRC   build an existing checkout instead of cloning, for working on the tools next to the panel
 #   MCTOOLS_BASE  the url path the panel serves them from (default: /tools/, public/tools is what the panel expects)
+#   MC_TEXTURES   the version of the game to take textures from for the player inventory (default: 26.3, empty for none)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -39,4 +40,13 @@ VITE_BASE="$BASE" "${PNPM[@]}" build
 
 rm -rf "$ROOT/public/tools"
 cp -R "$SRC/dist" "$ROOT/public/tools"
+
+# The textures of the newest version of the game, which the player inventory of the panel draws items and blocks from. They are
+# taken from Mojang's own client, the tools only bring the 1.21 ones. Without them the panel falls back to those, so a failure
+# (no network) is only a warning.
+MC_TEXTURES="${MC_TEXTURES:-26.3}"
+if [ -n "$MC_TEXTURES" ]; then
+  node "$ROOT/tools/fetch-mc-textures.mjs" "$MC_TEXTURES" "$ROOT/public/tools/mc-assets/$MC_TEXTURES" \
+    || echo "WARNING: could not get the textures of $MC_TEXTURES, the older ones are used instead." >&2
+fi
 echo "Minecraft tools installed in public/tools ($(du -sh "$ROOT/public/tools" | cut -f1))."

@@ -179,12 +179,23 @@ panel**, that is why the name is so long. Register it in `plugin.yml`.
 
 | Subcommand | The plugin answers with |
 |---|---|
-| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":3}`, then a `players` event. `protocol` is 2 for a plugin that knows `perf` and 3 for one that also knows `vitals`; the panel only asks what the plugin says it can answer. The panel sends it when it connects to a running server that has `stratosphere.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
+| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":4}`, then a `players` event. `protocol` is 2 for a plugin that knows `perf`, 3 for one that also knows `vitals` 4 for one that has the player commands below 5 for one that also does the ender chest 6 for one that can change health, hunger and levels and 7 for one that sends and changes the game mode; the panel only asks what the plugin says it can answer. The panel sends it when it connects to a running server that has `stratosphere.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
 | `refresh` | A `players` event, then it writes `stratosphere.commands.json` again **even when nothing changed** (new `generatedAt`) and announces `commands-updated`, then `{"event":"refreshed","generatedAt":"…"}` as the "done" message. The panel's status button sends it; on `refreshed` the panel reloads the command list. |
 | `sync` | A `players` event only. |
 | `scan` | Rescans the commands (debounced), announces `commands-updated` when the content changed. |
 | `perf` | `{"event":"performance","tps":[19.98,20.0,20.0],"mspt":{"avg":12.4,"min":3.1,"max":41.0},"supported":true}`. `tps` is the average of the last 1, 5 and 15 minutes (never above 20), `mspt` is over the last 100 ticks (just `avg` when the software cannot give more). A server that can report neither answers `{"event":"performance","supported":false}` (Folia). The panel asks every 5 seconds while somebody has the console page open and the server is running, so each answer is one line in the server log. |
 | `vitals` | `{"event":"vitals","players":[{"name":"Steve","uuid":"…","health":18.5,"maxHealth":20,"absorption":0,"food":17,"saturation":5.2,"level":12,"exp":0.33}]}`, one entry for everybody who is online. The panel draws the hearts and hunger bar of the Players tab from it and asks every 3 seconds while that tab is open and the server is running, so each answer is one line in the server log. |
+| `inventory <player>` | `{"event":"inventory","name":"Steve","uuid":"…","items":[{"slot":0,"id":"minecraft:diamond_sword","count":1,"damage":12,"maxDamage":1561,"name":"Excalibur","enchants":{"sharpness":5}}]}`, only the slots that hold something. Slots are numbered like the Bukkit API does: 0 to 8 the hotbar, 9 to 35 the rest, 36 boots, 37 leggings, 38 chestplate, 39 helmet, 40 off hand. The panel asks when the player window opens, again every 10 seconds while it is open and when the person presses Refresh. |
+| `heal <player>` | Sets the health to the maximum, then a `vitals` event. |
+| `feed <player>` | Sets hunger to 20 and saturation to 20, then a `vitals` event. |
+| `swap <player> <from> <to>` | Exchanges two slots, or adds to the stack of the same item, then the new `inventory` event. An item the game would not let a player put in an armor slot is refused with a `player-error`, the inventory is sent either way. |
+| `delete <player> <slot>` | Empties a slot, then the new `inventory` event. |
+| `ender <player>` | `{"event":"enderchest","name":"Steve","uuid":"…","items":[…]}`, the same items as `inventory` for the 27 slots of the ender chest (0 to 26, row by row). |
+| `enderswap <player> <from> <to>` / `enderdelete <player> <slot>` | The same as `swap` and `delete` for the ender chest, any item fits any slot. Answered with the new `enderchest` event. |
+| `health <player> <delta>` / `hunger <player> <delta>` / `levels <player> <delta>` | Adds the number (negative to take away) to the health in hit points (2 is a heart), the hunger bar, or the experience level, then a `vitals` event. Health stays between half a heart and the maximum, so it can not kill anybody, hunger between 0 and 20, levels from 0. A hunger bar that drops takes the saturation down with it. |
+| `gamemode <player> <mode>` | Puts the player in `survival`, `creative`, `adventure` or `spectator`, then a `vitals` event. Every entry of `vitals` has the `gameMode` the player is in (protocol 7). |
+
+A command about a player who is not online, or with a name or slot that is not valid, is answered with `{"event":"player-error","name":"Steve","action":"swap","error":"That player is not online."}`.
 
 ## What the panel does with it
 

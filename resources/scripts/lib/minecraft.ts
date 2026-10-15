@@ -95,8 +95,11 @@ export interface Player {
 export const dashUuid = (raw: string): string =>
     raw.includes('-') ? raw : raw.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
 
-export const headUrl = (uuid: string, size = 64): string =>
-    `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/${size}`;
+// mc-heads.net answers for some sizes only, other ones such as 96 or 176 fail. 80 works, and it is 10 pixels for every pixel of the
+// face, which a head shown at a multiple of 8 pixels scales without blurring.
+const HEAD_SIZE = 80;
+
+export const headUrl = (uuid: string): string => `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/${HEAD_SIZE}`;
 
 export const lookupPlayer = async (name: string): Promise<Player> => {
     const response = await fetch(`https://playerdb.co/api/player/minecraft/${encodeURIComponent(name)}`);

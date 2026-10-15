@@ -18,6 +18,7 @@ const entry = {
     saturation: 5.2,
     level: 12,
     exp: 0.33,
+    gameMode: 'creative',
 };
 
 describe('heartIcons', () => {
@@ -66,7 +67,14 @@ describe('parseVitals', () => {
             saturation: 5.2,
             level: 12,
             exp: 0.33,
+            gameMode: 'creative',
         });
+    });
+
+    it('has no game mode from a plugin that does not send one, or one that is not a mode', () => {
+        expect(parseVitals({ ...entry, gameMode: undefined })?.gameMode).toBeNull();
+        expect(parseVitals({ ...entry, gameMode: 'hardcore' })?.gameMode).toBeNull();
+        expect(parseVitals({ ...entry, gameMode: 'spectator' })?.gameMode).toBe('spectator');
     });
 
     it('refuses numbers out of range and keeps saturation under food', () => {

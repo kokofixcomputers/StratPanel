@@ -1,6 +1,8 @@
 package cc.kokodev.stratpanel;
 
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -21,6 +23,7 @@ final class PlayerVitals {
    * @param saturation what keeps the hunger bar from falling, never more than food
    * @param level the experience level
    * @param exp progress to the next level, 0 to 1
+   * @param gameMode survival, creative, adventure or spectator
    */
   static Map<String, Object> fields(
       String name,
@@ -31,7 +34,8 @@ final class PlayerVitals {
       int food,
       double saturation,
       int level,
-      double exp) {
+      double exp,
+      String gameMode) {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put("name", name);
     fields.put("uuid", uuid);
@@ -43,7 +47,38 @@ final class PlayerVitals {
     fields.put("saturation", round(clamp(saturation, 0.0, hunger)));
     fields.put("level", Math.max(level, 0));
     fields.put("exp", round(clamp(exp, 0.0, 1.0)));
+    fields.put("gameMode", GAME_MODES.contains(gameMode) ? gameMode : "survival");
     return fields;
+  }
+
+  /** The game modes a player can be in, as the panel names them. */
+  static final List<String> GAME_MODES = List.of("survival", "creative", "adventure", "spectator");
+
+  /** The game mode for what was typed, null when it is not one. Names are written in small letters. */
+  static String parseGameMode(String text) {
+    String mode = text.toLowerCase(Locale.ROOT);
+    return GAME_MODES.contains(mode) ? mode : null;
+  }
+
+  /** The highest level a player can be given from the panel, the game itself stops far beyond. */
+  static final int MAX_LEVEL = 100000;
+
+  /**
+   * The health after adding or taking some. It never goes below 1 (half a heart), so a click on the panel cannot kill a player,
+   * and never above the most the player can have.
+   */
+  static double adjustedHealth(double current, double delta, double max) {
+    return clamp(current + delta, Math.min(1.0, max), Math.max(max, 1.0));
+  }
+
+  /** The hunger bar after adding or taking some, between empty and full. */
+  static int adjustedFood(int current, int delta) {
+    return (int) clamp((double) current + delta, 0.0, 20.0);
+  }
+
+  /** The experience level after adding or taking some, never below 0. */
+  static int adjustedLevel(int current, int delta) {
+    return (int) clamp((double) current + delta, 0.0, MAX_LEVEL);
   }
 
   private static double clamp(double value, double min, double max) {

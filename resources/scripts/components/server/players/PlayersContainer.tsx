@@ -27,6 +27,7 @@ import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import PlayerVitals from '@/components/server/players/PlayerVitals';
+import PlayerModal from '@/components/server/players/PlayerModal';
 import useVitalsPolling from '@/plugins/useVitalsPolling';
 import { useVitals } from '@/lib/vitals';
 
@@ -107,6 +108,8 @@ export default () => {
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState<Filter[]>([]);
     const [sort, setSort] = useState<Sort>('activity');
+    // The player whose window is open.
+    const [opened, setOpened] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         const [users, operators, bans, allowed] = await Promise.all([
@@ -330,40 +333,62 @@ export default () => {
                 'flex flex-wrap items-center gap-3 rounded-xl border border-neutral-500 bg-white px-4 py-3 shadow-md'
             }
         >
-            <div className={'relative'}>
-                <PlayerHead uuid={uuidOf(player.name)} name={player.name} />
-                <span
-                    className={classNames(
-                        'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white',
-                        player.online ? 'bg-green-500' : player.banned ? 'bg-red-500' : 'bg-neutral-400'
-                    )}
-                    title={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
-                    role={'img'}
-                    aria-label={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
-                />
-            </div>
-            <div className={'min-w-0 flex-1'}>
-                <p className={'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-50'}>
-                    <span className={'truncate'}>{player.name}</span>
-                    {player.operator && (
-                        <span className={'rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700'}>
-                            Op
-                        </span>
-                    )}
-                    {player.banned && (
-                        <span className={'rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700'}>
-                            Banned
-                        </span>
-                    )}
-                    {player.whitelisted && (
-                        <span
-                            className={'rounded-full bg-neutral-600 px-2 py-0.5 text-xs font-medium text-neutral-300'}
-                        >
-                            Whitelisted
-                        </span>
-                    )}
-                </p>
-                <p className={'text-xs text-neutral-300'}>{detail(player)}</p>
+            <div
+                role={'button'}
+                tabIndex={0}
+                title={`Open ${player.name}`}
+                className={
+                    'flex min-w-[12rem] flex-1 cursor-pointer items-center gap-3 rounded-lg outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary-400'
+                }
+                onClick={() => setOpened(player.name)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setOpened(player.name);
+                    }
+                }}
+            >
+                <div className={'relative'}>
+                    <PlayerHead uuid={uuidOf(player.name)} name={player.name} />
+                    <span
+                        className={classNames(
+                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white',
+                            player.online ? 'bg-green-500' : player.banned ? 'bg-red-500' : 'bg-neutral-400'
+                        )}
+                        title={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
+                        role={'img'}
+                        aria-label={player.online ? 'Online' : player.banned ? 'Banned' : 'Offline'}
+                    />
+                </div>
+                <div className={'min-w-0'}>
+                    <p className={'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-50'}>
+                        <span className={'truncate'}>{player.name}</span>
+                        {player.operator && (
+                            <span
+                                className={
+                                    'rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700'
+                                }
+                            >
+                                Op
+                            </span>
+                        )}
+                        {player.banned && (
+                            <span className={'rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700'}>
+                                Banned
+                            </span>
+                        )}
+                        {player.whitelisted && (
+                            <span
+                                className={
+                                    'rounded-full bg-neutral-600 px-2 py-0.5 text-xs font-medium text-neutral-300'
+                                }
+                            >
+                                Whitelisted
+                            </span>
+                        )}
+                    </p>
+                    <p className={'text-xs text-neutral-300'}>{detail(player)}</p>
+                </div>
             </div>
             {player.online && vitals[player.name] && (
                 <div className={'flex flex-1 justify-center'}>
@@ -515,6 +540,14 @@ export default () => {
                         : 'The player is disconnected and can rejoin straight away.'}
                 </p>
             </Dialog.Confirm>
+            {opened && (
+                <PlayerModal
+                    name={opened}
+                    uuid={uuidOf(opened)}
+                    online={online.includes(opened)}
+                    onClose={() => setOpened(null)}
+                />
+            )}
         </ServerContentBlock>
     );
 };

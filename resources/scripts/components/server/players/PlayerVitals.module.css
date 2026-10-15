@@ -8,7 +8,8 @@
 }
 
 /* Only whole multiples, a texture scaled by a half would be blurry. Bigger screens have the room for bigger bars. */
-@media (min-width: 768px) {
+/* In the player list the bar sits next to the name and the buttons, so it only gets bigger where there is room for it. */
+@media (min-width: 1440px) {
     .hud {
         --s: 2;
     }
@@ -18,6 +19,14 @@
     .hud {
         --s: 3;
     }
+}
+
+/* Inside a window that sets its own scale. */
+.hudInherit {
+    position: relative;
+    flex-shrink: 0;
+    width: calc(182px * var(--s));
+    cursor: help;
 }
 
 .icon {

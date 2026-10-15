@@ -22,24 +22,35 @@ export interface PlayerListConfig {
     badge?: (entry: Record<string, any>) => string | null;
 }
 
-export const PlayerHead = ({ uuid, name, size = 40 }: { uuid: string; name: string; size?: number }) => {
+export const PlayerHead = ({
+    uuid,
+    name,
+    size = 40,
+    fill = false,
+}: {
+    uuid: string;
+    name: string;
+    size?: number;
+    // Take the size of the element around it, for a head that is sized with the pictures of a screen.
+    fill?: boolean;
+}) => {
     const [failed, setFailed] = useState(false);
 
     return failed ? (
         <div
             css={tw`flex items-center justify-center rounded-lg bg-neutral-600 text-neutral-300 font-semibold uppercase flex-shrink-0`}
-            style={{ width: size, height: size }}
+            style={fill ? { width: '100%', height: '100%' } : { width: size, height: size }}
         >
             {name.charAt(0)}
         </div>
     ) : (
         <img
-            src={headUrl(uuid, size * 2)}
+            src={headUrl(uuid)}
             alt={name}
             width={size}
             height={size}
             css={tw`rounded-lg flex-shrink-0 bg-neutral-600`}
-            style={{ imageRendering: 'pixelated' }}
+            style={{ imageRendering: 'pixelated', ...(fill ? { width: '100%', height: '100%' } : {}) }}
             onError={() => setFailed(true)}
         />
     );

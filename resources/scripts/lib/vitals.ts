@@ -1,12 +1,20 @@
 /**
  * Health, hunger and experience of the players who are online, from the "vitals" message of the Stratosphere plugin
- * (protocol 3):
+ * (protocol 3, the game mode came with 7):
  *   {"event":"vitals","players":[{"name":"Steve","uuid":"…","health":18,"maxHealth":20,"absorption":0,"food":17,
- *   "saturation":5.2,"level":12,"exp":0.33}]}
+ *   "saturation":5.2,"level":12,"exp":0.33,"gameMode":"survival"}]}
  * Only messages that passed the trust check of the bridge are handed to this.
  */
 import { useEffect, useState } from 'react';
 import { BridgeMessage, toPlayer } from '@/lib/bridge';
+
+export type GameMode = 'survival' | 'creative' | 'adventure' | 'spectator';
+export const GAME_MODES: { id: GameMode; label: string }[] = [
+    { id: 'survival', label: 'Survival' },
+    { id: 'creative', label: 'Creative' },
+    { id: 'adventure', label: 'Adventure' },
+    { id: 'spectator', label: 'Spectator' },
+];
 
 export interface Vitals {
     health: number;
@@ -19,6 +27,8 @@ export interface Vitals {
     level: number;
     // Progress to the next level, 0 to 1.
     exp: number;
+    // Null from a plugin that does not tell.
+    gameMode: GameMode | null;
 }
 
 /** How often the panel asks while somebody has the player list open. */
@@ -48,6 +58,7 @@ export const parseVitals = (value: unknown): Vitals | null => {
         saturation: Math.min(saturation!, food!),
         level: Math.floor(level!),
         exp: exp!,
+        gameMode: GAME_MODES.find((mode) => mode.id === v.gameMode)?.id ?? null,
     };
 };
 

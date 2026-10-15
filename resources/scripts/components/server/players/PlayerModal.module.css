@@ -1,0 +1,80 @@
+/* One pixel of the game's textures is --s screen pixels, the same steps as the bars of the player list. */
+.root {
+    --s: 1;
+}
+
+@media (min-width: 768px) {
+    .root {
+        --s: 2;
+    }
+}
+
+@media (min-width: 1300px) {
+    .root {
+        --s: 3;
+    }
+}
+
+.pixel {
+    image-rendering: pixelated;
+}
+
+/* The game's text: Monocraft with the dark shadow one pixel down and to the right. */
+.mc {
+    font-family: 'Monocraft', monospace;
+    line-height: 1;
+    text-shadow: calc(1px * var(--s)) calc(1px * var(--s)) 0 #3f3f3f;
+}
+
+.slot {
+    position: absolute;
+    width: calc(16px * var(--s));
+    height: calc(16px * var(--s));
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.slot:hover::after,
+.slotSelected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+.slotSelected {
+    outline: calc(1px * var(--s)) solid #ffe14d;
+    outline-offset: calc(1px * var(--s));
+}
+
+.slotTarget::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 225, 77, 0.55);
+    pointer-events: none;
+}
+
+/* The purple shimmer of an enchanted item. */
+.glint {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mix-blend-mode: color-dodge;
+    opacity: 0.3;
+    background: linear-gradient(115deg, transparent 30%, rgba(150, 70, 255, 0.9) 50%, transparent 65%);
+    background-size: 300% 100%;
+    animation: glint 3s linear infinite;
+}
+
+@keyframes glint {
+    from {
+        background-position: 150% 0;
+    }
+    to {
+        background-position: -150% 0;
+    }
+}

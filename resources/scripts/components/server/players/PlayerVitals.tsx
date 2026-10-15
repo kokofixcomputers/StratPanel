@@ -18,7 +18,16 @@ const FOOD_LEFT = 101;
 const px = (units: number) => `calc(${units}px * var(--s))`;
 
 /** The health and hunger bars of a player as the game draws them, hearts on the left and hunger on the right. */
-export default ({ vitals, className }: { vitals: Vitals; className?: string }) => {
+export default ({
+    vitals,
+    className,
+    inherit = false,
+}: {
+    vitals: Vitals;
+    className?: string;
+    // Take the scale (--s) of the element around it instead of the steps of the player list.
+    inherit?: boolean;
+}) => {
     const hearts = heartIcons(vitals.health, vitals.maxHealth);
     const rows = Math.ceil(hearts.length / PER_ROW);
     const food = foodIcons(vitals.food);
@@ -42,7 +51,7 @@ export default ({ vitals, className }: { vitals: Vitals; className?: string }) =
             }
         >
             <div
-                className={classNames(styles.hud, className)}
+                className={classNames(inherit ? styles.hudInherit : styles.hud, className)}
                 style={{ height: px(9 + (rows - 1) * ROW) }}
                 aria-label={`Health ${vitals.health} of ${vitals.maxHealth}, hunger ${vitals.food} of 20`}
                 role={'img'}
