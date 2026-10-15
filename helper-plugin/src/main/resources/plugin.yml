@@ -1,9 +1,10 @@
-main: ${PACKAGE}.${NAME}
+# The class keeps its original name, the plugin is called Stratosphere.
+main: ${PACKAGE}.StratPanel
 name: ${NAME}
 version: "${VERSION}"
 api-version: "1.21"
 authors: [kokodev]
-description: Shares the commands of the server with the panel so the console can tab complete them.
+description: Shares the commands and the players of the server with the Stratosphere panel for tab completion and the player list.
 
 commands:
   stratpanelhidepanellogs:

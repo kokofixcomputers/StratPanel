@@ -31,12 +31,14 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.command.PluginCommand;
 
 /**
- * Reads every command of the server and writes it to pterodactyl.commands.json in the server root, for the panel's
+ * Reads every command of the server and writes it to stratosphere.commands.json in the server root, for the panel's
  * tab completion. See docs/pterodactyl-commands.md in the panel for the format.
  */
 public class CommandScanner {
 
-  static final String FILE_NAME = "pterodactyl.commands.json";
+  static final String FILE_NAME = "stratosphere.commands.json";
+  // What earlier versions of the plugin wrote, removed once the new file is there so the panel does not read an old one.
+  static final String LEGACY_FILE_NAME = "pterodactyl.commands.json";
   private static final int WARN_BYTES = 2 * 1024 * 1024;
   // How long the main thread may be kept busy asking plugin tab completers in one tick, and how long one command may
   // take at most. A scan that takes longer than the overall limit is written with what it has.
@@ -139,6 +141,8 @@ public class CommandScanner {
       } catch (AtomicMoveNotSupportedException e) {
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
       }
+      // The panel reads the new name first, but an old file next to it would only confuse whoever looks in the folder.
+      Files.deleteIfExists(target.resolveSibling(LEGACY_FILE_NAME));
       lastContent = content;
 
       if (json.length() > WARN_BYTES) {
@@ -341,7 +345,7 @@ public class CommandScanner {
 
   private Map<String, String> generator() {
     Map<String, String> generator = new LinkedHashMap<>();
-    generator.put("name", "StratPanel Bridge");
+    generator.put("name", "Stratosphere Bridge");
     generator.put("version", plugin.getPluginMeta().getVersion());
     generator.put("platform", Bukkit.getName().toLowerCase());
     generator.put("minecraft", Bukkit.getMinecraftVersion());

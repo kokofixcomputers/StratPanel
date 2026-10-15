@@ -11,11 +11,11 @@ import {
     parseTrustedBridgeLine,
     resetBridgeStatus,
 } from '@/lib/bridge';
-import { COMMANDS_FILE } from '@/lib/commandTree';
+import { findCommandsFile } from '@/lib/commandTree';
 
 /**
  * Follows the console for the whole time a server is open, so the Players tab is right when it is opened. Players come
- * from the StratPanel plugin when it is installed, and from the server's own log lines otherwise.
+ * from the Stratosphere plugin when it is installed, and from the server's own log lines otherwise.
  */
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -24,12 +24,12 @@ export default () => {
     const plugin = useRef(false);
     const asked = useRef('');
 
-    // The plugin leaves pterodactyl.commands.json in the server root, which also tells the panel it is installed.
+    // The plugin leaves stratosphere.commands.json in the server root, which also tells the panel it is installed.
     useEffect(() => {
         plugin.current = false;
         loadDirectory(uuid, '/')
             .then((files) => {
-                plugin.current = files.some((f) => f.isFile && f.name === COMMANDS_FILE);
+                plugin.current = !!findCommandsFile(files);
             })
             .catch(() => undefined);
     }, [uuid]);

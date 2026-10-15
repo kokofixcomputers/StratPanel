@@ -7,19 +7,22 @@ export interface ProtectedFile {
 
 const RULES: { match: (directory: string, name: string) => boolean; consequence: string }[] = [
     {
-        match: (directory, name) => directory === '/' && /^(pterodactyl\.json|\.panel-version\.json)$/i.test(name),
+        match: (directory, name) =>
+            directory === '/' && /^(stratosphere\.json|pterodactyl\.json|\.panel-version\.json)$/i.test(name),
         consequence:
             'It remembers which software, mods, plugins, modpack and resource pack the panel installed. Without it the ' +
             'panel can no longer update or uninstall them, and no longer knows which version of the software is installed.',
     },
     {
-        match: (directory, name) => directory === '/' && /^pterodactyl\.commands\.json(\.tmp)?$/i.test(name),
+        match: (directory, name) =>
+            directory === '/' && /^(stratosphere|pterodactyl)\.commands\.json(\.tmp)?$/i.test(name),
         consequence:
             'It is the command list used for tab completion. Completion falls back to the built in commands until the ' +
             'helper plugin writes it again.',
     },
     {
-        match: (directory, name) => directory === '/plugins' && /^stratpanel(\.jar|[-_.].*\.jar)?$/i.test(name),
+        match: (directory, name) =>
+            directory === '/plugins' && /^(stratosphere|stratpanel)(\.jar|[-_.].*\.jar)?$/i.test(name),
         consequence:
             'It is the helper plugin: without it there is no command completion from your plugins, no reliable player list ' +
             'and no helper status on the console.',

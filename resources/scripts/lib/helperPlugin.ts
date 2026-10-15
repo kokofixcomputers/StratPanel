@@ -1,5 +1,5 @@
 /**
- * The StratPanel helper plugin is shipped with the panel (public/helper) and put into the plugins folder of servers
+ * The Stratosphere helper plugin is shipped with the panel (public/helper) and put into the plugins folder of servers
  * that run Paper or Spigot. It is uploaded from the browser, which works whatever the network between the node and the
  * panel looks like.
  */
@@ -9,7 +9,7 @@ import deleteFiles from '@/api/server/files/deleteFiles';
 import getFileUploadUrl from '@/api/server/files/getFileUploadUrl';
 import loadDirectory from '@/api/server/files/loadDirectory';
 
-export const HELPER_FILE = 'StratPanel.jar';
+export const HELPER_FILE = 'Stratosphere.jar';
 // Purpur is a Paper fork and loads the same plugin.
 export const HELPER_SOFTWARE = ['PAPER', 'SPIGOT', 'PURPUR'];
 
@@ -26,7 +26,9 @@ export const installHelperPlugin = async (uuid: string): Promise<void> => {
 
     // Older builds may have another file name, two copies of the plugin would fight over the same command.
     const existing = await loadDirectory(uuid, '/plugins').catch(() => []);
-    const stale = existing.filter((f) => f.isFile && /^stratpanel.*\.jar$/i.test(f.name) && f.name !== HELPER_FILE);
+    const stale = existing.filter(
+        (f) => f.isFile && /^(stratosphere|stratpanel).*\.jar$/i.test(f.name) && f.name !== HELPER_FILE
+    );
     if (stale.length)
         await deleteFiles(
             uuid,

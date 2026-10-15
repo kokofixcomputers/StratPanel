@@ -1,15 +1,15 @@
-# `pterodactyl.commands.json`
+# `stratosphere.commands.json`
 
 The command tree of a Minecraft server, written by a plugin or mod into the **server root** (the folder that holds
-`server.properties`), next to `pterodactyl.json`. The panel reads it for **console tab completion**, so every command
+`server.properties`), next to `stratosphere.json`. The panel reads it for **console tab completion**, so every command
 of every plugin and mod, with its sub commands and arguments, can be completed. It is a file on purpose: the panel can
 use it while the server is stopped and the plugin is not running.
 
-- Path: `<server root>/pterodactyl.commands.json`
+- Path: `<server root>/stratosphere.commands.json`
 - Written by: the plugin/mod (the panel never writes it).
 - Read by: the panel, through the normal file API, so it must be a regular UTF-8 JSON file.
-- Machine readable schema: [`pterodactyl.commands.schema.json`](pterodactyl.commands.schema.json)
-- Example: [`examples/pterodactyl.commands.json`](examples/pterodactyl.commands.json)
+- Machine readable schema: [`stratosphere.commands.schema.json`](stratosphere.commands.schema.json)
+- Example: [`examples/stratosphere.commands.json`](examples/stratosphere.commands.json)
 
 ## When to write it
 
@@ -20,7 +20,7 @@ use it while the server is stopped and the plugin is not running.
 3. Skip the write when the generated content is identical, so the file's modification time only changes when the
    commands did.
 
-Write **atomically** (write `pterodactyl.commands.json.tmp`, then move it over the target) so the panel never reads
+Write **atomically** (write `stratosphere.commands.json.tmp`, then move it over the target) so the panel never reads
 half a file. Keep it under about 2 MB. Do not write secrets, the file is readable by everyone with file access.
 
 ## Top level
@@ -29,7 +29,7 @@ half a file. Keep it under about 2 MB. Do not write secrets, the file is readabl
 {
   "version": 1,
   "generatedAt": "2026-10-05T12:00:00Z",
-  "generator": { "name": "StratPanel Bridge", "version": "1.0.0", "platform": "paper", "minecraft": "1.21.4" },
+  "generator": { "name": "Stratosphere Bridge", "version": "1.0.0", "platform": "paper", "minecraft": "1.21.4" },
   "plugins": [{ "name": "EssentialsX", "version": "2.20.1" }],
   "root": { "children": [ /* nodes */ ] }
 }
@@ -163,9 +163,10 @@ Same channel, same rules as above (one console line, printed by the plugin's own
 - `players` is the complete list and **replaces** what the panel has. Send it when the plugin enables (players may already
   be online) and whenever the panel asks, see the command below.
 - `uuid` is optional, `name` is required (letters, digits, `_ . - space`, at most 32 characters).
-- **These events are trusted only when the line starts with the log header followed by `[StratPanel]`**, for example
-  `[17:23:31 INFO]: [StratPanel] ::stratpanel:: {...}`. Chat cannot begin a new line, so a player cannot forge one. Always
-  use the plugin logger, and on platforms whose log lines look different, keep the prefix `[StratPanel]` directly after the
+- **These events are trusted only when the line starts with the log header followed by the name of the plugin in brackets, `[Stratosphere]`**
+  (`[StratPanel]`, what the plugin was called before, is accepted too), for example
+  `[17:23:31 INFO]: [Stratosphere] ::stratpanel:: {...}`. Chat cannot begin a new line, so a player cannot forge one. Always
+  use the plugin logger, and on platforms whose log lines look different, keep the prefix `[Stratosphere]` directly after the
   header. A tagged line that does not start like that is hidden but ignored.
 - The panel still understands the server's own log lines (`logged in with entity id`, `lost connection`) when the plugin is
   not installed.
@@ -178,8 +179,8 @@ panel**, that is why the name is so long. Register it in `plugin.yml`.
 
 | Subcommand | The plugin answers with |
 |---|---|
-| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":1}`, then a `players` event. The panel sends it when it connects to a running server that has `pterodactyl.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
-| `refresh` | A `players` event, then it writes `pterodactyl.commands.json` again **even when nothing changed** (new `generatedAt`) and announces `commands-updated`, then `{"event":"refreshed","generatedAt":"…"}` as the "done" message. The panel's status button sends it; on `refreshed` the panel reloads the command list. |
+| `handshake` | `{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"1.21.4","protocol":1}`, then a `players` event. The panel sends it when it connects to a running server that has `stratosphere.commands.json` in its root, and shows a green check when the answer arrives (a red cross when it does not within 5 seconds). |
+| `refresh` | A `players` event, then it writes `stratosphere.commands.json` again **even when nothing changed** (new `generatedAt`) and announces `commands-updated`, then `{"event":"refreshed","generatedAt":"…"}` as the "done" message. The panel's status button sends it; on `refreshed` the panel reloads the command list. |
 | `sync` | A `players` event only. |
 | `scan` | Rescans the commands (debounced), announces `commands-updated` when the content changed. |
 
@@ -191,3 +192,10 @@ panel**, that is why the name is so long. Register it in `plugin.yml`.
    commands is used instead.
 3. Compares `generatedAt` with the newest jar in `plugins/` and `mods/` and shows a note when it looks out of date.
 4. Reads the file again when it sees a `commands-updated` announcement (see above).
+
+## Moving from the old file names
+
+The files were called `pterodactyl.json` and `pterodactyl.commands.json` before the panel was renamed to Stratosphere.
+The panel reads the new name first and falls back to the old one. It moves `pterodactyl.json` to `stratosphere.json` by
+itself the first time it reads it. A plugin writes only the new name and should delete `pterodactyl.commands.json` after
+writing `stratosphere.commands.json`, which is what the bundled plugin does.

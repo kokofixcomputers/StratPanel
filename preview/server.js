@@ -186,6 +186,16 @@ api.post('/servers/:id/files/decompress', (req, res) => startTask(res, 5000, nul
 api.get('/servers/:id/files/task/:task', (req, res) => res.json({ error: null, file: null, ...(fileTasks[req.params.task] || { status: 'unknown' }) }));
 api.get('/servers/:id/files/contents', (req, res) => (req.query.file in fileStore ? res.type('text/plain').send(fileStore[req.query.file]) : res.status(404).json({ errors: [{ detail: 'not found' }] })));
 api.post('/servers/:id/files/write', express.text({ type: '*/*' }), (req, res) => { fileStore['/' + String(req.query.file).replace(/^\/+/, '')] = req.body; res.status(204).end(); });
+api.post('/servers/:id/files/delete', (req, res) => {
+    const root = String(req.body.root || '/').replace(/\/+$/, '');
+    (req.body.files || []).forEach((name) => {
+        delete fileStore[`${root}/${name}`];
+        const list = files[root || '/'];
+        const at = list ? list.findIndex((f) => f[0] === name) : -1;
+        if (at >= 0) list.splice(at, 1);
+    });
+    res.status(204).end();
+});
 let mockIcon = null;
 api.get('/servers/:id/files/download', (req, res) => {
     if (String(req.query.file).endsWith('server-icon.png')) return mockIcon ? res.json({ attributes: { url: '/mock-icon' } }) : res.status(404).json({ errors: [{ detail: 'not found' }] });
@@ -258,7 +268,7 @@ app.get('/locales/locale.json', (req, res) => res.json({}));
 
 const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, use_totp: false, language: 'en', updated_at: now(), created_at: now() };
 const page = (title) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
-<script>window.PterodactylUser=${JSON.stringify(user)};window.SiteConfiguration=${JSON.stringify({ name: 'Pterodactyl', locale: 'en', recaptcha: { enabled: false, siteKey: '' } })};</script></head>
+<script>window.PterodactylUser=${JSON.stringify(user)};window.SiteConfiguration=${JSON.stringify({ name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' } })};</script></head>
 <body><div id="modal-portal"></div><div id="app"></div><script src="/assets/bundle.js"></script></body></html>`;
 
 app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false }));

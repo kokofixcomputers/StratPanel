@@ -1,6 +1,9 @@
 # The MIT License (MIT)
 
 ```
+Stratosphere
+Copyright © 2026 Stratosphere contributors (changes to Pterodactyl)
+
 Pterodactyl®
 Copyright © Dane Everitt <dane@daneeveritt.com> and contributors
 

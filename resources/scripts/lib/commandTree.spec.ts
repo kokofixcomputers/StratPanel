@@ -1,5 +1,5 @@
 import { complete } from './commandComplete';
-import { buildCommandTree, parseCommandsDocument } from './commandTree';
+import { buildCommandTree, findCommandsFile, parseCommandsDocument } from './commandTree';
 
 const doc = JSON.stringify({
     version: 1,
@@ -78,5 +78,23 @@ describe('commands.json', () => {
         const { tree } = buildCommandTree(parseCommandsDocument(broken)!);
 
         expect(complete('', tree).items).toEqual(['ok']);
+    });
+});
+
+describe('findCommandsFile', () => {
+    const file = (name: string, isFile = true) => ({ name, isFile });
+
+    it('prefers the new file name over the one earlier plugins wrote', () => {
+        expect(
+            findCommandsFile([file('pterodactyl.commands.json'), file('stratosphere.commands.json'), file('x')])?.name
+        ).toBe('stratosphere.commands.json');
+    });
+
+    it('falls back to the old name and ignores folders', () => {
+        expect(findCommandsFile([file('pterodactyl.commands.json'), file('a')])?.name).toBe(
+            'pterodactyl.commands.json'
+        );
+        expect(findCommandsFile([file('stratosphere.commands.json', false)])).toBeUndefined();
+        expect(findCommandsFile([])).toBeUndefined();
     });
 });

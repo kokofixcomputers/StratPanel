@@ -34,6 +34,9 @@ describe('bridge messages', () => {
             name: 'Steve',
         });
         expect(parseTrustedBridgeLine(`[17:23:31] [Server thread/INFO]: [StratPanel] ${message}`)).not.toBeNull();
+        // The plugin used to be called StratPanel, its log lines carry the name it has now.
+        expect(parseTrustedBridgeLine(`[17:23:31 INFO]: [Stratosphere] ${message}`)).not.toBeNull();
+        expect(parseTrustedBridgeLine(`[17:23:31 INFO]: [Stratosphere] [Other] ${message}`)).toBeNull();
         // What a player can type into chat, or another plugin can print, never starts like that.
         expect(parseTrustedBridgeLine(`[17:23:31 INFO]: <Steve> ${message}`)).toBeNull();
         expect(parseTrustedBridgeLine(`[17:23:31 INFO]: [Other] ${message}`)).toBeNull();

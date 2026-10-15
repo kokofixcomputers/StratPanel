@@ -5,7 +5,7 @@ import { parseBridgeLine } from '@/lib/bridge';
 import loadDirectory from '@/api/server/files/loadDirectory';
 import getFileContents from '@/api/server/files/getFileContents';
 import { Node } from '@/lib/commandComplete';
-import { buildCommandTree, COMMANDS_FILE, CommandsDocument, parseCommandsDocument } from '@/lib/commandTree';
+import { buildCommandTree, CommandsDocument, findCommandsFile, parseCommandsDocument } from '@/lib/commandTree';
 
 export interface LoadedCommands {
     tree: Node;
@@ -83,13 +83,13 @@ export default (uuid: string): LoadedCommands | null => {
 
         (async () => {
             try {
-                const file = (await loadDirectory(uuid, '/')).find((f) => f.isFile && f.name === COMMANDS_FILE);
+                const file = findCommandsFile(await loadDirectory(uuid, '/'));
                 if (!file) return;
 
                 const modified = file.modifiedAt.getTime();
                 let cached = readCache(uuid);
                 if (!cached || cached.size !== file.size || cached.modified !== modified) {
-                    const doc = parseCommandsDocument(await getFileContents(uuid, `/${COMMANDS_FILE}`));
+                    const doc = parseCommandsDocument(await getFileContents(uuid, `/${file.name}`));
                     if (!doc) return;
 
                     cached = { size: file.size, modified, doc };

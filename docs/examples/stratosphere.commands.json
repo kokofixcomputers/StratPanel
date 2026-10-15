@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedAt": "2026-10-05T12:00:00Z",
-  "generator": { "name": "StratPanel Bridge", "version": "1.0.0", "platform": "paper", "minecraft": "1.21.4" },
+  "generator": { "name": "Stratosphere Bridge", "version": "1.0.0", "platform": "paper", "minecraft": "1.21.4" },
   "plugins": [
     { "name": "EssentialsX", "version": "2.20.1" },
     { "name": "WorldEdit", "version": "7.3.8" }

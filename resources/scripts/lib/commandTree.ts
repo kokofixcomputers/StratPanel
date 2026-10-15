@@ -1,10 +1,17 @@
 /**
- * Reads pterodactyl.commands.json, the command tree a plugin or mod writes into the server root, and turns it
+ * Reads stratosphere.commands.json, the command tree a plugin or mod writes into the server root, and turns it
  * into the tree the console tab completion walks. The format is described in docs/pterodactyl-commands.md.
  */
 import { Node, node } from '@/lib/commandComplete';
 
-export const COMMANDS_FILE = 'pterodactyl.commands.json';
+export const COMMANDS_FILE = 'stratosphere.commands.json';
+// What plugins that are not updated yet still write, the new plugin removes it after writing the new file.
+export const LEGACY_COMMANDS_FILE = 'pterodactyl.commands.json';
+
+/** The file with the commands among the files of the server root, the new name is preferred. */
+export const findCommandsFile = <T extends { isFile: boolean; name: string }>(files: T[]): T | undefined =>
+    files.find((f) => f.isFile && f.name === COMMANDS_FILE) ||
+    files.find((f) => f.isFile && f.name === LEGACY_COMMANDS_FILE);
 export const SUPPORTED_VERSION = 1;
 
 const MAX_NODES = 100000;

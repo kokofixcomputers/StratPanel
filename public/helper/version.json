@@ -1,5 +1,5 @@
 {
-  "version": "261014-2259-SNAPSHOT",
-  "file": "StratPanel.jar",
+  "version": "261015-0046-SNAPSHOT",
+  "file": "Stratosphere.jar",
   "platforms": ["paper", "spigot", "purpur"]
 }

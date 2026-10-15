@@ -1,14 +1,16 @@
 /**
- * pterodactyl.json lives in the root of a server and remembers what the panel installed there: the server software,
+ * stratosphere.json lives in the root of a server and remembers what the panel installed there: the server software,
  * the mods and plugins it installed (so they can be updated or uninstalled) and the modpack, if any. The file can
  * also be edited by hand, fields this code does not know about are always kept.
  */
 import saveFileContents from '@/api/server/files/saveFileContents';
+import deleteFiles from '@/api/server/files/deleteFiles';
 import { readOptionalFile } from '@/lib/minecraft';
 
-export const MARKER = 'pterodactyl.json';
-// Earlier versions of the panel wrote the same information to this hidden file.
-export const LEGACY_MARKER = '.panel-version.json';
+export const MARKER = 'stratosphere.json';
+// Earlier versions of the panel wrote the same information to these files. They are read when the new one is not there
+// yet and moved to it, see readPterodactylJson.
+export const LEGACY_MARKERS = ['pterodactyl.json', '.panel-version.json'];
 
 export interface ManagedProject {
     kind: 'mod' | 'plugin' | 'datapack';
@@ -62,8 +64,33 @@ export interface PterodactylJson {
     [key: string]: unknown;
 }
 
+// Servers whose old file is being moved right now, a page reads the file many times and each would start another move.
+const moving = new Set<string>();
+
+/** Writes the content to the new file and, once that worked, removes the old one. Failing only means it happens later. */
+const migrate = (uuid: string, raw: string, from: string) => {
+    if (moving.has(uuid)) return;
+    moving.add(uuid);
+
+    saveFileContents(uuid, MARKER, raw)
+        .then(() => deleteFiles(uuid, '/', [from]))
+        .catch(() => undefined)
+        .then(() => moving.delete(uuid));
+};
+
 export const readPterodactylJson = async (uuid: string): Promise<PterodactylJson> => {
-    const raw = (await readOptionalFile(uuid, `/${MARKER}`)) || (await readOptionalFile(uuid, `/${LEGACY_MARKER}`));
+    let raw = await readOptionalFile(uuid, `/${MARKER}`);
+
+    if (!raw) {
+        for (const legacy of LEGACY_MARKERS) {
+            raw = await readOptionalFile(uuid, `/${legacy}`);
+            if (raw) {
+                // The file of an earlier version, the information moves to its new name the first time it is read.
+                migrate(uuid, raw, legacy);
+                break;
+            }
+        }
+    }
     if (!raw) return {};
 
     try {

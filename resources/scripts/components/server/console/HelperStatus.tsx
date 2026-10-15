@@ -8,7 +8,7 @@ import { bundledHelperVersion, installHelperPlugin } from '@/lib/helperPlugin';
 import { usePermissions } from '@/plugins/usePermissions';
 
 /**
- * Shows whether the StratPanel plugin on the server has answered the panel. Clicking it asks the plugin for fresh
+ * Shows whether the Stratosphere plugin on the server has answered the panel. Clicking it asks the plugin for fresh
  * information: the players that are online and the list of commands.
  */
 export default () => {
@@ -67,7 +67,7 @@ export default () => {
         ? `Helper plugin connected${
               detail ? ` (${detail})` : ''
           }. Click to refresh the online players and the command list.`
-        : 'The helper plugin did not answer. Install StratPanel on the server for command completion and a reliable player list. Click to try again.';
+        : 'The helper plugin did not answer. Install the Stratosphere plugin on the server for command completion and a reliable player list. Click to try again.';
 
     const tone = !running
         ? 'border-neutral-500 bg-white text-neutral-400'

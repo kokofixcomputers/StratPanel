@@ -471,7 +471,7 @@ export default () => {
                                 onChange={(e) => setRoot('bind', e.currentTarget.value)}
                             />
                             <p css={tw`mt-1.5 text-xs text-neutral-400`}>
-                                The port must match your server allocation, otherwise nobody can connect. Pterodactyl
+                                The port must match your server allocation, otherwise nobody can connect. The panel
                                 keeps it in sync automatically on every start when the Java egg is used.
                             </p>
                         </div>

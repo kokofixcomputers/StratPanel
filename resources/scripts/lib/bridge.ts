@@ -42,7 +42,7 @@ export const parseBridgeLine = (line: string): BridgeMessage | null => {
  * logger prints: the log header, then the plugin's own prefix, then the tag. Chat cannot start a new line, so a player
  * cannot forge such a line, while text typed into chat or logged by another plugin always has something else first.
  */
-const TRUSTED = /^(?:\[[^\]\n]*\]\s*)+:\s*\[StratPanel\]\s+::stratpanel::/;
+const TRUSTED = /^(?:\[[^\]\n]*\]\s*)+:\s*\[(?:Stratosphere|StratPanel)\]\s+::stratpanel::/;
 
 export const isTrustedBridgeLine = (line: string): boolean => TRUSTED.test(stripAnsi(line).trimStart());
 

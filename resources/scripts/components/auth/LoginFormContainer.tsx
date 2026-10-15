@@ -81,7 +81,7 @@ export default forwardRef<HTMLFormElement, Props>(({ title, subtitle, ...props }
                     </ul>
                 </div>
                 <p className={'relative text-sm text-white text-opacity-60'}>
-                    Powered by Pterodactyl, the open source game server panel.
+                    Stratosphere, a Minecraft server panel built on the open source Pterodactyl panel.
                 </p>
             </aside>
 
@@ -100,14 +100,14 @@ export default forwardRef<HTMLFormElement, Props>(({ title, subtitle, ...props }
                         <div className={'w-full'}>{props.children}</div>
                     </Form>
                     <p css={tw`mt-10 text-center text-xs text-neutral-400`}>
-                        &copy; 2015 - {new Date().getFullYear()}&nbsp;
+                        Stratosphere &copy; {new Date().getFullYear()}, built on&nbsp;
                         <a
                             rel={'noopener nofollow noreferrer'}
                             href={'https://pterodactyl.io'}
                             target={'_blank'}
                             css={tw`no-underline text-neutral-400 hover:text-neutral-200`}
                         >
-                            Pterodactyl Software
+                            Pterodactyl
                         </a>
                     </p>
                 </div>

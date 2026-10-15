@@ -56,11 +56,9 @@
                 <h3 class="box-title">System Information</h3>
             </div>
             <div class="box-body">
-                @if ($version->isLatestPanel())
-                    You are running Pterodactyl Panel version <code>{{ config('app.version') }}</code>. Your panel is up-to-date!
-                @else
-                    Your panel is <strong>not up-to-date!</strong> The latest version is <a href="https://github.com/Pterodactyl/Panel/releases/v{{ $version->getPanel() }}" target="_blank"><code>{{ $version->getPanel() }}</code></a> and you are currently running version <code>{{ config('app.version') }}</code>. You can find instructions on how to update your panel <a href="https://pterodactyl.io/panel/1.0/updating.html">here</a>.
-                @endif
+                {{-- Updates are announced at the top of every admin page, see admin/partials/ui-update.blade.php. --}}
+                You are running Stratosphere version <code>{{ config('app.version') }}</code>. To update, follow the steps in the
+                <a href="https://github.com/kokofixcomputers/StratPanel#install-or-update-stratosphere" target="_blank">README</a>.
             </div>
         </div>
     </div>

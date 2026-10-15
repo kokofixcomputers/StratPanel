@@ -21,7 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 /**
- * Tells the panel what it cannot read reliably from the log: the commands of the server (pterodactyl.commands.json) and
+ * Tells the panel what it cannot read reliably from the log: the commands of the server (stratosphere.commands.json) and
  * who is online. Everything goes to the panel as bridge lines on the console, see {@link Bridge}.
  */
 public class StratPanel extends JavaPlugin implements Listener {

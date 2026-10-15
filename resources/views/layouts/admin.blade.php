@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>{{ config('app.name', 'Pterodactyl') }} - @yield('title')</title>
+        <title>{{ config('app.name', 'Stratosphere') }} - @yield('title')</title>
         <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
         <meta name="_token" content="{{ csrf_token() }}">
 
@@ -42,7 +42,7 @@
             <aside class="admin-sidebar">
                 <a href="{{ route('admin.index') }}" class="admin-brand">
                     <span class="logo-mark"><i class="fa fa-cube"></i></span>
-                    <span class="logo-text">{{ config('app.name', 'Pterodactyl') }}</span>
+                    <span class="logo-text">{{ config('app.name', 'Stratosphere') }}</span>
                     <span class="logo-badge">Admin</span>
                 </a>
                 <nav class="admin-nav">
@@ -125,7 +125,7 @@
                     <strong><i class="fa fa-fw {{ $appIsGit ? 'fa-git-square' : 'fa-code-fork' }}"></i></strong> {{ $appVersion }}<br />
                     <strong><i class="fa fa-fw fa-clock-o"></i></strong> {{ round(microtime(true) - LARAVEL_START, 3) }}s
                 </div>
-                Copyright &copy; 2015 - {{ date('Y') }} <a href="https://pterodactyl.io/">Pterodactyl Software</a>.
+                Stratosphere &copy; {{ date('Y') }}. Built on <a href="https://pterodactyl.io/">Pterodactyl</a>, &copy; 2015 - {{ date('Y') }} Pterodactyl Software.
             </footer>
         </div>
         @section('footer-scripts')

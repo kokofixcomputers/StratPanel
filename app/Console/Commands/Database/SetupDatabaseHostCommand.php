@@ -13,7 +13,7 @@ use Pterodactyl\Services\Databases\Hosts\HostUpdateService;
 class SetupDatabaseHostCommand extends Command
 {
     protected $signature = 'p:database-host:setup
-                            {--name=StratPanel Databases : The name of the database host in the panel}
+                            {--name=Stratosphere Databases : The name of the database host in the panel}
                             {--host= : The address servers and the panel use to reach the database, found automatically when left out}
                             {--port=3306 : The database port}
                             {--user=pterodactyluser : The database user to create for the host}

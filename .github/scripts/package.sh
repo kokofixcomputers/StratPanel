@@ -30,9 +30,9 @@ if [ -z "$JAR" ]; then
 fi
 # The panel installs this jar on new Paper and Spigot servers (see resources/scripts/lib/helperPlugin.ts).
 mkdir -p public/helper
-cp "$JAR" public/helper/StratPanel.jar
-PLUGIN_VERSION="$(unzip -p public/helper/StratPanel.jar plugin.yml | sed -n 's/^version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -n 1)"
-printf '{\n  "version": "%s",\n  "file": "StratPanel.jar",\n  "platforms": ["paper", "spigot", "purpur"]\n}\n' "$PLUGIN_VERSION" > public/helper/version.json
+cp "$JAR" public/helper/Stratosphere.jar
+PLUGIN_VERSION="$(unzip -p public/helper/Stratosphere.jar plugin.yml | sed -n 's/^version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -n 1)"
+printf '{\n  "version": "%s",\n  "file": "Stratosphere.jar",\n  "platforms": ["paper", "spigot", "purpur"]\n}\n' "$PLUGIN_VERSION" > public/helper/version.json
 echo "Helper plugin ${PLUGIN_VERSION} bundled."
 
 # The tools live in their own repository, they are built from its default branch and shown by the panel's Tools tab.

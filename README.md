@@ -1,10 +1,10 @@
-# StratPanel
+# Stratosphere
 
-StratPanel is a fork of the [Pterodactyl Panel](https://github.com/pterodactyl/panel) focused on **Minecraft**. It keeps
+Stratosphere is a fork of the [Pterodactyl Panel](https://github.com/pterodactyl/panel) focused on **Minecraft**. It keeps
 everything that makes Pterodactyl good (isolated Docker containers, Wings, the permission system, the API) and adds a
 modern light UI plus the Minecraft tools you would otherwise need plugins and scripts for.
 
-> StratPanel is not affiliated with or endorsed by the Pterodactyl project. Pterodactyl® is a trademark of its owners.
+> Stratosphere is not affiliated with or endorsed by the Pterodactyl project. Pterodactyl® is a trademark of its owners.
 > This repository is MIT licensed like the original, see [LICENSE.md](LICENSE.md).
 
 ## What is different
@@ -16,7 +16,7 @@ navigation, new dialogs, dropdowns and toasts. The file editor is now Monaco.
 
 | Feature | What it does |
 |---|---|
-| **Versions tab** | Pick Paper, Purpur, Spigot, Fabric, Quilt, Forge, NeoForge or Velocity, choose the Minecraft version and a build (latest is preselected) and install it in one click. The server is stopped, the jar replaced and the egg variables and Java image updated. Shows what is currently running, backed by a `pterodactyl.json` in the server folder. |
+| **Versions tab** | Pick Paper, Purpur, Spigot, Fabric, Quilt, Forge, NeoForge or Velocity, choose the Minecraft version and a build (latest is preselected) and install it in one click. The server is stopped, the jar replaced and the egg variables and Java image updated. Shows what is currently running, backed by a `stratosphere.json` in the server folder. |
 | **Server properties** | Typed editor for `server.properties` with switches, a search box and a **MOTD builder** with colours and formatting. |
 | **Proxy settings** | For Velocity servers the properties tab becomes a proxy configurator for `velocity.toml`: drag to reorder servers, forced hosts, forwarding mode and secret. |
 | **Mods & plugins** | Browse Modrinth and install plugins or mods straight onto the server. |
@@ -28,13 +28,13 @@ navigation, new dialogs, dropdowns and toasts. The file editor is now Monaco.
 
 ## Install
 
-StratPanel installs on top of a normal Pterodactyl setup, so you can use any Pterodactyl guide or script to get the
-base panel and Wings running, then switch to StratPanel with the update steps below.
+Stratosphere installs on top of a normal Pterodactyl setup, so you can use any Pterodactyl guide or script to get the
+base panel and Wings running, then switch to Stratosphere with the update steps below.
 
 New to Pterodactyl? Follow the [official installation guide](https://pterodactyl.io/panel/1.0/getting_started.html)
 (or a community installer) first.
 
-## Install or update StratPanel
+## Install or update Stratosphere
 
 Every push to `1.0-develop` builds a ready to use archive, and every `v*` tag creates a release. Both contain the built
 frontend, so there is nothing to compile on your server.
@@ -145,6 +145,6 @@ The router in `tools/mc-router` is a small Go program (`go test ./...`, `go buil
 
 ## Credits
 
-StratPanel is built on the excellent work of the [Pterodactyl](https://pterodactyl.io) project and its contributors.
+Stratosphere is built on the excellent work of the [Pterodactyl](https://pterodactyl.io) project and its contributors.
 Server software metadata comes from [MCJars](https://mcjars.app) and mods and plugins come from
 [Modrinth](https://modrinth.com).
