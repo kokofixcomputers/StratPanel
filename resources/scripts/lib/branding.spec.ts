@@ -1,4 +1,4 @@
-import { isSafeUrl, linksAt, parseBranding, visibleAnnouncements } from '@/lib/branding';
+import { DEFAULT_LOGO, isSafeUrl, linksAt, logoUrl, parseBranding, visibleAnnouncements } from '@/lib/branding';
 
 describe('parseBranding', () => {
     it('gives nothing for a page without branding', () => {
@@ -73,5 +73,15 @@ describe('visibleAnnouncements', () => {
 
         expect(visibleAnnouncements(list, ['a:1', 'c:1']).map((a) => a.key)).toEqual(['b:1', 'c:1']);
         expect(visibleAnnouncements(list, ['a:old']).map((a) => a.key)).toEqual(['a:1', 'b:1', 'c:1']);
+    });
+});
+
+describe('logoUrl', () => {
+    it('is the favicon an admin uploaded, or the default one', () => {
+        expect(logoUrl('/branding/favicon-1.png')).toBe('/branding/favicon-1.png');
+        expect(logoUrl(null)).toBe(DEFAULT_LOGO);
+        expect(logoUrl(undefined)).toBe(DEFAULT_LOGO);
+        expect(logoUrl('')).toBe(DEFAULT_LOGO);
+        expect(parseBranding({ favicon: '/branding/x.png' }).favicon).toBe('/branding/x.png');
     });
 });

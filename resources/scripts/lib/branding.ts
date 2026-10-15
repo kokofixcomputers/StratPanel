@@ -29,6 +29,12 @@ export interface Branding {
     links: CustomLink[];
 }
 
+/** The icon of the panel when an admin has not uploaded another one: the same picture as the default favicon. */
+export const DEFAULT_LOGO = '/favicons/android-chrome-192x192.png';
+
+/** The picture for the logo spots of the panel (top bar, sign in page): the favicon an admin uploaded, or the default. */
+export const logoUrl = (favicon: string | null | undefined): string => favicon || DEFAULT_LOGO;
+
 export const EMPTY_BRANDING: Branding = { favicon: null, announcements: [], links: [] };
 
 /** The server sends snake_case, the panel works with camelCase. Anything missing falls back to nothing. */

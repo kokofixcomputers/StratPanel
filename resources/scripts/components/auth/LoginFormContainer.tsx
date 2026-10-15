@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { Form } from 'formik';
-import { ArchiveIcon, CubeTransparentIcon, GlobeAltIcon, PuzzleIcon, TerminalIcon } from '@heroicons/react/outline';
+import { ArchiveIcon, GlobeAltIcon, PuzzleIcon, TerminalIcon } from '@heroicons/react/outline';
+import PanelLogo from '@/components/elements/PanelLogo';
 import { useStoreState } from 'easy-peasy';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import tw from 'twin.macro';
@@ -19,9 +20,11 @@ const FEATURES = [
 
 const Logo = ({ className }: { className?: string }) => (
     <span
-        className={`flex items-center justify-center rounded-2xl bg-primary-600 shadow-md ${className || 'h-12 w-12'}`}
+        className={`flex items-center justify-center rounded-2xl border border-neutral-500 bg-white shadow-md ${
+            className || 'h-12 w-12'
+        }`}
     >
-        <CubeTransparentIcon className={'h-2/3 w-2/3 text-white'} />
+        <PanelLogo className={'h-3/4 w-3/4 object-contain'} />
     </span>
 );
 
@@ -52,12 +55,9 @@ export default forwardRef<HTMLFormElement, Props>(({ title, subtitle, ...props }
                     }}
                 />
                 <div className={'relative flex items-center'}>
-                    <span
-                        className={
-                            'flex h-11 w-11 items-center justify-center rounded-xl bg-white bg-opacity-20 backdrop-blur'
-                        }
-                    >
-                        <CubeTransparentIcon className={'h-7 w-7'} />
+                    {/* A white tile, the logo is blue and would not show on the blue of this side. */}
+                    <span className={'flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-md'}>
+                        <PanelLogo className={'h-8 w-8 object-contain'} />
                     </span>
                     <span className={'ml-3 text-xl font-semibold tracking-tight'}>{name || 'Panel'}</span>
                 </div>

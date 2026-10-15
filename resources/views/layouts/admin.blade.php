@@ -35,7 +35,7 @@
         <div class="wrapper admin-shell">
             <aside class="admin-sidebar">
                 <a href="{{ route('admin.index') }}" class="admin-brand">
-                    <span class="logo-mark"><i class="fa fa-cube"></i></span>
+                    <span class="logo-mark"><img src="{{ $favicon ?: '/favicons/android-chrome-192x192.png' }}" alt=""></span>
                     <span class="logo-text">{{ config('app.name', 'Stratosphere') }}</span>
                     <span class="logo-badge">Admin</span>
                 </a>

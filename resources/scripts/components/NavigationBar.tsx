@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CubeTransparentIcon, LogoutIcon, ViewGridIcon, AdjustmentsIcon } from '@heroicons/react/outline';
+import { LogoutIcon, ViewGridIcon, AdjustmentsIcon } from '@heroicons/react/outline';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import SearchContainer from '@/components/dashboard/search/SearchContainer';
@@ -11,6 +11,7 @@ import http from '@/api/http';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import Tooltip from '@/components/elements/tooltip/Tooltip';
 import Avatar from '@/components/Avatar';
+import PanelLogo from '@/components/elements/PanelLogo';
 import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
 
@@ -62,9 +63,7 @@ export default () => {
                             'inline-flex items-center text-base font-semibold tracking-tight no-underline text-neutral-50'
                         }
                     >
-                        <span className={'flex items-center justify-center w-8 h-8 rounded-lg bg-primary-600 mr-2.5'}>
-                            <CubeTransparentIcon className={'w-5 h-5 text-white'} />
-                        </span>
+                        <PanelLogo className={'w-8 h-8 mr-2.5 object-contain'} />
                         {name}
                     </Link>
                 </div>
