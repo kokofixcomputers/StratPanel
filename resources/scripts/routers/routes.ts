@@ -11,6 +11,7 @@ import VersionsContainer from '@/components/server/versions/VersionsContainer';
 import PropertiesContainer from '@/components/server/properties/PropertiesContainer';
 import PlayersContainer from '@/components/server/players/PlayersContainer';
 import ContentContainer from '@/components/server/content/ContentContainer';
+import WorldsContainer from '@/components/server/worlds/WorldsContainer';
 import ProjectPage from '@/components/server/content/ProjectPage';
 import ToolsContainer from '@/components/server/tools/ToolsContainer';
 import FileManagerContainer from '@/components/server/files/FileManagerContainer';
@@ -104,6 +105,12 @@ export default {
             permission: 'file.*',
             name: 'Content',
             component: ContentContainer,
+        },
+        {
+            path: '/worlds',
+            permission: 'file.*',
+            name: 'Worlds',
+            component: WorldsContainer,
         },
         {
             // One project of Modrinth, opened from the results of Content.

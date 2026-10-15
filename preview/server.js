@@ -105,7 +105,9 @@ api.get('/servers/:id/activity', (req, res) => res.json(paginated([])));
 
 files['/mods'] = [['sodium-fabric-0.5.0.jar', true, 1200000, 'application/jar'], ['lithium-fabric-0.14.jar', true, 900000, 'application/jar']];
 files['/plugins'] = [['WorldEdit', false]];
-files['/world'] = [['level.dat', true, 2048, 'application/octet-stream'], ['region', false]];
+files['/world'] = [['level.dat', true, 2048, 'application/octet-stream'], ['region', false], ['dimensions', false]];
+files['/world/dimensions'] = [['minecraft', false]];
+files['/world/dimensions/minecraft'] = [['overworld', false], ['the_end', false], ['the_nether', false]];
 api.get('/servers/:id/files/list', (req, res) => res.json({ object: 'list', data: (files[req.query.directory] || (['/', ''].includes(String(req.query.directory)) ? files['/'] : [])).map(fileAttrs) }));
 const fileStore = {
     ...(process.env.PREVIEW_PROXY ? { '/velocity.toml': `# Config version. Do not change this
@@ -197,8 +199,15 @@ api.post('/servers/:id/files/delete', (req, res) => {
     res.status(204).end();
 });
 let mockIcon = null;
+// Files the page wrote through the upload (the bytes of the file part), so that reading them again shows the change.
+const mockWrites = {};
+app.get('/mock-written', (req, res) => res.type('application/octet-stream').send(mockWrites[String(req.query.p)]));
+app.get('/mock-game-rules', (req, res) => res.type('application/octet-stream').send(require('node:fs').readFileSync(path.join(__dirname, 'fixtures/game_rules.dat'))));
 api.get('/servers/:id/files/download', (req, res) => {
     if (String(req.query.file).endsWith('server-icon.png')) return mockIcon ? res.json({ attributes: { url: '/mock-icon' } }) : res.status(404).json({ errors: [{ detail: 'not found' }] });
+    const wanted = '/' + String(req.query.file).replace(/^\/+/, '');
+    if (wanted in mockWrites) return res.json({ attributes: { url: `/mock-written?p=${encodeURIComponent(wanted)}` } });
+    if (wanted.endsWith('/data/minecraft/game_rules.dat')) return res.json({ attributes: { url: '/mock-game-rules' } });
     if (String(req.query.file).endsWith('/overworld/data/minecraft/world_gen_settings.dat')) return res.json({ attributes: { url: '/mock-world-gen' } });
     res.json({ attributes: { url: '/mock-missing' } });
 });
@@ -214,6 +223,11 @@ app.get('/mock-missing', (req, res) => res.status(404).end());
 const mockUploads = [];
 app.get('/mock-uploads', (req, res) => res.json(mockUploads));
 app.post('/mock-upload', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => {
+    const boundary = req.body.subarray(0, req.body.indexOf('\r\n')).toString('latin1');
+    const headerEnd = req.body.indexOf('\r\n\r\n');
+    const tail = req.body.lastIndexOf(Buffer.from(`\r\n${boundary}--`));
+    const uploaded = (/filename="([^"]*)"/.exec(req.body.subarray(0, 400).toString('latin1')) || [])[1];
+    if (uploaded && headerEnd > 0 && tail > headerEnd) mockWrites[`${String(req.query.directory).replace(/\/+$/, '')}/${uploaded}`] = req.body.subarray(headerEnd + 4, tail);
     mockUploads.push({ directory: req.query.directory, filename: (/filename="([^"]*)"/.exec(req.body.subarray(0, 400).toString('latin1')) || [])[1], bytes: req.body.length });
     const start = req.body.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     const end = req.body.indexOf(Buffer.from('IEND'));
