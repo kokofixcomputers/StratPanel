@@ -162,7 +162,7 @@ export default async (ctx: {
 
     report(`Downloading mods 0/${files.length}`, { done: 0, total: files.length });
 
-    // One request for the whole list: the panel downloads three at a time, tries a failed file again and says after each file how far it is.
+    // One job on the node for the whole list: it downloads three at a time, tries a failed file again and goes on if the page is closed.
     const names = files.map((file) => file.path.split('/').pop() as string);
     const result = await pullBatch(
         uuid,
@@ -173,7 +173,7 @@ export default async (ctx: {
         })),
         (done, total) => report(`Downloading mods ${done}/${total}`, { done, total })
     );
-    const failed = result.failed.map((f) => names[f.index]);
+    const failed = result.failed.map((f) => f.name);
 
     if (failed.length) {
         throw new Error(

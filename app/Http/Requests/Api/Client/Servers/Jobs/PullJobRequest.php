@@ -1,12 +1,12 @@
 <?php
 
-namespace Pterodactyl\Http\Requests\Api\Client\Servers\Files;
+namespace Pterodactyl\Http\Requests\Api\Client\Servers\Jobs;
 
 use Pterodactyl\Models\Permission;
 use Pterodactyl\Contracts\Http\ClientPermissionsRequest;
 use Pterodactyl\Http\Requests\Api\Client\ClientApiRequest;
 
-class PullBatchRequest extends ClientApiRequest implements ClientPermissionsRequest
+class PullJobRequest extends ClientApiRequest implements ClientPermissionsRequest
 {
     public function permission(): string
     {
@@ -21,5 +21,15 @@ class PullBatchRequest extends ClientApiRequest implements ClientPermissionsRequ
             'files.*.directory' => 'nullable|string',
             'files.*.filename' => 'nullable|string',
         ];
+    }
+
+    /** @return list<array{url: string, directory: string, filename: string}> */
+    public function files(): array
+    {
+        return array_map(fn (array $file) => array_filter([
+            'url' => $file['url'],
+            'directory' => ($file['directory'] ?? null) ?: '/',
+            'filename' => $file['filename'] ?? null,
+        ], fn ($value) => !is_null($value) && $value !== ''), array_values($this->input('files')));
     }
 }

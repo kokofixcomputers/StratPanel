@@ -161,10 +161,25 @@ as_web() {
 update_panel() {
   local tarball="$TMP/panel.tar.gz" out backup
 
-  if ! tar -tzf "$tarball" 2> /dev/null | grep -qE '^(\./)?artisan$'; then
-    note panel failed "the download is not a panel archive"
+  # The whole listing is read before anything looks at it: `tar | grep -q` stops tar early, and with pipefail that counts as a failure.
+  local listing artisan strip=0 prefix
+  listing="$(tar -tzf "$tarball" 2> /dev/null)"
+  artisan="$(printf '%s\n' "$listing" | grep -E '(^|/)artisan$' | awk '{ print length($0), $0 }' | sort -n | head -n1 | cut -d' ' -f2-)"
+  if [ -z "$artisan" ]; then
+    local size start
+    size="$(wc -c < "$tarball" | tr -d ' ')"
+    start="$(head -c 60 "$tarball" 2> /dev/null | tr -c '[:print:]' '.')"
+    if [ -z "$listing" ]; then
+      note panel failed "the download is not a tar.gz archive ($size bytes, it starts with: $start) from $URL"
+    else
+      note panel failed "the archive has no artisan, it is not a panel ($(printf '%s\n' "$listing" | head -n3 | tr '\n' ' '))"
+    fi
     return 1
   fi
+  # A release made with a folder around it (panel/artisan) is extracted without that folder.
+  prefix="${artisan%artisan}"
+  strip="$(printf '%s' "$prefix" | tr -cd '/' | wc -c | tr -d ' ')"
+  [ "$prefix" = "./" ] && strip=0
 
   mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
   backup="$BACKUP_DIR/panel-backup-$(date +%F-%H%M).tar.gz"
@@ -178,7 +193,7 @@ update_panel() {
 
   # The shipped eggs are data of the archive: start from an empty folder so a removed or renamed file does not stay behind.
   rm -rf "$PANEL_DIR/database/Seeders/eggs"
-  if ! out="$(tar -xzf "$tarball" -C "$PANEL_DIR" 2>&1)"; then
+  if ! out="$(tar -xzf "$tarball" -C "$PANEL_DIR" --strip-components="$strip" 2>&1)"; then
     tar -xzf "$backup" -C "$PANEL_DIR" 2> /dev/null || true
     chown -R "$WEB_USER": "$PANEL_DIR"
     php artisan up > /dev/null 2>&1 || true

@@ -136,13 +136,9 @@ Route::group([
         Route::post('/chmod', [Client\Servers\FileController::class, 'chmod']);
         Route::middleware([ResourceLimit::FilePull->middleware()])
             ->post('/pull', [Client\Servers\FileController::class, 'pull']);
+        // Look at an SFTP or FTP server before importing from it.
         Route::middleware([ResourceLimit::FilePull->middleware()])
-            ->post('/pull-batch', [Client\Servers\FileController::class, 'pullBatch']);
-        // Copy everything from an SFTP or FTP server into this server.
-        Route::middleware([ResourceLimit::FilePull->middleware()])->group(function () {
-            Route::post('/import/test', [Client\Servers\ImportController::class, 'test']);
-            Route::post('/import', [Client\Servers\ImportController::class, 'run']);
-        });
+            ->post('/import/test', [Client\Servers\ImportController::class, 'test']);
         Route::get('/upload', Client\Servers\FileUploadController::class);
     });
 
@@ -167,6 +163,17 @@ Route::group([
         Route::post('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'update']);
         Route::post('/allocations/{allocation}/primary', [Client\Servers\NetworkAllocationController::class, 'setPrimary']);
         Route::delete('/allocations/{allocation}', [Client\Servers\NetworkAllocationController::class, 'delete']);
+    });
+
+    // Work that goes on in the background on the node: imports, archives, downloads.
+    Route::group(['prefix' => '/jobs'], function () {
+        Route::get('/', [Client\Servers\JobController::class, 'index']);
+        Route::get('/{job}', [Client\Servers\JobController::class, 'show']);
+        Route::delete('/{job}', [Client\Servers\JobController::class, 'destroy']);
+        Route::middleware([ResourceLimit::FilePull->middleware()])->group(function () {
+            Route::post('/import', [Client\Servers\JobController::class, 'import']);
+            Route::post('/pull', [Client\Servers\JobController::class, 'pull']);
+        });
     });
 
     Route::group(['prefix' => '/domains'], function () {

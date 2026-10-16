@@ -1,14 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-    CheckCircleIcon,
-    CloudDownloadIcon,
-    DocumentIcon,
-    ExclamationIcon,
-    FolderIcon,
-    ServerIcon,
-} from '@heroicons/react/outline';
+import React, { useState } from 'react';
+import { CheckCircleIcon, DocumentIcon, ExclamationIcon, FolderIcon, ServerIcon } from '@heroicons/react/outline';
 import tw from 'twin.macro';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
@@ -23,19 +16,10 @@ import { Button } from '@/components/elements/button/index';
 import { ServerContext } from '@/state/server';
 import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
-import { ImportTestResult, runImport, testImport } from '@/api/server/files/importer';
-import {
-    applyEvent,
-    defaultPort,
-    emptyForm,
-    formatBytes,
-    formProblem,
-    ImportForm,
-    ImportProgress,
-    initialProgress,
-    percent,
-    toPayload,
-} from '@/lib/importer';
+import { ImportTestResult, testImport } from '@/api/server/files/importer';
+import { isActive, startImportJob, useJobs } from '@/api/server/jobs';
+import { defaultPort, emptyForm, formProblem, ImportForm, toPayload } from '@/lib/importer';
+import { formatBytes } from '@/lib/jobs';
 
 const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
     <div css={tw`min-w-0`}>
@@ -45,7 +29,7 @@ const Field = ({ label, hint, children }: { label: string; hint?: string; childr
     </div>
 );
 
-type Step = 'form' | 'checked' | 'running' | 'done';
+type Step = 'form' | 'checked';
 
 /** Copies everything from an SFTP or FTP server into this server: the node connects to the other server and downloads the files itself. */
 export default () => {
@@ -60,11 +44,9 @@ export default () => {
     const [busy, setBusy] = useState(false);
     const [checked, setChecked] = useState<ImportTestResult | null>(null);
     const [overwrite, setOverwrite] = useState(true);
-    const [progress, setProgress] = useState<ImportProgress>(initialProgress);
-    const abort = useRef<AbortController | null>(null);
-
-    // Leaving the page stops the import, the login does not stay in the browser longer than that.
-    useEffect(() => () => abort.current?.abort(), []);
+    const history = useHistory();
+    const { data: jobs } = useJobs();
+    const importing = (jobs || []).find((j) => j.type === 'import' && isActive(j));
 
     const set = <K extends keyof ImportForm>(key: K, value: ImportForm[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -86,49 +68,30 @@ export default () => {
             .then(() => setBusy(false));
     };
 
+    // The node does the import as a job: it goes on when this page is closed. This only starts it and moves to the Jobs tab.
     const start = () => {
         clearFlashes('importer');
-        const controller = new AbortController();
-        abort.current = controller;
-        let state = initialProgress();
-        setProgress(state);
-        setStep('running');
+        setBusy(true);
 
-        runImport(
-            uuid,
-            toPayload(form, { fingerprint: checked?.fingerprint, overwrite }),
-            (line) => {
-                state = applyEvent(state, line);
-                setProgress(state);
-            },
-            controller.signal
-        )
+        startImportJob(uuid, toPayload(form, { fingerprint: checked?.fingerprint, overwrite }))
             .then(() => {
-                // The node always ends with finished or error; a stream that ends without either was cut off.
-                if (state.phase !== 'finished' && state.phase !== 'error') {
-                    state = { ...state, phase: 'error', error: 'The connection was lost before the import was over.' };
-                    setProgress(state);
-                }
+                // The login is not kept around once the node has it.
+                setForm((f) => ({ ...f, password: '', passphrase: '', privateKey: '' }));
+                history.push(`/server/${id}/jobs`);
             })
             .catch((e) => {
-                if (controller.signal.aborted) {
-                    state = { ...state, phase: 'error', error: 'Cancelled.' };
-                } else {
-                    state = { ...state, phase: 'error', error: httpErrorToHuman(e) };
-                }
-                setProgress(state);
-            })
-            .then(() => {
-                abort.current = null;
-                setStep('done');
+                setBusy(false);
+                addFlash({
+                    key: 'importer',
+                    type: 'error',
+                    title: 'Could not start the import',
+                    message: httpErrorToHuman(e),
+                });
             });
     };
 
     const again = () => {
-        // The password is gone once the import is over.
-        setForm((f) => ({ ...f, password: '', passphrase: '', privateKey: '' }));
         setChecked(null);
-        setProgress(initialProgress());
         setStep('form');
     };
 
@@ -142,7 +105,22 @@ export default () => {
             />
             <FlashMessageRender byKey={'importer'} css={tw`mb-4`} />
 
-            {running && step !== 'running' && (
+            {importing && (
+                <div
+                    css={tw`flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 mb-4 text-sm text-primary-700`}
+                >
+                    <ServerIcon css={tw`w-5 h-5 flex-shrink-0 mt-0.5`} />
+                    <p>
+                        An import is already running for this server ({importing.title}). Follow it in the{' '}
+                        <Link to={`/server/${id}/jobs`} css={tw`font-semibold underline`}>
+                            Jobs tab
+                        </Link>
+                        . Only one import runs at a time.
+                    </p>
+                </div>
+            )}
+
+            {running && (
                 <div
                     css={tw`flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 mb-4 text-sm text-yellow-700`}
                 >
@@ -340,120 +318,14 @@ export default () => {
                         <Button type={'button'} variant={Button.Variants.Secondary} onClick={again}>
                             Change
                         </Button>
-                        <Button type={'button'} color={'green'} disabled={running} onClick={start}>
-                            Import everything
+                        <Button
+                            type={'button'}
+                            color={'green'}
+                            disabled={running || busy || !!importing}
+                            onClick={start}
+                        >
+                            {busy ? <Spinner size={'small'} /> : 'Import everything'}
                         </Button>
-                    </div>
-                </SectionCard>
-            )}
-
-            {(step === 'running' || step === 'done') && (
-                <SectionCard
-                    icon={<CloudDownloadIcon className={'h-5 w-5'} />}
-                    title={
-                        progress.phase === 'finished'
-                            ? 'Done'
-                            : progress.phase === 'error'
-                            ? 'Stopped'
-                            : progress.phase === 'copying'
-                            ? 'Copying'
-                            : 'Looking at the files'
-                    }
-                    description={`From ${form.host}${form.path && form.path !== '/' ? form.path : ''} to ${
-                        form.directory || '/'
-                    }`}
-                >
-                    <div css={tw`p-5`}>
-                        {progress.phase === 'connecting' && (
-                            <p css={tw`text-sm text-neutral-400`}>
-                                <Spinner size={'small'} css={tw`inline-block mr-2`} />
-                                Connecting...
-                            </p>
-                        )}
-                        {progress.phase === 'scanning' && (
-                            <p css={tw`text-sm text-neutral-400`}>
-                                <Spinner size={'small'} css={tw`inline-block mr-2`} />
-                                Looking at the files... {progress.scanned} found so far
-                            </p>
-                        )}
-                        {(progress.phase === 'copying' || progress.phase === 'finished' || progress.done > 0) && (
-                            <>
-                                <div css={tw`flex items-baseline justify-between mb-2`}>
-                                    <p css={tw`text-sm font-medium text-neutral-100`}>
-                                        {progress.done} of {progress.files} files
-                                    </p>
-                                    <p css={tw`text-xs text-neutral-400`}>
-                                        {formatBytes(progress.bytes)} of {formatBytes(progress.bytesTotal)}
-                                    </p>
-                                </div>
-                                <div css={tw`h-2 w-full rounded-full bg-neutral-500 overflow-hidden`}>
-                                    <div
-                                        css={tw`h-full bg-primary-600 transition-all duration-150`}
-                                        style={{ width: `${percent(progress.done, progress.files)}%` }}
-                                    />
-                                </div>
-                                {progress.current && step === 'running' && (
-                                    <p css={tw`mt-2 text-xs text-neutral-400 truncate`}>{progress.current}</p>
-                                )}
-                            </>
-                        )}
-
-                        {progress.phase === 'finished' && (
-                            <p css={tw`mt-4 text-sm text-green-700`}>
-                                {progress.done - progress.failed.length - progress.skipped} files copied
-                                {progress.skipped > 0 && `, ${progress.skipped} kept as they were`}
-                                {progress.failed.length > 0 && `, ${progress.failed.length} failed`}.
-                            </p>
-                        )}
-                        {progress.phase === 'error' && (
-                            <p css={tw`mt-4 text-sm text-red-600`}>
-                                {progress.error}
-                                {progress.done > 0 && ` ${progress.done} of ${progress.files} files were done.`}
-                            </p>
-                        )}
-
-                        {progress.failed.length > 0 && (
-                            <div css={tw`mt-4`}>
-                                <p css={tw`text-sm font-medium text-neutral-100 mb-2`}>Not copied</p>
-                                <ul
-                                    css={tw`divide-y divide-neutral-500 rounded-lg border border-neutral-500 text-xs max-h-48 overflow-auto`}
-                                >
-                                    {progress.failed.slice(0, 200).map((f, i) => (
-                                        <li key={i} css={tw`px-3 py-2`}>
-                                            <span css={tw`font-mono`}>{f.path}</span>
-                                            <span css={tw`text-red-600 ml-2`}>{f.error}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                        {progress.warnings.length > 0 && (
-                            <ul css={tw`mt-4 text-xs text-yellow-700 space-y-1`}>
-                                {progress.warnings.slice(0, 20).map((w, i) => (
-                                    <li key={i}>{w}</li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                    <div css={tw`flex items-center justify-between gap-4 border-t border-neutral-500 px-5 py-4`}>
-                        {step === 'running' ? (
-                            <Button
-                                type={'button'}
-                                variant={Button.Variants.Secondary}
-                                onClick={() => abort.current?.abort()}
-                            >
-                                Cancel
-                            </Button>
-                        ) : (
-                            <>
-                                <Button type={'button'} variant={Button.Variants.Secondary} onClick={again}>
-                                    Import another
-                                </Button>
-                                <Link to={`/server/${id}/files`}>
-                                    <Button type={'button'}>Open the files</Button>
-                                </Link>
-                            </>
-                        )}
                     </div>
                 </SectionCard>
             )}

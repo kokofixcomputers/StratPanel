@@ -1,4 +1,4 @@
-import streamLines from '@/api/streamLines';
+import { jobProblem, startPull, waitForJob } from '@/api/server/jobs';
 
 export interface PullBatchFile {
     url: string;
@@ -7,43 +7,28 @@ export interface PullBatchFile {
 }
 
 export interface PullBatchResult {
-    // The files that could not be downloaded (also after the panel tried again), by their place in the list.
-    failed: { index: number; error: string }[];
+    // The files that could not be downloaded (the node tried each of them three times), with the reason.
+    failed: { name: string; error: string }[];
 }
 
 /**
- * Has the panel download a list of files to the server in one request, three at a time. The panel answers with one line for each file
- * that is done, so onProgress is called as it goes (1/100, 2/100, ...). Resolves when the list is finished.
+ * Downloads a list of files to the server as one job on the node: three at a time, a failed file is tried again, and the job goes on if
+ * the page is closed (it is in the Jobs tab). onProgress is called as it goes (1/100, 2/100, ...). Resolves when the job is over.
  */
 export default async (
     uuid: string,
     files: PullBatchFile[],
     onProgress: (done: number, total: number) => void
 ): Promise<PullBatchResult> => {
-    const failed: PullBatchResult['failed'] = [];
-    let total = files.length;
-    let finished = false;
-    let done = 0;
+    onProgress(0, files.length);
 
-    onProgress(0, total);
+    const started = await startPull(uuid, files);
+    const job = await waitForJob(uuid, started.id, (j) => onProgress(j.done, j.files || files.length));
 
-    await streamLines(
-        `/api/client/servers/${uuid}/files/pull-batch`,
-        { files: files.map((f) => ({ url: f.url, directory: f.directory, filename: f.filename })) },
-        (line) => {
-            if (typeof line.total === 'number') total = line.total;
-            if (typeof line.done === 'number' && line.index !== undefined) {
-                done = line.done;
-                if (line.ok === false) failed.push({ index: line.index, error: String(line.error || 'It failed.') });
-                onProgress(done, total);
-            }
-            if (line.finished) finished = true;
-        }
-    );
-
-    if (!finished) {
-        throw new Error(`The connection was lost after ${done} of ${total} files. Run the install again to continue.`);
+    if (job.status !== 'finished') {
+        // Cancelled, or the node was restarted: nothing else can be said about the files.
+        throw new Error(jobProblem(job) || 'The download did not finish.');
     }
 
-    return { failed };
+    return { failed: job.failures.map((f) => ({ name: f.path, error: f.error })) };
 };

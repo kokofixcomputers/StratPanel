@@ -7,8 +7,9 @@ host: type the login, press Connect, check the fingerprint and press Import.
   Stratosphere (`docs/updates.md`), a node without it says so.
 * **Connect** only looks: it logs in, shows the first entries of the folder and the SSH fingerprint of the other server (SFTP). The import
   is then pinned to that fingerprint, so a different server on the same address is refused.
-* While it runs the page shows `37 of 100 files`, the bytes, the file it is on and every file that failed, with the reason. **Cancel**
-  (or leaving the page) stops it. Files that were done stay.
+* The import is a **job** on the node (`docs/jobs.md`): after you press Import you are taken to the **Jobs** tab, which shows `37 of 100 files`,
+  the bytes, the file it is on and every file that failed, with the reason. You can close the page or reload it, the import goes on. **Cancel**
+  there stops it; files that were done stay.
 * *Replace files that are already here* is on by default; off keeps the files that exist and skips the ones from the other server. Replacing
   needs the permission `file.update`, importing needs `file.create`.
 * The login (password or private key) is used for the one request. It is not saved, not logged and not in the activity log (which has the
@@ -19,5 +20,5 @@ host: type the login, press Connect, check the fingerprint and press Import.
   `api.remote_download_allowlist`. `api.disable_remote_download: true` turns the importer off.
 * Stop the server first: files that are in use (a running world) can be damaged when they are replaced. The page warns about it.
 
-One import runs per server at a time. The panel streams the node's progress through `POST /api/client/servers/{uuid}/files/import`
-(JSON lines); `.../import/test` is the Connect step.
+One import runs per server at a time. `POST /api/client/servers/{uuid}/files/import/test` is the Connect step and
+`POST .../jobs/import` starts the job.

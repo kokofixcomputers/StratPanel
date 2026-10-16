@@ -5,7 +5,6 @@ namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;
-use Pterodactyl\Jobs\ArchiveFilesJob;
 use Illuminate\Support\Facades\Cache;
 use Pterodactyl\Enum\JwtScope;
 use Pterodactyl\Models\Server;
@@ -15,13 +14,11 @@ use Pterodactyl\Services\Nodes\NodeJWTService;
 use Pterodactyl\Services\Trash\TrashService;
 use Pterodactyl\Models\Permission;
 use Pterodactyl\Repositories\Wings\DaemonFileRepository;
+use Pterodactyl\Repositories\Wings\DaemonJobRepository;
 use Pterodactyl\Transformers\Api\Client\FileObjectTransformer;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\CopyFileRequest;
-use Pterodactyl\Http\Requests\Api\Client\Servers\Files\PullBatchRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\PullFileRequest;
-use Pterodactyl\Services\Files\PullBatchService;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\ListFilesRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\ChmodFilesRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\DeleteFileRequest;
@@ -41,6 +38,7 @@ class FileController extends ClientApiController
         private NodeJWTService $jwtService,
         private DaemonFileRepository $fileRepository,
         private TrashService $trash,
+        private DaemonJobRepository $jobs,
     ) {
         parent::__construct();
     }
@@ -186,58 +184,66 @@ class FileController extends ClientApiController
      */
     public function compress(CompressFilesRequest $request, Server $server): JsonResponse
     {
-        $id = $this->queueArchiveJob($server, 'compress', $request->input('root'), $request->input('files'));
+        $job = $this->jobs->setServer($server)->start('compress', ['root' => $request->input('root'), 'files' => $request->input('files')]);
 
         Activity::event('server:file.compress')
             ->property('directory', $request->input('root'))
             ->property('files', $request->input('files'))
             ->log();
 
-        return new JsonResponse(['task' => $id], Response::HTTP_ACCEPTED);
+        return new JsonResponse(['task' => $job['id']], Response::HTTP_ACCEPTED);
     }
 
     /**
-     * Queues a decompress job and responds right away; poll the task endpoint for the result.
+     * Starts a decompress job on the node and responds right away; poll the task endpoint for the result.
      */
     public function decompress(DecompressFilesRequest $request, Server $server): JsonResponse
     {
-        $id = $this->queueArchiveJob($server, 'decompress', $request->input('root'), [$request->input('file')]);
+        $job = $this->jobs->setServer($server)->start('decompress', ['root' => $request->input('root'), 'file' => $request->input('file')]);
 
         Activity::event('server:file.decompress')
             ->property('directory', $request->input('root'))
             ->property('files', $request->input('file'))
             ->log();
 
-        return new JsonResponse(['task' => $id], Response::HTTP_ACCEPTED);
+        return new JsonResponse(['task' => $job['id']], Response::HTTP_ACCEPTED);
     }
 
     /**
-     * Reports on a queued compress or decompress job.
+     * Reports on a compress or decompress job (it runs on the node, see the Jobs tab) in the shape the file manager follows.
      */
     public function task(ListFilesRequest $request, Server $server, string $task): JsonResponse
     {
-        $state = Cache::get(ArchiveFilesJob::key($server->uuid, $task));
-        if (is_null($state)) {
+        $job = $this->jobs->setServer($server)->show($task);
+        if ($job === null) {
             return new JsonResponse(['status' => 'unknown'], Response::HTTP_NOT_FOUND);
         }
 
-        $response = ['status' => $state['status'], 'error' => $state['error'] ?? null, 'file' => null];
-        if (!empty($state['file'])) {
-            $response['file'] = $this->fractal->item($state['file'])
-                ->transformWith($this->getTransformer(FileObjectTransformer::class))
-                ->toArray();
+        $status = match ($job['status'] ?? '') {
+            'finished' => 'done',
+            'failed', 'cancelled', 'interrupted' => 'failed',
+            default => 'running',
+        };
+        $response = ['status' => $status, 'error' => null, 'file' => null];
+        if ($status === 'failed') {
+            $response['error'] = ($job['status'] ?? '') === 'cancelled' ? 'Cancelled.' : ($job['error'] ?? 'The task failed.');
+        }
+
+        // An archive that was made: its entry in the folder it is in.
+        $name = $job['result']['name'] ?? null;
+        if ($status === 'done' && $name !== null) {
+            $directory = $job['result']['directory'] ?? '/';
+            foreach ($this->fileRepository->setServer($server)->getDirectory($directory) as $entry) {
+                if (($entry['name'] ?? null) === $name) {
+                    $response['file'] = $this->fractal->item($entry)
+                        ->transformWith($this->getTransformer(FileObjectTransformer::class))
+                        ->toArray();
+                    break;
+                }
+            }
         }
 
         return new JsonResponse($response);
-    }
-
-    private function queueArchiveJob(Server $server, string $action, ?string $root, array $items): string
-    {
-        $id = Str::uuid()->toString();
-        Cache::put(ArchiveFilesJob::key($server->uuid, $id), ['status' => 'queued'], ArchiveFilesJob::TTL);
-        ArchiveFilesJob::dispatch($id, $server, $action, $root, $items);
-
-        return $id;
     }
 
     /**
@@ -304,52 +310,5 @@ class FileController extends ClientApiController
             ->log();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Downloads a list of files in one request and streams back how far it got, one JSON line per file ({"done":1,"total":100,...}).
-     * Three at a time, failed files are tried again by the panel. One list per server at a time.
-     */
-    public function pullBatch(PullBatchRequest $request, Server $server, PullBatchService $batch): StreamedResponse|JsonResponse
-    {
-        $items = array_map(fn (array $file) => [
-            'url' => $file['url'],
-            'directory' => $file['directory'] ?? null,
-            'filename' => $file['filename'] ?? null,
-        ], array_values($request->input('files')));
-
-        $lock = Cache::lock('files:pull-batch:' . $server->id, 1800);
-        if (!$lock->get()) {
-            return new JsonResponse(['errors' => [[
-                'code' => 'PullBatchRunning',
-                'status' => '409',
-                'detail' => 'Downloads for this server are already running, wait for them to finish.',
-            ]]], Response::HTTP_CONFLICT);
-        }
-
-        Activity::event('server:file.pull')->property('count', count($items))->log();
-
-        return new StreamedResponse(function () use ($batch, $server, $items, $lock) {
-            // A list of hundreds of files takes minutes.
-            set_time_limit(0);
-            ignore_user_abort(false);
-
-            try {
-                $batch->run($server, $items, function (array $line) {
-                    echo json_encode($line) . "\n";
-                    if (PHP_SAPI !== 'cli') {
-                        @ob_flush();
-                    }
-                    flush();
-                }, fn () => connection_aborted() === 1);
-            } finally {
-                $lock->release();
-            }
-        }, Response::HTTP_OK, [
-            'Content-Type' => 'application/x-ndjson',
-            'Cache-Control' => 'no-cache, private',
-            // nginx must not collect the answer before sending it.
-            'X-Accel-Buffering' => 'no',
-        ]);
     }
 }

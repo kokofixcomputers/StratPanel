@@ -1,5 +1,4 @@
 import http from '@/api/http';
-import streamLines from '@/api/streamLines';
 
 export interface ImportTestResult {
     // The SSH host key of the remote server (SFTP), empty for FTP.
@@ -14,11 +13,3 @@ export const testImport = async (uuid: string, payload: Record<string, unknown>)
 
     return data;
 };
-
-/** Copies the folder into the server. onLine gets every line the node sends; resolves when it is over, aborting the signal cancels it. */
-export const runImport = (
-    uuid: string,
-    payload: Record<string, unknown>,
-    onLine: (line: any) => void,
-    signal?: AbortSignal
-): Promise<void> => streamLines(`/api/client/servers/${uuid}/files/import`, payload, onLine, signal);

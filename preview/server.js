@@ -389,7 +389,7 @@ api.post('/servers/:id/trash/:item/restore', (req, res) => { mockTrash = mockTra
 api.delete('/servers/:id/trash/:item', (req, res) => { mockTrash = mockTrash.filter((t) => t.id !== req.params.item); res.status(204).end(); });
 api.delete('/servers/:id/trash', (req, res) => { mockTrash = []; res.status(204).end(); });
 
-// The server importer: a test connection and a stream of progress lines.
+// The server importer: a test connection, then the work runs as a job (see the jobs below).
 api.post('/servers/:id/files/import/test', (req, res) => {
     if (req.body && req.body.host === 'private.example') return res.status(400).json({ errors: [{ code: 'DisplayException', status: '400', detail: 'That address is on a private network and the node may not connect to it.' }] });
     setTimeout(() => res.json({
@@ -401,27 +401,55 @@ api.post('/servers/:id/files/import/test', (req, res) => {
         ],
     }), 600);
 });
-api.post('/servers/:id/files/import', async (req, res) => {
-    res.set({ 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
-    const send = (m) => res.write(JSON.stringify(m) + '\n');
-    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    let closed = false;
-    res.on('close', () => { closed = true; });
-    send({ event: 'connected', fingerprint: 'SHA256:3x0kP9mVq2YtK1c7nWb5e8Fh0yLr4sZaDuJ6oXiGpAQ' });
-    await wait(500); send({ event: 'scanning', entries: 500 });
-    await wait(700);
-    const files = Array.from({ length: 40 }, (_, i) => ({ path: i % 7 === 0 ? `world/region/r.${i}.0.mca` : `plugins/Plugin${i}.jar`, size: 200000 + i * 91234 }));
-    const total = files.reduce((a, f) => a + f.size, 0);
-    send({ event: 'listing', files: files.length, dirs: 6, bytes: total, skipped: 1 });
-    let bytes = 0;
-    for (let i = 0; i < files.length && !closed; i++) {
-        await wait(250);
-        bytes += files[i].size;
-        const bad = i === 13;
-        send({ event: 'file', index: i, done: i + 1, total: files.length, path: files[i].path, ok: !bad, error: bad ? 'permission denied' : undefined, bytes, bytesTotal: total, skipped: i === 5 ? true : undefined });
+
+// Background jobs: they progress with the clock, like on a node.
+let jobSeq = 0;
+const mockJobs = [
+    { id: 'old-1', type: 'compress', title: 'Archive world', status: 'finished', t0: Date.now() - 3600e3, dur: 1, files: 120, done: 120, bytes: 52428800, bytes_total: 52428800, result: { name: 'archive-2026-10-16.tar.gz', directory: '/', size: 31000000 }, finished_at: new Date(Date.now() - 3590e3).toISOString(), failures: [], warnings: [] },
+    { id: 'old-2', type: 'import', title: 'Import /srv/mc from old-host.example.com', status: 'interrupted', t0: Date.now() - 86400e3, files: 300, done: 120, bytes: 9e6, bytes_total: 40e6, error: 'The node was restarted while this was running. What was done is kept; run it again to continue (existing files can be skipped).', finished_at: new Date(Date.now() - 86000e3).toISOString(), failures: [], warnings: [] },
+];
+const jobShape = (j) => ({ id: j.id, server: UUID, type: j.type, title: j.title, status: j.status, params: {}, scanned: j.scanned || 0, folders: j.folders || 0, scan_path: j.scan_path || '', files: j.files || 0, dirs: j.dirs || 0, done: j.done || 0, skipped: j.skipped || 0, failed: j.failed || 0, bytes: j.bytes || 0, bytes_total: j.bytes_total || 0, current: j.current || '', failures: j.failures || [], warnings: j.warnings || [], error: j.error, result: j.result, created_at: new Date(j.t0).toISOString(), finished_at: j.finished_at });
+const tickJob = (j) => {
+    if (j.status !== 'scanning' && j.status !== 'running') return j;
+    if (j.cancelled) { Object.assign(j, { status: 'cancelled', finished_at: now(), current: '' }); return j; }
+    const t = (Date.now() - j.t0) / 1000;
+    if (j.type === 'import') {
+        if (t < 4) return Object.assign(j, { status: 'scanning', scanned: Math.floor(t * 900), folders: Math.floor(t * 70), scan_path: 'world/region' });
+        const files = 40; const done = Math.min(files, Math.floor((t - 4) * 2.5)); const total = 75e6;
+        Object.assign(j, { status: 'running', files, dirs: 6, done, bytes: Math.floor(total * done / files), bytes_total: total, current: done < files ? `plugins/Plugin${done}.jar` : '', skipped: done > 5 ? 1 : 0, failed: done > 13 ? 1 : 0, failures: done > 13 ? [{ path: 'plugins/Plugin13.jar', error: 'permission denied' }] : [] });
+        if (done >= files) Object.assign(j, { status: 'finished', finished_at: now(), current: '' });
+    } else if (j.type === 'compress' || j.type === 'decompress') {
+        const total = 200e6; const bytes = Math.min(total, Math.floor(t * 25e6));
+        Object.assign(j, { status: bytes >= total ? 'finished' : 'running', files: 800, bytes, bytes_total: total, done: Math.floor(800 * bytes / total) });
+        if (bytes >= total) Object.assign(j, { finished_at: now(), done: 800, result: j.type === 'compress' ? { name: 'archive-2026-10-16.tar.gz', directory: '/', size: 90e6 } : null });
+    } else if (j.type === 'pull') {
+        const done = Math.min(j.files, Math.floor(t / 1.2));
+        Object.assign(j, { status: done >= j.files ? 'finished' : 'running', done, bytes: done * 2.1e6, current: `mod-${done + 1}.jar` });
+        if (done >= j.files) Object.assign(j, { finished_at: now(), current: '' });
     }
-    if (!closed) send({ event: 'finished', summary: { files: files.length, done: files.length, failed: 1, skipped: 1, bytes } });
-    res.end();
+    return j;
+};
+const addJob = (job) => { const j = { id: `job-${++jobSeq}`, status: 'scanning', t0: Date.now(), failures: [], warnings: [], ...job }; mockJobs.unshift(j); return j; };
+api.get('/servers/:id/jobs', (req, res) => res.json({ object: 'list', data: mockJobs.map((j) => ({ object: 'server_job', attributes: jobShape(tickJob(j)) })) }));
+api.get('/servers/:id/jobs/:job', (req, res) => {
+    const j = mockJobs.find((x) => x.id === req.params.job);
+    return j ? res.json({ object: 'server_job', attributes: jobShape(tickJob(j)) }) : res.status(404).json({ errors: [{ code: 'NotFoundHttpException', status: '404', detail: 'There is no such job.' }] });
+});
+api.delete('/servers/:id/jobs/:job', (req, res) => {
+    const i = mockJobs.findIndex((x) => x.id === req.params.job);
+    if (i < 0) return res.status(404).end();
+    if (['scanning', 'running'].includes(mockJobs[i].status)) mockJobs[i].cancelled = true; else mockJobs.splice(i, 1);
+    res.status(204).end();
+});
+api.post('/servers/:id/jobs/import', (req, res) => {
+    if (mockJobs.some((j) => j.type === 'import' && ['scanning', 'running'].includes(j.status))) return res.status(400).json({ errors: [{ code: 'DisplayException', status: '400', detail: 'An import is already running for this server.' }] });
+    const j = addJob({ type: 'import', title: `Import ${req.body.path || '/'} from ${req.body.host}` });
+    res.status(202).json({ object: 'server_job', attributes: jobShape(j) });
+});
+api.post('/servers/:id/jobs/pull', (req, res) => {
+    const files = req.body.files || [];
+    const j = addJob({ type: 'pull', title: files.length === 1 ? `Download ${files[0].filename || 'file'}` : `Download ${files.length} files`, files: files.length, status: 'running' });
+    res.status(202).json({ object: 'server_job', attributes: jobShape(j) });
 });
 
 // Anything else that mutates: pretend it worked.
