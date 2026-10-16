@@ -6,6 +6,8 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\ServerDomain;
+use Pterodactyl\Services\Acme\DomainCertificateService;
+use Pterodactyl\Http\Requests\Api\Client\Servers\Domains\UpdateDomainRequest;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Domains\GetDomainsRequest;
@@ -70,6 +72,7 @@ class DomainController extends ClientApiController
             'server_id' => $server->id,
             'allocation_id' => $allocation->id,
             'domain' => $domain,
+            'web' => true,
         ]);
         $record->load('allocation');
 
@@ -78,6 +81,22 @@ class DomainController extends ClientApiController
             ->log();
 
         return new JsonResponse(['object' => 'server_domain', 'attributes' => $this->transform($record, ServerDomain::routerTargetIp())], 201);
+    }
+
+    /**
+     * Gets a free certificate from Let's Encrypt for the domain. It takes a moment, the state is in the domain's "https" attributes.
+     *
+     * @throws \Pterodactyl\Exceptions\DisplayException
+     */
+    public function certificate(UpdateDomainRequest $request, Server $server, int $domain, DomainCertificateService $service): JsonResponse
+    {
+        $record = ServerDomain::query()->with('allocation')->where('server_id', $server->id)->findOrFail($domain);
+        // The dns way is for domains Let's Encrypt can not reach; the person adds a TXT record while the job waits.
+        $request->input('method') === 'dns' ? $service->requestDns($record) : $service->request($record);
+
+        Activity::event('server:domain.certificate')->property(['domain' => $record->domain])->log();
+
+        return new JsonResponse(['object' => 'server_domain', 'attributes' => $this->transform($record->refresh(), ServerDomain::routerTargetIp())], 202);
     }
 
     /**
@@ -106,6 +125,8 @@ class DomainController extends ClientApiController
             'allocation_id' => $domain->allocation_id,
             'allocation' => $allocation ? ($allocation->ip_alias ?: $allocation->ip) . ':' . $allocation->port : null,
             'dns_ok' => $domain->pointsAtRouter($target),
+            // Served over the web (http, and https once there is a certificate) by panel-edge, and the state of that certificate.
+            'https' => app(DomainCertificateService::class)->describe($domain),
             'created_at' => $domain->created_at?->toAtomString(),
         ];
     }

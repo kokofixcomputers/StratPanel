@@ -42,6 +42,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->where('extension', '[a-z0-9][a-z0-9-]{1,46}[a-z0-9]')
                 ->where('path', '.*');
 
+            // Let's Encrypt asks for this over http on any domain that points here, there is no session and no login.
+            Route::middleware(['throttle:240,1'])
+                ->get('/.well-known/acme-challenge/{token}', \Pterodactyl\Http\Controllers\AcmeChallengeController::class)
+                ->where('token', '[A-Za-z0-9_-]{8,128}');
+
             Route::middleware('web')->group(function () {
                 Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
                     ->group(base_path('routes/base.php'));

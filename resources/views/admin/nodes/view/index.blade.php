@@ -27,7 +27,11 @@
                         <table class="table table-hover">
                             <tr>
                                 <td>Daemon Version</td>
-                                <td><code data-attr="info-version"><i class="fa fa-refresh fa-fw fa-spin"></i></code> (Latest: <code>{{ $version->getDaemon() }}</code>)</td>
+                                <td><code data-attr="info-version"><i class="fa fa-refresh fa-fw fa-spin"></i></code> (Latest: <code>{{ $wingsLatest ?? $version->getDaemon() }}</code>)
+                                    @if ($wingsLatest && request()->user()->hasPermission('nodes.software'))
+                                        <button type="button" class="btn btn-xs btn-default pull-right" id="update-wings"><i class="fa fa-cloud-download"></i> Update Wings</button>
+                                    @endif
+                                </td>
                             </tr>
                             <tr>
                                 <td>System Information</td>
@@ -138,6 +142,25 @@
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
     }
+
+    $('#update-wings').on('click', function () {
+        swal({
+            title: 'Update Wings on {{ $node->name }}?',
+            text: 'The node downloads the newest Wings, checks it and restarts Wings. Servers keep running.',
+            type: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Update',
+            showLoaderOnConfirm: true,
+            closeOnConfirm: false
+        }, function () {
+            $.ajax({ method: 'POST', url: '{{ route('admin.nodes.view.update', $node->id) }}', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, timeout: 0 })
+                .done(function (r) { swal({ title: r.status === 'updated' ? 'Updated' : 'Up to date', text: r.message, type: 'success' }); })
+                .fail(function (x) {
+                    var m = (x.responseJSON && x.responseJSON.message) || 'The update failed.';
+                    swal({ title: 'Error', text: m, type: 'error' });
+                });
+        });
+    });
 
     (function getInformation() {
         $.ajax({

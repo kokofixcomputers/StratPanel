@@ -40,9 +40,11 @@ class AppServiceProvider extends ServiceProvider
             'allocation' => Models\Allocation::class,
             'api_key' => Models\ApiKey::class,
             'backup' => Models\Backup::class,
+            'certificate' => Models\Certificate::class,
             'database' => Models\Database::class,
             'egg' => Models\Egg::class,
             'egg_variable' => Models\EggVariable::class,
+            'node' => Models\Node::class,
             'role' => Models\Role::class,
             'schedule' => Models\Schedule::class,
             'trash_item' => Models\ServerTrashItem::class,
@@ -58,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Where certificates for domains come from: Let's Encrypt, which the tests replace.
+        $this->app->bind(\Pterodactyl\Services\Acme\AcmeIssuer::class, \Pterodactyl\Services\Acme\LetsEncryptIssuer::class);
+
         // One instance per request, it keeps what it read from the settings.
         $this->app->singleton(\Pterodactyl\Services\Branding\BrandingService::class);
 

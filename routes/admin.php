@@ -79,6 +79,12 @@ Route::group(['prefix' => 'settings'], function () {
     Route::delete('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'destroy'])->name('admin.settings.providers.delete')->whereNumber('provider')->middleware('admin.can:settings.providers.update');
     Route::get('/trash', [Admin\Settings\TrashController::class, 'index'])->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::patch('/trash', [Admin\Settings\TrashController::class, 'update'])->middleware('admin.can:settings.trash.update');
+    Route::get('/certificates', [Admin\Settings\CertificatesController::class, 'index'])->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
+    Route::post('/certificates', [Admin\Settings\CertificatesController::class, 'store'])->middleware('admin.can:settings.certificates.update');
+    Route::patch('/certificates/letsencrypt', [Admin\Settings\CertificatesController::class, 'acme'])->name('admin.settings.certificates.letsencrypt')->middleware('admin.can:settings.certificates.update');
+    Route::get('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'edit'])->name('admin.settings.certificates.edit')->whereNumber('certificate')->middleware('admin.can:settings.certificates.view');
+    Route::patch('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'update'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
+    Route::delete('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'destroy'])->name('admin.settings.certificates.delete')->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
     Route::get('/curseforge', [Admin\Settings\CurseForgeController::class, 'index'])->name('admin.settings.curseforge')->middleware('admin.can:settings.curseforge.view');
     Route::post('/curseforge/test', [Admin\Settings\CurseForgeController::class, 'test'])->name('admin.settings.curseforge.test')->middleware('admin.can:settings.curseforge.update');
 
@@ -89,6 +95,20 @@ Route::group(['prefix' => 'settings'], function () {
     Route::patch('/advanced', [Admin\Settings\AdvancedController::class, 'update'])->middleware('admin.can:settings.advanced.update');
     Route::patch('/branding', [Admin\Settings\BrandingController::class, 'update'])->middleware('admin.can:settings.branding.update');
     Route::patch('/curseforge', [Admin\Settings\CurseForgeController::class, 'update'])->middleware('admin.can:settings.curseforge.update');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Updates
+|--------------------------------------------------------------------------
+|
+| Endpoint: /admin/updates
+|
+*/
+Route::group(['prefix' => 'updates'], function () {
+    Route::get('/', [Admin\UpdatesController::class, 'index'])->name('admin.updates')->middleware('admin.can:root');
+    Route::get('/status', [Admin\UpdatesController::class, 'status'])->name('admin.updates.status')->middleware('admin.can:root');
+    Route::post('/', [Admin\UpdatesController::class, 'run'])->name('admin.updates.run')->middleware('admin.can:root');
 });
 
 /*
@@ -191,6 +211,12 @@ Route::group(['prefix' => 'nodes'], function () {
     Route::get('/view/{node:id}/servers', [Admin\Nodes\NodeViewController::class, 'servers'])->name('admin.nodes.view.servers')->middleware('admin.can:nodes.view');
     Route::get('/view/{node:id}/system-information', Admin\Nodes\SystemInformationController::class)->middleware('admin.can:nodes.view');
 
+    Route::get('/view/{node:id}/certificate', [Admin\Nodes\NodeCertificateController::class, 'index'])->name('admin.nodes.view.certificate')->middleware('admin.can:nodes.view');
+    Route::patch('/view/{node:id}/certificate', [Admin\Nodes\NodeCertificateController::class, 'update'])->middleware('admin.can:nodes.certificate');
+    Route::post('/view/{node:id}/certificate/push', [Admin\Nodes\NodeCertificateController::class, 'push'])->name('admin.nodes.view.certificate.push')->middleware('admin.can:nodes.certificate');
+    Route::post('/view/{node:id}/certificate/enable', [Admin\Nodes\NodeCertificateController::class, 'enableHttps'])->name('admin.nodes.view.certificate.enable')->middleware('admin.can:nodes.certificate');
+    Route::post('/update', [Admin\Nodes\NodeUpdateController::class, 'all'])->name('admin.nodes.update')->middleware('admin.can:nodes.software');
+    Route::post('/view/{node:id}/update', [Admin\Nodes\NodeUpdateController::class, 'node'])->name('admin.nodes.view.update')->middleware('admin.can:nodes.software');
     Route::post('/new', [Admin\NodesController::class, 'store'])->middleware('admin.can:nodes.create');
     Route::post('/view/{node:id}/allocation', [Admin\NodesController::class, 'createAllocation'])->middleware('admin.can:nodes.allocations');
     Route::post('/view/{node:id}/allocation/remove', [Admin\NodesController::class, 'allocationRemoveBlock'])->name('admin.nodes.view.allocation.removeBlock')->middleware('admin.can:nodes.allocations');

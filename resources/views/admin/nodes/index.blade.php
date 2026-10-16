@@ -29,6 +29,7 @@
                             <input type="text" name="filter[name]" class="form-control pull-right" value="{{ request()->input('filter.name') }}" placeholder="Search Nodes">
                             <div class="input-group-btn">
                                 <button type="submit" class="btn btn-default"><i class="fa fa-search"></i></button>
+                                @if ($wingsLatest && request()->user()->hasPermission('nodes.software'))<button type="button" class="btn btn-sm btn-default" id="update-nodes" style="border-radius:0;margin-left:-1px;" title="Newest Wings: {{ $wingsLatest }}"><i class="fa fa-cloud-download"></i> Update nodes</button>@endif
                                 <a href="{{ route('admin.nodes.new') }}"><button type="button" class="btn btn-sm btn-primary" style="border-radius: 0 3px 3px 0;margin-left:-1px;">Create New</button></a>
                             </div>
                         </div>
@@ -44,6 +45,7 @@
                             <th>Location</th>
                             <th>Memory</th>
                             <th>Disk</th>
+                            <th>Wings</th>
                             <th class="text-center">Servers</th>
                             <th class="text-center">SSL</th>
                             <th class="text-center">Public</th>
@@ -55,6 +57,7 @@
                                 <td>{{ $node->location->short }}</td>
                                 <td>{{ $node->memory }} MiB</td>
                                 <td>{{ $node->disk }} MiB</td>
+                                <td data-wings="{{ $node->id }}" class="text-muted">&mdash;</td>
                                 <td class="text-center">{{ $node->servers_count }}</td>
                                 <td class="text-center" style="color:{{ ($node->scheme === 'https') ? '#50af51' : '#d9534f' }}"><i class="fa fa-{{ ($node->scheme === 'https') ? 'lock' : 'unlock' }}"></i></td>
                                 <td class="text-center"><i class="fa fa-{{ ($node->public) ? 'eye' : 'eye-slash' }}"></i></td>
@@ -89,6 +92,12 @@
                 $(element).find('i').tooltip({
                     title: 'v' + data.version,
                 });
+                var wings = $('td[data-wings="' + $(element).closest('tr').find('td[data-wings]').data('wings') + '"]');
+                wings.removeClass('text-muted').text(data.version);
+                var latest = {!! json_encode($wingsLatest) !!};
+                if (latest && data.version && data.version.replace(/^v/, '') !== latest) {
+                    wings.append(' <span class="label label-warning" title="Newest is ' + latest + '">old</span>');
+                }
                 $(element).removeClass('text-muted').find('i').removeClass().addClass('fa fa-fw fa-heartbeat faa-pulse animated').css('color', '#50af51');
             }).fail(function (error) {
                 var errorText = 'Error connecting to node! Check browser console for details.';
@@ -103,5 +112,25 @@
             setTimeout(pingNodes, 10000);
         });
     })();
+    $('#update-nodes').on('click', function () {
+        swal({
+            title: 'Update every node?',
+            text: 'Each node downloads the newest Wings, checks it and restarts Wings. Servers keep running.',
+            type: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Update',
+            showLoaderOnConfirm: true,
+            closeOnConfirm: false
+        }, function () {
+            $.ajax({ method: 'POST', url: '{{ route('admin.nodes.update') }}', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, timeout: 0 })
+                .done(function (data) {
+                    var lines = data.results.map(function (r) {
+                        return $('<div>').text(r.name + ': ' + r.message).html();
+                    });
+                    swal({ title: 'Done', text: lines.join('<br>') || 'There are no nodes.', html: true, type: 'success' });
+                })
+                .fail(function () { swal({ title: 'Error', text: 'The update could not be started.', type: 'error' }); });
+        });
+    });
     </script>
 @endsection

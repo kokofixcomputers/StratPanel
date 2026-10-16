@@ -24,6 +24,17 @@ class ServerDomain extends Model
 
     protected $guarded = ['id', 'created_at', 'updated_at'];
 
+    protected function casts(): array
+    {
+        return ['web' => 'boolean'];
+    }
+
+    /** The certificate this domain is served over https with (made by Let's Encrypt, or an uploaded one that covers it). */
+    public function certificate(): BelongsTo
+    {
+        return $this->belongsTo(Certificate::class);
+    }
+
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>
      */

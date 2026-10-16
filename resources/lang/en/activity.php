@@ -20,6 +20,17 @@ return [
             'fail' => 'Failed SFTP log in',
         ],
     ],
+    'node' => [
+        'certificate' => [
+            'push' => 'Gave a certificate to the node',
+        ],
+    ],
+    'certificate' => [
+        'create' => 'Added the certificate :name',
+        'replace' => 'Replaced the certificate :name with a new one',
+        'update' => 'Changed the certificate :name',
+        'delete' => 'Deleted the certificate :name',
+    ],
     'role' => [
         'create' => 'Created the role :name',
         'update' => 'Changed the role :name',
@@ -116,6 +127,8 @@ return [
         'domain' => [
             'create' => 'Pointed the domain :domain at :allocation',
             'delete' => 'Removed the domain :domain',
+            'web' => 'Changed whether the domain :domain is served over the web',
+            'certificate' => 'Asked for a certificate for the domain :domain',
         ],
         'allocation' => [
             'create' => 'Added :allocation to the server',

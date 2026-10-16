@@ -31,7 +31,15 @@ import useFlash from '@/plugins/useFlash';
 import { httpErrorToHuman } from '@/api/http';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 import { forcedServerByHost, ProxyHosts, readProxyHosts, setForcedHost } from '@/lib/proxyHosts';
-import { createDomain, deleteDomain, DomainList, getDomains, ServerDomain } from '@/api/server/domains';
+import {
+    createDomain,
+    deleteDomain,
+    DomainList,
+    getDomains,
+    requestDomainCertificate,
+    ServerDomain,
+} from '@/api/server/domains';
+import { anyPending, httpsSummary } from '@/lib/domainHttps';
 
 const slide = keyframes`
     0% { transform: translateX(-100%); }
@@ -187,6 +195,28 @@ export default () => {
     useEffect(() => {
         load();
     }, [load]);
+
+    // A certificate that is being requested takes a moment, look again until it is there (or failed).
+    useEffect(() => {
+        if (!list || !anyPending(list.domains)) return;
+
+        const timer = setInterval(load, 4000);
+
+        return () => clearInterval(timer);
+    }, [list, load]);
+
+    const replace = (updated: ServerDomain) =>
+        setList(
+            (current) =>
+                current && { ...current, domains: current.domains.map((d) => (d.id === updated.id ? updated : d)) }
+        );
+
+    const getCertificate = (d: ServerDomain, method: 'http' | 'dns' = 'http') => {
+        clearFlashes('domains');
+        requestDomainCertificate(uuid, d.id, method)
+            .then(replace)
+            .catch((e) => addFlash({ key: 'domains', type: 'error', message: httpErrorToHuman(e) }));
+    };
 
     // DNS changes take a while to spread, keep checking for domains that are not pointing at us yet.
     useEffect(() => {
@@ -388,6 +418,78 @@ export default () => {
                                 </button>
                             </Can>
                         </div>
+                        <div
+                            css={tw`flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-500 px-4 py-3 text-sm`}
+                        >
+                            <>
+                                <span
+                                    css={[
+                                        tw`flex-1 min-w-0 truncate text-xs`,
+                                        d.https.status === 'failed' ? tw`text-red-600` : tw`text-neutral-400`,
+                                    ]}
+                                    title={httpsSummary(d.https)}
+                                >
+                                    {httpsSummary(d.https)}
+                                </span>
+                                <Can action={'allocation.update'}>
+                                    {d.https.status === 'pending' ? (
+                                        <Spinner size={'small'} />
+                                    ) : (
+                                        <>
+                                            {d.https.canRequest && (
+                                                <Button
+                                                    type={'button'}
+                                                    size={Button.Sizes.Small}
+                                                    onClick={() => getCertificate(d)}
+                                                >
+                                                    {d.https.status === 'failed'
+                                                        ? 'Try again'
+                                                        : 'Get a free certificate'}
+                                                </Button>
+                                            )}
+                                            {d.https.canRequestDns && (
+                                                <Button
+                                                    type={'button'}
+                                                    size={Button.Sizes.Small}
+                                                    variant={Button.Variants.Secondary}
+                                                    title={
+                                                        'Proves the domain with a TXT record you add. Works for domains on a private address.'
+                                                    }
+                                                    onClick={() => getCertificate(d, 'dns')}
+                                                >
+                                                    {d.https.renewByDns
+                                                        ? 'Renew with a DNS record'
+                                                        : 'Get one with a DNS record'}
+                                                </Button>
+                                            )}
+                                            {!d.https.canRequest &&
+                                                !d.https.canRequestDns &&
+                                                d.https.reason &&
+                                                d.https.status !== 'issued' && (
+                                                    <span css={tw`text-xs text-neutral-400`} title={d.https.reason}>
+                                                        {d.https.reason}
+                                                    </span>
+                                                )}
+                                        </>
+                                    )}
+                                </Can>
+                            </>
+                        </div>
+                        {d.https.status === 'pending' && d.https.dns && (
+                            <div css={tw`border-t border-neutral-500 px-4 py-3 text-sm`}>
+                                <p css={tw`text-neutral-200 mb-3`}>
+                                    Add this TXT record at your DNS provider. The panel checks every few seconds (for up
+                                    to 15 minutes) and gets the certificate as soon as it can see it. You can remove the
+                                    record afterwards. A certificate this way lasts 90 days and is renewed by pressing
+                                    the button again.
+                                </p>
+                                <div css={tw`flex flex-wrap gap-4`}>
+                                    <RecordField label={'Type'} value={'TXT'} />
+                                    <RecordField label={'Name'} value={d.https.dns.name} />
+                                    <RecordField label={'Value'} value={d.https.dns.value} />
+                                </div>
+                            </div>
+                        )}
                         {expanded.includes(d.id) && <RecordPanel domain={d} targetIp={list.targetIp} onCheck={load} />}
                     </div>
                 ))

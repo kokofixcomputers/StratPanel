@@ -1,0 +1,9 @@
+[Unit]
+Description=Watches for an update request from the panel
+
+[Path]
+PathExists=@PANEL_DIR@/storage/app/updates/request
+Unit=stratosphere-updater.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Updates the router and edge of Stratosphere when the panel asks for it
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/stratosphere-updater

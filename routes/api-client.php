@@ -165,6 +165,7 @@ Route::group([
     Route::group(['prefix' => '/domains'], function () {
         Route::get('/', [Client\Servers\DomainController::class, 'index']);
         Route::post('/', [Client\Servers\DomainController::class, 'store']);
+        Route::post('/{domain}/certificate', [Client\Servers\DomainController::class, 'certificate'])->where('domain', '[0-9]+');
         Route::delete('/{domain}', [Client\Servers\DomainController::class, 'delete'])->where('domain', '[0-9]+');
     });
 

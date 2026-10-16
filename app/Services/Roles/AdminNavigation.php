@@ -17,6 +17,7 @@ final class AdminNavigation
         ['settings.providers.view', 'admin.settings.providers'],
         ['settings.curseforge.view', 'admin.settings.curseforge'],
         ['settings.trash.view', 'admin.settings.trash'],
+        ['settings.certificates.view', 'admin.settings.certificates'],
         ['settings.mail.view', 'admin.settings.mail'],
         ['settings.advanced.view', 'admin.settings.advanced'],
     ];
@@ -34,6 +35,7 @@ final class AdminNavigation
         ['nests.view', 'admin.nests'],
         ['extensions.view', 'admin.extensions'],
         ['root', 'admin.api.index'],
+        ['root', 'admin.updates'],
     ];
 
     /** The first page of Settings the user may open, null when they may open none. */

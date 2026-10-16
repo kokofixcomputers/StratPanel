@@ -11,6 +11,7 @@ use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Repositories\Eloquent\NodeRepository;
 use Pterodactyl\Repositories\Eloquent\ServerRepository;
 use Pterodactyl\Traits\Controllers\JavascriptInjection;
+use Pterodactyl\Services\Nodes\NodeUpdateService;
 use Pterodactyl\Services\Helpers\SoftwareVersionService;
 use Pterodactyl\Repositories\Eloquent\LocationRepository;
 
@@ -26,6 +27,7 @@ class NodeViewController extends Controller
         private NodeRepository $repository,
         private ServerRepository $serverRepository,
         private SoftwareVersionService $versionService,
+        private NodeUpdateService $updates,
     ) {
     }
 
@@ -40,6 +42,7 @@ class NodeViewController extends Controller
             'node' => $node,
             'stats' => $this->repository->getUsageStats($node),
             'version' => $this->versionService,
+            'wingsLatest' => $this->updates->latest(),
         ]);
     }
 

@@ -38,6 +38,10 @@ class Kernel extends ConsoleKernel
 
         // Servers with auto sleep on are looked at every minute, those that nobody has been on for a while are stopped.
         $schedule->command(AutoSleepCommand::class)->everyMinute()->withoutOverlapping();
+        // Certificates that were renewed are given to the nodes that use them.
+        $schedule->command(\Pterodactyl\Console\Commands\Node\SyncCertificatesCommand::class)->hourly()->withoutOverlapping();
+        // Free certificates from Let's Encrypt are renewed before they end.
+        $schedule->command(\Pterodactyl\Console\Commands\Node\RenewCertificatesCommand::class)->twiceDaily(3, 15)->withoutOverlapping();
         // Whatever has been in a trash bin for longer than it is kept.
         $schedule->command(\Pterodactyl\Console\Commands\Server\PurgeTrashCommand::class)->hourly()->withoutOverlapping();
 

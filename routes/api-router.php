@@ -17,3 +17,4 @@ use Pterodactyl\Http\Controllers\Api\Router;
 Route::get('/domains', Router\DomainsController::class);
 Route::get('/state', Router\StateController::class);
 Route::post('/wake', Router\WakeController::class);
+Route::get('/certificates', Router\CertificatesController::class);

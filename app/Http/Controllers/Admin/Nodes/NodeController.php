@@ -7,9 +7,14 @@ use Illuminate\Http\Request;
 use Pterodactyl\Models\Node;
 use Spatie\QueryBuilder\QueryBuilder;
 use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Services\Nodes\NodeUpdateService;
 
 class NodeController extends Controller
 {
+    public function __construct(private NodeUpdateService $updates)
+    {
+    }
+
     /**
      * Returns a listing of nodes on the system.
      */
@@ -22,6 +27,6 @@ class NodeController extends Controller
             ->allowedSorts(['id'])
             ->paginate(25);
 
-        return view('admin.nodes.index', ['nodes' => $nodes]);
+        return view('admin.nodes.index', ['nodes' => $nodes, 'wingsLatest' => $this->updates->latest()]);
     }
 }

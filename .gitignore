@@ -41,6 +41,7 @@ result
 /panel.tar.gz
 .serena
 /tools/mc-router/dist
+/tools/panel-edge/dist
 /public/tools
 /.cache
 /public/branding

@@ -79,6 +79,8 @@ class Node extends Model implements Identifiable
         'daemonListen' => 'integer',
         'daemonSFTP' => 'integer',
         'behind_proxy' => 'boolean',
+        'certificate_auto' => 'boolean',
+        'certificate_pushed_at' => 'datetime',
         'public' => 'boolean',
         'maintenance_mode' => 'boolean',
     ];

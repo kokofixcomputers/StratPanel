@@ -46,13 +46,13 @@ abstract class DaemonRepository
     /**
      * Return an instance of the Guzzle HTTP Client to be used for requests.
      */
-    public function getHttpClient(array $headers = []): Client
+    public function getHttpClient(array $headers = [], ?bool $verify = null, ?string $baseUri = null): Client
     {
         Assert::isInstanceOf($this->node, Node::class);
 
         return new Client([
-            'verify' => $this->app->environment('production'),
-            'base_uri' => $this->node->getConnectionAddress(),
+            'verify' => $verify ?? $this->app->environment('production'),
+            'base_uri' => $baseUri ?? $this->node->getConnectionAddress(),
             'timeout' => config('pterodactyl.guzzle.timeout'),
             'connect_timeout' => config('pterodactyl.guzzle.connect_timeout'),
             'headers' => array_merge($headers, [

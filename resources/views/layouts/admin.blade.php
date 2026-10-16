@@ -56,6 +56,9 @@
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.api') ?: 'active' }}">
                             <a href="{{ route('admin.api.index') }}"><span class="nav-chip c-violet"><i class="fa fa-gamepad"></i></span> <span>Application API</span></a>
                         </li>
+                        <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.updates') ?: 'active' }}">
+                            <a href="{{ route('admin.updates') }}"><span class="nav-chip c-violet"><i class="fa fa-cloud-download"></i></span> <span>Updates</span></a>
+                        </li>
                         @endif
                         @if($adminUser->hasAnyPermission('databases.view', 'locations.view', 'nodes.view'))
                         <li class="nav-heading">Infrastructure</li>

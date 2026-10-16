@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "76a5b3592e4e6a12984a81b4bc9b7c1b",
+    "content-hash": "ee3456d53654e5fc3714afa3197949b9",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -4923,6 +4923,50 @@
                 "source": "https://github.com/S1lentium/IPTools/tree/v1.2.0"
             },
             "time": "2022-08-17T14:28:59+00:00"
+        },
+        {
+            "name": "skoerfgen/acmecert",
+            "version": "3.7.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/skoerfgen/ACMECert.git",
+                "reference": "ed0190ed960d26a9be99ecabdd53ba84868d803e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/skoerfgen/ACMECert/zipball/ed0190ed960d26a9be99ecabdd53ba84868d803e",
+                "reference": "ed0190ed960d26a9be99ecabdd53ba84868d803e",
+                "shasum": ""
+            },
+            "require": {
+                "ext-openssl": "*",
+                "php": ">=5.6.0"
+            },
+            "suggest": {
+                "ext-curl": "Optional for better http performance"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "skoerfgen\\ACMECert\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Stefan Körfgen",
+                    "homepage": "https://github.com/skoerfgen"
+                }
+            ],
+            "description": "PHP client library for Let's Encrypt and other ACME v2 - RFC 8555 compatible Certificate Authorities",
+            "support": {
+                "issues": "https://github.com/skoerfgen/ACMECert/issues",
+                "source": "https://github.com/skoerfgen/ACMECert"
+            },
+            "time": "2026-09-10T19:41:12+00:00"
         },
         {
             "name": "spatie/fractalistic",

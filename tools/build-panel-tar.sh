@@ -13,7 +13,7 @@ trap 'rm -f "$LIST"' EXIT
 # needed on a server.
 {
   git ls-files --cached --others --exclude-standard
-  find public/assets public/themes public/helper public/tools tools/mc-router/dist dist/extensions -type f 2>/dev/null
+  find public/assets public/themes public/helper public/tools tools/mc-router/dist tools/panel-edge/dist dist/extensions -type f 2>/dev/null
 } | sort -u | grep -v -E '^(node_modules|tests|preview|helper-plugin|helper-mod|docs|\.serena|CONTRIBUTING\.md|flake\.lock|flake\.nix|phpunit\.xml|shell\.nix|panel(-ui)?\.tar\.gz)(/|$)' \
   | grep -v -E '(^|/)(\._[^/]*|\.DS_Store)$' \
   | grep -E '^([^.]|\.editorconfig$|\.env\.example$|\.eslintignore$|\.eslintrc\.js$|\.gitignore$|\.prettierrc\.json$)' \

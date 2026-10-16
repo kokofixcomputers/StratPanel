@@ -15,6 +15,9 @@
                 <li class="{{ $router->currentRouteNamed('admin.nodes.view.configuration') ? 'active' : '' }}">
                     <a href="{{ route('admin.nodes.view.configuration', $node->id) }}"><i class="fa fa-fw fa-file-code-o"></i> Configuration</a>
                 </li>
+                <li class="{{ $router->currentRouteNamed('admin.nodes.view.certificate') ? 'active' : '' }}">
+                    <a href="{{ route('admin.nodes.view.certificate', $node->id) }}"><i class="fa fa-fw fa-lock"></i> Certificate</a>
+                </li>
                 <li class="{{ $router->currentRouteNamed('admin.nodes.view.allocation') ? 'active' : '' }}">
                     <a href="{{ route('admin.nodes.view.allocation', $node->id) }}"><i class="fa fa-fw fa-plug"></i> Allocation</a>
                 </li>

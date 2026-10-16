@@ -14,6 +14,15 @@ echo "Building the Minecraft router..."
   done
 )
 
+echo "Building panel-edge (https for the panel)..."
+(
+  cd tools/panel-edge
+  go test ./...
+  for arch in amd64 arm64; do
+    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "dist/panel-edge-linux-$arch" .
+  done
+)
+
 echo "Building the helper plugin..."
 (
   cd helper-plugin
