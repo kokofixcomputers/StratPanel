@@ -117,11 +117,11 @@ class SelfServiceController extends ClientApiController
         $deployment = null;
 
         if ($request->filled('node_id')) {
-            // The user picked a node, make sure it is one they may use and that the server fits on it.
+            // The user picked a node, make sure it is one they may use and that it has a free port. Memory and disk are not checked.
             $node = $this->availableNodes()->firstWhere('id', (int) $request->input('node_id'));
             // @phpstan-ignore-next-line property.notFound
-            if (is_null($node) || !$node->isViable($memory, $disk) || (int) $node->free_allocations < 1) {
-                throw new DisplayException('The selected node does not have enough free resources for this server.');
+            if (is_null($node) || (int) $node->free_allocations < 1) {
+                throw new DisplayException('The selected node has no free port for this server.');
             }
 
             $allocation = $this->allocationSelectionService->setDedicated(false)->setNodes([$node->id])->setPorts([])->handle();

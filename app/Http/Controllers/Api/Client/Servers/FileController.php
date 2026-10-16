@@ -18,7 +18,10 @@ use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Transformers\Api\Client\FileObjectTransformer;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\CopyFileRequest;
+use Pterodactyl\Http\Requests\Api\Client\Servers\Files\PullBatchRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\PullFileRequest;
+use Pterodactyl\Services\Files\PullBatchService;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\ListFilesRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\ChmodFilesRequest;
 use Pterodactyl\Http\Requests\Api\Client\Servers\Files\DeleteFileRequest;
@@ -301,5 +304,52 @@ class FileController extends ClientApiController
             ->log();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Downloads a list of files in one request and streams back how far it got, one JSON line per file ({"done":1,"total":100,...}).
+     * Three at a time, failed files are tried again by the panel. One list per server at a time.
+     */
+    public function pullBatch(PullBatchRequest $request, Server $server, PullBatchService $batch): StreamedResponse|JsonResponse
+    {
+        $items = array_map(fn (array $file) => [
+            'url' => $file['url'],
+            'directory' => $file['directory'] ?? null,
+            'filename' => $file['filename'] ?? null,
+        ], array_values($request->input('files')));
+
+        $lock = Cache::lock('files:pull-batch:' . $server->id, 1800);
+        if (!$lock->get()) {
+            return new JsonResponse(['errors' => [[
+                'code' => 'PullBatchRunning',
+                'status' => '409',
+                'detail' => 'Downloads for this server are already running, wait for them to finish.',
+            ]]], Response::HTTP_CONFLICT);
+        }
+
+        Activity::event('server:file.pull')->property('count', count($items))->log();
+
+        return new StreamedResponse(function () use ($batch, $server, $items, $lock) {
+            // A list of hundreds of files takes minutes.
+            set_time_limit(0);
+            ignore_user_abort(false);
+
+            try {
+                $batch->run($server, $items, function (array $line) {
+                    echo json_encode($line) . "\n";
+                    if (PHP_SAPI !== 'cli') {
+                        @ob_flush();
+                    }
+                    flush();
+                }, fn () => connection_aborted() === 1);
+            } finally {
+                $lock->release();
+            }
+        }, Response::HTTP_OK, [
+            'Content-Type' => 'application/x-ndjson',
+            'Cache-Control' => 'no-cache, private',
+            // nginx must not collect the answer before sending it.
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 }

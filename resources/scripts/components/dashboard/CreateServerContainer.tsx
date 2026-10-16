@@ -148,8 +148,8 @@ export default () => {
         };
     }, [config]);
 
-    const fits = (node: SelfServiceNode, wanted: Specs | null) =>
-        !!wanted && node.freeAllocations > 0 && node.memoryFree >= wanted.memory && node.diskFree >= wanted.disk;
+    // Only a free port is needed: memory and disk are not checked, a node can be used beyond what it has free.
+    const fits = (node: SelfServiceNode, wanted: Specs | null) => !!wanted && node.freeAllocations > 0;
 
     // Preselect the fastest node that can hold the server, until the user picks one themselves.
     useEffect(() => {
@@ -502,9 +502,7 @@ export default () => {
                                                               )} memory and ${bytesToString(
                                                                   mbToBytes(node.diskFree)
                                                               )} disk free`
-                                                            : node.freeAllocations < 1
-                                                            ? 'No free ports on this node'
-                                                            : 'Not enough free resources for your specs'}
+                                                            : 'No free ports on this node'}
                                                     </span>
                                                 </span>
                                                 <span

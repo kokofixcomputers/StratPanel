@@ -298,4 +298,28 @@ class DaemonFileRepository extends DaemonRepository
             throw new DaemonConnectionException($exception);
         }
     }
+
+    /**
+     * The same as pull() for many files at once: it does not wait, the promise settles when the node is done with the file.
+     * Always in the foreground so that "done" means the file is on the disk.
+     */
+    public function pullAsync(string $url, ?string $directory, ?string $filename = null): \GuzzleHttp\Promise\PromiseInterface
+    {
+        Assert::isInstanceOf($this->server, Server::class);
+
+        return $this->getHttpClient()->postAsync(
+            sprintf('/api/servers/%s/files/pull', $this->server->uuid),
+            [
+                // Big files take their time.
+                'timeout' => 600,
+                'json' => array_filter([
+                    'url' => $url,
+                    'root' => $directory ?? '/',
+                    'file_name' => $filename,
+                    'use_header' => false,
+                    'foreground' => true,
+                ], fn ($value) => !is_null($value)),
+            ]
+        );
+    }
 }

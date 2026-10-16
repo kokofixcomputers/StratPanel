@@ -389,6 +389,41 @@ api.post('/servers/:id/trash/:item/restore', (req, res) => { mockTrash = mockTra
 api.delete('/servers/:id/trash/:item', (req, res) => { mockTrash = mockTrash.filter((t) => t.id !== req.params.item); res.status(204).end(); });
 api.delete('/servers/:id/trash', (req, res) => { mockTrash = []; res.status(204).end(); });
 
+// The server importer: a test connection and a stream of progress lines.
+api.post('/servers/:id/files/import/test', (req, res) => {
+    if (req.body && req.body.host === 'private.example') return res.status(400).json({ errors: [{ code: 'DisplayException', status: '400', detail: 'That address is on a private network and the node may not connect to it.' }] });
+    setTimeout(() => res.json({
+        fingerprint: req.body && req.body.protocol === 'sftp' ? 'SHA256:3x0kP9mVq2YtK1c7nWb5e8Fh0yLr4sZaDuJ6oXiGpAQ' : '',
+        total: 5,
+        entries: [
+            { name: 'world', dir: true, size: 0 }, { name: 'plugins', dir: true, size: 0 }, { name: 'logs', dir: true, size: 0 },
+            { name: 'server.properties', dir: false, size: 1530 }, { name: 'paper-1.21.1.jar', dir: false, size: 48234500 },
+        ],
+    }), 600);
+});
+api.post('/servers/:id/files/import', async (req, res) => {
+    res.set({ 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' });
+    const send = (m) => res.write(JSON.stringify(m) + '\n');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let closed = false;
+    res.on('close', () => { closed = true; });
+    send({ event: 'connected', fingerprint: 'SHA256:3x0kP9mVq2YtK1c7nWb5e8Fh0yLr4sZaDuJ6oXiGpAQ' });
+    await wait(500); send({ event: 'scanning', entries: 500 });
+    await wait(700);
+    const files = Array.from({ length: 40 }, (_, i) => ({ path: i % 7 === 0 ? `world/region/r.${i}.0.mca` : `plugins/Plugin${i}.jar`, size: 200000 + i * 91234 }));
+    const total = files.reduce((a, f) => a + f.size, 0);
+    send({ event: 'listing', files: files.length, dirs: 6, bytes: total, skipped: 1 });
+    let bytes = 0;
+    for (let i = 0; i < files.length && !closed; i++) {
+        await wait(250);
+        bytes += files[i].size;
+        const bad = i === 13;
+        send({ event: 'file', index: i, done: i + 1, total: files.length, path: files[i].path, ok: !bad, error: bad ? 'permission denied' : undefined, bytes, bytesTotal: total, skipped: i === 5 ? true : undefined });
+    }
+    if (!closed) send({ event: 'finished', summary: { files: files.length, done: files.length, failed: 1, skipped: 1, bytes } });
+    res.end();
+});
+
 // Anything else that mutates: pretend it worked.
 api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', data: [] }) : res.status(204).end()));
 app.use('/api/client', api);

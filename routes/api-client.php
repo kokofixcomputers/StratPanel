@@ -136,6 +136,13 @@ Route::group([
         Route::post('/chmod', [Client\Servers\FileController::class, 'chmod']);
         Route::middleware([ResourceLimit::FilePull->middleware()])
             ->post('/pull', [Client\Servers\FileController::class, 'pull']);
+        Route::middleware([ResourceLimit::FilePull->middleware()])
+            ->post('/pull-batch', [Client\Servers\FileController::class, 'pullBatch']);
+        // Copy everything from an SFTP or FTP server into this server.
+        Route::middleware([ResourceLimit::FilePull->middleware()])->group(function () {
+            Route::post('/import/test', [Client\Servers\ImportController::class, 'test']);
+            Route::post('/import', [Client\Servers\ImportController::class, 'run']);
+        });
         Route::get('/upload', Client\Servers\FileUploadController::class);
     });
 

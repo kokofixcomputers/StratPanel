@@ -1,5 +1,6 @@
 import { unzipSync } from 'fflate';
 import pullFile from '@/api/server/files/pullFile';
+import pullBatch from '@/api/server/files/pullBatch';
 import deleteFiles from '@/api/server/files/deleteFiles';
 import createDirectory from '@/api/server/files/createDirectory';
 import loadDirectory from '@/api/server/files/loadDirectory';
@@ -61,15 +62,6 @@ export const loaderOf = (index: MrpackIndex): { type: SoftwareType; version: str
     if (!minecraft || !found) throw new Error('This modpack needs a mod loader that is not supported.');
 
     return { type: found[1], version: index.dependencies[found[0]], minecraft };
-};
-
-const runPool = async <T>(items: T[], size: number, work: (item: T) => Promise<void>) => {
-    let next = 0;
-    await Promise.all(
-        Array.from({ length: Math.min(size, items.length) }, async () => {
-            while (next < items.length) await work(items[next++]);
-        })
-    );
 };
 
 const rel = (path: string) => path.replace(/^\/+|\/+$/g, '');
@@ -168,28 +160,20 @@ export default async (ctx: {
     );
     for (const directory of directories) await ensureDirectory(uuid, directory);
 
-    const failed: string[] = [];
-    let done = 0;
     report(`Downloading mods 0/${files.length}`, { done: 0, total: files.length });
 
-    await runPool(files, 4, async (file) => {
-        const parts = file.path.split('/');
-        const name = parts[parts.length - 1];
-        const directory = `/${parts.slice(0, -1).join('/')}`;
-
-        let ok = false;
-        for (let attempt = 0; attempt < 3 && !ok; attempt++) {
-            try {
-                await pullFile(uuid, file.downloads![0], directory, name);
-                ok = true;
-            } catch (e) {
-                // Try again, the CDN or the node can fail now and then.
-            }
-        }
-        if (!ok) failed.push(name);
-
-        report(`Downloading mods ${++done}/${files.length}`, { done, total: files.length });
-    });
+    // One request for the whole list: the panel downloads three at a time, tries a failed file again and says after each file how far it is.
+    const names = files.map((file) => file.path.split('/').pop() as string);
+    const result = await pullBatch(
+        uuid,
+        files.map((file, i) => ({
+            url: file.downloads![0],
+            directory: `/${file.path.split('/').slice(0, -1).join('/')}`,
+            filename: names[i],
+        })),
+        (done, total) => report(`Downloading mods ${done}/${total}`, { done, total })
+    );
+    const failed = result.failed.map((f) => names[f.index]);
 
     if (failed.length) {
         throw new Error(
