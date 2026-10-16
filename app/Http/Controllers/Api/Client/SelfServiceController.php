@@ -202,7 +202,7 @@ class SelfServiceController extends ClientApiController
      */
     private function maxServers(ClientApiRequest $request): int
     {
-        return $request->user()->root_admin ? 0 : (int) config('pterodactyl.self_service.max_servers');
+        return $request->user()->hasPermission('servers.create') ? 0 : (int) config('pterodactyl.self_service.max_servers');
     }
 
     /**

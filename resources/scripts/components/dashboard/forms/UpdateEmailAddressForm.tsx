@@ -14,10 +14,13 @@ interface Values {
     password: string;
 }
 
-const schema = Yup.object().shape({
-    email: Yup.string().email().required(),
-    password: Yup.string().required('You must provide your current account password.'),
-});
+const schema = (needsPassword: boolean) =>
+    Yup.object().shape({
+        email: Yup.string().email().required(),
+        password: needsPassword
+            ? Yup.string().required('You must provide your current account password.')
+            : Yup.string(),
+    });
 
 export default () => {
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
@@ -51,20 +54,26 @@ export default () => {
     };
 
     return (
-        <Formik onSubmit={submit} validationSchema={schema} initialValues={{ email: user!.email, password: '' }}>
+        <Formik
+            onSubmit={submit}
+            validationSchema={schema(user!.passwordSet)}
+            initialValues={{ email: user!.email, password: '' }}
+        >
             {({ isSubmitting, isValid }) => (
                 <React.Fragment>
                     <SpinnerOverlay size={'large'} visible={isSubmitting} />
                     <Form css={tw`m-0`}>
                         <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} />
-                        <div css={tw`mt-6`}>
-                            <Field
-                                id={'confirm_password'}
-                                type={'password'}
-                                name={'password'}
-                                label={'Confirm Password'}
-                            />
-                        </div>
+                        {user!.passwordSet && (
+                            <div css={tw`mt-6`}>
+                                <Field
+                                    id={'confirm_password'}
+                                    type={'password'}
+                                    name={'password'}
+                                    label={'Confirm Password'}
+                                />
+                            </div>
+                        )}
                         <div css={tw`mt-6`}>
                             <Button disabled={isSubmitting || !isValid}>Update Email</Button>
                         </div>

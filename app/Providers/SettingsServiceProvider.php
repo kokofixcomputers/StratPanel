@@ -22,6 +22,14 @@ class SettingsServiceProvider extends ServiceProvider
         'recaptcha:enabled',
         'recaptcha:secret_key',
         'recaptcha:website_key',
+        'auth:captcha:provider',
+        'auth:captcha:turnstile:site_key',
+        'auth:captcha:turnstile:secret_key',
+        'trash:enabled',
+        'trash:retention_days',
+        'auth:passkeys:enabled',
+        'auth:registration:enabled',
+        'auth:registration:password',
         'pterodactyl:guzzle:timeout',
         'pterodactyl:guzzle:connect_timeout',
         'pterodactyl:console:count',
@@ -49,6 +57,7 @@ class SettingsServiceProvider extends ServiceProvider
      */
     protected static array $encrypted = [
         'mail:mailers:smtp:password',
+        'auth:captcha:turnstile:secret_key',
     ];
 
     /**

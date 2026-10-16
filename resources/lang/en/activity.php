@@ -20,13 +20,25 @@ return [
             'fail' => 'Failed SFTP log in',
         ],
     ],
+    'role' => [
+        'create' => 'Created the role :name',
+        'update' => 'Changed the role :name',
+        'delete' => 'Deleted the role :name',
+        'assign' => 'Gave the role :role to the account',
+        'revoke' => 'Took the role :role away from the account',
+    ],
     'user' => [
         'user' => [
             'create' => 'Created a new user :email',
+            'self-register' => 'Signed up as :username',
         ],
         'account' => [
             'email-changed' => 'Changed email from :old to :new',
             'password-changed' => 'Changed password',
+            'passkey-added' => 'Added the passkey :name',
+            'passkey-removed' => 'Removed the passkey :name',
+            'provider-linked' => 'Linked :provider to the account',
+            'provider-unlinked' => 'Unlinked :provider from the account',
         ],
         'api-key' => [
             'create' => 'Created new API key :identifier',
@@ -51,6 +63,8 @@ return [
             'stop' => 'Stopped the server',
             'restart' => 'Restarted the server',
             'kill' => 'Killed the server process',
+            'sleep' => 'Stopped the server because nobody was online (auto sleep)',
+            'wake' => 'Started the server because a player tried to join (auto sleep)',
         ],
         'backup' => [
             'download' => 'Downloaded the :name backup',
@@ -109,6 +123,11 @@ return [
             'primary' => 'Set :allocation as the primary server allocation',
             'delete' => 'Deleted the :allocation allocation',
         ],
+        'trash' => [
+            'restore' => 'Recovered :name from the trash bin',
+            'delete' => 'Deleted :name from the trash bin for good',
+            'empty' => 'Emptied the trash bin',
+        ],
         'schedule' => [
             'create' => 'Created the :name schedule',
             'update' => 'Updated the :name schedule',
@@ -123,6 +142,7 @@ return [
         'settings' => [
             'rename' => 'Renamed the server from :old to :new',
             'description' => 'Changed the server description from :old to :new',
+            'auto-sleep' => 'Changed auto sleep',
         ],
         'startup' => [
             'edit' => 'Changed the :variable variable from ":old" to ":new"',

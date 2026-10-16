@@ -111,7 +111,9 @@ export default async (ctx: Context): Promise<void> => {
 
     await run('clean', async () => {
         // Missing files are fine here, we only want to make sure nothing stale remains.
-        await Promise.all(CLEANUP_PATHS.map((path) => deleteFiles(ctx.uuid, '/', [path]).catch(() => undefined)));
+        await Promise.all(
+            CLEANUP_PATHS.map((path) => deleteFiles(ctx.uuid, '/', [path], { permanent: true }).catch(() => undefined))
+        );
     });
 
     const recipe = flattenSteps(ctx.build);
@@ -124,7 +126,7 @@ export default async (ctx: Context): Promise<void> => {
             } else if (step.type === 'unzip') {
                 await decompressFiles(ctx.uuid, directoryOf(step.location), step.file);
             } else {
-                await deleteFiles(ctx.uuid, '/', [step.location]);
+                await deleteFiles(ctx.uuid, '/', [step.location], { permanent: true });
             }
         });
     }

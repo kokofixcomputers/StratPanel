@@ -4,10 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -248,5 +252,213 @@ func TestMOTDsAcceptEscapedLineBreaks(t *testing.T) {
 
 	if got := loadConfig().OfflineMOTD; got != "first\nsecond" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// A panel that says the server is asleep, and records what the router asks it.
+type sleepyPanel struct {
+	*httptest.Server
+	mu        sync.Mutex
+	wakes     []string
+	auth      []string
+	wakeReply string
+}
+
+func newSleepyPanel(t *testing.T, sleeping bool, wakeReply string) *sleepyPanel {
+	panel := &sleepyPanel{wakeReply: wakeReply}
+	panel.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		panel.mu.Lock()
+		defer panel.mu.Unlock()
+		panel.auth = append(panel.auth, req.Header.Get("Authorization"))
+
+		switch req.URL.Path {
+		case "/api/router/state":
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"state":"offline","sleeping":%v}`, sleeping)))
+		case "/api/router/wake":
+			var body struct {
+				Domain string `json:"domain"`
+			}
+			_ = json.NewDecoder(req.Body).Decode(&body)
+			panel.wakes = append(panel.wakes, body.Domain)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"result":%q}`, panel.wakeReply)))
+		default:
+			http.NotFound(w, req)
+		}
+	}))
+	t.Cleanup(panel.Close)
+
+	return panel
+}
+
+func (p *sleepyPanel) wakeCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return len(p.wakes)
+}
+
+func sleepConfig(panel *sleepyPanel) config {
+	return config{
+		PanelURL: panel.URL, Token: "secret", OfflineMOTD: "offline", StartingMOTD: "starting",
+		SleepingMOTD: "asleep, join to wake it", WakingMOTD: "waking up",
+	}
+}
+
+func TestSleepingServerSaysSoInTheServerListAndIsNotWokenByLooking(t *testing.T) {
+	panel := newSleepyPanel(t, true, "woken")
+	router := startRouterWith(t, sleepConfig(panel), []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	answer := ask(t, router, "mc.example.com", 1)
+	if !bytes.Contains(answer, []byte("asleep, join to wake it")) || !bytes.Contains(answer, []byte("Sleeping")) {
+		t.Fatalf("expected the sleeping message in the server list, got %q", answer)
+	}
+	// Looking at the server list, however often, must not start the server.
+	for i := 0; i < 3; i++ {
+		ask(t, router, "mc.example.com", 1)
+	}
+	if panel.wakeCount() != 0 {
+		t.Fatalf("the server list woke the server %d times", panel.wakeCount())
+	}
+}
+
+func TestJoiningASleepingServerWakesItAndSaysSo(t *testing.T) {
+	panel := newSleepyPanel(t, true, "woken")
+	router := startRouterWith(t, sleepConfig(panel), []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	answer := ask(t, router, "mc.example.com", 2)
+	if !bytes.Contains(answer, []byte("waking up")) {
+		t.Fatalf("expected the waking message, got %q", answer)
+	}
+	if panel.wakeCount() != 1 || panel.wakes[0] != "mc.example.com" {
+		t.Fatalf("expected one request to wake mc.example.com, got %v", panel.wakes)
+	}
+	for _, auth := range panel.auth {
+		if auth != "Bearer secret" {
+			t.Fatalf("the router did not send its token: %q", auth)
+		}
+	}
+}
+
+func TestAServerThatIsAlreadyBeingWokenGetsTheSameMessage(t *testing.T) {
+	for _, reply := range []string{"cooldown", "awake"} {
+		panel := newSleepyPanel(t, true, reply)
+		router := startRouterWith(t, sleepConfig(panel), []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+		if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("waking up")) {
+			t.Fatalf("%s: expected the waking message, got %q", reply, answer)
+		}
+	}
+}
+
+func TestAPanelThatDoesNotWakeItLeavesThePlayerWithTheSleepingMessage(t *testing.T) {
+	for _, reply := range []string{"not-sleeping", "blocked"} {
+		panel := newSleepyPanel(t, true, reply)
+		router := startRouterWith(t, sleepConfig(panel), []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+		answer := ask(t, router, "mc.example.com", 2)
+		if bytes.Contains(answer, []byte("waking up")) || !bytes.Contains(answer, []byte("asleep, join to wake it")) {
+			t.Fatalf("%s: expected the sleeping message, got %q", reply, answer)
+		}
+	}
+}
+
+func TestAServerThatIsOffButNotAsleepIsNeverWoken(t *testing.T) {
+	panel := newSleepyPanel(t, false, "woken")
+	router := startRouterWith(t, sleepConfig(panel), []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("offline")) {
+		t.Fatalf("expected the offline message, got %q", answer)
+	}
+	if panel.wakeCount() != 0 {
+		t.Fatal("a server that was only stopped was woken")
+	}
+}
+
+func TestSleepingMessagesCanBeChanged(t *testing.T) {
+	t.Setenv("SLEEPING_MOTD", `zzz\nnight`)
+	t.Setenv("WAKING_MOTD", `up`)
+
+	cfg := loadConfig()
+	if cfg.SleepingMOTD != "zzz\nnight" || cfg.WakingMOTD != "up" {
+		t.Fatalf("got %q and %q", cfg.SleepingMOTD, cfg.WakingMOTD)
+	}
+}
+
+func TestTheDefaultSleepingMessagesExplainWhatToDo(t *testing.T) {
+	cfg := loadConfig()
+	if !strings.Contains(cfg.SleepingMOTD, "asleep") || !strings.Contains(cfg.WakingMOTD, "Waking") {
+		t.Fatalf("got %q and %q", cfg.SleepingMOTD, cfg.WakingMOTD)
+	}
+}
+
+// A panel that answers the state question with whatever body it is given.
+func statePanel(t *testing.T, body string) *httptest.Server {
+	panel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(panel.Close)
+
+	return panel
+}
+
+func TestAMessageFromThePanelReplacesTheRoutersOwnWords(t *testing.T) {
+	panel := statePanel(t, `{"state":"offline","sleeping":false,"notice":{"label":"Closed","message":"custom message"}}`)
+	router := startRouterWith(t, config{PanelURL: panel.URL, Token: "x", OfflineMOTD: "offline"},
+		[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	status := ask(t, router, "mc.example.com", 1)
+	if !bytes.Contains(status, []byte("custom message")) || !bytes.Contains(status, []byte("Closed")) || bytes.Contains(status, []byte("offline")) {
+		t.Fatalf("expected the message of the panel in the server list, got %q", status)
+	}
+	if login := ask(t, router, "mc.example.com", 2); !bytes.Contains(login, []byte("custom message")) {
+		t.Fatalf("expected the message of the panel when joining, got %q", login)
+	}
+}
+
+func TestAMessageWithoutALabelKeepsTheRoutersLabel(t *testing.T) {
+	panel := statePanel(t, `{"state":"offline","sleeping":false,"notice":{"message":"custom message"}}`)
+	router := startRouterWith(t, config{PanelURL: panel.URL, Token: "x", OfflineMOTD: "offline"},
+		[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	status := ask(t, router, "mc.example.com", 1)
+	if !bytes.Contains(status, []byte("Offline")) || !bytes.Contains(status, []byte("custom message")) {
+		t.Fatalf("got %q", status)
+	}
+}
+
+func TestAnEmptyMessageFromThePanelIsIgnored(t *testing.T) {
+	for _, body := range []string{
+		`{"state":"offline","notice":{"label":"x","message":""}}`,
+		`{"state":"offline","notice":{"label":"x","message":"   "}}`,
+		`{"state":"offline","notice":null}`,
+		`{"state":"offline","notice":"text"}`,
+	} {
+		panel := statePanel(t, body)
+		router := startRouterWith(t, config{PanelURL: panel.URL, Token: "x", OfflineMOTD: "offline"},
+			[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+		if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("offline")) {
+			t.Fatalf("%s: expected the router's own message, got %q", body, answer)
+		}
+	}
+}
+
+func TestAMessageFromThePanelDoesNotHideWhyAServerCannotBeJoined(t *testing.T) {
+	panel := statePanel(t, `{"state":"offline","notice":{"message":"custom message"}}`)
+	router := startRouterWith(t, config{PanelURL: panel.URL, Token: "x", SuspendedMOTD: "suspended"},
+		[]mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1, Status: "suspended"}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("suspended")) || bytes.Contains(answer, []byte("custom")) {
+		t.Fatalf("expected the suspended message, got %q", answer)
+	}
+}
+
+func TestAMessageFromThePanelShowsForASleepingServerInTheServerListButWakingStillWins(t *testing.T) {
+	panel := newSleepyPanel(t, true, "woken")
+	cfg := sleepConfig(panel)
+	router := startRouterWith(t, cfg, []mapping{{Domain: "mc.example.com", Host: "127.0.0.1", Port: 1}})
+
+	if answer := ask(t, router, "mc.example.com", 2); !bytes.Contains(answer, []byte("waking up")) {
+		t.Fatalf("expected the waking message, got %q", answer)
 	}
 }

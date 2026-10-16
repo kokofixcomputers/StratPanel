@@ -12,6 +12,8 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Services\Nodes\NodeJWTService;
+use Pterodactyl\Services\Trash\TrashService;
+use Pterodactyl\Models\Permission;
 use Pterodactyl\Repositories\Wings\DaemonFileRepository;
 use Pterodactyl\Transformers\Api\Client\FileObjectTransformer;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
@@ -35,6 +37,7 @@ class FileController extends ClientApiController
     public function __construct(
         private NodeJWTService $jwtService,
         private DaemonFileRepository $fileRepository,
+        private TrashService $trash,
     ) {
         parent::__construct();
     }
@@ -49,6 +52,9 @@ class FileController extends ClientApiController
         $contents = $this->fileRepository
             ->setServer($server)
             ->getDirectory($request->get('directory') ?? '/');
+
+        // The folder of the trash bin is not part of the files of the server as far as the file manager goes.
+        $contents = array_values(array_filter($contents, fn ($entry) => !$this->trash->isTrashPath('/' . trim((string) ($request->get('directory') ?? '/'), '/') . '/' . ($entry['name'] ?? ''))));
 
         return $this->fractal->collection($contents)
             ->transformWith($this->getTransformer(FileObjectTransformer::class))
@@ -238,14 +244,24 @@ class FileController extends ClientApiController
      */
     public function delete(DeleteFileRequest $request, Server $server): JsonResponse
     {
-        $this->fileRepository->setServer($server)->deleteFiles(
-            $request->input('root'),
-            $request->input('files')
-        );
+        // With the trash bin on, deleting moves to the trash bin. Only somebody who could delete from it anyway may skip it (the
+        // housekeeping of the panel, like clearing a temporary folder, does).
+        $permanent = $request->boolean('skip_trash') && $request->user()->can(Permission::ACTION_TRASH_DELETE, $server);
+        $trashed = $this->trash->enabled() && !$permanent;
+
+        if ($trashed) {
+            $this->trash->trashFiles($server, $request->user(), (string) $request->input('root'), $request->input('files'));
+        } else {
+            $this->fileRepository->setServer($server)->deleteFiles(
+                $request->input('root'),
+                $request->input('files')
+            );
+        }
 
         Activity::event('server:file.delete')
             ->property('directory', $request->input('root'))
             ->property('files', $request->input('files'))
+            ->property('trashed', $trashed)
             ->log();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);

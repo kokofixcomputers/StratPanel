@@ -180,7 +180,7 @@ export const replaceDimension = async (
 ): Promise<void> => {
     if (!dimension.deletable) throw new Error('This dimension is the world itself and can not be replaced here.');
 
-    await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+    await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
     await createDirectory(uuid, '/', TEMP);
     try {
         const url = await getFileUploadUrl(uuid);
@@ -196,7 +196,7 @@ export const replaceDimension = async (
 
         report('Extracting...');
         await decompressFiles(uuid, `/${TEMP}`, file.name, true);
-        await deleteFiles(uuid, `/${TEMP}`, [file.name]);
+        await deleteFiles(uuid, `/${TEMP}`, [file.name], { permanent: true });
 
         const content = await findContent(uuid, `/${TEMP}`);
 
@@ -207,6 +207,6 @@ export const replaceDimension = async (
         );
         await renameFiles(uuid, '/', [{ from: content.replace(/^\//, ''), to: dimension.path.replace(/^\//, '') }]);
     } finally {
-        await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+        await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
     }
 };

@@ -14,6 +14,7 @@ import { protectedFiles } from '@/lib/protectedFiles';
 
 const MassActionsBar = ({ floating = false }: { floating?: boolean }) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const trash = ServerContext.useStoreState((state) => state.server.data!.trash);
 
     const { mutate } = useFileManagerSwr();
     const { clearFlashes, clearAndAddHttpError } = useFlash();
@@ -88,8 +89,12 @@ const MassActionsBar = ({ floating = false }: { floating?: boolean }) => {
             >
                 <p className={'mb-2 text-sm'}>
                     Are you sure you want to delete&nbsp;
-                    <span className={'font-semibold text-neutral-50'}>{selectedFiles.length} files</span>? This is a
-                    permanent action and the files cannot be recovered.
+                    <span className={'font-semibold text-neutral-50'}>{selectedFiles.length} files</span>?{' '}
+                    {trash.enabled
+                        ? `They are moved to the trash bin and kept for ${trash.retentionDays} ${
+                              trash.retentionDays === 1 ? 'day' : 'days'
+                          }, they still count toward the disk space of the server until then.`
+                        : 'This is a permanent action and the files cannot be recovered.'}
                 </p>
                 <ul className={'text-sm text-neutral-300 list-disc list-inside'}>
                     {selectedFiles.slice(0, 15).map((file) => (

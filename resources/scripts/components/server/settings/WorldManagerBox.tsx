@@ -218,7 +218,7 @@ export default () => {
         clearFlashes('settings');
 
         await runTask('extract', `Importing world from ${file.name}`, async (report) => {
-            await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+            await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
             await createDirectory(uuid, '/', TEMP);
 
             const url = await getFileUploadUrl(uuid);
@@ -234,7 +234,7 @@ export default () => {
 
             report('Extracting...');
             await decompressFiles(uuid, `/${TEMP}`, file.name, true);
-            await deleteFiles(uuid, `/${TEMP}`, [file.name]);
+            await deleteFiles(uuid, `/${TEMP}`, [file.name], { permanent: true });
 
             // The world is either the extracted folder itself or the single folder inside it.
             const top = await loadDirectory(uuid, `/${TEMP}`);
@@ -252,7 +252,7 @@ export default () => {
                     )
                 ).filter((n): n is string => !!n);
                 if (nested.length !== 1) {
-                    await deleteFiles(uuid, '/', [TEMP]);
+                    await deleteFiles(uuid, '/', [TEMP], { permanent: true });
                     throw new Error('Could not find a single world (a folder with level.dat) in that archive.');
                 }
                 source = `${TEMP}/${nested[0]}`;
@@ -263,7 +263,7 @@ export default () => {
             const existing = [levelName, `${levelName}_nether`, `${levelName}_the_end`].filter((n) => root.has(n));
             if (existing.length) await deleteFiles(uuid, '/', existing);
             await renameFiles(uuid, '/', [{ from: source, to: levelName }]);
-            await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+            await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
             load();
         });
     };

@@ -114,7 +114,7 @@ export default ({
     const groups = [...GROUPS, { title: 'More', paths: items.map((i) => i.path).filter((path) => !known.has(path)) }];
 
     const renderItem = (item: SidebarItem) => {
-        const Icon = ICONS[item.path] || CubeIcon;
+        const Icon = ICONS[item.path] || (item.path.startsWith('/ext/') ? PuzzleIcon : CubeIcon);
         const anchor = (
             <Link
                 key={item.path}

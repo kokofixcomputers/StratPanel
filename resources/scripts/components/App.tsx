@@ -4,6 +4,7 @@ import { Route, Router, Switch } from 'react-router-dom';
 import { StoreProvider } from 'easy-peasy';
 import { store } from '@/state';
 import { SiteSettings } from '@/state/settings';
+import { loadExtensions } from '@/lib/extensions';
 import ProgressBar from '@/components/elements/ProgressBar';
 import TaskMenu from '@/components/elements/TaskMenu';
 import { NotFound } from '@/components/elements/ScreenBlock';
@@ -28,6 +29,9 @@ interface ExtendedWindow extends Window {
         email: string;
         /* eslint-disable camelcase */
         root_admin: boolean;
+        password_set?: boolean;
+        can_access_admin?: boolean;
+        can_access_all_servers?: boolean;
         use_totp: boolean;
         language: string;
         updated_at: string;
@@ -47,6 +51,9 @@ const App = () => {
             email: PterodactylUser.email,
             language: PterodactylUser.language,
             rootAdmin: PterodactylUser.root_admin,
+            canAccessAdmin: PterodactylUser.can_access_admin ?? PterodactylUser.root_admin,
+            canAccessAllServers: PterodactylUser.can_access_all_servers ?? PterodactylUser.root_admin,
+            passwordSet: PterodactylUser.password_set !== false,
             useTotp: PterodactylUser.use_totp,
             createdAt: new Date(PterodactylUser.created_at),
             updatedAt: new Date(PterodactylUser.updated_at),
@@ -56,6 +63,9 @@ const App = () => {
     if (!store.getState().settings.data) {
         store.getActions().settings.setSettings(SiteConfiguration!);
     }
+
+    // The extensions that are on bring their own scripts and styles. Once, however often the app renders.
+    React.useEffect(() => loadExtensions(SiteConfiguration?.extensions), []);
 
     return (
         <>

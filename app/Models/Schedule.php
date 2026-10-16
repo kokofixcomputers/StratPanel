@@ -5,6 +5,7 @@ namespace Pterodactyl\Models;
 use Cron\CronExpression;
 use Carbon\CarbonImmutable;
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -34,6 +35,8 @@ class Schedule extends Model
 {
     /** @use HasFactory<\Database\Factories\ScheduleFactory> */
     use HasFactory;
+    // Deleted schedules stay in the table while they are in the trash bin of their server, and are hidden everywhere else.
+    use SoftDeletes;
 
     /**
      * The resource name for this model when it is transformed into an

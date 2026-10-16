@@ -25,7 +25,7 @@ class ServerPolicy
      */
     public function before(User $user, string $ability, Server $server): bool
     {
-        if ($user->root_admin || $server->owner_id === $user->id) {
+        if ($user->canAccessAllServers() || $server->owner_id === $user->id) {
             return true;
         }
 

@@ -80,6 +80,8 @@ class ResetPasswordController extends Controller
             'password' => $this->hasher->make($password),
             $user->getRememberTokenName() => Str::random(60),
         ]);
+        // This is how somebody who signed up with another service chooses a password.
+        $user->forceFill(['password_set' => true])->save();
 
         $this->dispatcher->dispatch(new PasswordReset($user));
         PasswordChanged::dispatch($user);

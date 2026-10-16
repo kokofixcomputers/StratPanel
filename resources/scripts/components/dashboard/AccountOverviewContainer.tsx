@@ -59,7 +59,7 @@ export default () => {
                     <p className={'truncate text-xl font-semibold text-neutral-50'}>{user.username}</p>
                     <p className={'truncate text-sm text-neutral-300'}>{user.email}</p>
                     <div className={'mt-2 flex flex-wrap items-center gap-2'}>
-                        {user.rootAdmin && <Pill tone={'blue'}>Administrator</Pill>}
+                        {user.rootAdmin && <Pill tone={'blue'}>Root admin</Pill>}
                         <Pill tone={user.useTotp ? 'green' : 'grey'}>
                             {user.useTotp ? 'Two-step on' : 'Two-step off'}
                         </Pill>

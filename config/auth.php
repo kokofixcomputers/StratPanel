@@ -12,6 +12,47 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Captcha on the sign in, sign up and password reset forms
+    |--------------------------------------------------------------------------
+    |
+    | Set under Admin > Settings > Authentication. "provider" is none, recaptcha or turnstile; when it was never set the
+    | old reCAPTCHA switch (recaptcha.enabled) decides. The reCAPTCHA keys are in config/recaptcha.php.
+    */
+    'captcha' => [
+        'provider' => env('AUTH_CAPTCHA', ''),
+        'turnstile' => [
+            'site_key' => env('TURNSTILE_SITE_KEY', ''),
+            'secret_key' => env('TURNSTILE_SECRET_KEY', ''),
+            'domain' => 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Passkeys
+    |--------------------------------------------------------------------------
+    |
+    | Signing in with a fingerprint, face or security key instead of a password. On unless an admin turns it off.
+    */
+    'passkeys' => [
+        'enabled' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Self sign up
+    |--------------------------------------------------------------------------
+    |
+    | Off unless an admin turns it on. "password" is whether people may sign up with a username and password, signing up
+    | with a service is allowed per service (Admin > Settings > Authentication).
+    */
+    'registration' => [
+        'enabled' => false,
+        'password' => true,
+    ],
+
     'lockout' => [
         'time' => 2,
         'attempts' => 3,

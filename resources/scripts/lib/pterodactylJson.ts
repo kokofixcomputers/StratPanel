@@ -73,7 +73,7 @@ const migrate = (uuid: string, raw: string, from: string) => {
     moving.add(uuid);
 
     saveFileContents(uuid, MARKER, raw)
-        .then(() => deleteFiles(uuid, '/', [from]))
+        .then(() => deleteFiles(uuid, '/', [from], { permanent: true }))
         .catch(() => undefined)
         .then(() => moving.delete(uuid));
 };

@@ -29,17 +29,7 @@ class AdvancedController extends Controller
      */
     public function index(): View
     {
-        $showRecaptchaWarning = false;
-        if (
-            $this->config->get('recaptcha._shipped_secret_key') === $this->config->get('recaptcha.secret_key')
-            || $this->config->get('recaptcha._shipped_website_key') === $this->config->get('recaptcha.website_key')
-        ) {
-            $showRecaptchaWarning = true;
-        }
-
-        return view('admin.settings.advanced', [
-            'showRecaptchaWarning' => $showRecaptchaWarning,
-        ]);
+        return view('admin.settings.advanced');
     }
 
     /**

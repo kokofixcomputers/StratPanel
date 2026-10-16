@@ -36,6 +36,10 @@ export interface Server {
     node: string;
     isNodeUnderMaintenance: boolean;
     status: ServerStatus;
+    // Auto sleep stops the server when nobody is online, it is off until the owner turns it on.
+    autoSleep: { enabled: boolean; sleeping: boolean };
+    // Whether deleted files and schedules are kept in a trash bin for a while, and for how many days.
+    trash: { enabled: boolean; retentionDays: number };
     sftpDetails: {
         ip: string;
         port: number;
@@ -73,6 +77,8 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     node: data.node,
     isNodeUnderMaintenance: data.is_node_under_maintenance,
     status: data.status,
+    autoSleep: { enabled: !!data.auto_sleep?.enabled, sleeping: !!data.auto_sleep?.sleeping },
+    trash: { enabled: !!data.trash?.enabled, retentionDays: data.trash?.retention_days ?? 30 },
     invocation: data.invocation,
     dockerImage: data.docker_image,
     sftpDetails: {

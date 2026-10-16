@@ -36,7 +36,7 @@ const EditSubuserModal = ({ subuser }: Props) => {
     );
     const { dismiss, setPropOverrides } = useContext(ModalContext);
 
-    const isRootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
+    const isRootAdmin = useStoreState((state) => state.user.data!.canAccessAllServers);
     const permissions = useStoreState((state) => state.permissions.data);
     // The currently logged in user's permissions. We're going to filter out any permissions
     // that they should not need.

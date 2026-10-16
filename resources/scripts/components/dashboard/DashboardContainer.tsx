@@ -17,6 +17,7 @@ import { PlusIcon } from '@heroicons/react/solid';
 import Button from '@/components/elements/Button';
 import { getSelfService, SelfService } from '@/api/selfService';
 import Announcements from '@/components/dashboard/Announcements';
+import ExtensionSlot from '@/components/elements/ExtensionSlot';
 
 export default () => {
     const { search } = useLocation();
@@ -25,7 +26,7 @@ export default () => {
     const [page, setPage] = useState(!isNaN(defaultPage) && defaultPage > 0 ? defaultPage : 1);
     const { clearFlashes, clearAndAddHttpError } = useFlash();
     const uuid = useStoreState((state) => state.user.data!.uuid);
-    const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
+    const rootAdmin = useStoreState((state) => state.user.data!.canAccessAllServers);
     const [showOnlyAdmin, setShowOnlyAdmin] = usePersistedState(`${uuid}:show_all_servers`, false);
 
     const { data: servers, error } = useSWR<PaginatedResult<Server>>(
@@ -66,6 +67,7 @@ export default () => {
     return (
         <PageContentBlock title={'Dashboard'} showFlashKey={'dashboard'}>
             <Announcements css={tw`mb-6`} />
+            <ExtensionSlot name={'dashboard.top'} />
             <div css={tw`flex flex-wrap items-end justify-between gap-4 mb-6`}>
                 <div>
                     <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>Your servers</h1>

@@ -2,71 +2,36 @@
 
 namespace Pterodactyl\Http\Middleware;
 
-use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Pterodactyl\Events\Auth\FailedCaptcha;
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Events\Dispatcher;
+use Pterodactyl\Services\Auth\Captcha\CaptchaService;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
+/**
+ * Checks the captcha on a form. It started out as the reCAPTCHA check, the name stayed because routes and extensions use the
+ * "recaptcha" alias. What is checked (reCAPTCHA, Turnstile or nothing) is set under Settings > Authentication.
+ */
 class VerifyReCaptcha
 {
-    /**
-     * VerifyReCaptcha constructor.
-     */
-    public function __construct(private Dispatcher $dispatcher, private Repository $config)
+    public function __construct(private Dispatcher $dispatcher, private CaptchaService $captcha)
     {
     }
 
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, \Closure $next): mixed
     {
-        if (!$this->config->get('recaptcha.enabled')) {
+        if (!$this->captcha->enabled()) {
             return $next($request);
         }
 
-        if ($request->filled('g-recaptcha-response')) {
-            $client = new Client();
-            $res = $client->post($this->config->get('recaptcha.domain'), [
-                'form_params' => [
-                    'secret' => $this->config->get('recaptcha.secret_key'),
-                    'response' => $request->input('g-recaptcha-response'),
-                ],
-            ]);
-
-            if ($res->getStatusCode() === 200) {
-                $result = json_decode($res->getBody());
-
-                if ($result->success && (!$this->config->get('recaptcha.verify_domain') || $this->isResponseVerified($result, $request))) {
-                    return $next($request);
-                }
-            }
+        $result = $this->captcha->verify($request);
+        if ($result['ok']) {
+            return $next($request);
         }
 
-        $this->dispatcher->dispatch(
-            new FailedCaptcha(
-                $request->ip(),
-                !empty($result) ? ($result->hostname ?? null) : null
-            )
-        );
+        $this->dispatcher->dispatch(new FailedCaptcha((string) $request->ip(), (string) $result['hostname']));
 
-        throw new HttpException(Response::HTTP_BAD_REQUEST, 'Failed to validate reCAPTCHA data.');
-    }
-
-    /**
-     * Determine if the response from the recaptcha servers was valid.
-     */
-    private function isResponseVerified(\stdClass $result, Request $request): bool
-    {
-        if (!$this->config->get('recaptcha.verify_domain')) {
-            return false;
-        }
-
-        $url = parse_url($request->url());
-
-        return $result->hostname === array_get($url, 'host');
+        throw new HttpException(Response::HTTP_BAD_REQUEST, 'Failed to validate the captcha.');
     }
 }

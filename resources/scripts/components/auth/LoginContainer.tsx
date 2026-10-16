@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link, RouteComponentProps } from 'react-router-dom';
 import login from '@/api/auth/login';
 import LoginFormContainer from '@/components/auth/LoginFormContainer';
@@ -8,42 +8,38 @@ import { object, string } from 'yup';
 import Field from '@/components/elements/Field';
 import tw from 'twin.macro';
 import Button from '@/components/elements/Button';
-import Reaptcha from 'reaptcha';
 import useFlash from '@/plugins/useFlash';
+import Captcha, { useCaptcha } from '@/components/auth/Captcha';
+import ProviderButtons from '@/components/auth/ProviderButtons';
+import PasskeyButton from '@/components/auth/PasskeyButton';
+import OrDivider from '@/components/auth/OrDivider';
+import { authErrorMessage, queryParam } from '@/lib/authProviders';
 
 interface Values {
     username: string;
     password: string;
 }
 
-const LoginContainer = ({ history }: RouteComponentProps) => {
-    const ref = useRef<Reaptcha>(null);
-    const [token, setToken] = useState('');
-
-    const { clearFlashes, clearAndAddHttpError } = useFlash();
-    const { enabled: recaptchaEnabled, siteKey } = useStoreState((state) => state.settings.data!.recaptcha);
+const LoginContainer = ({ history, location }: RouteComponentProps) => {
+    const captcha = useCaptcha();
+    const { clearFlashes, addFlash, clearAndAddHttpError } = useFlash();
+    const auth = useStoreState((state) => state.settings.data!.auth);
+    const hasAlternatives = !!auth && (auth.passkeys || auth.providers.length > 0);
 
     useEffect(() => {
         clearFlashes();
+
+        // Coming back from another service that did not sign us in.
+        const message = authErrorMessage(queryParam(location.search, 'error'));
+        if (message) addFlash({ type: 'error', title: 'Error', message });
     }, []);
 
     const onSubmit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
         clearFlashes();
 
-        // If there is no token in the state yet, request the token and then abort this submit request
-        // since it will be re-submitted when the recaptcha data is returned by the component.
-        if (recaptchaEnabled && !token) {
-            ref.current!.execute().catch((error) => {
-                console.error(error);
-
-                setSubmitting(false);
-                clearAndAddHttpError({ error });
-            });
-
-            return;
-        }
-
-        login({ ...values, recaptchaData: token })
+        captcha
+            .run()
+            .then((token) => login({ ...values, captcha: token }))
             .then((response) => {
                 if (response.complete) {
                     // @ts-expect-error this is valid
@@ -56,9 +52,7 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
             .catch((error) => {
                 console.error(error);
 
-                setToken('');
-                if (ref.current) ref.current.reset();
-
+                captcha.reset();
                 setSubmitting(false);
                 clearAndAddHttpError({ error });
             });
@@ -73,7 +67,7 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                 password: string().required('Please enter your account password.'),
             })}
         >
-            {({ isSubmitting, setSubmitting, submitForm }) => (
+            {({ isSubmitting }) => (
                 <LoginFormContainer
                     title={'Welcome back'}
                     subtitle={'Sign in to manage your servers.'}
@@ -88,20 +82,15 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                             Login
                         </Button>
                     </div>
-                    {recaptchaEnabled && (
-                        <Reaptcha
-                            ref={ref}
-                            size={'invisible'}
-                            sitekey={siteKey || '_invalid_key'}
-                            onVerify={(response) => {
-                                setToken(response);
-                                submitForm();
-                            }}
-                            onExpire={() => {
-                                setSubmitting(false);
-                                setToken('');
-                            }}
-                        />
+                    <Captcha ref={captcha.ref} />
+                    {hasAlternatives && (
+                        <>
+                            <OrDivider />
+                            <div className={'space-y-2'}>
+                                <PasskeyButton />
+                                <ProviderButtons />
+                            </div>
+                        </>
                     )}
                     <div css={tw`mt-6 text-center`}>
                         <Link
@@ -111,6 +100,17 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
                             Forgot password?
                         </Link>
                     </div>
+                    {auth?.registration && (
+                        <div css={tw`mt-3 text-center text-sm text-neutral-400`}>
+                            No account yet?&nbsp;
+                            <Link
+                                to={'/auth/register'}
+                                css={tw`text-primary-600 font-medium no-underline hover:text-primary-700`}
+                            >
+                                Create one
+                            </Link>
+                        </div>
+                    )}
                 </LoginFormContainer>
             )}
         </Formik>

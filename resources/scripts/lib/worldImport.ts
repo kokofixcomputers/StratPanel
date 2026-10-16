@@ -73,7 +73,7 @@ export const installWorldFromLink = async (opts: {
     const root = new Set((await loadDirectory(uuid, '/')).map((f) => f.name));
     if (root.has(name)) throw new Error(`There already is a folder called ${name}, pick another name.`);
 
-    await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+    await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
     await createDirectory(uuid, '/', TEMP);
 
     try {
@@ -82,7 +82,7 @@ export const installWorldFromLink = async (opts: {
 
         report('Extracting...');
         await decompressFiles(uuid, `/${TEMP}`, fileName, true);
-        await deleteFiles(uuid, `/${TEMP}`, [fileName]);
+        await deleteFiles(uuid, `/${TEMP}`, [fileName], { permanent: true });
 
         const source = (await findWorldRoot(uuid, `/${TEMP}`)).slice(1);
         report('Adding the world...');
@@ -93,7 +93,7 @@ export const installWorldFromLink = async (opts: {
             await saveFileContents(uuid, '/server.properties', serializeProperties(properties, { 'level-name': name }));
         }
     } finally {
-        await deleteFiles(uuid, '/', [TEMP]).catch(() => undefined);
+        await deleteFiles(uuid, '/', [TEMP], { permanent: true }).catch(() => undefined);
     }
 
     window.dispatchEvent(new CustomEvent(WORLDS_CHANGED));

@@ -58,5 +58,14 @@ add the domain in a server's **Domains** tab.
   shutting down, suspended or still being installed. Suspended and installing servers are never connected to. If the
   panel cannot be reached the player is simply told the server is off. The wording can be changed with `OFFLINE_MOTD`,
   `STARTING_MOTD`, `STOPPING_MOTD`, `SUSPENDED_MOTD` and `INSTALLING_MOTD` (see `mc-router.env.example`).
+- The panel can replace the wording per server: an extension (the sample Offline MOTD, for one) adds a `notice` with a label and a
+  message to the answer of `/api/router/state`, and the router shows that instead of its own wording. Suspended and installing
+  servers always keep the router's wording, and waking a sleeping server on join comes first.
+- **Auto sleep.** A server whose owner turned on auto sleep in its settings is stopped by the panel when nobody has been on
+  for a while. The router then shows "asleep, join to wake it up" in the server list, and when a player tries to **join** it
+  asks the panel to start the server and tells the player to come back in a minute (`WAKING_MOTD`). Only joining wakes it,
+  looking at the server list does not, and a server that its owner stopped by hand is never started by a player. It needs the
+  server to have a domain here, without one there is nothing that can notice the player. Change the wording with
+  `SLEEPING_MOTD` and `WAKING_MOTD`.
 - Java Edition only. Bedrock uses UDP and is not routed.
 - Build it yourself with `go build` (Go 1.21 or newer), run the tests with `go test ./...`.

@@ -6,6 +6,8 @@ use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Model;
+use Pterodactyl\Models\Role;
+use Pterodactyl\Services\Roles\RoleService;
 use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Prologue\Alerts\AlertsMessageBag;
@@ -52,6 +54,7 @@ class UserController extends Controller
                 ->leftJoin('subusers', 'subusers.user_id', '=', 'users.id')
                 ->leftJoin('servers', 'servers.owner_id', '=', 'users.id')
                 ->groupBy('users.id')
+                ->with('roles')
         )
             ->allowedFilters(['username', 'email', 'uuid'])
             ->defaultSort('-root_admin')
@@ -74,11 +77,15 @@ class UserController extends Controller
     /**
      * Display user view page.
      */
-    public function view(User $user): View
+    public function view(Request $request, User $user): View
     {
         return view('admin.users.view', [
             'user' => $user,
             'languages' => $this->getAvailableLanguages(true),
+            'roles' => Role::query()->orderBy('name')->get(),
+            'userRoleIds' => $user->roles()->pluck('roles.id')->all(),
+            'canChange' => $request->user()->outranks($user),
+            'roleService' => app(RoleService::class),
         ]);
     }
 
@@ -93,6 +100,7 @@ class UserController extends Controller
         if ($request->user()->is($user)) {
             throw new DisplayException(__('admin/user.exceptions.delete_self'));
         }
+        $this->guardAgainstOutranking($request, $user);
 
         $this->deletionService->handle($user);
 
@@ -107,7 +115,7 @@ class UserController extends Controller
      */
     public function store(NewUserFormRequest $request): RedirectResponse
     {
-        $user = $this->creationService->handle($request->normalize());
+        $user = $this->creationService->handle($this->withoutRootAdmin($request, $request->normalize()));
         $this->alert->success($this->translator->get('admin/user.notices.account_created'))->flash();
 
         return redirect()->route('admin.users.view', $user->id);
@@ -121,13 +129,43 @@ class UserController extends Controller
      */
     public function update(UserFormRequest $request, User $user): RedirectResponse
     {
+        $this->guardAgainstOutranking($request, $user);
+
         $this->updateService
             ->setUserLevel(User::USER_LEVEL_ADMIN)
-            ->handle($user, $request->normalize());
+            ->handle($user, $this->withoutRootAdmin($request, $request->normalize()));
 
         $this->alert->success(trans('admin/user.notices.account_updated'))->flash();
 
         return redirect()->route('admin.users.view', $user->id);
+    }
+
+    /**
+     * Somebody with a role can not change the account of a root admin, or of somebody who holds more than they do: with the email or
+     * password of that account they would hold it too.
+     *
+     * @throws DisplayException
+     */
+    private function guardAgainstOutranking(Request $request, User $target): void
+    {
+        if ($request->user()->id !== $target->id && !$request->user()->outranks($target)) {
+            throw new DisplayException('You can not change an account that holds more than you do.');
+        }
+    }
+
+    /**
+     * Only root admins make root admins. For everybody else the field is dropped, so a form that has it added by hand changes nothing.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withoutRootAdmin(Request $request, array $data): array
+    {
+        if (!$request->user()->root_admin) {
+            unset($data['root_admin']);
+        }
+
+        return $data;
     }
 
     /**

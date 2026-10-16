@@ -88,20 +88,58 @@
                     <h3 class="box-title">Permissions</h3>
                 </div>
                 <div class="box-body">
-                    <div class="form-group">
-                        <label for="root_admin" class="control-label">Administrator</label>
-                        <div>
-                            <select name="root_admin" class="form-control">
-                                <option value="0">@lang('strings.no')</option>
-                                <option value="1" {{ $user->root_admin ? 'selected="selected"' : '' }}>@lang('strings.yes')</option>
-                            </select>
-                            <p class="text-muted"><small>Setting this to 'Yes' gives a user full administrative access.</small></p>
+                    @if(Auth::user()->root_admin)
+                        <div class="form-group">
+                            <label for="root_admin" class="control-label">Root admin</label>
+                            <div>
+                                <select name="root_admin" class="form-control">
+                                    <option value="0">@lang('strings.no')</option>
+                                    <option value="1" {{ $user->root_admin ? 'selected="selected"' : '' }}>@lang('strings.yes')</option>
+                                </select>
+                                <p class="text-muted"><small>A root admin can do everything and can not be limited by roles. Give this to very few people, others get roles.</small></p>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <p class="no-margin">@if($user->root_admin)<span class="label label-warning"><i class="fa fa-star"></i> Root admin</span> @else Not a root admin. @endif <span class="text-muted small">Only root admins make root admins.</span></p>
+                    @endif
                 </div>
             </div>
         </div>
     </form>
+    @if(!$canChange)
+        <div class="col-xs-12"><div class="alert alert-warning">This account is a root admin or holds permissions that you do not hold, so you can look at it but not change it.</div></div>
+    @endif
+    @if(Auth::user()->hasAnyPermission('roles.view', 'roles.assign'))
+        <div class="col-xs-12">
+            <div class="box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Roles</h3>
+                </div>
+                <form action="{{ route('admin.roles.user', $user->id) }}" method="POST">
+                    <div class="box-body">
+                        @if($user->root_admin)
+                            <p class="text-muted">Root admins can do everything, whatever roles they have.</p>
+                        @endif
+                        @forelse($roles as $role)
+                            @php($assignable = Auth::user()->hasPermission('roles.assign') && $canChange && $roleService->covers(Auth::user(), $role))
+                            <div class="checkbox checkbox-primary" style="margin: 4px 0;">
+                                <input type="checkbox" id="role-{{ $role->id }}" name="roles[]" value="{{ $role->id }}" @if(in_array($role->id, $userRoleIds)) checked @endif @if(!$assignable) disabled @endif>
+                                <label for="role-{{ $role->id }}"><span class="label" style="background-color: {{ $role->color }};">{{ $role->name }}</span> <span class="text-muted small">{{ $role->description }}</span></label>
+                            </div>
+                        @empty
+                            <p class="text-muted no-margin">There are no roles yet.</p>
+                        @endforelse
+                    </div>
+                    @if(Auth::user()->hasPermission('roles.assign') && $canChange && !$roles->isEmpty())
+                        <div class="box-footer">
+                            {!! csrf_field() !!}
+                            <button type="submit" class="btn btn-sm btn-primary pull-right">Save roles</button>
+                        </div>
+                    @endif
+                </form>
+            </div>
+        </div>
+    @endif
     <div class="col-xs-12">
         <div class="box box-danger">
             <div class="box-header with-border">

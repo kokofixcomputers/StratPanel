@@ -40,39 +40,74 @@
                     <span class="logo-badge">Admin</span>
                 </a>
                 <nav class="admin-nav">
+                    @php($adminUser = Auth::user())
                     <ul class="admin-nav-list">
+                        @if($adminUser->hasPermission('overview.view'))
                         <li class="{{ Route::currentRouteName() !== 'admin.index' ?: 'active' }}">
                             <a href="{{ route('admin.index') }}"><span class="nav-chip c-blue"><i class="fa fa-home"></i></span> <span>Overview</span></a>
                         </li>
+                        @endif
+                        @if(\Pterodactyl\Services\Roles\AdminNavigation::hasSettings($adminUser))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.settings') ?: 'active' }}">
-                            <a href="{{ route('admin.settings') }}"><span class="nav-chip c-slate"><i class="fa fa-wrench"></i></span> <span>Settings</span></a>
+                            <a href="{{ route(\Pterodactyl\Services\Roles\AdminNavigation::settingsHome($adminUser)) }}"><span class="nav-chip c-slate"><i class="fa fa-wrench"></i></span> <span>Settings</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->root_admin)
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.api') ?: 'active' }}">
                             <a href="{{ route('admin.api.index') }}"><span class="nav-chip c-violet"><i class="fa fa-gamepad"></i></span> <span>Application API</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasAnyPermission('databases.view', 'locations.view', 'nodes.view'))
                         <li class="nav-heading">Infrastructure</li>
+                        @endif
+                        @if($adminUser->hasPermission('databases.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.databases') ?: 'active' }}">
                             <a href="{{ route('admin.databases') }}"><span class="nav-chip c-amber"><i class="fa fa-database"></i></span> <span>Databases</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('locations.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.locations') ?: 'active' }}">
                             <a href="{{ route('admin.locations') }}"><span class="nav-chip c-teal"><i class="fa fa-globe"></i></span> <span>Locations</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('nodes.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.nodes') ?: 'active' }}">
                             <a href="{{ route('admin.nodes') }}"><span class="nav-chip c-green"><i class="fa fa-sitemap"></i></span> <span>Nodes</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasAnyPermission('servers.view', 'users.view', 'roles.view', 'mounts.view', 'nests.view', 'extensions.view'))
                         <li class="nav-heading">Management</li>
+                        @endif
+                        @if($adminUser->hasPermission('servers.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.servers') ?: 'active' }}">
                             <a href="{{ route('admin.servers') }}"><span class="nav-chip c-indigo"><i class="fa fa-server"></i></span> <span>Servers</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('users.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.users') ?: 'active' }}">
                             <a href="{{ route('admin.users') }}"><span class="nav-chip c-pink"><i class="fa fa-users"></i></span> <span>Users</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('roles.view'))
+                        <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.roles') ?: 'active' }}">
+                            <a href="{{ route('admin.roles') }}"><span class="nav-chip c-red"><i class="fa fa-shield"></i></span> <span>Roles</span></a>
+                        </li>
+                        @endif
+                        @if($adminUser->hasPermission('mounts.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.mounts') ?: 'active' }}">
                             <a href="{{ route('admin.mounts') }}"><span class="nav-chip c-orange"><i class="fa fa-magic"></i></span> <span>Mounts</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('nests.view'))
                         <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.nests') ?: 'active' }}">
                             <a href="{{ route('admin.nests') }}"><span class="nav-chip c-cyan"><i class="fa fa-th-large"></i></span> <span>Nests</span></a>
                         </li>
+                        @endif
+                        @if($adminUser->hasPermission('extensions.view'))
+                        <li class="{{ ! starts_with(Route::currentRouteName(), 'admin.extensions') ?: 'active' }}">
+                            <a href="{{ route('admin.extensions') }}"><span class="nav-chip c-violet"><i class="fa fa-puzzle-piece"></i></span> <span>Extensions</span></a>
+                        </li>
+                        @endif
                     </ul>
                 </nav>
                 <div class="admin-user">
@@ -136,7 +171,7 @@
             {!! Theme::js('js/admin/functions.js?t={cache-version}') !!}
             <script src="/js/autocomplete.js" type="application/javascript"></script>
 
-            @if(Auth::user()->root_admin)
+            @if(Auth::user()->canAccessAdmin())
                 <script>
                     $('#logoutButton').on('click', function (event) {
                         event.preventDefault();

@@ -9,6 +9,7 @@ import useFlash from '@/plugins/useFlash';
 import { FlashStore } from '@/state/flashes';
 import Field from '@/components/elements/Field';
 import tw from 'twin.macro';
+import { queryParam } from '@/lib/authProviders';
 import Button from '@/components/elements/Button';
 
 interface Values {
@@ -78,7 +79,7 @@ const LoginCheckpointContainer = () => {
 
 const EnhancedForm = withFormik<Props, Values>({
     handleSubmit: ({ code, recoveryCode }, { setSubmitting, props: { clearAndAddHttpError, location } }) => {
-        loginCheckpoint(location.state?.token || '', code, recoveryCode)
+        loginCheckpoint(location.state?.token || queryParam(location.search, 'token') || '', code, recoveryCode)
             .then((response) => {
                 if (response.complete) {
                     // @ts-expect-error this is valid
@@ -104,7 +105,8 @@ const EnhancedForm = withFormik<Props, Values>({
 export default ({ history, location, ...props }: OwnProps) => {
     const { clearAndAddHttpError } = useFlash();
 
-    if (!location.state?.token) {
+    // The token comes with the router when a password was just checked, or in the address when another service signed us in.
+    if (!location.state?.token && !queryParam(location.search, 'token')) {
         history.replace('/auth/login');
 
         return null;

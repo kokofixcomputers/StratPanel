@@ -23,6 +23,7 @@ import ErrorBoundary from '@/components/elements/ErrorBoundary';
 import { FileActionCheckbox } from '@/components/server/files/SelectFileCheckbox';
 import { hashToPath } from '@/helpers';
 import useJarIcons from '@/components/server/files/useJarIcons';
+import ViewSwitch from '@/components/server/files/ViewSwitch';
 import style from './style.module.css';
 
 const sortFiles = (files: FileObject[]): FileObject[] => {
@@ -86,7 +87,12 @@ export default () => {
     return (
         <ServerContentBlock title={'File Manager'} showFlashKey={'files'}>
             <ErrorBoundary>
-                <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>File Manager</h1>
+                <div css={tw`flex flex-wrap items-center justify-between gap-3`}>
+                    <h1 css={tw`text-3xl font-bold tracking-tight text-neutral-50`}>File Manager</h1>
+                    <div css={tw`hidden md:block`}>
+                        <ViewSwitch />
+                    </div>
+                </div>
                 <div css={tw`mt-4 mb-6`}>
                     <FileManagerBreadcrumbs />
                 </div>

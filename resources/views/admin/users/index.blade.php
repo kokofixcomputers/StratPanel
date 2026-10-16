@@ -48,7 +48,7 @@
                         @foreach ($users as $user)
                             <tr class="align-middle">
                                 <td><code>{{ $user->id }}</code></td>
-                                <td><a href="{{ route('admin.users.view', $user->id) }}">{{ $user->email }}</a> @if($user->root_admin)<i class="fa fa-star text-yellow"></i>@endif</td>
+                                <td><a href="{{ route('admin.users.view', $user->id) }}">{{ $user->email }}</a> @if($user->root_admin)<span class="label label-warning" data-toggle="tooltip" title="Root admin: can do everything"><i class="fa fa-star"></i> Root admin</span>@endif @foreach($user->roles as $role)<span class="label" style="background-color: {{ $role->color }};">{{ $role->name }}</span> @endforeach</td>
                                 <td>{{ $user->name_last }}, {{ $user->name_first }}</td>
                                 <td>{{ $user->username }}</td>
                                 <td class="text-center">

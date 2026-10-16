@@ -21,6 +21,11 @@ class UpdateEmailRequest extends ClientApiRequest
 
         $hasher = Container::getInstance()->make(Hasher::class);
 
+        // Somebody who signed up with another service has no password to give yet.
+        if (!$this->user()->password_set) {
+            return true;
+        }
+
         // Verify password matches when changing password or email.
         if (!$hasher->check($this->input('password'), $this->user()->password)) {
             throw new InvalidPasswordProvidedException(trans('validation.internal.invalid_password'));

@@ -31,7 +31,7 @@ class ClientController extends ClientApiController
 
         // Start the query builder and ensure we eager load any requested relationships from the request.
         $builder = QueryBuilder::for(
-            Server::query()->with($this->getIncludesForTransformer($transformer, ['node']))
+            Server::query()->with($this->getIncludesForTransformer($transformer, ['node', 'autoSleep']))
         )->allowedFilters([
             'uuid',
             'name',
@@ -48,7 +48,7 @@ class ClientController extends ClientApiController
         if (in_array($type, ['admin', 'admin-all'])) {
             // If they aren't an admin but want all the admin servers don't fail the request, just
             // make it a query that will never return any results back.
-            if (!$user->root_admin) {
+            if (!$user->canAccessAllServers()) {
                 $builder->whereRaw('1 = 2');
             } else {
                 $builder = $type === 'admin-all'

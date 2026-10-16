@@ -181,7 +181,7 @@ export default (uuid: string, minecraftVersion: string) => {
         // Installing another version of the same project replaces the old file.
         const previous = mods[record.projectId];
         if (previous && (previous.file !== record.file || previous.directory !== record.directory)) {
-            await deleteFiles(uuid, previous.directory, [previous.file]).catch(() => undefined);
+            await deleteFiles(uuid, previous.directory, [previous.file], { permanent: true }).catch(() => undefined);
         }
         await save(record);
         setMods((current) => ({ ...current, [record.projectId]: record }));
@@ -264,7 +264,7 @@ export default (uuid: string, minecraftVersion: string) => {
         const file = latest.files.find((f) => f.primary) || latest.files[0];
         await pullFile(uuid, file.url, record.directory, file.filename);
         if (file.filename !== record.file) {
-            await deleteFiles(uuid, record.directory, [record.file]).catch(() => undefined);
+            await deleteFiles(uuid, record.directory, [record.file], { permanent: true }).catch(() => undefined);
         }
 
         const next: ManagedProject = {

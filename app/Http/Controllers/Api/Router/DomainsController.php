@@ -7,6 +7,7 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Pterodactyl\Models\ServerDomain;
+use Pterodactyl\Extensions\Hooks;
 
 class DomainsController extends Controller
 {
@@ -35,7 +36,10 @@ class DomainsController extends Controller
             ->values()
             ->all();
 
-        return new JsonResponse(['data' => $data]);
+        // Extensions may change the list the router is given (the domains, where they lead).
+        $filtered = Hooks::filter('router.domains', $data);
+
+        return new JsonResponse(['data' => is_array($filtered) ? $filtered : $data]);
     }
 
     /**

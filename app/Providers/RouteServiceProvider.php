@@ -36,6 +36,12 @@ class RouteServiceProvider extends ServiceProvider
         Route::model('database', Database::class);
 
         $this->routes(function () {
+            // The browser files of extensions. Before the routes of the panel, whose last one answers for every other address.
+            Route::middleware(['throttle:300,1'])
+                ->get('/extensions/{extension}/assets/{path}', \Pterodactyl\Http\Controllers\Extensions\AssetController::class)
+                ->where('extension', '[a-z0-9][a-z0-9-]{1,46}[a-z0-9]')
+                ->where('path', '.*');
+
             Route::middleware('web')->group(function () {
                 Route::middleware(['auth.session', RequireTwoFactorAuthentication::class])
                     ->group(base_path('routes/base.php'));
@@ -43,6 +49,10 @@ class RouteServiceProvider extends ServiceProvider
                 Route::middleware(['auth.session', RequireTwoFactorAuthentication::class, AdminAuthenticate::class])
                     ->prefix('/admin')
                     ->group(base_path('routes/admin.php'));
+
+                Route::middleware(['throttle:authentication'])->prefix('/auth/oauth')
+                    ->where(['provider' => '[a-z0-9][a-z0-9-]{0,38}[a-z0-9]'])
+                    ->group(base_path('routes/oauth.php'));
 
                 Route::middleware('guest')->prefix('/auth')->group(base_path('routes/auth.php'));
             });

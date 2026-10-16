@@ -16,6 +16,8 @@ import { ip } from '@/lib/formatters';
 import DockerImageBox from '@/components/server/settings/DockerImageBox';
 import ServerLimitsBox from '@/components/server/settings/ServerLimitsBox';
 import WorldManagerBox from '@/components/server/settings/WorldManagerBox';
+import AutoSleepBox from '@/components/server/settings/AutoSleepBox';
+import ExtensionSlot from '@/components/elements/ExtensionSlot';
 import { Button } from '@/components/elements/button/index';
 
 export default () => {
@@ -78,6 +80,7 @@ export default () => {
                     <Can action={'file.read'}>
                         <WorldManagerBox />
                     </Can>
+                    <AutoSleepBox />
                     <Can action={'startup.docker-image'}>
                         <DockerImageBox />
                     </Can>
@@ -89,6 +92,7 @@ export default () => {
                     <Can action={'settings.reinstall'}>
                         <ReinstallServerBox />
                     </Can>
+                    <ExtensionSlot name={'server.settings'} server={{ id, uuid }} />
                 </div>
             </div>
         </ServerContentBlock>

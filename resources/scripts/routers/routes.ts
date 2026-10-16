@@ -13,12 +13,15 @@ import PlayersContainer from '@/components/server/players/PlayersContainer';
 import ContentContainer from '@/components/server/content/ContentContainer';
 import WorldsContainer from '@/components/server/worlds/WorldsContainer';
 import ProjectPage from '@/components/server/content/ProjectPage';
+import TrashContainer from '@/components/server/trash/TrashContainer';
 import ToolsContainer from '@/components/server/tools/ToolsContainer';
-import FileManagerContainer from '@/components/server/files/FileManagerContainer';
+import { FilesPage, FileEditPage } from '@/components/server/files/FilesPage';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
 import AccountOverviewContainer from '@/components/dashboard/AccountOverviewContainer';
 import AccountApiContainer from '@/components/dashboard/AccountApiContainer';
 import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer';
+import AccountProvidersContainer from '@/components/dashboard/signin/AccountProvidersContainer';
+import AccountPasskeysContainer from '@/components/dashboard/signin/AccountPasskeysContainer';
 import ActivityLogContainer from '@/components/dashboard/activity/ActivityLogContainer';
 import ServerActivityLogContainer from '@/components/server/ServerActivityLogContainer';
 
@@ -27,7 +30,6 @@ import ServerActivityLogContainer from '@/components/server/ServerActivityLogCon
 //
 // These specific lazy loaded routes are to avoid loading in heavy screens
 // for the server dashboard when they're only needed for specific instances.
-const FileEditContainer = lazy(() => import('@/components/server/files/FileEditContainer'));
 const ScheduleEditContainer = lazy(() => import('@/components/server/schedules/ScheduleEditContainer'));
 
 interface RouteDefinition {
@@ -67,6 +69,16 @@ export default {
             path: '/ssh',
             name: 'SSH Keys',
             component: AccountSSHContainer,
+        },
+        {
+            path: '/providers',
+            name: 'Providers',
+            component: AccountProvidersContainer,
+        },
+        {
+            path: '/passkeys',
+            name: 'Passkeys',
+            component: AccountPasskeysContainer,
         },
         {
             path: '/activity',
@@ -129,13 +141,13 @@ export default {
             path: '/files',
             permission: 'file.*',
             name: 'Files',
-            component: FileManagerContainer,
+            component: FilesPage,
         },
         {
             path: '/files/:action(edit|new)',
             permission: 'file.*',
             name: undefined,
-            component: FileEditContainer,
+            component: FileEditPage,
         },
         {
             path: '/databases',
@@ -178,6 +190,13 @@ export default {
             permission: 'allocation.*',
             name: 'Domains',
             component: DomainsContainer,
+        },
+        {
+            // Only on the menu while the trash bin is on, see ServerRouter.
+            path: '/trash',
+            permission: 'trash.*',
+            name: 'Trash',
+            component: TrashContainer,
         },
         {
             path: '/startup',

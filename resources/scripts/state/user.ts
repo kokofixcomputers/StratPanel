@@ -7,7 +7,13 @@ export interface UserData {
     email: string;
     language: string;
     rootAdmin: boolean;
+    // Whether the admin area is open to this user: root admins, and people whose roles give them a permission there.
+    canAccessAdmin: boolean;
+    // Whether this user may open every server like its owner: root admins, and roles with that permission.
+    canAccessAllServers: boolean;
     useTotp: boolean;
+    // False for somebody who signed up with another service and has not chosen a password yet.
+    passwordSet: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

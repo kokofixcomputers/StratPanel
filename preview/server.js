@@ -66,9 +66,13 @@ const fileAttrs = ([name, isFile, size = 4096, mimetype]) => item('file_object',
     mimetype: isFile ? mimetype : 'inode/directory', created_at: '2026-10-01T13:34:00Z', modified_at: '2026-10-01T13:34:00Z',
 });
 
+// Auto sleep of the mock server, off like on a real one. /mock-sleep?sleeping=1 puts it to sleep, ?idle=1 starts the countdown,
+// ?wake=0 says no domain is set up (the wake option is then explained instead of offered).
+const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_at: null, idle_since: null, wake_available: true };
+const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, status: null,
+    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, status: null, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -281,6 +285,12 @@ app.get('/mock-world', (req, res) => {
     if (req.query.frozen !== undefined) mockWorld.frozen = req.query.frozen === '1';
     res.json({ ...mockWorld, now: mockWorldNow() });
 });
+app.get('/mock-sleep', (req, res) => {
+    if (req.query.sleeping !== undefined) { mockSleep.enabled = true; mockSleep.slept_at = req.query.sleeping === '1' ? new Date().toISOString() : null; }
+    if (req.query.idle !== undefined) { mockSleep.enabled = true; mockSleep.idle_since = req.query.idle === '1' ? new Date(Date.now() - 4 * 60000).toISOString() : null; }
+    if (req.query.wake !== undefined) mockSleep.wake_available = req.query.wake === '1';
+    res.json(sleepAttrs());
+});
 app.get('/mock-missing', (req, res) => res.status(404).end());
 const mockUploads = [];
 app.get('/mock-uploads', (req, res) => res.json(mockUploads));
@@ -340,14 +350,53 @@ api.get('/servers/:id/startup', (req, res) => res.json({ object: 'list', data: v
 // The panel's CurseForge endpoints, answered from made-up data, see preview/curseforge.js. PREVIEW_CURSEFORGE=off turns it off.
 const mountCurseForgeImages = require('./curseforge')(api, mockWrites, express);
 
+api.get('/servers/:id/settings/auto-sleep', (req, res) => res.json(sleepAttrs()));
+api.put('/servers/:id/settings/auto-sleep', (req, res) => {
+    const { enabled, idle_minutes: idle, wake_on_join: wake } = req.body || {};
+    if (typeof enabled !== 'boolean' || ![5, 10, 15, 30, 60, 120, 240].includes(idle) || typeof wake !== 'boolean') return res.status(422).json({ errors: [{ code: 'ValidationException', status: '422', detail: 'The selected idle minutes is invalid.' }] });
+    Object.assign(mockSleep, { enabled, idle_minutes: idle, wake_on_join: wake });
+    if (!enabled) { mockSleep.slept_at = null; mockSleep.idle_since = null; }
+    res.json(sleepAttrs());
+});
+
+// Sign in methods: the services and passkeys of the account (Account > Providers and Passkeys).
+const mockProviders = [
+    { key: 'github', name: 'GitHub', type: 'github', enabled: true, linked: true, account: 'octocat', linked_at: now(), last_used_at: now() },
+    { key: 'discord', name: 'Discord', type: 'discord', enabled: true, linked: false, account: null, linked_at: null, last_used_at: null },
+    { key: 'google', name: 'Google', type: 'google', enabled: true, linked: false, account: null, linked_at: null, last_used_at: null },
+];
+let mockPasskeys = [{ id: 1, name: 'MacBook (Touch ID)', created_at: now(), last_used_at: now() }];
+api.get('/account/providers', (req, res) => res.json({ password_set: true, data: mockProviders }));
+api.delete('/account/providers/:key', (req, res) => {
+    const row = mockProviders.find((p) => p.key === req.params.key);
+    if (row) Object.assign(row, { linked: false, account: null, linked_at: null, last_used_at: null });
+    res.status(204).end();
+});
+api.get('/account/passkeys', (req, res) => res.json({ enabled: true, data: mockPasskeys }));
+api.delete('/account/passkeys/:id', (req, res) => {
+    mockPasskeys = mockPasskeys.filter((k) => String(k.id) !== req.params.id);
+    res.status(204).end();
+});
+
+// The trash bin of the server.
+let mockTrash = [
+    { id: 't1', type: 'directory', name: 'world_old', path: '/', size: null, deleted_by: 'preview', deleted_at: now(), expires_at: new Date(Date.now() + 29 * 864e5).toISOString() },
+    { id: 't2', type: 'file', name: 'server.properties', path: '/', size: 1530, deleted_by: 'preview', deleted_at: now(), expires_at: new Date(Date.now() + 3 * 864e5).toISOString() },
+    { id: 't3', type: 'schedule', name: 'Nightly restart', path: null, size: null, deleted_by: 'friend', deleted_at: now(), expires_at: new Date(Date.now() + 5 * 36e5).toISOString() },
+];
+api.get('/servers/:id/trash', (req, res) => res.json({ enabled: true, retention_days: 30, data: mockTrash }));
+api.post('/servers/:id/trash/:item/restore', (req, res) => { mockTrash = mockTrash.filter((t) => t.id !== req.params.item); res.json({ restored_to: '/restored' }); });
+api.delete('/servers/:id/trash/:item', (req, res) => { mockTrash = mockTrash.filter((t) => t.id !== req.params.item); res.status(204).end(); });
+api.delete('/servers/:id/trash', (req, res) => { mockTrash = []; res.status(204).end(); });
+
 // Anything else that mutates: pretend it worked.
 api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', data: [] }) : res.status(204).end()));
 app.use('/api/client', api);
 app.get('/locales/locale.json', (req, res) => res.json({}));
 
 const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, use_totp: false, language: 'en', updated_at: now(), created_at: now() };
-const page = (title) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
-<script>window.fetch=(function(f){return function(u,o){return f(typeof u==='string'?u.replace('https://api.modrinth.com/v2','/mr'):u,o)}})(window.fetch.bind(window));</script><script>window.PterodactylUser=${JSON.stringify(user)};window.SiteConfiguration=${JSON.stringify({ name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' }, branding: { favicon: process.env.PREVIEW_FAVICON || null, announcements: [{ id: 'a1', key: 'a1:1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.\nServers come back by themselves.', type: 'warning', enabled: true, dismissible: true, link_label: 'Status page', link_url: 'https://status.example.com' }, { id: 'a2', key: 'a2:1', title: '', message: 'Welcome to Stratosphere, read the rules before you start.', type: 'info', enabled: true, dismissible: false, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }, { label: 'Rules', url: '/rules', location: 'sidebar', new_tab: false }, { label: 'Terms', url: '/terms', location: 'footer', new_tab: true }, { label: 'Privacy', url: '/privacy', location: 'footer', new_tab: true }] } })};</script></head>
+const page = (title, guest = false) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
+<script>window.fetch=(function(f){return function(u,o){return f(typeof u==='string'?u.replace('https://api.modrinth.com/v2','/mr'):u,o)}})(window.fetch.bind(window));</script><script>${guest ? '' : `window.PterodactylUser=${JSON.stringify(user)};`}window.SiteConfiguration=${JSON.stringify({ name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' }, captcha: { provider: 'none', siteKey: '' }, auth: { registration: true, passwordRegistration: true, passkeys: true, providers: [{ key: 'github', name: 'GitHub', type: 'github', signup: true }, { key: 'discord', name: 'Discord', type: 'discord', signup: true }, { key: 'google', name: 'Google', type: 'google', signup: false }] }, branding: { favicon: process.env.PREVIEW_FAVICON || null, announcements: [{ id: 'a1', key: 'a1:1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.\nServers come back by themselves.', type: 'warning', enabled: true, dismissible: true, link_label: 'Status page', link_url: 'https://status.example.com' }, { id: 'a2', key: 'a2:1', title: '', message: 'Welcome to Stratosphere, read the rules before you start.', type: 'info', enabled: true, dismissible: false, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }, { label: 'Rules', url: '/rules', location: 'sidebar', new_tab: false }, { label: 'Terms', url: '/terms', location: 'footer', new_tab: true }, { label: 'Privacy', url: '/privacy', location: 'footer', new_tab: true }] } })};</script></head>
 <body><div id="modal-portal"></div><div id="app"></div><script src="/assets/bundle.js"></script></body></html>`;
 
 app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false }));
@@ -369,7 +418,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));
-app.get('*', (req, res) => res.send(page('Panel preview')));
+app.get('*', (req, res) => res.send(page('Panel preview', req.path.startsWith('/auth'))));
 
 // ---- fake wings --------------------------------------------------------------------------------
 const server = http.createServer(app);

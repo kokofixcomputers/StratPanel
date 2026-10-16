@@ -200,6 +200,8 @@ return [
         Pterodactyl\Providers\RouteServiceProvider::class,
         Pterodactyl\Providers\RepositoryServiceProvider::class,
         Pterodactyl\Providers\ViewComposerServiceProvider::class,
+        // It starts the extensions, which hook into what the providers above set up.
+        Pterodactyl\Providers\ExtensionServiceProvider::class,
 
         /*
          * Additional Dependencies

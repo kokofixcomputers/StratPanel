@@ -68,4 +68,5 @@ export const uploadServerIcon = async (uuid: string, png: Blob): Promise<void> =
     );
 };
 
-export const deleteServerIcon = (uuid: string): Promise<void> => deleteFiles(uuid, '/', [ICON_FILE]);
+export const deleteServerIcon = (uuid: string): Promise<void> =>
+    deleteFiles(uuid, '/', [ICON_FILE], { permanent: true });

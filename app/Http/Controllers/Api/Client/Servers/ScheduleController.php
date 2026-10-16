@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 
+use Pterodactyl\Services\Trash\TrashService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -27,7 +28,7 @@ class ScheduleController extends ClientApiController
     /**
      * ScheduleController constructor.
      */
-    public function __construct(private ScheduleRepository $repository, private ProcessScheduleService $service)
+    public function __construct(private ScheduleRepository $repository, private ProcessScheduleService $service, private TrashService $trash)
     {
         parent::__construct();
     }
@@ -161,7 +162,12 @@ class ScheduleController extends ClientApiController
      */
     public function delete(DeleteScheduleRequest $request, Server $server, Schedule $schedule): JsonResponse
     {
-        $this->repository->delete($schedule->id);
+        // In the trash bin it can be recovered, otherwise it is gone (a soft deleted schedule is not).
+        if ($this->trash->enabled()) {
+            $this->trash->trashSchedule($server, $request->user(), $schedule);
+        } else {
+            $schedule->forceDelete();
+        }
 
         Activity::event('server:schedule.delete')->subject($schedule)->property('name', $schedule->name)->log();
 

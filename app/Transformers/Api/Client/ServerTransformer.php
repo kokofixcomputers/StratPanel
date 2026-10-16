@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Transformers\Api\Client;
 
+use Pterodactyl\Extensions\Hooks;
 use Pterodactyl\Models\Egg;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Subuser;
@@ -36,7 +37,8 @@ class ServerTransformer extends BaseClientTransformer
 
         $user = $this->request->user();
 
-        return [
+        // Extensions may add to what the client gets about a server, see Pterodactyl\Extensions\Hooks.
+        return Hooks::filter('server.attributes', [
             'server_owner' => $user->id === $server->owner_id,
             'identifier' => config('pterodactyl.features.new_server_identifiers')
                 ? $server->identifier
@@ -74,13 +76,23 @@ class ServerTransformer extends BaseClientTransformer
                 'backups' => $server->backup_limit,
             ],
             'status' => $server->status,
+            // Whether auto sleep is on, and whether the server is asleep because of it (stopped because nobody was online).
+            'auto_sleep' => [
+                'enabled' => (bool) $server->autoSleep?->enabled,
+                'sleeping' => (bool) ($server->autoSleep?->enabled && $server->autoSleep?->slept_at),
+            ],
+            // Whether deleted files and schedules are kept for a while, and for how long.
+            'trash' => [
+                'enabled' => (bool) config('trash.enabled', false),
+                'retention_days' => max(1, min(365, (int) config('trash.retention_days', 30))),
+            ],
             // This field is deprecated, please use "status".
             'is_suspended' => $server->isSuspended(),
             // This field is deprecated, please use "status".
             'is_installing' => !$server->isInstalled(),
             'is_transferring' => !is_null($server->transfer),
             'skip_scripts' => $server->skip_scripts,
-        ];
+        ], $server, $user);
     }
 
     /**

@@ -62,6 +62,11 @@ class Permission extends Model
 
     public const ACTION_SETTINGS_RENAME = 'settings.rename';
     public const ACTION_SETTINGS_REINSTALL = 'settings.reinstall';
+    public const ACTION_SETTINGS_AUTO_SLEEP = 'settings.auto-sleep';
+
+    public const ACTION_TRASH_READ = 'trash.read';
+    public const ACTION_TRASH_RESTORE = 'trash.restore';
+    public const ACTION_TRASH_DELETE = 'trash.delete';
 
     public const ACTION_ACTIVITY_READ = 'activity.read';
 
@@ -192,11 +197,21 @@ class Permission extends Model
             ],
         ],
 
+        'trash' => [
+            'description' => 'Permissions that control a user\'s access to the trash bin of this server, where deleted files and schedules are kept for a while when an admin turned the trash bin on.',
+            'keys' => [
+                'read' => 'Allows a user to see what is in the trash bin.',
+                'restore' => 'Allows a user to recover files and schedules from the trash bin. Recovering also needs the permission to create that kind of thing (file.create, schedule.create).',
+                'delete' => 'Allows a user to delete things from the trash bin for good, to empty it, and to delete files without moving them to the trash bin.',
+            ],
+        ],
+
         'settings' => [
             'description' => 'Permissions that control a user\'s access to the settings for this server.',
             'keys' => [
                 'rename' => 'Allows a user to rename this server and change the description of it.',
                 'reinstall' => 'Allows a user to trigger a reinstall of this server.',
+                'auto-sleep' => 'Allows a user to turn auto sleep on or off for this server and choose how long it waits.',
             ],
         ],
 

@@ -12,8 +12,8 @@ abstract class AdminFormRequest extends FormRequest
     abstract public function rules(): array;
 
     /**
-     * Determine if the user is an admin and has permission to access this
-     * form controller in the first place.
+     * Determine if the user may be in the admin area at all. What they may do there is checked by the "admin.can" middleware of
+     * the route the form is sent to.
      */
     public function authorize(): bool
     {
@@ -21,7 +21,7 @@ abstract class AdminFormRequest extends FormRequest
             return false;
         }
 
-        return (bool) $this->user()->root_admin;
+        return $this->user()->canAccessAdmin();
     }
 
     /**

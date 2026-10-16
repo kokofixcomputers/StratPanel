@@ -70,16 +70,20 @@
                     <h3 class="box-title">Permissions</h3>
                 </div>
                 <div class="box-body">
-                    <div class="form-group col-md-12">
-                        <label for="root_admin" class="control-label">Administrator</label>
-                        <div>
-                            <select name="root_admin" class="form-control">
-                                <option value="0">@lang('strings.no')</option>
-                                <option value="1">@lang('strings.yes')</option>
-                            </select>
-                            <p class="text-muted"><small>Setting this to 'Yes' gives a user full administrative access.</small></p>
+                    @if(Auth::user()->root_admin)
+                        <div class="form-group col-md-12">
+                            <label for="root_admin" class="control-label">Root admin</label>
+                            <div>
+                                <select name="root_admin" class="form-control">
+                                    <option value="0">@lang('strings.no')</option>
+                                    <option value="1">@lang('strings.yes')</option>
+                                </select>
+                                <p class="text-muted"><small>A root admin can do everything. Others get roles, which you can give on the page of the user.</small></p>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <p class="text-muted col-md-12 no-margin">Roles can be given on the page of the user once it exists.</p>
+                    @endif
                 </div>
             </div>
         </div>

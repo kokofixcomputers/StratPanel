@@ -22,13 +22,18 @@ import { useLocation } from 'react-router';
 import ConflictStateRenderer from '@/components/server/ConflictStateRenderer';
 import PermissionRoute from '@/components/elements/PermissionRoute';
 import routes from '@/routers/routes';
+import { getServerPages, useExtensionRegistry } from '@/lib/extensions';
+import { ExtensionBoundary } from '@/components/elements/ExtensionSlot';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
     const location = useLocation();
 
-    const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
+    // Whoever may open every server also gets past a server that is installing or suspended, and may jump to it in the admin area.
+    const rootAdmin = useStoreState((state) => state.user.data!.canAccessAllServers);
+    const trashEnabled = ServerContext.useStoreState((state) => !!state.server.data?.trash.enabled);
+    const adminArea = useStoreState((state) => state.user.data!.canAccessAdmin);
     const [error, setError] = useState('');
     const [isProxy, setIsProxy] = useState(false);
 
@@ -56,6 +61,30 @@ export default () => {
 
     // While Content is open its filters take the place of the server navigation, so it knows nothing of the page it is on.
     const inContent = location.pathname.startsWith(`${match.url.replace(/\/*$/, '')}/mods`);
+
+    // The pages that extensions add to the menu of a server, after the ones of the panel. Made again only when an extension adds
+    // one, otherwise a page would start from nothing every time the router renders.
+    const extensionVersion = useExtensionRegistry();
+    const extensionRoutes = React.useMemo(
+        () =>
+            getServerPages().map((page) => {
+                const Page = page.component;
+
+                return {
+                    path: `/ext/${page.extension}/${page.path}`,
+                    name: page.label,
+                    permission: page.permission ?? null,
+                    exact: false,
+                    component: () => (
+                        <ExtensionBoundary extension={page.extension}>
+                            <Page server={{ id, uuid }} />
+                        </ExtensionBoundary>
+                    ),
+                };
+            }),
+        [extensionVersion, id, uuid]
+    );
+    const serverRoutes = [...routes.server, ...extensionRoutes];
 
     const to = (value: string, url = false) => {
         if (value === '/') {
@@ -98,8 +127,10 @@ export default () => {
                     <CSSTransition timeout={150} classNames={'fade'} appear in>
                         <SubNavigation className={'lg:hidden'}>
                             <div>
-                                {routes.server
+                                {serverRoutes
                                     .filter((route) => !!route.name)
+                                    // The trash bin is on the menu while it is on.
+                                    .filter((route) => route.path !== '/trash' || trashEnabled)
                                     // Proxies have no player list of their own to manage.
                                     .filter(
                                         (route) => !(isProxy && (route.path === '/players' || route.path === '/tools'))
@@ -117,7 +148,7 @@ export default () => {
                                             </NavLink>
                                         )
                                     )}
-                                {rootAdmin && (
+                                {adminArea && (
                                     // eslint-disable-next-line react/jsx-no-target-blank
                                     <a href={`/admin/servers/view/${serverId}`} target={'_blank'}>
                                         <ExternalLinkIcon />
@@ -135,10 +166,11 @@ export default () => {
                             <ContentSidebar backUrl={to('/', true)} />
                         ) : (
                             <ServerSidebar
-                                items={routes.server
+                                items={serverRoutes
                                     .filter(
                                         (route) =>
                                             !!route.name &&
+                                            (route.path !== '/trash' || trashEnabled) &&
                                             !(isProxy && (route.path === '/players' || route.path === '/tools'))
                                     )
                                     .map((route) => ({
@@ -148,7 +180,7 @@ export default () => {
                                         permission: route.permission,
                                         exact: route.exact,
                                     }))}
-                                adminUrl={rootAdmin ? `/admin/servers/view/${serverId}` : undefined}
+                                adminUrl={adminArea ? `/admin/servers/view/${serverId}` : undefined}
                                 playersUrl={isProxy ? undefined : to('/players', true)}
                             />
                         )}
@@ -160,7 +192,7 @@ export default () => {
                                 <ErrorBoundary>
                                     <TransitionRouter>
                                         <Switch location={location}>
-                                            {routes.server.map(({ path, permission, component: Component }) => (
+                                            {serverRoutes.map(({ path, permission, component: Component }) => (
                                                 <PermissionRoute
                                                     key={path}
                                                     permission={permission}

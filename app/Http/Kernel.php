@@ -103,5 +103,7 @@ class Kernel extends HttpKernel
         'bindings' => SubstituteBindings::class,
         'recaptcha' => VerifyReCaptcha::class,
         'node.maintenance' => MaintenanceMiddleware::class,
+        'admin.can' => \Pterodactyl\Http\Middleware\AdminPermission::class,
+        'extension.boundary' => \Pterodactyl\Http\Middleware\ExtensionBoundary::class,
     ];
 }

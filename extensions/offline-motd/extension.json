@@ -1,0 +1,50 @@
+{
+  "api": 1,
+  "id": "offline-motd",
+  "name": "Offline MOTD",
+  "version": "1.0.0",
+  "description": "Choose what players see in the server list and when they join while a server is off. Owners can set their own message.",
+  "author": "Stratosphere",
+  "license": "MIT",
+  "php": {
+    "main": "Stratosphere\\OfflineMotd\\OfflineMotd",
+    "autoload": { "Stratosphere\\OfflineMotd\\": "src/" }
+  },
+  "web": {
+    "scripts": ["web/index.js"],
+    "styles": ["web/style.css"]
+  },
+  "settings": [
+    {
+      "key": "message",
+      "label": "Message",
+      "type": "textarea",
+      "rows": 3,
+      "max_length": 300,
+      "default": "§eThis server is off.\n§7Come back once it has been started.",
+      "help": "Shown in the server list, and to a player who tries to join, while the server is off. § and a letter or digit is a colour (§a green, §c red), a new line is a second line. {server} is the name of the server."
+    },
+    {
+      "key": "label",
+      "label": "Text where the version is",
+      "type": "text",
+      "max_length": 30,
+      "default": "Offline",
+      "help": "Short text that takes the place of the version in the server list."
+    },
+    {
+      "key": "allow_server_messages",
+      "label": "Let the owner of a server set a message of their own",
+      "type": "boolean",
+      "default": true,
+      "help": "They find it on the Settings page of their server. Their message is used instead of the one above."
+    },
+    {
+      "key": "include_sleeping",
+      "label": "Use it for servers that are asleep too",
+      "type": "boolean",
+      "default": false,
+      "help": "Off: a server that auto sleep stopped keeps saying that it is asleep and that joining wakes it up."
+    }
+  ]
+}

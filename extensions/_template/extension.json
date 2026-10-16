@@ -1,0 +1,26 @@
+{
+  "api": 1,
+  "id": "my-extension",
+  "name": "My Extension",
+  "version": "1.0.0",
+  "description": "What it does, in a sentence.",
+  "author": "You",
+  "license": "MIT",
+  "php": {
+    "main": "Stratosphere\\MyExtension\\MyExtension",
+    "autoload": { "Stratosphere\\MyExtension\\": "src/" }
+  },
+  "web": {
+    "scripts": ["web/index.js"],
+    "styles": ["web/style.css"]
+  },
+  "settings": [
+    {
+      "key": "greeting",
+      "label": "Greeting",
+      "type": "text",
+      "default": "Hello from my extension",
+      "help": "Settings like this one get a form on Admin > Extensions > My Extension > Settings, with no code on your side."
+    }
+  ]
+}

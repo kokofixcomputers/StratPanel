@@ -40,9 +40,22 @@ type route struct {
 	Status string
 }
 
-type cachedState struct {
+// A message the panel wants shown to the player instead of the router's own words. Extensions of the panel can set it.
+type notice struct {
+	Label   string `json:"label"`
+	Message string `json:"message"`
+}
+
+type serverState struct {
 	state string
-	at    time.Time
+	// Whether the panel stopped the server because nobody was on, see auto sleep in the panel.
+	sleeping bool
+	notice   *notice
+}
+
+type cachedState struct {
+	serverState
+	at time.Time
 }
 
 type config struct {
@@ -58,6 +71,8 @@ type config struct {
 	StoppingMOTD  string
 	SuspendedMOTD string
 	InstallMOTD   string
+	SleepingMOTD  string
+	WakingMOTD    string
 }
 
 type router struct {
@@ -101,6 +116,8 @@ func loadConfig() config {
 		StoppingMOTD:  motdOr("STOPPING_MOTD", "§eThis server is shutting down.\n§7Try again in a moment."),
 		SuspendedMOTD: motdOr("SUSPENDED_MOTD", "§cThis server is suspended.\n§7Contact the owner or an administrator."),
 		InstallMOTD:   motdOr("INSTALLING_MOTD", "§eThis server is being set up.\n§7Check back soon."),
+		SleepingMOTD:  motdOr("SLEEPING_MOTD", "§bThis server is asleep.\n§7Join to wake it up."),
+		WakingMOTD:    motdOr("WAKING_MOTD", "§aWaking the server up...\n§7Join again in about a minute."),
 	}
 }
 
@@ -380,16 +397,17 @@ func (r *router) poll(ctx context.Context) {
 }
 
 // liveState asks the panel what the server behind a domain is doing right now: "running", "starting", "stopping",
-// "offline" or "unknown". Answers are remembered for a few seconds so server list refreshes do not flood the panel.
-func (r *router) liveState(domain string) string {
+// "offline" or "unknown", whether it is asleep (stopped by auto sleep because nobody was on), and the message the panel wants
+// the player to see, if it has one. Answers are remembered for a few seconds so server list refreshes do not flood the panel.
+func (r *router) liveState(domain string) serverState {
 	if r.cfg.MappingFile != "" || r.cfg.PanelURL == "" {
-		return "unknown"
+		return serverState{state: "unknown"}
 	}
 
 	r.stateMu.Lock()
 	if cached, ok := r.states[domain]; ok && time.Since(cached.at) < 3*time.Second {
 		r.stateMu.Unlock()
-		return cached.state
+		return cached.serverState
 	}
 	r.stateMu.Unlock()
 
@@ -399,41 +417,127 @@ func (r *router) liveState(domain string) string {
 	if r.states == nil {
 		r.states = map[string]cachedState{}
 	}
-	r.states[domain] = cachedState{state: state, at: time.Now()}
+	r.states[domain] = cachedState{serverState: state, at: time.Now()}
 	r.stateMu.Unlock()
 
 	return state
 }
 
-func (r *router) fetchState(domain string) string {
+func (r *router) fetchState(domain string) serverState {
+	unknown := serverState{state: "unknown"}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.cfg.PanelURL+"/api/router/state?domain="+url.QueryEscape(domain), nil)
 	if err != nil {
-		return "unknown"
+		return unknown
 	}
 	req.Header.Set("Authorization", "Bearer "+r.cfg.Token)
 	req.Header.Set("Accept", "application/json")
 
 	res, err := (&http.Client{Timeout: 2 * time.Second}).Do(req)
 	if err != nil {
-		return "unknown"
+		return unknown
 	}
 	defer res.Body.Close()
 
 	var body struct {
-		State string `json:"state"`
+		State    string  `json:"state"`
+		Sleeping bool    `json:"sleeping"`
+		Notice   *notice `json:"notice"`
 	}
-	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&body) != nil || body.State == "" {
-		return "unknown"
+	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 8192)).Decode(&body) != nil || body.State == "" {
+		return unknown
 	}
 
-	return body.State
+	// A notice without words is no notice.
+	if body.Notice != nil && strings.TrimSpace(body.Notice.Message) == "" {
+		body.Notice = nil
+	}
+
+	return serverState{state: body.State, sleeping: body.Sleeping, notice: body.Notice}
+}
+
+// wake asks the panel to start a server that auto sleep stopped, because a player tried to join it. True when the server is
+// being started (by this request or by an earlier one), false when the panel did not start it: the server is not asleep
+// after all, or the panel could not be reached.
+func (r *router) wake(domain string) bool {
+	if r.cfg.MappingFile != "" || r.cfg.PanelURL == "" {
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+
+	payload, _ := json.Marshal(map[string]string{"domain": domain})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.cfg.PanelURL+"/api/router/wake", bytes.NewReader(payload))
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Authorization", "Bearer "+r.cfg.Token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	res, err := (&http.Client{Timeout: 8 * time.Second}).Do(req)
+	if err != nil {
+		log.Printf("%s: could not ask the panel to wake the server: %v", domain, err)
+		return false
+	}
+	defer res.Body.Close()
+
+	var body struct {
+		Result string `json:"result"`
+	}
+	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&body) != nil {
+		// 401 is a router token that does not match, 404 a panel that is too old to know about waking.
+		log.Printf("%s: the panel answered %d when asked to wake the server", domain, res.StatusCode)
+		return false
+	}
+
+	// The state that was remembered is not true any more.
+	r.stateMu.Lock()
+	delete(r.states, domain)
+	r.stateMu.Unlock()
+
+	switch body.Result {
+	case "woken":
+		log.Printf("%s: woke the server up", domain)
+		return true
+	case "cooldown", "awake":
+		return true
+	}
+
+	log.Printf("%s: the panel did not wake the server (%s)", domain, body.Result)
+
+	return false
 }
 
 // notice is what a player is told when a server cannot be reached, with a short label for the server list.
-func (r *router) notice(status, state string) (string, string) {
+func (r *router) notice(status, state string, sleeping bool) (string, string) {
+	return r.noticeFor(status, serverState{state: state, sleeping: sleeping})
+}
+
+// noticeFor picks what the player is told. The panel's own message (from an extension) wins over the router's, except for a
+// server that cannot be joined at all (suspended, being installed), where the panel's words are not the point.
+func (r *router) noticeFor(status string, info serverState) (string, string) {
+	label, message := r.defaultNotice(status, info.state, info.sleeping)
+	if status == "" && info.notice != nil {
+		if info.notice.Label != "" {
+			label = info.notice.Label
+		}
+
+		return label, info.notice.Message
+	}
+
+	return label, message
+}
+
+func (r *router) defaultNotice(status, state string, sleeping bool) (string, string) {
+	if sleeping && status == "" {
+		return "Sleeping", r.cfg.SleepingMOTD
+	}
+
 	switch status {
 	case "suspended":
 		return "Suspended", r.cfg.SuspendedMOTD
@@ -470,7 +574,7 @@ func (r *router) handle(client net.Conn) {
 
 	// Servers that are suspended or still being installed are never forwarded to.
 	if found.Status != "" {
-		label, message := r.notice(found.Status, "")
+		label, message := r.notice(found.Status, "", false)
 		reply(client, br, hs, label, message)
 		return
 	}
@@ -478,7 +582,16 @@ func (r *router) handle(client net.Conn) {
 	backend, err := net.DialTimeout("tcp", found.Target, 5*time.Second)
 	if err != nil {
 		log.Printf("%s -> %s: %v", hs.Host, found.Target, err)
-		label, message := r.notice("", r.liveState(hs.Host))
+		info := r.liveState(hs.Host)
+
+		// A server that auto sleep stopped is started by a player who tries to join, not by somebody who only looks at the server
+		// list (every refresh of the list would wake it). The player is told to come back, it takes a while to start.
+		if info.sleeping && (hs.NextState == 2 || hs.NextState == 3) && r.wake(hs.Host) {
+			reply(client, br, hs, "Waking up", r.cfg.WakingMOTD)
+			return
+		}
+
+		label, message := r.noticeFor("", info)
 		reply(client, br, hs, label, message)
 		return
 	}
@@ -548,7 +661,7 @@ func main() {
 		_ = listener.Close()
 	}()
 
-	log.Printf("mc-router listening on %s", cfg.Listen)
+	log.Printf("mc-router (sleep and wake, panel notices) listening on %s", cfg.Listen)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

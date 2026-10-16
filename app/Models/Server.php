@@ -294,6 +294,16 @@ class Server extends Model implements Identifiable
     }
 
     /**
+     * Auto sleep of this server, no row means it is off.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<\Pterodactyl\Models\ServerAutoSleep, $this>
+     */
+    public function autoSleep(): HasOne
+    {
+        return $this->hasOne(ServerAutoSleep::class);
+    }
+
+    /**
      * Environment variables the owner added on top of the ones defined by the egg.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\ServerEnvironmentVariable, $this>

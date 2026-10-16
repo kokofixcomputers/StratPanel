@@ -27,6 +27,8 @@ class UserUpdateService
     {
         if (!empty(array_get($data, 'password'))) {
             $data['password'] = $this->hasher->make($data['password']);
+            // Somebody who signed up with another service has chosen a password now.
+            $data['password_set'] = true;
         } else {
             unset($data['password']);
         }

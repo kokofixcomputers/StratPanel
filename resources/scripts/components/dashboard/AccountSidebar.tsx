@@ -9,6 +9,8 @@ import {
     ViewListIcon,
     TerminalIcon,
     ShieldCheckIcon,
+    LinkIcon,
+    FingerPrintIcon,
 } from '@heroicons/react/solid';
 import { ApplicationStore } from '@/state';
 import Avatar from '@/components/Avatar';
@@ -18,6 +20,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     '/': UserCircleIcon,
     '/api': KeyIcon,
     '/ssh': TerminalIcon,
+    '/providers': LinkIcon,
+    '/passkeys': FingerPrintIcon,
     '/activity': ViewListIcon,
 };
 

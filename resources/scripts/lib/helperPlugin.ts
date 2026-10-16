@@ -58,7 +58,8 @@ export const installHelperPlugin = async (uuid: string, software = 'PAPER'): Pro
         await deleteFiles(
             uuid,
             build.folder,
-            stale.map((f) => f.name)
+            stale.map((f) => f.name),
+            { permanent: true }
         ).catch(() => undefined);
 
     const url = await getFileUploadUrl(uuid);

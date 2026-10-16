@@ -64,6 +64,7 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
     const [showConfirmation, setShowConfirmation] = useState(false);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const trash = ServerContext.useStoreState((state) => state.server.data!.trash);
     const { mutate } = useFileManagerSwr();
     const { clearAndAddHttpError, clearFlashes } = useFlash();
     const directory = ServerContext.useStoreState((state) => state.files.directory);
@@ -129,8 +130,18 @@ const FileDropdownMenu = ({ file }: { file: FileObject }) => {
                 confirm={protectedFiles(directory, [file.name]).length ? 'Delete anyway' : 'Delete'}
                 onConfirmed={doDeletion}
             >
-                You will not be able to recover the contents of&nbsp;
-                <span className={'font-semibold text-neutral-50'}>{file.name}</span> once deleted.
+                {trash.enabled ? (
+                    <>
+                        <span className={'font-semibold text-neutral-50'}>{file.name}</span> will be moved to the trash
+                        bin, where it is kept for {trash.retentionDays} {trash.retentionDays === 1 ? 'day' : 'days'}. It
+                        still counts toward the disk space of the server until then.
+                    </>
+                ) : (
+                    <>
+                        You will not be able to recover the contents of&nbsp;
+                        <span className={'font-semibold text-neutral-50'}>{file.name}</span> once deleted.
+                    </>
+                )}
                 <StratPanelFileWarning directory={directory} names={[file.name]} />
             </Dialog.Confirm>
             <DropdownMenu

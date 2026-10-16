@@ -61,6 +61,14 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
 
     Route::get('/activity', Client\ActivityLogController::class)->name('api:client.account.activity');
 
+    Route::get('/passkeys', [Client\PasskeyController::class, 'index']);
+    Route::post('/passkeys/options', [Client\PasskeyController::class, 'options']);
+    Route::post('/passkeys', [Client\PasskeyController::class, 'store']);
+    Route::delete('/passkeys/{id}', [Client\PasskeyController::class, 'delete'])->whereNumber('id');
+
+    Route::get('/providers', [Client\ProviderController::class, 'index']);
+    Route::delete('/providers/{key}', [Client\ProviderController::class, 'delete'])->where('key', '[a-z0-9][a-z0-9-]{0,38}[a-z0-9]');
+
     Route::get('/api-keys', [Client\ApiKeyController::class, 'index']);
     Route::post('/api-keys', [Client\ApiKeyController::class, 'store']);
     Route::delete('/api-keys/{identifier}', [Client\ApiKeyController::class, 'delete']);
@@ -106,7 +114,14 @@ Route::group([
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });
 
-    Route::group(['prefix' => '/files'], function () {
+    Route::group(['prefix' => '/trash'], function () {
+        Route::get('/', [Client\Servers\TrashController::class, 'index']);
+        Route::delete('/', [Client\Servers\TrashController::class, 'empty']);
+        Route::post('/{item}/restore', [Client\Servers\TrashController::class, 'restore']);
+        Route::delete('/{item}', [Client\Servers\TrashController::class, 'delete']);
+    });
+
+    Route::group(['prefix' => '/files', 'middleware' => [\Pterodactyl\Http\Middleware\Api\Client\Server\ProtectTrashFolder::class]], function () {
         Route::get('/list', [Client\Servers\FileController::class, 'directory']);
         Route::get('/contents', [Client\Servers\FileController::class, 'contents']);
         Route::get('/download', [Client\Servers\FileController::class, 'download']);
@@ -185,5 +200,7 @@ Route::group([
         Route::post('/rename', [Client\Servers\SettingsController::class, 'rename']);
         Route::post('/reinstall', [Client\Servers\SettingsController::class, 'reinstall']);
         Route::put('/docker-image', [Client\Servers\SettingsController::class, 'dockerImage']);
+        Route::get('/auto-sleep', [Client\Servers\AutoSleepController::class, 'index']);
+        Route::put('/auto-sleep', [Client\Servers\AutoSleepController::class, 'update']);
     });
 });

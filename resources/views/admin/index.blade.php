@@ -169,7 +169,7 @@
             <div class="box-body ov-list">
                 @forelse($recentUsers as $user)
                     <a href="{{ route('admin.users.view', $user->id) }}" class="ov-item">
-                        <span class="ov-item-main">{{ $user->username }} @if($user->root_admin)<span class="label label-primary">Admin</span>@endif</span>
+                        <span class="ov-item-main">{{ $user->username }} @if($user->root_admin)<span class="label label-primary">Root admin</span>@endif</span>
                         <span class="ov-sub">{{ $user->email }} · joined {{ $user->created_at->diffForHumans() }}</span>
                     </a>
                 @empty

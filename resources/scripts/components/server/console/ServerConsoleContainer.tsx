@@ -13,6 +13,7 @@ import StatusBadge from '@/components/server/console/StatusBadge';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import ServerDetailsBlock from '@/components/server/console/ServerDetailsBlock';
 import HelperStatus from '@/components/server/console/HelperStatus';
+import ExtensionSlot from '@/components/elements/ExtensionSlot';
 import ProblemsCard from '@/components/server/console/ProblemsCard';
 import ShareLogButton from '@/components/server/ShareLogButton';
 import { Alert } from '@/components/elements/alert';
@@ -23,6 +24,7 @@ export type PowerAction = 'start' | 'stop' | 'restart' | 'kill';
 const ServerConsoleContainer = () => {
     const name = ServerContext.useStoreState((state) => state.server.data!.name);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const id = ServerContext.useStoreState((state) => state.server.data!.id);
     // Proxies such as Velocity have no operators or whitelist, so those cards are hidden for them.
     const [isProxy, setIsProxy] = useState<boolean | null>(null);
     // Counts up when the person asks to look for problems in latest.log.
@@ -75,6 +77,7 @@ const ServerConsoleContainer = () => {
                     </Can>
                 </div>
             </div>
+            <ExtensionSlot name={'server.console'} server={{ id, uuid }} />
             <ServerDetailsBlock className={'mb-4'} />
             <ProblemsCard scanRequest={scanRequest} />
             <Spinner.Suspense>

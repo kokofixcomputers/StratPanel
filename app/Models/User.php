@@ -14,6 +14,8 @@ use Pterodactyl\Models\Traits\HasAccessTokens;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Pterodactyl\Traits\Helpers\AvailableLanguages;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Pterodactyl\Services\Roles\PermissionRegistry;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 use Pterodactyl\Models\Traits\HasRealtimeIdentifier;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -142,6 +144,7 @@ class User extends Model implements
     protected $casts = [
         'root_admin' => 'boolean',
         'use_totp' => 'boolean',
+        'password_set' => 'boolean',
         'gravatar' => 'boolean',
         'totp_authenticated_at' => 'datetime',
     ];
@@ -158,6 +161,7 @@ class User extends Model implements
         'external_id' => null,
         'root_admin' => false,
         'language' => 'en',
+        'password_set' => true,
         'use_totp' => false,
         'totp_secret' => null,
     ];
@@ -199,7 +203,11 @@ class User extends Model implements
     public function toVueObject(): array
     {
         return Collection::make($this->toArray())->except(['id', 'external_id'])
-            ->merge(['identifier' => $this->identifier])
+            ->merge([
+                'identifier' => $this->identifier,
+                'can_access_admin' => $this->canAccessAdmin(),
+                'can_access_all_servers' => $this->canAccessAllServers(),
+            ])
             ->toArray();
     }
 
@@ -264,6 +272,96 @@ class User extends Model implements
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\UserSSHKey, $this>
      */
+    /** The roles of this user, see Role. */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'role_user')->withPivot('created_at')->orderBy('roles.name');
+    }
+
+    /** @var list<string>|null the permissions of the roles, kept for the length of the request */
+    private ?array $permissionCache = null;
+
+    /**
+     * What this user may do in the admin area, from the roles they have. Root admins hold everything, they are not listed here.
+     *
+     * @return list<string>
+     */
+    public function rolePermissions(): array
+    {
+        if ($this->permissionCache === null) {
+            $this->permissionCache = PermissionRegistry::normalize(
+                $this->roles()->get()->flatMap(fn (Role $role) => (array) $role->permissions)->all()
+            );
+        }
+
+        return $this->permissionCache;
+    }
+
+    /** Forgets the permissions that were looked up, for after the roles of the user changed. */
+    public function forgetPermissions(): void
+    {
+        $this->permissionCache = null;
+        $this->unsetRelation('roles');
+    }
+
+    /** Whether this user holds an admin permission. Root admins hold every permission. */
+    public function hasPermission(string $permission): bool
+    {
+        return (bool) $this->root_admin || in_array($permission, $this->rolePermissions(), true);
+    }
+
+    /** Whether this user holds at least one of these permissions. */
+    public function hasAnyPermission(string ...$permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether the admin area is open to this user at all: root admins, and anybody whose roles give them a permission. */
+    public function canAccessAdmin(): bool
+    {
+        return (bool) $this->root_admin || count($this->rolePermissions()) > 0;
+    }
+
+    /** Whether this user may open every server in the panel like its owner (root admins, and roles with "servers.access"). */
+    public function canAccessAllServers(): bool
+    {
+        return $this->hasPermission('servers.access');
+    }
+
+    /**
+     * Whether this user may change the account of another: root admins may change anybody, everybody else may change accounts that
+     * are not root admins and hold nothing they do not hold themselves (or an account could be used to get more than the roles give).
+     */
+    public function outranks(User $other): bool
+    {
+        if ($this->root_admin) {
+            return true;
+        }
+        if ($other->root_admin) {
+            return false;
+        }
+
+        return count(array_diff($other->rolePermissions(), $this->rolePermissions())) === 0;
+    }
+
+    /** The accounts at other services this user can sign in with. */
+    public function identities(): HasMany
+    {
+        return $this->hasMany(UserIdentity::class);
+    }
+
+    /** The passkeys this user can sign in with. */
+    public function passkeys(): HasMany
+    {
+        return $this->hasMany(UserPasskey::class);
+    }
+
     public function sshKeys(): HasMany
     {
         return $this->hasMany(UserSSHKey::class);

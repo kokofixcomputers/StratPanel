@@ -101,7 +101,7 @@ const mergeInto = async (uuid: string, source: string, destination: string, dept
             await mergeInto(uuid, `/${from}`, `/${rel(destination)}/${entry.name}`, depth + 1);
             continue;
         }
-        if (target) await deleteFiles(uuid, `/${rel(destination)}`, [entry.name]);
+        if (target) await deleteFiles(uuid, `/${rel(destination)}`, [entry.name], { permanent: true });
 
         await renameFiles(uuid, '/', [{ from, to }]);
     }
@@ -159,7 +159,7 @@ export default async (ctx: {
     for (const folder of ['overrides', 'server-overrides']) {
         await mergeInto(uuid, `/.modpack/${folder}`, '/');
     }
-    await deleteFiles(uuid, '/', ['.modpack']).catch(() => undefined);
+    await deleteFiles(uuid, '/', ['.modpack'], { permanent: true }).catch(() => undefined);
 
     // 3. every mod that is meant to run on a server
     const files = index.files.filter((file) => file.env?.server !== 'unsupported' && file.downloads?.length);

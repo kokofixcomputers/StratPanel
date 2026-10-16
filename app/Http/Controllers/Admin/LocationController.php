@@ -72,7 +72,11 @@ class LocationController extends Controller
      */
     public function update(LocationFormRequest $request, Location $location): RedirectResponse
     {
-        if ($request->input('action') === 'delete') {
+        // Deleting is a button of the same form as saving, so which of the two permissions is needed is only known here.
+        $deleting = $request->input('action') === 'delete';
+        abort_unless($request->user()->hasPermission($deleting ? 'locations.delete' : 'locations.update'), 403);
+
+        if ($deleting) {
             return $this->delete($location);
         }
 

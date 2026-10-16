@@ -16,17 +16,18 @@ interface Values {
     confirmPassword: string;
 }
 
-const schema = Yup.object().shape({
-    current: Yup.string().min(1).required('You must provide your current password.'),
-    password: Yup.string().min(8).required(),
-    confirmPassword: Yup.string().test(
-        'password',
-        'Password confirmation does not match the password you entered.',
-        function (value) {
-            return value === this.parent.password;
-        }
-    ),
-});
+const schema = (needsCurrent: boolean) =>
+    Yup.object().shape({
+        current: needsCurrent ? Yup.string().min(1).required('You must provide your current password.') : Yup.string(),
+        password: Yup.string().min(8).required(),
+        confirmPassword: Yup.string().test(
+            'password',
+            'Password confirmation does not match the password you entered.',
+            function (value) {
+                return value === this.parent.password;
+            }
+        ),
+    });
 
 export default () => {
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
@@ -58,20 +59,27 @@ export default () => {
         <React.Fragment>
             <Formik
                 onSubmit={submit}
-                validationSchema={schema}
+                validationSchema={schema(user.passwordSet)}
                 initialValues={{ current: '', password: '', confirmPassword: '' }}
             >
                 {({ isSubmitting, isValid }) => (
                     <React.Fragment>
                         <SpinnerOverlay size={'large'} visible={isSubmitting} />
                         <Form css={tw`m-0`}>
-                            <Field
-                                id={'current_password'}
-                                type={'password'}
-                                name={'current'}
-                                label={'Current Password'}
-                            />
-                            <div css={tw`mt-6`}>
+                            {user.passwordSet ? (
+                                <Field
+                                    id={'current_password'}
+                                    type={'password'}
+                                    name={'current'}
+                                    label={'Current Password'}
+                                />
+                            ) : (
+                                <p css={tw`text-sm text-neutral-300`}>
+                                    You signed up with another service, so you have no password yet. Choose one to be
+                                    able to sign in with a username and password too.
+                                </p>
+                            )}
+                            <div css={user.passwordSet ? tw`mt-6` : tw`mt-4`}>
                                 <Field
                                     id={'new_password'}
                                     type={'password'}
