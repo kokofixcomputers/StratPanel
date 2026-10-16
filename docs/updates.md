@@ -26,14 +26,22 @@ Put the Wings of Stratosphere on the machine (`curl -L .../wings_linux_amd64 -o 
 node in the panel, press **Generate Token** on its Configuration tab and run the `wings install ...` line it shows. It writes the
 configuration, installs the systemd service if there is none, and starts Wings.
 
-## Router and edge on the panel machine
+## The panel, router and edge on the panel machine
 
-**Admin > Updates** (root admins only) updates `mc-router` and `panel-edge` and restarts their services:
+**Admin > Updates** (root admins only) can update the panel itself, and `mc-router` and `panel-edge` (it restarts their services):
 
+* **Update the panel**: downloads `panel.tar.gz` (latest release or nightly, your choice) and does what `tools/update-panel.sh` does, as root:
+  backs up the current files (`/var/backups/stratosphere`, the last three are kept), `php artisan down`, extracts the archive over the panel,
+  `chown` to the web user, `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `db:seed`, clears the caches,
+  restarts the queue worker (`pteroq`, `QUEUE_SERVICE` in the env file), `php artisan up`. Then it updates the router and edge from the
+  same archive and the updater itself. If extracting or composer fails, the old files are put back; a failed migration leaves the new files
+  in place (the result says so). The panel always comes out of maintenance mode. The page shows the maintenance screen for a minute or two
+  and picks up the result by itself.
+
+* **Update router and edge only**: the same download, but only the two binaries are taken out of it.
 * **Update from the files on this machine**: uses `tools/mc-router/dist` and `tools/panel-edge/dist` of the panel, so what you extracted last.
-* **Download panel.tar.gz and update**: downloads `PANEL_TAR_URL` (the latest release) or, with *Nightly* chosen, `PANEL_TAR_NIGHTLY_URL`
-  (`.../releases/download/nightly/panel.tar.gz`), and takes only those two binaries out of it. The panel itself is
-  not changed (use `php artisan p:update-ui` or extract the archive for that).
+* The download is `PANEL_TAR_URL` (the latest release) or, with *Nightly* chosen, `PANEL_TAR_NIGHTLY_URL`
+  (`.../releases/download/nightly/panel.tar.gz`).
 
 If a new build does not stay up, the previous one is put back and the result says so.
 
@@ -44,7 +52,7 @@ sudo bash tools/updater/install.sh
 ```
 
 The panel's web user can not restart services, so a small root service (`stratosphere-updater.path`) waits for the panel to write a request
-file, `storage/app/updates/request`, with one of three words: `local`, `download` or `download-nightly`. Nothing else the panel writes is used: the download address
+file, `storage/app/updates/request`, with one of five words: `local`, `download`, `download-nightly`, `panel` or `panel-nightly`. Nothing else the panel writes is used: the download address
 and paths come from `/etc/stratosphere-updater.env`, which only root can change. The result is written to `storage/app/updates/status.json`
 and shown on the page.
 

@@ -3,4 +3,6 @@ Description=Updates the router and edge of Stratosphere when the panel asks for 
 
 [Service]
 Type=oneshot
+# Updating the panel (composer, migrations) can take a while.
+TimeoutStartSec=1800
 ExecStart=/usr/local/bin/stratosphere-updater

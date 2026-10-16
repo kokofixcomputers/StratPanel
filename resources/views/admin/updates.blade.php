@@ -17,13 +17,17 @@
     <div class="col-md-7">
         <div class="box">
             <div class="box-header with-border">
-                <h3 class="box-title">Router and edge on this machine</h3>
+                <h3 class="box-title">Panel, router and edge on this machine</h3>
             </div>
             <div class="box-body">
                 <p class="text-muted">
-                    The router (<code>mc-router</code>: custom domains, sleeping servers) and the edge (<code>panel-edge</code>: https for the panel)
-                    run as services next to the panel. Updating puts the newest build in place and restarts the service. If the new build does not
-                    start, the previous one is put back.
+                    <b>The panel</b> is updated with the same steps as <code>tools/update-panel.sh</code>: the current files are backed up, the panel goes
+                    into maintenance mode, the archive is extracted over it, composer and the migrations run, caches are cleared, the queue worker
+                    is restarted and the panel comes back. The router and the edge are updated after it. It takes a minute or two, this page
+                    shows the maintenance screen meanwhile and comes back by itself.<br><br>
+                    <b>The router</b> (<code>mc-router</code>: custom domains, sleeping servers) and <b>the edge</b> (<code>panel-edge</code>: https for the
+                    panel) run as services next to the panel. Updating puts the newest build in place and restarts the service. If the new build
+                    does not start, the previous one is put back.
                 </p>
                 @if (!$installed)
                     <div class="alert alert-warning">
@@ -43,7 +47,7 @@
                         <input id="channel-nightly" type="radio" name="channel" value="nightly" @if (!$installed) disabled @endif>
                         <label for="channel-nightly">Nightly build <span class="text-muted small"><code>{{ $tarNightlyUrl }}</code></span></label>
                     </div>
-                    <p class="text-muted small">The download takes only the two binaries out of panel.tar.gz. It does not change the panel itself.</p>
+                    <p class="text-muted small">Updating the router and edge only takes their binaries out of panel.tar.gz and does not change the panel.</p>
                 </div>
 
                 <div id="update-state" class="text-muted small"></div>
@@ -53,8 +57,11 @@
                 </table>
             </div>
             <div class="box-footer" id="update-buttons">
-                <button type="button" class="btn btn-sm btn-primary" data-action="download" @if (!$installed) disabled @endif>
-                    <i class="fa fa-cloud-download"></i> Download and update
+                <button type="button" class="btn btn-sm btn-primary" data-action="panel" @if (!$installed) disabled @endif>
+                    <i class="fa fa-refresh"></i> Update the panel
+                </button>
+                <button type="button" class="btn btn-sm btn-default" data-action="download" @if (!$installed) disabled @endif>
+                    <i class="fa fa-cloud-download"></i> Update router and edge only
                 </button>
                 <button type="button" class="btn btn-sm btn-default" data-action="local" @if (!$installed) disabled @endif
                         title="Uses tools/mc-router/dist and tools/panel-edge/dist of the panel. They only count if they belong to root, not to the panel's user.">
@@ -132,11 +139,16 @@
                 before = d.status ? d.status.finished_at : before;
                 asked = false;
                 show(d.status);
+            }).fail(function () {
+                // The panel is in maintenance mode (or restarting) while it updates: keep asking until it answers.
+                if (asked) {
+                    $state.text('The panel is updating, this page continues when it is back...');
+                    setTimeout(poll, 3000);
+                }
             });
         }
 
-        $('#update-buttons button').on('click', function () {
-            var button = $(this);
+        function send(button) {
             $('#update-buttons button').prop('disabled', true);
             asked = true;
             $.ajax({ method: 'POST', url: '{{ route('admin.updates.run') }}', data: { action: button.data('action'), channel: $('input[name=channel]:checked').val() }, headers: { 'X-CSRF-TOKEN': token } })
@@ -146,6 +158,18 @@
                     $('#update-buttons button').prop('disabled', false);
                     $state.text((x.responseJSON && x.responseJSON.error) || 'The request failed.');
                 });
+        }
+
+        $('#update-buttons button').on('click', function () {
+            var button = $(this);
+            if (button.data('action') !== 'panel') { send(button); return; }
+            swal({
+                title: 'Update the panel?',
+                text: 'The panel goes into maintenance mode for a minute or two, its files are backed up first. The router and the edge are updated after it.',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Update'
+            }, function () { send(button); });
         });
 
         poll();

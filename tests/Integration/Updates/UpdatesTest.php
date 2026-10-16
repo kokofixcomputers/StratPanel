@@ -204,7 +204,7 @@ class UpdatesTest extends IntegrationTestCase
 
     public function testRootAdminsSeeTheUpdatesPage(): void
     {
-        $this->as($this->user([], true))->get('/admin/updates')->assertOk()->assertSee('Router and edge');
+        $this->as($this->user([], true))->get('/admin/updates')->assertOk()->assertSee('Update the panel');
     }
 
     public function testNothingIsAskedWithoutTheUpdaterInstalled(): void
@@ -245,6 +245,24 @@ class UpdatesTest extends IntegrationTestCase
         // The channel means nothing for the files on this machine.
         $this->post('/admin/updates', ['action' => 'local', 'channel' => 'nightly'])->assertStatus(202);
         $this->assertSame('local', file_get_contents($this->dir . '/request'));
+    }
+
+    public function testTheWholePanelIsAskedForWithItsOwnWords(): void
+    {
+        touch($this->dir . '/installed');
+        $this->as($this->user([], true))->post('/admin/updates', ['action' => 'panel'])->assertStatus(202);
+        $this->assertSame('panel', file_get_contents($this->dir . '/request'));
+
+        unlink($this->dir . '/request');
+        $this->post('/admin/updates', ['action' => 'panel', 'channel' => 'nightly'])->assertStatus(202);
+        $this->assertSame('panel-nightly', file_get_contents($this->dir . '/request'));
+    }
+
+    public function testOnlyRootAdminsCanAskForAPanelUpdate(): void
+    {
+        touch($this->dir . '/installed');
+        $this->as($this->user(['nodes.view', 'nodes.software']))->post('/admin/updates', ['action' => 'panel'])->assertStatus(403);
+        $this->assertFileDoesNotExist($this->dir . '/request');
     }
 
     public function testTheServiceRefusesUnknownActions(): void

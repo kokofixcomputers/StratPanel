@@ -40,6 +40,7 @@ class UpdatesController extends Controller
         // Anything unknown means the harmless one.
         $action = match ($request->input('action')) {
             ToolUpdateService::DOWNLOAD => $request->input('channel') === 'nightly' ? ToolUpdateService::DOWNLOAD_NIGHTLY : ToolUpdateService::DOWNLOAD,
+            ToolUpdateService::PANEL => $request->input('channel') === 'nightly' ? ToolUpdateService::PANEL_NIGHTLY : ToolUpdateService::PANEL,
             default => ToolUpdateService::LOCAL,
         };
 
