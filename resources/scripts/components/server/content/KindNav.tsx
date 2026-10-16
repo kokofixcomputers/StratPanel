@@ -10,6 +10,8 @@ import {
 } from '@heroicons/react/solid';
 import useContentQuery, { ContentKind, KINDS } from '@/components/server/content/useContentQuery';
 import useServerVersion from '@/components/server/content/useServerVersion';
+import SourceSwitch from '@/components/server/content/SourceSwitch';
+import { hasKind } from '@/lib/contentSource';
 
 const ICONS: Record<ContentKind, React.ComponentType<{ className?: string }>> = {
     plugin: PuzzleIcon,
@@ -26,8 +28,9 @@ export default () => {
 
     return (
         <div className={'mb-2 border-b border-neutral-500 pb-2'}>
+            <SourceSwitch className={'mx-2 mb-1 mt-2 flex'} />
             <p className={'px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'}>Content</p>
-            {KINDS.map((k) => {
+            {KINDS.filter((k) => hasKind(query.source, k.id)).map((k) => {
                 const Icon = ICONS[k.id];
                 const active = query.kind === k.id;
 

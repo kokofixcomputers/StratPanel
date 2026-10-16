@@ -3,16 +3,8 @@ import classNames from 'classnames';
 import { SearchIcon, XIcon } from '@heroicons/react/solid';
 import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
-import {
-    CategoryTag,
-    GameVersionTag,
-    getCategoryTags,
-    getGameVersionTags,
-    getLoaderTags,
-    LoaderTag,
-    loadersOf,
-    prettyTag,
-} from '@/lib/modrinth';
+import { CategoryTag, GameVersionTag, LoaderTag, loadersOf, prettyTag } from '@/lib/modrinth';
+import { browsesKind, loadTags, sourceLabel } from '@/lib/contentSource';
 import TagIcon from '@/components/server/content/TagIcon';
 import useContentQuery, { ContentQuery, KINDS } from '@/components/server/content/useContentQuery';
 import useServerVersion from '@/components/server/content/useServerVersion';
@@ -48,10 +40,12 @@ export default () => {
     const [expanded, setExpanded] = useState<string[]>([]);
     const [failed, setFailed] = useState(false);
 
+    // The tags are the ones of the site that is chosen, CurseForge's categories are not Modrinth's.
     useEffect(() => {
         let cancelled = false;
-        Promise.all([getCategoryTags(), getLoaderTags(), getGameVersionTags()])
-            .then(([c, l, v]) => {
+        setFailed(false);
+        loadTags(query.source)
+            .then(({ categories: c, loaders: l, versions: v }) => {
                 if (cancelled) return;
                 setCategories(c);
                 setLoaders(l);
@@ -62,7 +56,7 @@ export default () => {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [query.source]);
 
     // The box is typed in, the address is changed once typing stops. Changes of the address (clearing the filters)
     // come back into the box.
@@ -76,7 +70,8 @@ export default () => {
     }, [text]);
 
     const kind = query.kind;
-    const browsing = kind !== 'world' && query.view === 'browse';
+    const source = query.source;
+    const browsing = browsesKind(source, kind) && query.view === 'browse';
     const unit = KINDS.find((k) => k.id === kind)!.unit;
     const usesLoader = kind === 'plugin' || kind === 'mod' || kind === 'modpack';
 
@@ -98,7 +93,7 @@ export default () => {
 
     const filtered = activeFilters(query, serverVersion) > 0 || query.page > 1;
 
-    if (kind === 'world') {
+    if (!browsesKind(source, kind)) {
         return (
             <p className={'px-2 py-3 text-sm text-neutral-300'}>
                 Worlds are not on Modrinth, they come from a link or an upload. There is nothing to filter here.
@@ -148,7 +143,7 @@ export default () => {
 
             {failed && (
                 <p className={'px-2 py-3 text-xs text-red-600'}>
-                    The filters could not be loaded from Modrinth, searching still works.
+                    The filters could not be loaded from {sourceLabel(source)}, searching still works.
                 </p>
             )}
 
@@ -209,7 +204,7 @@ export default () => {
                 </label>
             </Section>
 
-            {(kind === 'mod' || kind === 'modpack') && (
+            {source === 'modrinth' && (kind === 'mod' || kind === 'modpack') && (
                 <Section title={'Environment'}>
                     <label className={'flex cursor-pointer items-start px-1 text-sm text-neutral-300'}>
                         <input
@@ -258,7 +253,7 @@ export default () => {
                                         )}
                                     >
                                         <TagIcon svg={tag.icon} size={14} />
-                                        {prettyTag(tag.name)}
+                                        {tag.label || prettyTag(tag.name)}
                                     </button>
                                 );
                             })}

@@ -16,6 +16,7 @@ describe('pageWindow', () => {
 describe('readQuery', () => {
     it('has sensible defaults', () => {
         expect(readQuery('', '1.21.4')).toEqual({
+            source: 'modrinth',
             kind: 'plugin',
             query: '',
             categories: [],

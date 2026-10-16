@@ -22,7 +22,7 @@ import {
     ProjectKind,
     versionRange,
 } from '@/lib/minecraft';
-import { DependencyPlan, planDependencies, PlannedDependency } from '@/lib/modDependencies';
+import { DependencyPlan, planDependencies, PlannedDependency, Presence } from '@/lib/modDependencies';
 
 const TYPE_STYLES: Record<string, string> = {
     release: 'bg-green-50 text-green-700 border-green-200',
@@ -66,6 +66,8 @@ interface Props {
     busy?: boolean;
     // Ids of the projects that are installed already, so their dependencies are not downloaded again.
     installed?: string[];
+    // What is on the server by name and as jars nobody installed from here, so that is not installed a second time.
+    present?: Presence;
     // A version to start on instead of the newest one, such as the one picked from the versions of the project.
     versionId?: string;
     onClose: () => void;
@@ -86,6 +88,7 @@ export default ({
     replaces,
     busy,
     installed = [],
+    present,
     versionId,
     onClose,
     onConfirm,
@@ -160,7 +163,7 @@ export default ({
 
         let cancelled = false;
         setPlanning(true);
-        planDependencies({ version: selected, kind, loader, gameVersion, installed })
+        planDependencies({ version: selected, kind, loader, gameVersion, installed, present })
             .then((result) => !cancelled && setPlan(result))
             .catch(() => !cancelled && setPlan(null))
             .then(() => !cancelled && setPlanning(false));
@@ -168,7 +171,15 @@ export default ({
         return () => {
             cancelled = true;
         };
-    }, [selected?.id, kind, loader, gameVersion, installed.join(',')]);
+    }, [
+        selected?.id,
+        kind,
+        loader,
+        gameVersion,
+        installed.join(','),
+        present?.files.join('|'),
+        present?.projects.length,
+    ]);
 
     const file = selected ? primaryFile(selected) : null;
     const fits = !selected || !gameVersion || selected.game_versions.includes(gameVersion);
@@ -374,6 +385,13 @@ export default ({
                                             </p>
                                         )}
                                     </div>
+                                )}
+                                {plan && plan.present.length > 0 && (
+                                    <p css={tw`mt-3 text-xs text-neutral-400`}>
+                                        {plan.present.join(', ')} {plan.present.length === 1 ? 'is' : 'are'} on the
+                                        server already, so {plan.present.length === 1 ? 'it is' : 'they are'} not
+                                        installed again.
+                                    </p>
                                 )}
                                 {plan && plan.missing.length > 0 && (
                                     <div

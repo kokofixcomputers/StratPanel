@@ -26,7 +26,78 @@ export interface MissingDependency {
 export interface DependencyPlan {
     install: PlannedDependency[];
     missing: MissingDependency[];
+    // What it needs that is on the server already, by name, so the dialog can say so.
+    present: string[];
 }
+
+/** What is on the server: the projects the panel knows about, and the names of jars it does not (put there by hand). */
+export interface Presence {
+    projects: { projectId: string; title: string; slug: string }[];
+    files: string[];
+}
+
+const alnum = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// What a jar may say after the name of the project and still be that project: the loader, the game, a version number.
+const AFTER_NAME =
+    /^(?:(?:v|mc|build)?\d|fabric|forge|neoforge|quilt|minecraft|bukkit|paper|spigot|purpur|folia|universal|all)/;
+
+/** The names a project can be called in a file name: its title, the title without a note in brackets, the note itself, its slug. */
+const namesOf = (project: { title: string; slug: string }): string[] => {
+    const names = new Set<string>();
+    const bracket = /\(([^)]+)\)/.exec(project.title);
+    names.add(project.title.replace(/\([^)]*\)/g, ''));
+    if (bracket) names.add(bracket[1]);
+    // The slug of a project of CurseForge is a number, which says nothing.
+    if (!/^\d+$/.test(project.slug)) names.add(project.slug);
+
+    return Array.from(names)
+        .map((name) => name.trim())
+        .filter((name) => alnum(name).length >= 3);
+};
+
+/**
+ * Whether a jar is that project. The file has to begin with the name and then only say a version, a loader or the game:
+ * "fabric-api-0.116.jar" is Fabric API, "fabric-api-extras.jar" is another mod.
+ */
+export const fileIsProject = (file: string, project: { title: string; slug: string }): boolean => {
+    const name = file.toLowerCase().replace(/\.jar$/, '');
+
+    return namesOf(project).some((candidate) => {
+        const words = candidate
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter(Boolean);
+        const match = new RegExp(`^${words.join('[-_. +]*')}`).exec(name);
+        if (!match) return false;
+
+        const rest = name
+            .slice(match[0].length)
+            .split(/[^a-z0-9]+/)
+            .filter(Boolean)[0];
+
+        return !rest || AFTER_NAME.test(rest);
+    });
+};
+
+/**
+ * Whether a project is on the server already. The same mod can be on Modrinth and on CurseForge with different ids, so a
+ * name that is the same counts too, and so does a jar that is called after it.
+ */
+export const isPresent = (project: { id: string; title: string; slug: string }, presence?: Presence): boolean => {
+    if (!presence) return false;
+
+    const title = alnum(project.title);
+
+    return (
+        presence.projects.some(
+            (known) =>
+                known.projectId === project.id ||
+                (title.length >= 3 && alnum(known.title) === title) ||
+                (!/^\d+$/.test(project.slug) && project.slug !== '' && known.slug === project.slug)
+        ) || presence.files.some((file) => fileIsProject(file, project))
+    );
+};
 
 interface Api {
     getVersion: typeof getVersion;
@@ -50,12 +121,16 @@ export const planDependencies = async (
         gameVersion?: string;
         // Projects that are on the server already.
         installed: string[];
+        // The same by name, and the jars that were put there by hand. Optional, the ids are the safe part.
+        present?: Presence;
     },
     api: Api = { getVersion, getProjectVersions, getProjects }
 ): Promise<DependencyPlan> => {
     const seen = new Set<string>([opts.version.project_id, ...opts.installed]);
     const found: ModrinthVersion[] = [];
     const missing: { projectId: string; reason: string }[] = [];
+    const present: string[] = [];
+    const infos = new Map<string, ModrinthProjectInfo>();
     const loaders = loadersFor(opts.kind, opts.loader);
 
     const best = async (projectId: string, gameVersion: string | undefined) =>
@@ -80,6 +155,17 @@ export const planDependencies = async (
                     const projectId = dependency.project_id || pinned?.project_id;
                     if (!projectId || seen.has(projectId)) continue;
                     seen.add(projectId);
+
+                    // Is it there already, perhaps under another site's id or as a file nobody installed from here? Then it
+                    // is left alone, and so is what it needs: that was installed with it, or is not ours to decide.
+                    if (opts.present) {
+                        const [info] = await api.getProjects([projectId]).catch(() => []);
+                        if (info) infos.set(projectId, info);
+                        if (info && isPresent(info, opts.present)) {
+                            present.push(info.title);
+                            continue;
+                        }
+                    }
 
                     const chosen =
                         pinned && pinned.files.length
@@ -108,8 +194,11 @@ export const planDependencies = async (
         level = next;
     }
 
-    const ids = Array.from(new Set([...found.map((v) => v.project_id), ...missing.map((m) => m.projectId)]));
-    const info = new Map((await api.getProjects(ids).catch(() => [])).map((p) => [p.id, p]));
+    const ids = Array.from(new Set([...found.map((v) => v.project_id), ...missing.map((m) => m.projectId)])).filter(
+        (id) => !infos.has(id)
+    );
+    const info = new Map<string, ModrinthProjectInfo>(infos);
+    (ids.length ? await api.getProjects(ids).catch(() => []) : []).forEach((p) => info.set(p.id, p));
 
     return {
         install: found.map((version) => {
@@ -126,5 +215,6 @@ export const planDependencies = async (
             };
         }),
         missing: missing.map((m) => ({ ...m, title: info.get(m.projectId)?.title || m.projectId })),
+        present,
     };
 };

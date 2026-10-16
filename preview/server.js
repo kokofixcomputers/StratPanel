@@ -85,6 +85,16 @@ const variables = [
     { name: 'Build Number', description: 'The build number for the selected version.', env_variable: 'BUILD_NUMBER', default_value: 'latest', server_value: 'latest', is_editable: false, rules: 'required|string|max:20' },
 ];
 
+// The time and the weather the mock server reports: the game runs at 20 ticks a second from the time that was set.
+// /mock-world?time=13000&weather=clear|rain|thunder|cycle  (weather=cycle changes it every 12 seconds)
+const mockWorld = { startedAt: Date.now(), time: 5000, weather: 'clear', frozen: false };
+const mockWorldNow = () => {
+    const elapsed = mockWorld.frozen ? 0 : (Date.now() - mockWorld.startedAt) * 0.02;
+    const total = Math.floor(mockWorld.time + elapsed);
+    const weather = mockWorld.weather === 'cycle' ? ['clear', 'rain', 'thunder'][Math.floor((Date.now() - mockWorld.startedAt) / 12000) % 3] : mockWorld.weather;
+    return { time: total % 24000, day: 3 + Math.floor(total / 24000), raining: weather === 'rain' || weather === 'thunder', thundering: weather === 'thunder' };
+};
+
 // ---- api ---------------------------------------------------------------------------------------
 const app = express();
 app.use(express.json());
@@ -265,6 +275,12 @@ app.get('/mock-world-gen', (req, res) => {
     const nbt = Buffer.concat([Buffer.from([10]), name(''), Buffer.from([10]), name('data'), Buffer.from([4]), name('seed'), seed, Buffer.from([0, 0])]);
     res.type('application/octet-stream').send(require('node:zlib').gzipSync(nbt));
 });
+app.get('/mock-world', (req, res) => {
+    if (req.query.time !== undefined) { mockWorld.time = Number(req.query.time) % 24000; mockWorld.startedAt = Date.now(); }
+    if (req.query.weather) mockWorld.weather = String(req.query.weather);
+    if (req.query.frozen !== undefined) mockWorld.frozen = req.query.frozen === '1';
+    res.json({ ...mockWorld, now: mockWorldNow() });
+});
 app.get('/mock-missing', (req, res) => res.status(404).end());
 const mockUploads = [];
 app.get('/mock-uploads', (req, res) => res.json(mockUploads));
@@ -321,6 +337,9 @@ api.get('/servers/:id/schedules/:s', (req, res) => res.json(item('server_schedul
 api.get('/servers/:id/users', (req, res) => res.json({ object: 'list', data: state.users.map((u) => item('user', u)) }));
 api.get('/servers/:id/startup', (req, res) => res.json({ object: 'list', data: variables.map((v) => item('egg_variable', v)), meta: { startup_command: 'java -Xms128M -Xmx6144M -jar server.jar', docker_images: { 'Java 21': 'ghcr.io/pterodactyl/yolks:java_21', 'Java 17': 'ghcr.io/pterodactyl/yolks:java_17' }, raw_startup_command: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}' } }));
 
+// The panel's CurseForge endpoints, answered from made-up data, see preview/curseforge.js. PREVIEW_CURSEFORGE=off turns it off.
+const mountCurseForgeImages = require('./curseforge')(api, mockWrites, express);
+
 // Anything else that mutates: pretend it worked.
 api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', data: [] }) : res.status(204).end()));
 app.use('/api/client', api);
@@ -346,6 +365,7 @@ app.use('/mr', async (req, res) => {
         res.status(502).json({ error: String(e) });
     }
 });
+mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));
@@ -392,7 +412,7 @@ wss.on('connection', (ws) => {
             const sub = String(args[0]).split(' ')[1];
             const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
             if (sub === 'handshake') {
-                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":7}');
+                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":8}');
                 send('console output', prefix + players);
             } else if (sub === 'vitals') {
                 send('console output', prefix + JSON.stringify({ event: 'vitals', players: [
@@ -443,7 +463,7 @@ wss.on('connection', (ws) => {
             } else if (sub === 'perf') {
                 const wobble = 17 + Math.random() * 3;
                 const avg = 8 + Math.random() * 40;
-                send('console output', prefix + JSON.stringify({ event: 'performance', tps: [Math.min(20, +wobble.toFixed(2)), 19.97, 20], mspt: { avg: +avg.toFixed(2), min: 2.35, max: +(avg * 2.4).toFixed(2) }, supported: true }));
+                send('console output', prefix + JSON.stringify({ event: 'performance', world: mockWorldNow(), tps: [Math.min(20, +wobble.toFixed(2)), 19.97, 20], mspt: { avg: +avg.toFixed(2), min: 2.35, max: +(avg * 2.4).toFixed(2) }, supported: true }));
             } else if (sub === 'refresh') {
                 setTimeout(() => {
                     send('console output', prefix + players);

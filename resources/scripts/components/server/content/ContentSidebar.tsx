@@ -7,7 +7,7 @@ import ContentFilters from '@/components/server/content/ContentFilters';
 import KindNav from '@/components/server/content/KindNav';
 
 /**
- * Replaces the server navigation while Content is open: the search and the filters of Modrinth instead. The way back to
+ * Replaces the server navigation while Content is open: the search and the filters of the chosen site instead. The way back to
  * the server is at the top. Narrow screens have no sidebar, the page shows the same filters above the results there.
  */
 export default ({ backUrl }: { backUrl: string }) => {

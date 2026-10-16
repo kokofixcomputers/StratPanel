@@ -20,6 +20,30 @@ use Pterodactyl\Http\Middleware\Api\Client\Server\AuthenticateServerAccess;
 Route::get('/', [Client\ClientController::class, 'index'])->name('api:client.index');
 Route::get('/permissions', [Client\ClientController::class, 'permissions']);
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
+
+/*
+|--------------------------------------------------------------------------
+| CurseForge
+|--------------------------------------------------------------------------
+|
+| Endpoint: /api/client/curseforge
+|
+| The panel holds the API key and asks CurseForge on behalf of the browser, see the controller.
+|
+*/
+Route::prefix('/curseforge')->group(function () {
+    Route::get('/', [Client\CurseForgeController::class, 'status']);
+    Route::get('/search', [Client\CurseForgeController::class, 'search']);
+    Route::get('/categories', [Client\CurseForgeController::class, 'categories']);
+    Route::get('/versions', [Client\CurseForgeController::class, 'versions']);
+    Route::post('/mods', [Client\CurseForgeController::class, 'mods']);
+    Route::post('/files', [Client\CurseForgeController::class, 'bulkFiles']);
+    Route::post('/fingerprints', [Client\CurseForgeController::class, 'fingerprints']);
+    Route::get('/mods/{mod}', [Client\CurseForgeController::class, 'mod'])->whereNumber('mod');
+    Route::get('/mods/{mod}/description', [Client\CurseForgeController::class, 'description'])->whereNumber('mod');
+    Route::get('/mods/{mod}/files', [Client\CurseForgeController::class, 'files'])->whereNumber('mod');
+    Route::get('/mods/{mod}/files/{file}/changelog', [Client\CurseForgeController::class, 'changelog'])->whereNumber(['mod', 'file']);
+});
 Route::post('/self-service', [Client\SelfServiceController::class, 'store'])->middleware('throttle:10,1');
 
 Route::prefix('/account')->middleware(AccountSubject::class)->group(function () {

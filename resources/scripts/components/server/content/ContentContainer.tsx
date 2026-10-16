@@ -10,7 +10,11 @@ import Spinner from '@/components/elements/Spinner';
 import Select from '@/components/elements/Select';
 import { Button } from '@/components/elements/button/index';
 import useFlash from '@/plugins/useFlash';
-import { getCategoryTags, SearchHit, searchProjects, SORTS, SortIndex } from '@/lib/modrinth';
+import { SearchHit, SortIndex } from '@/lib/modrinth';
+import { browsesKind, hasKind, loadTags, searchContent, sortsFor, sourceLabel } from '@/lib/contentSource';
+import { isCurseForgeId } from '@/lib/curseforge';
+import SourceSwitch from '@/components/server/content/SourceSwitch';
+import useCurseForgeEnabled from '@/components/server/content/useCurseForgeEnabled';
 import detectCurrent from '@/components/server/versions/detectCurrent';
 import WorldsPanel from '@/components/server/mods/WorldsPanel';
 import ContentFilters, { activeFilters } from '@/components/server/content/ContentFilters';
@@ -46,22 +50,26 @@ const Pill = ({ active, children, onClick }: { active: boolean; children: React.
     </button>
 );
 
-/** Browse Modrinth in the panel and manage what is installed: results with numbered pages, the filters are in the sidebar. */
+/** Browse Modrinth or CurseForge in the panel and manage what is installed: results with numbered pages, the filters are in the sidebar. */
 export default () => {
     const id = ServerContext.useStoreState((state) => state.server.data!.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
     const { addFlash, clearFlashes } = useFlash();
 
+    const curseForge = useCurseForgeEnabled();
     const actions = useContentActions();
     const { managed, resourcePack, busy, detectedVersion } = actions;
     const { query, update, search } = useContentQuery(detectedVersion);
-    const { kind } = query;
+    const { kind, source } = query;
+    // Worlds on Modrinth are put in from a link, on CurseForge they are browsed like the rest.
+    const worldsPanel = kind === 'world' && !browsesKind(source, kind);
 
     const [results, setResults] = useState<{ kind: ContentKind; hits: SearchHit[]; total: number } | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [icons, setIcons] = useState<Record<string, string>>({});
+    const [labels, setLabels] = useState<Record<string, string>>({});
     const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Start on what the server runs: mods and their loader for Fabric and the like, the proxy's platform for plugins of a
@@ -87,13 +95,22 @@ export default () => {
     }, [uuid]);
 
     useEffect(() => {
-        getCategoryTags()
-            .then((tags) => setIcons(Object.fromEntries(tags.map((tag) => [tag.name, tag.icon]))))
+        setIcons({});
+        setLabels({});
+        loadTags(source)
+            .then(({ categories }) => {
+                // The same name can be a different category for another kind of project (CurseForge has "adventure" for
+                // mods and for worlds), so only the ones of what is shown count.
+                const own = categories.filter((tag) => tag.project_type === kind);
+                setIcons(Object.fromEntries(own.map((tag) => [tag.name, tag.icon])));
+                setLabels(Object.fromEntries(own.filter((tag) => tag.label).map((tag) => [tag.name, tag.label!])));
+            })
             .catch(() => undefined);
-    }, []);
+    }, [source, kind]);
 
     // The results follow the filters. A search that is overtaken by a newer one is cancelled.
     const key = JSON.stringify([
+        source,
         kind,
         query.query,
         query.categories,
@@ -104,12 +121,13 @@ export default () => {
         query.page,
     ]);
     useEffect(() => {
-        if (kind === 'world' || query.view !== 'browse') return;
+        if (worldsPanel || query.view !== 'browse') return;
 
         const controller = new AbortController();
         setLoading(true);
         setError('');
-        searchProjects(
+        searchContent(
+            source,
             {
                 kind: kind as ProjectKind,
                 query: query.query,
@@ -139,7 +157,7 @@ export default () => {
     const tab = KINDS.find((k) => k.id === kind)!;
     const installedOfKind = Object.values(managed.mods).filter((m) => m.kind === kind);
     const updatable = installedOfKind.filter((m) => managed.updates[m.projectId]);
-    const hasInstalledView = kind !== 'modpack' && kind !== 'world';
+    const hasInstalledView = kind !== 'modpack' && !worldsPanel && !(kind === 'world' && source === 'curseforge');
     const view = hasInstalledView ? query.view : 'browse';
     const current = results && results.kind === kind ? results : null;
     const pages = current ? Math.ceil(current.total / PAGE_SIZE) : 0;
@@ -167,7 +185,7 @@ export default () => {
                     ? `Recognised ${found} existing file${
                           found === 1 ? '' : 's'
                       }, they can now be updated or uninstalled here.`
-                    : 'None of the existing files were found on Modrinth.',
+                    : `None of the existing files were found on ${curseForge ? 'Modrinth or CurseForge' : 'Modrinth'}.`,
             });
         } catch (e) {
             managed.refresh();
@@ -184,9 +202,9 @@ export default () => {
             <PageHeader
                 title={'Content'}
                 subtitle={
-                    kind === 'world'
+                    worldsPanel
                         ? `Worlds on ${serverName}`
-                        : `Browse Modrinth and install ${tab.unit} on ${serverName}`
+                        : `Browse ${sourceLabel(source)} and install ${tab.unit} on ${serverName}`
                 }
             />
             <FlashMessageRender byKey={'mods'} className={'mb-4'} />
@@ -199,8 +217,9 @@ export default () => {
                 )}
             >
                 {/* The sidebar has them on wide screens, narrow ones have no sidebar. */}
+                <SourceSwitch className={'lg:hidden'} />
                 <div className={'inline-flex flex-wrap rounded-xl bg-neutral-600 p-1 lg:hidden'}>
-                    {KINDS.map((k) => (
+                    {KINDS.filter((k) => hasKind(source, k.id)).map((k) => (
                         <Pill
                             key={k.id}
                             active={kind === k.id}
@@ -225,7 +244,7 @@ export default () => {
                         </Pill>
                     </div>
                 )}
-                {kind !== 'world' && view === 'browse' && (
+                {!worldsPanel && view === 'browse' && (
                     <button
                         type={'button'}
                         onClick={() => setFiltersOpen((open) => !open)}
@@ -245,13 +264,13 @@ export default () => {
                 )}
             </div>
 
-            {filtersOpen && kind !== 'world' && view === 'browse' && (
+            {filtersOpen && !worldsPanel && view === 'browse' && (
                 <div className={'mb-4 rounded-xl border border-neutral-500 bg-white p-3 shadow-md lg:hidden'}>
                     <ContentFilters />
                 </div>
             )}
 
-            {kind === 'world' ? (
+            {worldsPanel ? (
                 <WorldsPanel />
             ) : kind === 'resourcepack' && view === 'installed' ? (
                 <ResourcePackCard
@@ -300,7 +319,9 @@ export default () => {
                                         <Link
                                             to={{
                                                 pathname: `/server/${id}/mods/project/${record.slug}`,
-                                                search: `?t=${record.kind}`,
+                                                search: `?t=${record.kind}${
+                                                    isCurseForgeId(record.projectId) ? '&s=curseforge' : ''
+                                                }`,
                                             }}
                                             className={'flex min-w-0 flex-1 basis-64 items-center gap-4 no-underline'}
                                         >
@@ -382,7 +403,7 @@ export default () => {
                                     value={query.sort}
                                     onChange={(e) => update({ sort: e.currentTarget.value as SortIndex })}
                                 >
-                                    {SORTS.map((s) => (
+                                    {sortsFor(source).map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.label}
                                         </option>
@@ -407,14 +428,25 @@ export default () => {
                                     hit={hit}
                                     to={detail(hit.slug)}
                                     icons={icons}
+                                    labels={labels}
                                     record={managed.mods[hit.project_id]}
                                     inUse={
                                         kind === 'resourcepack' && resourcePack.pack?.info?.projectId === hit.project_id
                                     }
                                     update={managed.updates[hit.project_id]?.versionNumber}
                                     busy={!!busy}
-                                    actionLabel={kind === 'resourcepack' ? 'Use pack' : 'Install'}
-                                    onInstall={() => actions.install(hit, current.kind as ProjectKind)}
+                                    actionLabel={
+                                        kind === 'resourcepack'
+                                            ? 'Use pack'
+                                            : kind === 'world'
+                                            ? 'Install world'
+                                            : 'Install'
+                                    }
+                                    onInstall={() =>
+                                        kind === 'world'
+                                            ? actions.installWorld(hit)
+                                            : actions.install(hit, current.kind as ProjectKind)
+                                    }
                                 />
                             ))}
                         </div>

@@ -45,7 +45,10 @@ enum ResourceLimit
         return match($this) {
             self::Backup => Limit::perMinutes(15, 3),
             self::Database => Limit::perMinute(2),
-            self::FilePull => Limit::perMinutes(10, 5),
+            self::FilePull => Limit::perMinutes(
+                (int) config('http.rate_limit.file_pull_period', 2),
+                (int) config('http.rate_limit.file_pull', 60)
+            ),
             self::Subuser => Limit::perMinutes(15, 10),
             self::Websocket => Limit::perMinute(5),
             default => Limit::perMinute(2),

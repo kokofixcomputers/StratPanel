@@ -69,6 +69,8 @@ Route::group(['prefix' => 'settings'], function () {
     Route::get('/mail', [Admin\Settings\MailController::class, 'index'])->name('admin.settings.mail');
     Route::get('/advanced', [Admin\Settings\AdvancedController::class, 'index'])->name('admin.settings.advanced');
     Route::get('/branding', [Admin\Settings\BrandingController::class, 'index'])->name('admin.settings.branding');
+    Route::get('/curseforge', [Admin\Settings\CurseForgeController::class, 'index'])->name('admin.settings.curseforge');
+    Route::post('/curseforge/test', [Admin\Settings\CurseForgeController::class, 'test'])->name('admin.settings.curseforge.test');
 
     Route::post('/mail/test', [Admin\Settings\MailController::class, 'test'])->name('admin.settings.mail.test');
 
@@ -76,6 +78,7 @@ Route::group(['prefix' => 'settings'], function () {
     Route::patch('/mail', [Admin\Settings\MailController::class, 'update']);
     Route::patch('/advanced', [Admin\Settings\AdvancedController::class, 'update']);
     Route::patch('/branding', [Admin\Settings\BrandingController::class, 'update']);
+    Route::patch('/curseforge', [Admin\Settings\CurseForgeController::class, 'update']);
 });
 
 /*

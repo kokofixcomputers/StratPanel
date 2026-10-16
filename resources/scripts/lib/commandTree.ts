@@ -58,6 +58,8 @@ export const PARSER_TYPES: Record<string, string> = {
     'minecraft:mob_effect': 'effect',
     'minecraft:enchantment': 'ench',
     'minecraft:color': 'color',
+    // Minecraft 26.1 renamed the argument.
+    'minecraft:team_color': 'color',
 };
 
 const isObject = (value: unknown): value is Record<string, any> =>

@@ -3,6 +3,7 @@
  * talking to the Modrinth API.
  */
 import getFileContents from '@/api/server/files/getFileContents';
+import * as curseForge from '@/lib/curseforge';
 
 export type PropertyType = 'boolean' | 'number' | 'text';
 
@@ -205,6 +206,8 @@ export interface ModrinthVersion {
     changelog?: string | null;
     downloads?: number;
     dependencies?: ModrinthDependency[];
+    // A file from CurseForge that its author only lets be downloaded there: there is nothing to install from here.
+    restricted?: boolean;
 }
 
 const modrinthError = () => new Error('Modrinth could not be reached, please try again in a moment.');
@@ -214,6 +217,8 @@ export const getProjectVersions = async (
     projectId: string,
     opts: { loaders?: string[]; gameVersions?: string[] } = {}
 ): Promise<ModrinthVersion[]> => {
+    if (curseForge.isCurseForgeId(projectId)) return curseForge.getProjectVersions(projectId, opts);
+
     const params = new URLSearchParams();
     if (opts.loaders?.length) params.set('loaders', JSON.stringify(opts.loaders));
     if (opts.gameVersions?.length) params.set('game_versions', JSON.stringify(opts.gameVersions));
@@ -226,6 +231,8 @@ export const getProjectVersions = async (
 
 /** One version by its id, which is how a dependency can ask for an exact release. */
 export const getVersion = async (versionId: string): Promise<ModrinthVersion> => {
+    if (curseForge.isCurseForgeId(versionId)) return curseForge.getVersion(versionId);
+
     const response = await fetch(`${API}/version/${versionId}`);
     if (!response.ok) throw modrinthError();
 
@@ -312,6 +319,16 @@ export interface ModrinthProjectInfo {
 
 export const getProjects = async (ids: string[]): Promise<ModrinthProjectInfo[]> => {
     if (!ids.length) return [];
+
+    // Projects of both sites can be in one list (the installed ones), each site is asked for its own.
+    if (ids.some(curseForge.isCurseForgeId)) {
+        const [own, theirs] = await Promise.all([
+            getProjects(ids.filter((id) => !curseForge.isCurseForgeId(id))),
+            curseForge.getProjects(ids.filter(curseForge.isCurseForgeId)),
+        ]);
+
+        return [...own, ...theirs];
+    }
 
     const response = await fetch(`${API}/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);
     if (!response.ok) throw modrinthError();

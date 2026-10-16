@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { ProjectKind } from '@/lib/minecraft';
-import { SortIndex, SORTS } from '@/lib/modrinth';
+import { SortIndex } from '@/lib/modrinth';
+import { hasKind, isSource, SourceId, sortsFor } from '@/lib/contentSource';
 
 /** What the Content page can show: the Modrinth project types, plus worlds which come from a link or an upload. */
 export type ContentKind = ProjectKind | 'world';
@@ -16,6 +17,8 @@ export const KINDS: { id: ContentKind; label: string; unit: string }[] = [
 ];
 
 export interface ContentQuery {
+    // Where the projects come from.
+    source: SourceId;
     kind: ContentKind;
     query: string;
     categories: string[];
@@ -35,20 +38,24 @@ const serverSideByDefault = (kind: ContentKind) => kind === 'mod' || kind === 'm
 /** Reads the filters from the address of the page. Without a version in it, the server's own version is used. */
 export const readQuery = (search: string, detectedVersion: string): ContentQuery => {
     const params = new URLSearchParams(search);
-    const kind = KINDS.find((k) => k.id === params.get('t'))?.id || 'plugin';
+    const source: SourceId = isSource(params.get('s')) ? (params.get('s') as SourceId) : 'modrinth';
+    const asked = KINDS.find((k) => k.id === params.get('t'))?.id || 'plugin';
+    // CurseForge has no modpacks here, what it does not have shows the nearest thing that it does.
+    const kind: ContentKind = hasKind(source, asked) ? asked : 'mod';
     const version = params.get('v');
     const serverSide = params.get('e');
     const sort = params.get('o') as SortIndex;
     const page = parseInt(params.get('p') || '1', 10);
 
     return {
+        source,
         kind,
         query: params.get('q') || '',
         categories: (params.get('c') || '').split(',').filter(Boolean),
         loader: params.get('l') || '',
         version: version === 'all' ? '' : version || detectedVersion,
         serverSide: serverSide === null ? serverSideByDefault(kind) : serverSide === '1',
-        sort: SORTS.some((s) => s.id === sort) ? sort : 'relevance',
+        sort: sortsFor(source).some((s) => s.id === sort) ? sort : 'relevance',
         page: isNaN(page) || page < 1 ? 1 : page,
         view: params.get('view') === 'installed' ? 'installed' : 'browse',
     };
@@ -71,6 +78,12 @@ export default (detectedVersion: string) => {
             const set = (key: string, value: string | null) =>
                 value === null || value === '' ? params.delete(key) : params.set(key, value);
 
+            if (patch.source !== undefined) {
+                set('s', patch.source === 'modrinth' ? null : patch.source);
+                // The categories, the loaders and the ways to sort are not the same on both sites.
+                ['c', 'l', 'e', 'o'].forEach((key) => params.delete(key));
+                if (!hasKind(patch.source, kind)) set('t', 'mod');
+            }
             if (patch.kind !== undefined) {
                 set('t', patch.kind === 'plugin' ? null : patch.kind);
                 // Categories and loaders belong to a kind of project.

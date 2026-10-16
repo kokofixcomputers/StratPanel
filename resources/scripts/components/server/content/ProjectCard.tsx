@@ -14,6 +14,7 @@ export default ({
     hit,
     to,
     icons,
+    labels = {},
     record,
     inUse,
     update,
@@ -25,6 +26,8 @@ export default ({
     to: LocationDescriptor;
     // Inline SVG of the tags by name.
     icons: Record<string, string>;
+    // The names to show for tags that are not written the way prettyTag would, by tag.
+    labels?: Record<string, string>;
     record?: ManagedProject;
     inUse?: boolean;
     update?: string;
@@ -58,7 +61,7 @@ export default ({
                                     }
                                 >
                                     <TagIcon svg={icons[tag]} size={12} />
-                                    {prettyTag(tag)}
+                                    {labels[tag] || prettyTag(tag)}
                                 </span>
                             ))}
                         </div>

@@ -18,17 +18,12 @@ import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
-import { getProjectVersions, loadersFor, ModrinthVersion, ProjectKind, versionRange } from '@/lib/minecraft';
-import {
-    CategoryTag,
-    getCategoryTags,
-    getMembers,
-    getProject,
-    Member,
-    prettyTag,
-    ProjectDetails,
-    toProject,
-} from '@/lib/modrinth';
+import { getProjectVersions, loadersFor, ModrinthVersion, versionRange } from '@/lib/minecraft';
+import { ContentKind } from '@/components/server/content/useContentQuery';
+import { CategoryTag, Member, prettyTag, ProjectDetails, toProject } from '@/lib/modrinth';
+import { getProjectDetails, getProjectMembers, loadTags, sourceLabel } from '@/lib/contentSource';
+import { cfNumber, getChangelog, isCurseForgeId } from '@/lib/curseforge';
+import { readQuery } from '@/components/server/content/useContentQuery';
 import Gallery from '@/components/server/content/Gallery';
 import Markdown from '@/components/server/content/Markdown';
 import ProjectIcon from '@/components/server/content/ProjectIcon';
@@ -36,7 +31,7 @@ import TagIcon from '@/components/server/content/TagIcon';
 import useContentActions from '@/components/server/content/useContentActions';
 import { compact, timeAgo } from '@/components/server/content/format';
 
-const INSTALLABLE: string[] = ['mod', 'plugin', 'datapack', 'resourcepack', 'modpack'];
+const INSTALLABLE: string[] = ['mod', 'plugin', 'datapack', 'resourcepack', 'modpack', 'world'];
 
 type Tab = 'description' | 'gallery' | 'versions';
 
@@ -78,7 +73,7 @@ const Versions = ({
     onInstall,
 }: {
     project: ProjectDetails;
-    kind: ProjectKind;
+    kind: ContentKind;
     installLabel: string;
     disabled: boolean;
     onInstall: (versionId: string) => void;
@@ -86,11 +81,25 @@ const Versions = ({
     const [versions, setVersions] = useState<ModrinthVersion[] | null>(null);
     const [error, setError] = useState('');
     const [open, setOpen] = useState<string | null>(null);
+    // CurseForge keeps the changelog of every file apart, it is asked for when it is opened.
+    const [logs, setLogs] = useState<Record<string, string>>({});
+    const curseForge = isCurseForgeId(project.id);
+
+    const toggleChangelog = (version: ModrinthVersion) => {
+        const opening = open !== version.id;
+        setOpen(opening ? version.id : null);
+        if (opening && curseForge && logs[version.id] === undefined) {
+            getChangelog(project.id, version.id)
+                .then((html) => setLogs((current) => ({ ...current, [version.id]: html })))
+                .catch(() => setLogs((current) => ({ ...current, [version.id]: '' })));
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
+        // Files that can only be downloaded from CurseForge stay in the list, with a link instead of a button to install.
         getProjectVersions(project.id)
-            .then((list) => !cancelled && setVersions(list.filter((v) => v.files.length > 0)))
+            .then((list) => !cancelled && setVersions(list.filter((v) => v.files.length > 0 || v.restricted)))
             .catch((e) => !cancelled && setError(e.message));
 
         return () => {
@@ -118,10 +127,10 @@ const Versions = ({
                                 {v.downloads !== undefined && <> &middot; {compact(v.downloads)} downloads</>}
                             </p>
                         </div>
-                        {v.changelog && v.changelog.trim() && (
+                        {((v.changelog && v.changelog.trim()) || curseForge) && (
                             <button
                                 type={'button'}
-                                onClick={() => setOpen(open === v.id ? null : v.id)}
+                                onClick={() => toggleChangelog(v)}
                                 className={'inline-flex items-center text-xs text-neutral-300 hover:text-neutral-50'}
                             >
                                 {open === v.id ? (
@@ -132,17 +141,43 @@ const Versions = ({
                                 Changelog
                             </button>
                         )}
-                        {kind !== 'modpack' && (
-                            <Button size={Button.Sizes.Small} disabled={disabled} onClick={() => onInstall(v.id)}>
-                                <DownloadIcon className={'mr-1.5 -ml-1 h-4 w-4'} />
-                                {installLabel}
-                            </Button>
-                        )}
+                        {kind !== 'modpack' &&
+                            (v.restricted ? (
+                                <a
+                                    href={`${project.website_url || 'https://www.curseforge.com'}/files/${cfNumber(
+                                        v.id
+                                    )}`}
+                                    target={'_blank'}
+                                    rel={'noopener noreferrer nofollow'}
+                                    className={
+                                        'inline-flex items-center rounded-lg border border-neutral-500 px-3 py-1.5 text-xs font-medium text-primary-600 no-underline hover:bg-neutral-600'
+                                    }
+                                    title={'The author only lets this file be downloaded from CurseForge.'}
+                                >
+                                    <ExternalLinkIcon className={'mr-1.5 h-4 w-4'} />
+                                    On CurseForge
+                                </a>
+                            ) : (
+                                <Button size={Button.Sizes.Small} disabled={disabled} onClick={() => onInstall(v.id)}>
+                                    <DownloadIcon className={'mr-1.5 -ml-1 h-4 w-4'} />
+                                    {installLabel}
+                                </Button>
+                            ))}
                     </div>
-                    {open === v.id && v.changelog && (
+                    {open === v.id && (v.changelog || logs[v.id]) && (
                         <div className={'border-t border-neutral-500 p-4'}>
-                            <Markdown source={v.changelog} />
+                            <Markdown source={v.changelog || logs[v.id]} html={!v.changelog} />
                         </div>
+                    )}
+                    {open === v.id && curseForge && logs[v.id] === undefined && (
+                        <div className={'border-t border-neutral-500 p-4'}>
+                            <Spinner centered size={'small'} />
+                        </div>
+                    )}
+                    {open === v.id && curseForge && logs[v.id] === '' && !v.changelog && (
+                        <p className={'border-t border-neutral-500 p-4 text-sm text-neutral-300'}>
+                            This file has no changelog.
+                        </p>
                     )}
                 </li>
             ))}
@@ -150,12 +185,14 @@ const Versions = ({
     );
 };
 
-/** A project of Modrinth on its own page: the long description, the pictures, the versions and a button to install it. */
+/** A project of Modrinth or CurseForge on its own page: the long description, the pictures, the versions and a button to install it. */
 export default () => {
     const { project: slug } = useParams<{ project: string }>();
     const id = ServerContext.useStoreState((state) => state.server.data!.id);
     const location = useLocation<{ fromList?: boolean } | undefined>();
     const history = useHistory();
+    // The address says which site the project is on, see useContentQuery.
+    const source = readQuery(location.search, '').source;
 
     const actions = useContentActions();
     const { managed, resourcePack, busy } = actions;
@@ -173,20 +210,22 @@ export default () => {
         window.scrollTo({ top: 0 });
 
         let cancelled = false;
-        getProject(slug)
+        setMembers([]);
+        setTags([]);
+        getProjectDetails(source, slug)
             .then((details) => !cancelled && setProject(details))
             .catch((e) => !cancelled && setError(e.message));
-        getMembers(slug)
+        getProjectMembers(source, slug)
             .then((list) => !cancelled && setMembers(list))
             .catch(() => undefined);
-        getCategoryTags()
-            .then((list) => !cancelled && setTags(list))
+        loadTags(source)
+            .then(({ categories }) => !cancelled && setTags(categories))
             .catch(() => undefined);
 
         return () => {
             cancelled = true;
         };
-    }, [slug]);
+    }, [slug, source]);
 
     // Back to the results as they were, with the same filters and page.
     const listUrl = { pathname: `/server/${id}/mods`, search: location.search };
@@ -222,23 +261,32 @@ export default () => {
         );
     }
 
-    const kind = INSTALLABLE.includes(project.project_type) ? (project.project_type as ProjectKind) : null;
+    const kind = INSTALLABLE.includes(project.project_type) ? (project.project_type as ContentKind) : null;
+    // CurseForge authors can keep their files off other sites, then there is only a link to CurseForge.
+    const blocked = project.distribution_allowed === false;
     const owner = members.find((m) => m.role === 'Owner') || members[0];
     const record = managed.mods[project.id];
     const upgrade = managed.updates[project.id];
     const inUse = kind === 'resourcepack' && resourcePack.pack?.info?.projectId === project.id;
     const pending = busy === project.id;
-    const icons = Object.fromEntries(tags.map((tag) => [tag.name, tag.icon]));
-    const installLabel = kind === 'resourcepack' ? 'Use pack' : 'Install';
-    const install = (versionId?: string) =>
-        kind && actions.install(toProject(project, owner?.user.username || ''), kind, versionId);
+    // Only the categories of this kind of project, a name can mean something else for another kind.
+    const ownTags = tags.filter((tag) => tag.project_type === project.project_type);
+    const icons = Object.fromEntries(ownTags.map((tag) => [tag.name, tag.icon]));
+    const labels = Object.fromEntries(ownTags.filter((tag) => tag.label).map((tag) => [tag.name, tag.label!]));
+    const installLabel = kind === 'resourcepack' ? 'Use pack' : kind === 'world' ? 'Install world' : 'Install';
+    const install = (versionId?: string) => {
+        if (!kind) return;
+        const asProject = toProject(project, owner?.user.username || '');
+
+        return kind === 'world' ? actions.installWorld(asProject) : actions.install(asProject, kind, versionId);
+    };
     const tabs: { id: Tab; label: string }[] = [
         { id: 'description', label: 'Description' },
         { id: 'gallery', label: `Gallery${project.gallery.length ? ` (${project.gallery.length})` : ''}` },
         { id: 'versions', label: 'Versions' },
     ];
     const shownCategories = [...project.categories, ...(project.additional_categories || [])].filter(
-        (c) => !loadersFor(kind || 'mod').includes(c)
+        (c) => !loadersFor((kind === 'world' ? 'mod' : kind) || 'mod').includes(c)
     );
     const links = [
         { label: 'Source code', url: project.source_url },
@@ -272,7 +320,7 @@ export default () => {
                                     }
                                 >
                                     <TagIcon svg={icons[category]} size={14} />
-                                    {prettyTag(category)}
+                                    {labels[category] || prettyTag(category)}
                                 </span>
                             ))}
                         </div>
@@ -325,6 +373,25 @@ export default () => {
                                 </Button.Danger>
                             </div>
                         </>
+                    ) : blocked ? (
+                        <>
+                            <p className={'max-w-[16rem] text-right text-xs text-neutral-400'}>
+                                The author only lets this be downloaded from CurseForge.
+                            </p>
+                            {project.website_url && (
+                                <a
+                                    href={project.website_url}
+                                    target={'_blank'}
+                                    rel={'noopener noreferrer nofollow'}
+                                    className={
+                                        'inline-flex items-center justify-center rounded-lg border border-neutral-500 px-4 py-2 text-sm font-medium text-primary-600 no-underline hover:bg-neutral-600'
+                                    }
+                                >
+                                    <ExternalLinkIcon className={'mr-2 h-4 w-4'} />
+                                    Open on CurseForge
+                                </a>
+                            )}
+                        </>
                     ) : (
                         <Button size={Button.Sizes.Large} disabled={!!busy} onClick={() => install()}>
                             <DownloadIcon className={'mr-2 -ml-1 h-5 w-5'} />
@@ -358,7 +425,7 @@ export default () => {
                     {tab === 'description' && (
                         <div className={'rounded-xl border border-neutral-500 bg-white p-5 shadow-md'}>
                             {project.body.trim() ? (
-                                <Markdown source={project.body} />
+                                <Markdown source={project.body} html={project.source === 'curseforge'} />
                             ) : (
                                 <p className={'text-sm text-neutral-300'}>{project.description}</p>
                             )}
@@ -370,7 +437,7 @@ export default () => {
                             project={project}
                             kind={kind || 'mod'}
                             installLabel={installLabel}
-                            disabled={!!busy || !kind}
+                            disabled={!!busy || !kind || blocked}
                             onInstall={(versionId) => install(versionId)}
                         />
                     )}
@@ -385,7 +452,7 @@ export default () => {
                                     {project.loaders.map(prettyTag).join(', ')}
                                 </Fact>
                             )}
-                            {(kind === 'mod' || kind === 'modpack') && (
+                            {project.source !== 'curseforge' && (kind === 'mod' || kind === 'modpack') && (
                                 <>
                                     <Fact label={'On servers'}>{prettyTag(project.server_side)}</Fact>
                                     <Fact label={'On clients'}>{prettyTag(project.client_side)}</Fact>
@@ -447,7 +514,10 @@ export default () => {
                             </ul>
                         </Box>
                     )}
-                    <p className={'px-1 text-xs text-neutral-400'}>The information comes from Modrinth.</p>
+                    <p className={'px-1 text-xs text-neutral-400'}>
+                        The information comes from{' '}
+                        {sourceLabel(project.source === 'curseforge' ? 'curseforge' : 'modrinth')}.
+                    </p>
                 </aside>
             </div>
 

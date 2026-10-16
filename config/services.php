@@ -23,6 +23,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // The CurseForge API key can also be set in the environment, an admin can add one in the panel instead.
+    'curseforge' => [
+        'key' => env('CURSEFORGE_API_KEY'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_KEY'),
     ],

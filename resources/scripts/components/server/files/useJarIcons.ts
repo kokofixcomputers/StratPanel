@@ -3,6 +3,7 @@ import { FileObject } from '@/api/server/files/loadDirectory';
 import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
 import { getProjects, lookupHashes, sha1Hex } from '@/lib/minecraft';
 import { readPterodactylJson } from '@/lib/pterodactylJson';
+import { fingerprint, isCurseForgeEnabled, lookupFingerprints } from '@/lib/curseforge';
 
 export interface JarIcon {
     url: string;
@@ -37,8 +38,9 @@ const cacheKey = (directory: string, file: FileObject) =>
     `${directory}/${file.name}|${file.size}|${file.modifiedAt.getTime()}`;
 
 /**
- * Finds the Modrinth icon of the jars in a mods or plugins folder. Projects installed through the panel are known
- * from pterodactyl.json, anything else is recognised by its hash and remembered in the browser.
+ * Finds the icon of the jars in a mods or plugins folder, from Modrinth or from CurseForge. Projects installed through
+ * the panel are known from pterodactyl.json, anything else is recognised by its hash (or its CurseForge fingerprint) and
+ * remembered in the browser.
  */
 export default (uuid: string, directory: string, files: FileObject[] | undefined): Record<string, JarIcon> => {
     const [icons, setIcons] = useState<Record<string, JarIcon>>({});
@@ -73,6 +75,8 @@ export default (uuid: string, directory: string, files: FileObject[] | undefined
 
             // Recognise the rest two at a time so a big folder does not flood the node.
             const hashes: Record<string, FileObject> = {};
+            const prints: Record<number, FileObject> = {};
+            const askCurseForge = await isCurseForgeEnabled();
             const queue = [...unknown];
             await Promise.all(
                 [0, 1].map(async () => {
@@ -80,7 +84,9 @@ export default (uuid: string, directory: string, files: FileObject[] | undefined
                         const jar = queue.shift()!;
                         try {
                             const url = await getFileDownloadUrl(uuid, `${path}/${jar.name}`);
-                            hashes[await sha1Hex(await (await fetch(url)).arrayBuffer())] = jar;
+                            const data = await (await fetch(url)).arrayBuffer();
+                            hashes[await sha1Hex(data)] = jar;
+                            if (askCurseForge) prints[fingerprint(data)] = jar;
                         } catch (e) {
                             // Unreadable files are tried again next time.
                         }
@@ -89,6 +95,9 @@ export default (uuid: string, directory: string, files: FileObject[] | undefined
             );
             if (cancelled || !Object.keys(hashes).length) return;
 
+            // Each site is asked on its own, one being unreachable must not lose what the other knows. A file that was not
+            // found is only remembered as unknown when both sites could be asked.
+            let complete = true;
             try {
                 const matches = await lookupHashes(Object.keys(hashes));
                 const projects = await getProjects(
@@ -98,15 +107,44 @@ export default (uuid: string, directory: string, files: FileObject[] | undefined
 
                 Object.entries(hashes).forEach(([hash, jar]) => {
                     const project = matches[hash] && info.get(matches[hash].project_id);
-                    const icon = project?.icon_url ? { url: project.icon_url, title: project.title } : null;
-                    cache[cacheKey(path, jar)] = icon;
-                    if (icon) found[jar.name] = icon;
+                    if (project?.icon_url) found[jar.name] = { url: project.icon_url, title: project.title };
+                });
+            } catch (e) {
+                complete = false;
+            }
+
+            const missing = Object.values(prints).filter((jar) => !found[jar.name]);
+            if (askCurseForge && missing.length) {
+                try {
+                    const matches = await lookupFingerprints(
+                        Object.entries(prints)
+                            .filter(([, jar]) => !found[jar.name])
+                            .map(([print]) => Number(print))
+                    );
+                    Object.entries(prints).forEach(([print, jar]) => {
+                        const project = matches[Number(print)]?.project;
+                        if (!found[jar.name] && project?.icon_url) {
+                            found[jar.name] = { url: project.icon_url, title: project.title };
+                        }
+                    });
+                } catch (e) {
+                    complete = false;
+                }
+            }
+
+            if (complete) {
+                Object.values(hashes).forEach((jar) => {
+                    cache[cacheKey(path, jar)] = found[jar.name] || null;
                 });
                 writeCache(uuid, cache);
-                publish();
-            } catch (e) {
-                // Modrinth being unreachable just means no icons this time.
+            } else {
+                // Only what was found is remembered, the rest is tried again next time.
+                Object.values(hashes).forEach((jar) => {
+                    if (found[jar.name]) cache[cacheKey(path, jar)] = found[jar.name];
+                });
+                writeCache(uuid, cache);
             }
+            publish();
         })();
 
         return () => {

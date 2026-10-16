@@ -12,6 +12,8 @@ import useResourcePack from '@/components/server/mods/useResourcePack';
 import installModpack, { ModpackSpec } from '@/components/server/mods/installModpack';
 import { InstallModpackModal } from '@/components/server/mods/modpack';
 import InstallContentModal from '@/components/server/mods/InstallContentModal';
+import InstallWorldModal, { WorldChoice } from '@/components/server/mods/InstallWorldModal';
+import { installWorldFromLink } from '@/lib/worldImport';
 import useContentQuery from '@/components/server/content/useContentQuery';
 import useServerVersion from '@/components/server/content/useServerVersion';
 
@@ -34,11 +36,16 @@ export default () => {
     const [busy, setBusy] = useState<string | null>(null);
     const [removing, setRemoving] = useState<ManagedProject | null>(null);
     const [modpack, setModpack] = useState<ModrinthProject | null>(null);
+    const [world, setWorld] = useState<ModrinthProject | null>(null);
     const [installing, setInstalling] = useState<{
         project: ModrinthProject;
         kind: ProjectKind;
         versionId?: string;
     } | null>(null);
+
+    /** "Sodium 0.6.13", without saying the name twice for versions that are called "Sodium 0.6.13" already. */
+    const named = (title: string, version: string) =>
+        version.toLowerCase().startsWith(title.toLowerCase()) ? version : `${title} ${version}`;
 
     /** Runs one action on a project and shows what happened. */
     const act = async (project: { id: string }, work: () => Promise<string>) => {
@@ -90,9 +97,12 @@ export default () => {
 
             return (
                 (kind === 'datapack'
-                    ? `${project.title} ${record.versionNumber} was added to ${record.directory}. Restart the server or run /reload to load it.`
-                    : `${project.title} ${record.versionNumber} was downloaded to ${record.directory}. Restart the server to load it.`) +
-                extra
+                    ? `${named(project.title, record.versionNumber)} was added to ${
+                          record.directory
+                      }. Restart the server or run /reload to load it.`
+                    : `${named(project.title, record.versionNumber)} was downloaded to ${
+                          record.directory
+                      }. Restart the server to load it.`) + extra
             );
         });
         setInstalling(null);
@@ -129,6 +139,20 @@ export default () => {
         );
     };
 
+    /** A world of CurseForge is downloaded and unpacked in the background, like one from a link. */
+    const startWorld = (choice: WorldChoice) => {
+        const title = world?.title || choice.name;
+        setWorld(null);
+        addFlash({
+            key: 'mods',
+            type: 'info',
+            message: `Installing ${title} in the background, follow it in the task menu at the bottom right.`,
+        });
+        runTask('extract', `Installing world ${choice.name}`, (report) =>
+            installWorldFromLink({ uuid, link: choice.link, name: choice.name, makeActive: choice.makeActive, report })
+        );
+    };
+
     const dialogs = (
         <>
             <Dialog.Confirm
@@ -152,11 +176,29 @@ export default () => {
                 replaces={installing?.kind === 'resourcepack' && !!resourcePack.pack}
                 busy={!!busy}
                 installed={Object.keys(managed.mods)}
+                present={{
+                    projects: Object.values(managed.mods).map((r) => ({
+                        projectId: r.projectId,
+                        title: r.title,
+                        slug: r.slug,
+                    })),
+                    // Jars of the folder of this kind that were not installed from here.
+                    files: managed.untracked
+                        .filter((f) => f.directory === (installing?.kind === 'plugin' ? '/plugins' : '/mods'))
+                        .map((f) => f.file),
+                }}
                 versionId={installing?.versionId}
                 onClose={() => setInstalling(null)}
                 onConfirm={confirmInstall}
             />
             <InstallModpackModal project={modpack} onClose={() => setModpack(null)} onInstall={startModpack} />
+            <InstallWorldModal
+                project={world}
+                offline={status === 'offline'}
+                gameVersion={query.version || detectedVersion}
+                onClose={() => setWorld(null)}
+                onConfirm={startWorld}
+            />
         </>
     );
 
@@ -168,6 +210,8 @@ export default () => {
         /** Opens the dialog to install a project, the one for modpacks when it is one. */
         install: (project: ModrinthProject, kind: ProjectKind, versionId?: string) =>
             kind === 'modpack' ? setModpack(project) : setInstalling({ project, kind, versionId }),
+        /** Opens the dialog to install a world (they only come from CurseForge). */
+        installWorld: (project: ModrinthProject) => setWorld(project),
         update,
         askUninstall: setRemoving,
         dialogs,

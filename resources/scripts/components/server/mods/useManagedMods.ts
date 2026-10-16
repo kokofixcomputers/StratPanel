@@ -6,6 +6,7 @@ import loadDirectory from '@/api/server/files/loadDirectory';
 import getFileDownloadUrl from '@/api/server/files/getFileDownloadUrl';
 import { ManagedProject, readPterodactylJson, updatePterodactylJson } from '@/lib/pterodactylJson';
 import { PlannedDependency } from '@/lib/modDependencies';
+import { fingerprint, isCurseForgeEnabled, lookupFingerprints } from '@/lib/curseforge';
 import {
     getProjects,
     getProjectVersions,
@@ -284,10 +285,15 @@ export default (uuid: string, minecraftVersion: string) => {
         });
     };
 
-    /** Downloads the jars that are not tracked yet, hashes them and asks Modrinth which projects they belong to. */
+    /**
+     * Downloads the jars that are not tracked yet, hashes them and asks Modrinth which projects they belong to. What
+     * Modrinth does not know is looked up on CurseForge, when the panel has a key for it.
+     */
     const detectExisting = async (): Promise<number> => {
         const candidates = untracked.filter((f) => f.size <= MAX_HASH_SIZE);
         const hashes: Record<string, UntrackedFile> = {};
+        const prints: Record<number, UntrackedFile> = {};
+        const askCurseForge = await isCurseForgeEnabled();
         setScan({ done: 0, total: candidates.length });
 
         let done = 0;
@@ -296,15 +302,25 @@ export default (uuid: string, minecraftVersion: string) => {
                 const url = await getFileDownloadUrl(uuid, `${item.directory}/${item.file}`);
                 const data = await (await fetch(url)).arrayBuffer();
                 hashes[await sha1Hex(data)] = item;
+                if (askCurseForge) prints[fingerprint(data)] = item;
             } catch (e) {
                 // Files that cannot be read are skipped.
             }
             setScan({ done: ++done, total: candidates.length });
         });
 
-        const matches = await lookupHashes(Object.keys(hashes));
-        const projects = await getProjects(Array.from(new Set(Object.values(matches).map((v) => v.project_id))));
-        const info = new Map(projects.map((p) => [p.id, p]));
+        // Each site is asked on its own, one being out of reach must not lose what the other found.
+        setScan(null);
+        let matches: Awaited<ReturnType<typeof lookupHashes>> = {};
+        let info = new Map<string, Awaited<ReturnType<typeof getProjects>>[number]>();
+        let modrinthError: Error | null = null;
+        try {
+            matches = Object.keys(hashes).length ? await lookupHashes(Object.keys(hashes)) : {};
+            const projects = await getProjects(Array.from(new Set(Object.values(matches).map((v) => v.project_id))));
+            info = new Map(projects.map((p) => [p.id, p]));
+        } catch (e) {
+            modrinthError = e as Error;
+        }
 
         const added: ManagedProject[] = [];
         Object.keys(matches).forEach((hash) => {
@@ -328,6 +344,44 @@ export default (uuid: string, minecraftVersion: string) => {
                 installedAt: new Date().toISOString(),
             });
         });
+
+        // Files that are not on Modrinth may be on CurseForge. A failed lookup only means those stay unrecognised.
+        let curseForgeFailed = false;
+        const recognised = new Set(added.map((r) => `${r.directory}/${r.file}`));
+        const unknown = Object.entries(prints).filter(([, item]) => !recognised.has(`${item.directory}/${item.file}`));
+        if (unknown.length) {
+            try {
+                const found = await lookupFingerprints(unknown.map(([print]) => Number(print)));
+                unknown.forEach(([print, item]) => {
+                    const match = found[Number(print)];
+                    if (!match) return;
+
+                    added.push({
+                        kind: item.directory === '/plugins' ? 'plugin' : 'mod',
+                        projectId: match.project.id,
+                        slug: match.project.slug,
+                        title: match.project.title,
+                        icon: match.project.icon_url,
+                        versionId: match.version.id,
+                        versionNumber: match.version.version_number,
+                        file: item.file,
+                        directory: item.directory,
+                        loaders: match.version.loaders,
+                        gameVersion: match.version.game_versions[0] || null,
+                        installedAt: new Date().toISOString(),
+                    });
+                });
+            } catch (e) {
+                // CurseForge not answering is no reason to lose what Modrinth found.
+                curseForgeFailed = true;
+            }
+        }
+
+        // Nothing could be asked at all: that is an error, not "nothing was found".
+        if (modrinthError && !added.length && (curseForgeFailed || !askCurseForge)) {
+            await refresh();
+            throw modrinthError;
+        }
 
         if (added.length) {
             await updatePterodactylJson(uuid, (current) => ({

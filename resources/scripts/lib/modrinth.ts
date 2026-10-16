@@ -18,7 +18,7 @@ const get = async <T>(path: string): Promise<T> => {
 
 // ---- search ----------------------------------------------------------------------------------------------------------
 
-export type SortIndex = 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated';
+export type SortIndex = 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated' | 'rating';
 
 export const SORTS: { id: SortIndex; label: string }[] = [
     { id: 'relevance', label: 'Relevance' },
@@ -132,6 +132,11 @@ export interface ProjectDetails {
     published: string;
     updated: string;
     team: string;
+    // Set for a project that comes from CurseForge instead of Modrinth.
+    source?: 'curseforge';
+    // Its page on the site, and whether the author lets its files be downloaded from somewhere else.
+    website_url?: string | null;
+    distribution_allowed?: boolean;
 }
 
 export const getProject = (idOrSlug: string) => get<ProjectDetails>(`/project/${encodeURIComponent(idOrSlug)}`);
@@ -162,8 +167,10 @@ export interface CategoryTag {
     // eslint-disable-next-line camelcase
     project_type: string;
     header: string;
-    // Inline SVG markup.
+    // Inline SVG markup, or the address of a picture (CurseForge's tags have one).
     icon: string;
+    // The name to show when it is not the one made from the tag, CurseForge's slugs are not what people read.
+    label?: string;
 }
 
 export interface LoaderTag {
