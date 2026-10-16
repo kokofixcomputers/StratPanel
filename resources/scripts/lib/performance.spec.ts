@@ -18,7 +18,7 @@ describe('parsePerformance', () => {
                 mspt: { avg: 12.4, min: 3.1, max: 41 },
                 supported: true,
             })
-        ).toEqual({ supported: true, tps: [19.98, 20, 20], mspt: { avg: 12.4, min: 3.1, max: 41 } });
+        ).toEqual({ supported: true, tps: [19.98, 20, 20], mspt: { avg: 12.4, min: 3.1, max: 41 }, world: null });
     });
 
     it('takes mspt with only an average', () => {
@@ -26,6 +26,7 @@ describe('parsePerformance', () => {
             supported: true,
             tps: null,
             mspt: { avg: 8 },
+            world: null,
         });
     });
 
@@ -36,7 +37,7 @@ describe('parsePerformance', () => {
             mspt: { avg: -1, max: 'a' },
         });
 
-        expect(parsed).toEqual({ supported: false, tps: null, mspt: null });
+        expect(parsed).toEqual({ supported: false, tps: null, mspt: null, world: null });
         expect(parsePerformance({ event: 'performance', tps: [999, 20, 20] })?.tps).toBeNull();
     });
 
@@ -45,6 +46,7 @@ describe('parsePerformance', () => {
             supported: false,
             tps: null,
             mspt: null,
+            world: null,
         });
     });
 

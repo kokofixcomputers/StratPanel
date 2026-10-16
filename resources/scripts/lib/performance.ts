@@ -6,12 +6,15 @@
  */
 import { useEffect, useState } from 'react';
 import { BridgeMessage } from '@/lib/bridge';
+import { parseWorld, WorldNow } from '@/lib/worldClock';
 
 export interface PerformanceNow {
     // Whether the server software can report TPS or MSPT at all (Folia cannot).
     supported: boolean;
     tps: number[] | null;
     mspt: { avg: number; min?: number; max?: number } | null;
+    // The time and the weather, from a helper that knows them (protocol 8).
+    world: WorldNow | null;
 }
 
 export interface PerformanceState extends PerformanceNow {
@@ -40,7 +43,12 @@ export const parsePerformance = (message: BridgeMessage): PerformanceNow | null 
     const validTps = tps.length > 0 && tps.every((v) => v !== null) ? (tps as number[]) : null;
     const mspt = avg === null ? null : { avg, ...(min !== null ? { min } : {}), ...(max !== null ? { max } : {}) };
 
-    return { supported: message.supported !== false && (validTps !== null || mspt !== null), tps: validTps, mspt };
+    return {
+        supported: message.supported !== false && (validTps !== null || mspt !== null),
+        tps: validTps,
+        mspt,
+        world: parseWorld(message.world),
+    };
 };
 
 export const pushHistory = (list: number[], value: number): number[] => [...list.slice(-(HISTORY - 1)), value];

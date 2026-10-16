@@ -42,6 +42,7 @@ import {
     useLogVersion,
 } from '@/lib/consoleLog';
 
+import WorldClockPill from '@/components/server/console/WorldClockPill';
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
 
@@ -604,6 +605,7 @@ export default () => {
             >
                 {expanded ? <XIcon className={'w-5 h-5'} /> : <ArrowsExpandIcon className={'w-5 h-5'} />}
             </button>
+            <WorldClockPill />
             <SpinnerOverlay visible={!connected} size={'large'} />
             <div className={styles.filter_bar} role={'group'} aria-label={'Show console lines'}>
                 {(

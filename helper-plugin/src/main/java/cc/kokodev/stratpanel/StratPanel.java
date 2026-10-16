@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -231,8 +232,9 @@ public class StratPanel extends JavaPlugin implements Listener {
     fields.put("minecraft", Bukkit.getMinecraftVersion());
     // 2: the "perf" subcommand and the "performance" message. 3: "vitals". 4: the player commands (inventory, heal,
     // feed, swap, delete). 5: the same for the ender chest. 6: health, hunger
-    // and levels can be changed. 7: the game mode is sent and can be changed.
-    fields.put("protocol", 7);
+    // and levels can be changed. 7: the game mode is sent and can be changed. 8: the "performance" message carries the time
+    // and the weather of the main world.
+    fields.put("protocol", 8);
     bridge.send("handshake", fields);
   }
 
@@ -260,8 +262,15 @@ public class StratPanel extends JavaPlugin implements Listener {
 
   /** TPS and MSPT, as far as the server software can tell. Paper has both, Spigot only the TPS, Folia neither. */
   private void sendPerformance() {
-    bridge.send(
-        "performance", PerformanceSample.fields(readTps(), readTickTimes(), readAverageTickTime()));
+    Map<String, Object> fields =
+        PerformanceSample.fields(readTps(), readTickTimes(), readAverageTickTime());
+    // The first world is the main one (the overworld). The weather is what it is set to, the game fades the rain in slowly.
+    List<World> worlds = Bukkit.getWorlds();
+    if (!worlds.isEmpty()) {
+      World world = worlds.get(0);
+      fields.put("world", WorldSample.fields(world.getFullTime(), world.hasStorm(), world.isThundering()));
+    }
+    bridge.send("performance", fields);
   }
 
   private static double[] readTps() {
