@@ -44,6 +44,25 @@ describe('bridge messages', () => {
         expect(parseTrustedBridgeLine(message)).toBeNull();
     });
 
+    it('trusts the lines the Fabric and NeoForge helper prints, and not a player who copies them', () => {
+        const message = '::stratpanel:: {"event":"player-join","name":"Steve"}';
+        // Taken from real Fabric and NeoForge servers, NeoForge adds the logger in square brackets to the header.
+        expect(parseTrustedBridgeLine(`[18:27:55] [Server thread/INFO]: [Stratosphere] ${message}`)).not.toBeNull();
+        expect(
+            parseTrustedBridgeLine(`[18:27:53] [Stratosphere writer/INFO]: [Stratosphere] ${message}`)
+        ).not.toBeNull();
+        expect(
+            parseTrustedBridgeLine(`[18:29:17] [Server thread/INFO] [Stratosphere/]: [Stratosphere] ${message}`)
+        ).not.toBeNull();
+        // Chat on those servers, with the logger a mod server prints in front of it.
+        expect(parseTrustedBridgeLine(`[18:29:17] [Server thread/INFO]: <Steve> ${message}`)).toBeNull();
+        expect(
+            parseTrustedBridgeLine(
+                `[18:29:17] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: <Steve> [Stratosphere] ${message}`
+            )
+        ).toBeNull();
+    });
+
     it('accepts player names and uuids that can be real', () => {
         expect(toPlayer({ name: 'Steve', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03' })).toEqual({
             name: 'Steve',

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "stratosphere",
+  "version": "${version}",
+  "name": "Stratosphere",
+  "description": "Shares the commands and the players of the server with the Stratosphere panel for tab completion, the player list and the player tools.",
+  "authors": ["kokodev"],
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["cc.kokodev.stratpanel.fabric.StratFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": ">=1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

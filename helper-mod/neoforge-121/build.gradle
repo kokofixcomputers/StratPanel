@@ -1,0 +1,22 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    version = project.neoforge_121
+}
+
+dependencies {
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+ext.gen = 'g121'
+ext.genDir = 'mc-121'
+ext.hooksDir = 'neoforge-hooks'
+apply from: rootProject.file('gen.gradle')

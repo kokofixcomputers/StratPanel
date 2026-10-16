@@ -168,6 +168,6 @@ export default async (ctx: Context): Promise<void> => {
 
     // Optional: a server without the helper plugin works, it only misses some conveniences.
     if (wantsHelper(ctx.software.type)) {
-        await run('helper', () => installHelperPlugin(ctx.uuid), true);
+        await run('helper', () => installHelperPlugin(ctx.uuid, ctx.software.type), true);
     }
 };

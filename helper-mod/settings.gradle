@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'stratosphere-helper-mod'
+
+// core: the protocol, free of Minecraft. fabric-*/neoforge-*: the code that talks to one Minecraft generation through one
+// loader. Each loader's jar bundles its two generations, see README.md.
+include 'core', 'fabric-121', 'fabric-26', 'neoforge-121', 'neoforge-26'

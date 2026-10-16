@@ -1,0 +1,31 @@
+plugins {
+    id 'net.fabricmc.fabric-loom'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:26.3"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_26}"
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+ext.gen = 'g26'
+ext.genDir = 'mc-26'
+ext.hooksDir = 'fabric-hooks'
+apply from: rootProject.file('gen.gradle')

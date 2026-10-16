@@ -1,7 +1,7 @@
 /**
- * The Stratosphere helper plugin is shipped with the panel (public/helper) and put into the plugins folder of servers
- * that run Paper or Spigot. It is uploaded from the browser, which works whatever the network between the node and the
- * panel looks like.
+ * The Stratosphere helper is shipped with the panel (public/helper) and put into the plugins folder of servers that run Paper
+ * or Spigot, or into the mods folder of servers that run Fabric or NeoForge. It is uploaded from the browser, which works
+ * whatever the network between the node and the panel looks like.
  */
 import axios from 'axios';
 import createDirectory from '@/api/server/files/createDirectory';
@@ -9,30 +9,55 @@ import deleteFiles from '@/api/server/files/deleteFiles';
 import getFileUploadUrl from '@/api/server/files/getFileUploadUrl';
 import loadDirectory from '@/api/server/files/loadDirectory';
 
-export const HELPER_FILE = 'Stratosphere.jar';
-// Purpur is a Paper fork and loads the same plugin.
-export const HELPER_SOFTWARE = ['PAPER', 'SPIGOT', 'PURPUR'];
+export interface HelperBuild {
+    // The name of the jar in public/helper, and the one it gets on the server.
+    file: string;
+    // Where the server loads it from.
+    folder: string;
+    // The entry of public/helper/version.json that holds its version, null for the plugin (the top level version).
+    key: 'fabric' | 'neoforge' | null;
+}
 
-export const wantsHelper = (software: string | null | undefined): boolean =>
-    !!software && HELPER_SOFTWARE.includes(software.toUpperCase());
+// Purpur is a Paper fork and loads the same plugin. Fabric and NeoForge each have a mod that works on 1.21.1 and on 26.1 and
+// newer with the one jar.
+const PLUGIN: HelperBuild = { file: 'Stratosphere.jar', folder: '/plugins', key: null };
+const BUILDS: Record<string, HelperBuild> = {
+    PAPER: PLUGIN,
+    SPIGOT: PLUGIN,
+    PURPUR: PLUGIN,
+    FABRIC: { file: 'Stratosphere-fabric.jar', folder: '/mods', key: 'fabric' },
+    NEOFORGE: { file: 'Stratosphere-neoforge.jar', folder: '/mods', key: 'neoforge' },
+};
 
-/** Puts the bundled plugin into /plugins, replacing an older copy of itself. */
-export const installHelperPlugin = async (uuid: string): Promise<void> => {
-    const response = await fetch(`/helper/${HELPER_FILE}`, { cache: 'no-cache' });
-    if (!response.ok) throw new Error('The helper plugin is not part of this panel.');
-    const jar = new File([await response.blob()], HELPER_FILE, { type: 'application/java-archive' });
+export const HELPER_FILE = PLUGIN.file;
+export const HELPER_SOFTWARE = Object.keys(BUILDS);
 
-    await createDirectory(uuid, '/', 'plugins').catch(() => undefined);
+/** The helper that fits a kind of server software (PAPER, fabric, ...), null when there is none. */
+export const helperBuild = (software: string | null | undefined): HelperBuild | null =>
+    (software && BUILDS[software.toUpperCase()]) || null;
 
-    // Older builds may have another file name, two copies of the plugin would fight over the same command.
-    const existing = await loadDirectory(uuid, '/plugins').catch(() => []);
+export const wantsHelper = (software: string | null | undefined): boolean => !!helperBuild(software);
+
+/** Puts the bundled helper into /plugins or /mods, replacing an older copy of itself. */
+export const installHelperPlugin = async (uuid: string, software = 'PAPER'): Promise<void> => {
+    const build = helperBuild(software);
+    if (!build) throw new Error('There is no helper for this kind of server.');
+
+    const response = await fetch(`/helper/${build.file}`, { cache: 'no-cache' });
+    if (!response.ok) throw new Error('The helper is not part of this panel.');
+    const jar = new File([await response.blob()], build.file, { type: 'application/java-archive' });
+
+    await createDirectory(uuid, '/', build.folder.slice(1)).catch(() => undefined);
+
+    // Older builds may have another file name, two copies of the helper would fight over the same command.
+    const existing = await loadDirectory(uuid, build.folder).catch(() => []);
     const stale = existing.filter(
-        (f) => f.isFile && /^(stratosphere|stratpanel).*\.jar$/i.test(f.name) && f.name !== HELPER_FILE
+        (f) => f.isFile && /^(stratosphere|stratpanel).*\.jar$/i.test(f.name) && f.name !== build.file
     );
     if (stale.length)
         await deleteFiles(
             uuid,
-            '/plugins',
+            build.folder,
             stale.map((f) => f.name)
         ).catch(() => undefined);
 
@@ -40,17 +65,21 @@ export const installHelperPlugin = async (uuid: string): Promise<void> => {
     await axios.post(
         url,
         { files: jar },
-        { headers: { 'Content-Type': 'multipart/form-data' }, params: { directory: '/plugins' } }
+        { headers: { 'Content-Type': 'multipart/form-data' }, params: { directory: build.folder } }
     );
 };
 
-/** The version of the plugin that ships with this panel, null when the panel has none. */
-export const bundledHelperVersion = async (): Promise<string | null> => {
+/** The version of the helper that ships with this panel for a kind of software, null when the panel has none. */
+export const bundledHelperVersion = async (software = 'PAPER'): Promise<string | null> => {
+    const build = helperBuild(software);
+    if (!build) return null;
+
     try {
         const response = await fetch('/helper/version.json', { cache: 'no-cache' });
         if (!response.ok) return null;
 
-        const version = (await response.json()).version;
+        const info = await response.json();
+        const version = build.key ? info.mods?.[build.key]?.version : info.version;
 
         return typeof version === 'string' && version ? version : null;
     } catch (e) {

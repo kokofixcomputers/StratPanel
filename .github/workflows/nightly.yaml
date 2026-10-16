@@ -32,7 +32,11 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          # 21 builds the Paper plugin, 25 builds the Fabric and NeoForge mods (the game is built for Java 25 from 26.1 on).
+          # The last one is the default, the other is found through JAVA_HOME_21_X64.
+          java-version: |
+            21
+            25
           cache: gradle
       - run: yarn install --frozen-lockfile
       - run: yarn tsc

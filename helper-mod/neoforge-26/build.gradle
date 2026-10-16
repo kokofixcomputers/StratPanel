@@ -1,0 +1,39 @@
+import org.gradle.api.attributes.java.TargetJvmVersion
+
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    version = project.neoforge_26
+}
+
+dependencies {
+    implementation project(':core')
+}
+
+// The game's libraries are built for Java 25, the classes we write are still Java 21 bytecode so the one jar also loads on
+// Java 21. Gradle must be told it may look at the Java 25 variants for compiling.
+configurations.configureEach {
+    if (canBeResolved) {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'version': project.version
+    }
+}
+
+ext.gen = 'g26'
+ext.genDir = 'mc-26'
+ext.hooksDir = 'neoforge-hooks'
+apply from: rootProject.file('gen.gradle')

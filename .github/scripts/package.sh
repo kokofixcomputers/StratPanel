@@ -35,6 +35,11 @@ PLUGIN_VERSION="$(unzip -p public/helper/Stratosphere.jar plugin.yml | sed -n 's
 printf '{\n  "version": "%s",\n  "file": "Stratosphere.jar",\n  "platforms": ["paper", "spigot", "purpur"]\n}\n' "$PLUGIN_VERSION" > public/helper/version.json
 echo "Helper plugin ${PLUGIN_VERSION} bundled."
 
+echo "Building the helper mods..."
+# One jar per loader that works on Minecraft 1.21.1 and on 26.1 and newer, see helper-mod/scripts/bundle.sh. It adds them to
+# public/helper/version.json.
+bash helper-mod/scripts/bundle.sh "$VERSION"
+
 # The tools live in their own repository, they are built from its default branch and shown by the panel's Tools tab.
 echo "Building the Minecraft tools..."
 bash tools/install-mctools.sh
@@ -44,7 +49,7 @@ if [ -n "$VERSION" ]; then
 fi
 
 # Things that are not needed on a server.
-rm -rf node_modules .cache tests preview helper-plugin docs CONTRIBUTING.md flake.lock flake.nix phpunit.xml shell.nix .serena
+rm -rf node_modules .cache tests preview helper-plugin helper-mod docs CONTRIBUTING.md flake.lock flake.nix phpunit.xml shell.nix .serena
 
 # Same layout as the official Pterodactyl release archive, plus the router, the egg and the bundled helper plugin.
 tar -czf panel.tar.gz * .editorconfig .env.example .eslintignore .eslintrc.js .gitignore .prettierrc.json

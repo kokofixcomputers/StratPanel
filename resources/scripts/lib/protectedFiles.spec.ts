@@ -13,7 +13,7 @@ describe('files the panel depends on', () => {
         ).toEqual(['stratosphere.json', 'stratosphere.commands.json', 'pterodactyl.json', 'pterodactyl.commands.json']);
     });
 
-    it('recognises the helper plugin only in the plugins folder', () => {
+    it('recognises the helper plugin in the plugins folder and the helper mod in the mods folder', () => {
         expect(
             protectedFiles('/plugins', [
                 'Stratosphere.jar',
@@ -23,7 +23,12 @@ describe('files the panel depends on', () => {
                 'EssentialsX.jar',
             ]).map((f) => f.name)
         ).toEqual(['Stratosphere.jar', 'StratPanel.jar', 'StratPanel-1.2.jar', 'StratPanel']);
-        expect(protectedFiles('/mods', ['StratPanel.jar'])).toEqual([]);
+        expect(
+            protectedFiles('/mods', ['Stratosphere-fabric.jar', 'Stratosphere-neoforge.jar', 'sodium.jar']).map(
+                (f) => f.name
+            )
+        ).toEqual(['Stratosphere-fabric.jar', 'Stratosphere-neoforge.jar']);
+        expect(protectedFiles('/config', ['Stratosphere.jar'])).toEqual([]);
         // The same name somewhere else is just a file.
         expect(protectedFiles('/world', ['pterodactyl.json'])).toEqual([]);
     });

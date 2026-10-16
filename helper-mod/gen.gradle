@@ -1,0 +1,15 @@
+// The code that talks to Minecraft is written once and compiled for each generation of the game. The files are templates:
+// the package ends in ".gen", which is replaced by the generation ("g121" or "g26") so the classes of both generations can
+// live in one jar. Applied by the four loader projects, they set `gen`, `genDir` and `hooksDir` first.
+def target = layout.buildDirectory.dir('generated/gen')
+
+def generate = tasks.register('generateGenSources', Sync) {
+    from(rootProject.file('mc/src')) { into '.' }
+    from(rootProject.file(genDir + '/src')) { into '.' }
+    from(rootProject.file(hooksDir + '/src')) { into '.' }
+    into target
+    eachFile { it.path = it.path.replace('/stratpanel/gen/', "/stratpanel/${gen}/") }
+    filter { line -> line.replace('cc.kokodev.stratpanel.gen', "cc.kokodev.stratpanel.${gen}") }
+}
+
+sourceSets.main.java.srcDir(generate)

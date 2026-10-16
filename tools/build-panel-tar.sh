@@ -14,7 +14,7 @@ trap 'rm -f "$LIST"' EXIT
 {
   git ls-files --cached --others --exclude-standard
   find public/assets public/themes public/helper public/tools tools/mc-router/dist -type f 2>/dev/null
-} | sort -u | grep -v -E '^(node_modules|tests|preview|helper-plugin|docs|\.serena|CONTRIBUTING\.md|flake\.lock|flake\.nix|phpunit\.xml|shell\.nix|panel(-ui)?\.tar\.gz)(/|$)' \
+} | sort -u | grep -v -E '^(node_modules|tests|preview|helper-plugin|helper-mod|docs|\.serena|CONTRIBUTING\.md|flake\.lock|flake\.nix|phpunit\.xml|shell\.nix|panel(-ui)?\.tar\.gz)(/|$)' \
   | grep -v -E '(^|/)(\._[^/]*|\.DS_Store)$' \
   | grep -E '^([^.]|\.editorconfig$|\.env\.example$|\.eslintignore$|\.eslintrc\.js$|\.gitignore$|\.prettierrc\.json$)' \
   | while IFS= read -r file; do [ -e "$file" ] && printf '%s\n' "$file"; done > "$LIST"

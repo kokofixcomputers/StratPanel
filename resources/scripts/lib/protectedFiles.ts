@@ -22,10 +22,11 @@ const RULES: { match: (directory: string, name: string) => boolean; consequence:
     },
     {
         match: (directory, name) =>
-            directory === '/plugins' && /^(stratosphere|stratpanel)(\.jar|[-_.].*\.jar)?$/i.test(name),
+            (directory === '/plugins' || directory === '/mods') &&
+            /^(stratosphere|stratpanel)(\.jar|[-_.].*\.jar)?$/i.test(name),
         consequence:
-            'It is the helper plugin: without it there is no command completion from your plugins, no reliable player list ' +
-            'and no helper status on the console.',
+            'It is the helper plugin or mod: without it there is no command completion from your plugins and mods, no ' +
+            'reliable player list and no helper status on the console.',
     },
 ];
 

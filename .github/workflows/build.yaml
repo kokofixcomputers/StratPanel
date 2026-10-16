@@ -51,3 +51,25 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon test shadowJar
+
+  helper-mod:
+    name: Helper mods
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+
+      # The game is built for Java 25 from 26.1 on, so Gradle has to run on 25. The mods themselves are Java 21 bytecode.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Test and build the mods
+        working-directory: helper-mod
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon test mods

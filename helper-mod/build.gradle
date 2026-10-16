@@ -1,0 +1,45 @@
+// The loader plugins are declared once here so every project uses the same copy of them.
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
+    id 'net.neoforged.moddev' version '2.0.148' apply false
+}
+
+subprojects {
+    group = 'cc.kokodev.stratpanel'
+    version = rootProject.mod_version
+}
+
+// One jar per loader. Each holds the shared core, the entry point and one build of the Minecraft-facing code for every
+// generation of the game, the right one is picked when the server starts.
+evaluationDependsOn(':fabric-26')
+evaluationDependsOn(':fabric-121')
+evaluationDependsOn(':neoforge-26')
+evaluationDependsOn(':neoforge-121')
+
+tasks.register('fabricJar', Jar) {
+    archiveFileName = "stratosphere-fabric-${mod_version}.jar"
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
+    from(zipTree(project(':fabric-26').tasks.named('jar').flatMap { it.archiveFile }))
+    // The 1.21.1 classes are renamed to the names that Fabric uses on 1.21.1 when running, the rest is already in the jar.
+    from(zipTree(project(':fabric-121').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+}
+
+tasks.register('neoforgeJar', Jar) {
+    archiveFileName = "stratosphere-neoforge-${mod_version}.jar"
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
+    from(zipTree(project(':neoforge-26').tasks.named('jar').flatMap { it.archiveFile }))
+    from(zipTree(project(':neoforge-121').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+}
+
+tasks.register('mods') {
+    dependsOn 'fabricJar', 'neoforgeJar'
+}

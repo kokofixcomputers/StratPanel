@@ -8,7 +8,7 @@ import { bundledHelperVersion, installHelperPlugin } from '@/lib/helperPlugin';
 import { usePermissions } from '@/plugins/usePermissions';
 
 /**
- * Shows whether the Stratosphere plugin on the server has answered the panel. Clicking it asks the plugin for fresh
+ * Shows whether the Stratosphere plugin or mod on the server has answered the panel. Clicking it asks it for fresh
  * information: the players that are online and the list of commands.
  */
 export default () => {
@@ -22,9 +22,10 @@ export default () => {
     const [updated, setUpdated] = useState<string | null>(null);
     const [failed, setFailed] = useState('');
 
+    // The platform the helper reported decides which build ships for this server: the plugin, or a mod.
     useEffect(() => {
-        bundledHelperVersion().then(setBundled);
-    }, []);
+        bundledHelperVersion(bridge.platform || 'PAPER').then(setBundled);
+    }, [bridge.platform]);
 
     // The plugin on the server is not the one that ships with the panel, which is how a server ends up with an old one.
     const outdated =
@@ -34,10 +35,10 @@ export default () => {
         setUpdating(true);
         setFailed('');
         try {
-            await installHelperPlugin(uuid);
+            await installHelperPlugin(uuid, bridge.platform || 'PAPER');
             setUpdated(bundled);
         } catch (e) {
-            setFailed((e as Error).message || 'The plugin could not be uploaded.');
+            setFailed((e as Error).message || 'The helper could not be uploaded.');
         } finally {
             setUpdating(false);
         }
@@ -58,7 +59,7 @@ export default () => {
         : failed
         ? `The helper plugin could not be updated: ${failed}`
         : outdated
-        ? `The helper plugin on this server is ${bridge.version}, this panel has ${bundled}.${
+        ? `The helper on this server is ${bridge.version}, this panel has ${bundled}.${
               canUpdate ? ' Click to update it, the server has to be restarted afterwards.' : ''
           }`
         : busy
@@ -67,7 +68,7 @@ export default () => {
         ? `Helper plugin connected${
               detail ? ` (${detail})` : ''
           }. Click to refresh the online players and the command list.`
-        : 'The helper plugin did not answer. Install the Stratosphere plugin on the server for command completion and a reliable player list. Click to try again.';
+        : 'The helper did not answer. Install the Stratosphere plugin (or mod) on the server for command completion and a reliable player list. Click to try again.';
 
     const tone = !running
         ? 'border-neutral-500 bg-white text-neutral-400'
