@@ -4,6 +4,7 @@ import 'monaco-editor/esm/vs/editor/editor.all';
 import 'monaco-editor/esm/vs/basic-languages/monaco.contribution';
 import styled from 'styled-components/macro';
 import tw from 'twin.macro';
+import { currentTheme, THEME_EVENT } from '@/lib/theme';
 
 // Language services (JSON/TS validation, etc.) are not needed for a config file editor, so everything runs
 // without web workers and only uses the Monarch syntax highlighters bundled in "basic-languages".
@@ -118,6 +119,31 @@ monaco.editor.defineTheme('panel', {
     },
 });
 
+// The same editor for a dark page: Monaco's own dark base with the surfaces of the panel.
+monaco.editor.defineTheme('panel-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+        'editor.background': '#141a23',
+        'editorLineNumber.foreground': '#64748b',
+        'editorLineNumber.activeForeground': '#cbd5e1',
+        'editor.lineHighlightBackground': '#1c2330',
+        'editor.lineHighlightBorder': '#00000000',
+        'editorGutter.background': '#141a23',
+        'editor.selectionBackground': '#5b86f755',
+        'editorCursor.foreground': '#7aa2ff',
+        'scrollbarSlider.background': '#7d8ba155',
+    },
+});
+
+/** The name of the editor theme that fits the theme of the page. */
+export const editorThemeName = (): string => (currentTheme() === 'dark' ? 'panel-dark' : 'panel');
+
+// The theme of the editor is the same for all editors on the page, so it is changed here, when the theme of the page changes.
+monaco.editor.setTheme(editorThemeName());
+window.addEventListener(THEME_EVENT, () => monaco.editor.setTheme(editorThemeName()));
+
 export interface Language {
     id: string;
     name: string;
@@ -189,7 +215,7 @@ export default ({
         const instance = monaco.editor.create(container.current, {
             value: '',
             language: 'plaintext',
-            theme: 'panel',
+            theme: editorThemeName(),
             automaticLayout: true,
             fontSize: 13,
             lineHeight: 22,

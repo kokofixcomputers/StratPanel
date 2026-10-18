@@ -57,7 +57,7 @@ export default createGlobalStyle`
     }
 
     ::selection {
-        background: rgba(20, 71, 230, 0.18);
+        background: rgb(var(--c-primary-500) / 0.28);
     }
 
     /* Scroll Bar Style */
@@ -71,11 +71,11 @@ export default createGlobalStyle`
         border: solid 4px transparent;
         border-radius: 9999px;
         background-clip: content-box;
-        background-color: #cbd5e1;
+        background-color: rgb(var(--c-neutral-400) / 0.35);
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background-color: #94a3b8;
+        background-color: rgb(var(--c-neutral-400) / 0.65);
     }
 
     ::-webkit-scrollbar-corner {

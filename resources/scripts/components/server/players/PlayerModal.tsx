@@ -275,7 +275,7 @@ export default ({ name, uuid, online, onClose }: Props) => {
                                                     className={classNames(
                                                         'rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors duration-150',
                                                         current
-                                                            ? 'border-primary-600 bg-primary-600 text-white disabled:opacity-100'
+                                                            ? 'border-primary-600 bg-primary-600 text-snow disabled:opacity-100'
                                                             : 'border-neutral-500 bg-white text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50'
                                                     )}
                                                 >

@@ -12,7 +12,7 @@ export const ProviderBadge = ({ type, name }: { type: string; name: string }) =>
     ) : (
         <span
             className={
-                'mr-3 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-xs font-bold text-white'
+                'mr-3 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-xs font-bold text-snow'
             }
             aria-hidden
         >

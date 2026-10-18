@@ -119,7 +119,7 @@ export default () => {
                             </p>
                         </>
                     ) : (
-                        <p css={tw`ml-2 text-sm text-white`}>{error}</p>
+                        <p css={tw`ml-2 text-sm text-snow`}>{error}</p>
                     )}
                 </ContentContainer>
             </div>

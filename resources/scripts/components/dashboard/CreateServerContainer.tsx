@@ -44,8 +44,8 @@ const Stepper = ({ step }: { step: number }) => (
                     <span
                         className={classNames(
                             'flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors duration-150',
-                            index < step && 'bg-primary-600 text-white',
-                            index === step && 'bg-primary-600 text-white ring-4 ring-primary-600/20',
+                            index < step && 'bg-primary-600 text-snow',
+                            index === step && 'bg-primary-600 text-snow ring-4 ring-primary-600/20',
                             index > step && 'bg-neutral-500 text-neutral-300'
                         )}
                     >

@@ -30,7 +30,7 @@ export default ({ className }: { className?: string }) => {
                     className={classNames(
                         'flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150',
                         query.source === source.id
-                            ? 'bg-primary-600 text-white shadow'
+                            ? 'bg-primary-600 text-snow shadow'
                             : 'text-neutral-300 hover:text-neutral-50'
                     )}
                 >

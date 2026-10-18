@@ -406,7 +406,7 @@ export default () => {
             <FlashMessageRender byKey={'players'} className={'mb-4'} />
             <PageHeader title={'Players'} subtitle={'See who is online and manage their access'} />
             {offline ? (
-                <p className={'mb-4 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800'}>
+                <p className={'mb-4 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-700'}>
                     The server is stopped, so bans and operators are written straight to banned-players.json and
                     ops.json. Kicking needs the server to be running.
                 </p>
@@ -468,7 +468,7 @@ export default () => {
                                 className={classNames(
                                     'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150',
                                     active
-                                        ? 'border-primary-600 bg-primary-600 text-white'
+                                        ? 'border-primary-600 bg-primary-600 text-snow'
                                         : 'border-neutral-500 bg-white text-neutral-300 hover:bg-neutral-600'
                                 )}
                             >

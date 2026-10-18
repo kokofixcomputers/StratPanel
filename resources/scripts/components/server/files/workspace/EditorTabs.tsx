@@ -76,9 +76,9 @@ export default ({ tabs, active, dirty, onActivate, onClose, onMove, children }: 
                                 // The accent line on top of the tab that is shown, and where a dragged tab would land.
                                 boxShadow:
                                     over === tab.path
-                                        ? 'inset 0 0 0 2px #608bfa'
+                                        ? 'inset 0 0 0 2px rgb(var(--c-primary-400))'
                                         : isActive
-                                        ? 'inset 0 2px 0 0 #1447e6'
+                                        ? 'inset 0 2px 0 0 rgb(var(--c-primary-600))'
                                         : undefined,
                             }}
                             className={`group relative flex flex-shrink-0 cursor-pointer select-none items-center border-r border-neutral-500 py-2 pl-3 pr-1.5 text-sm ${

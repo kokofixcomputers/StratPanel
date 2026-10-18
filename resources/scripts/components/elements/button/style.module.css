@@ -40,8 +40,8 @@
 }
 
 .primary {
-    @apply bg-blue-600 text-white;
-    @apply hover:bg-blue-700 active:bg-blue-700;
+    @apply bg-blue-600 text-snow;
+    @apply hover:bg-blue-800 active:bg-blue-800;
 
     &.secondary {
         @apply bg-white text-blue-600 border-blue-600/30;
@@ -67,7 +67,7 @@
 }
 
 .danger {
-    @apply bg-red-600 text-white border-transparent;
+    @apply bg-red-600 text-snow border-transparent;
     @apply hover:bg-red-700 active:bg-red-700;
 
     &.secondary {

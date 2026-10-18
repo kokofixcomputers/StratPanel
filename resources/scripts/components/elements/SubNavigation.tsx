@@ -24,7 +24,7 @@ const SubNavigation = styled.div`
             &:active,
             &.active {
                 ${tw`text-primary-600`};
-                box-shadow: inset 0 -2px #1447e6;
+                box-shadow: inset 0 -2px rgb(var(--c-primary-600));
             }
 
             & > svg {

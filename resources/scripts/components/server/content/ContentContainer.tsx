@@ -42,7 +42,7 @@ const Pill = ({ active, children, onClick }: { active: boolean; children: React.
         aria-pressed={active}
         onClick={onClick}
         className={classNames('rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150', {
-            'bg-primary-600 text-white shadow': active,
+            'bg-primary-600 text-snow shadow': active,
             'text-neutral-300 hover:text-neutral-50': !active,
         })}
     >
@@ -237,7 +237,7 @@ export default () => {
                         <Pill active={view === 'installed'} onClick={() => update({ view: 'installed' }, 'push')}>
                             {kind === 'resourcepack' ? 'In use' : `Installed (${installedOfKind.length})`}
                             {updatable.length > 0 && (
-                                <span className={'ml-2 rounded-full bg-primary-600 px-1.5 text-2xs text-white'}>
+                                <span className={'ml-2 rounded-full bg-primary-600 px-1.5 text-2xs text-snow'}>
                                     {updatable.length}
                                 </span>
                             )}
@@ -256,7 +256,7 @@ export default () => {
                         <AdjustmentsIcon className={'mr-2 h-5 w-5'} />
                         Search and filters
                         {filterCount > 0 && (
-                            <span className={'ml-2 rounded-full bg-primary-600 px-1.5 text-2xs text-white'}>
+                            <span className={'ml-2 rounded-full bg-primary-600 px-1.5 text-2xs text-snow'}>
                                 {filterCount}
                             </span>
                         )}

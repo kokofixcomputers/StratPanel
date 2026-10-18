@@ -18,7 +18,15 @@ interface Props {
  * when there is no data (for example while the server is offline). With `format` it can be hovered: a marker follows
  * the pointer along the line and says what the value was at that moment.
  */
-export default ({ values, max, color = '#1447e6', width = 150, height = 44, format, intervalSeconds = 1 }: Props) => {
+export default ({
+    values,
+    max,
+    color = 'rgb(var(--c-primary-600))',
+    width = 150,
+    height = 44,
+    format,
+    intervalSeconds = 1,
+}: Props) => {
     const [hover, setHover] = useState<number | null>(null);
 
     const { line, area, points } = useMemo(() => {
@@ -89,7 +97,7 @@ export default ({ values, max, color = '#1447e6', width = 150, height = 44, form
                     />
                     <div
                         className={
-                            'pointer-events-none absolute bottom-full z-50 mb-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg'
+                            'pointer-events-none absolute bottom-full z-50 mb-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-snow shadow-lg'
                         }
                         style={{
                             left: `${left}%`,

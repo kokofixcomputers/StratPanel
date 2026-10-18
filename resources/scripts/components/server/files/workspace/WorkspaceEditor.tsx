@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 // The editor of the file manager is set up once, in this module: the theme, the syntax highlighters, the workers.
-import '@/components/elements/MonacoEditor';
+import { editorThemeName } from '@/components/elements/MonacoEditor';
 
 /** A file that is open: its text (and the history of changes to it, and where the cursor and scroll were) live in a model. */
 export interface Doc {
@@ -43,7 +43,7 @@ export default ({ docs, path, revision, readOnly, onSave, onCursor, visible }: P
 
         const instance = monaco.editor.create(container.current, {
             model: null,
-            theme: 'panel',
+            theme: editorThemeName(),
             automaticLayout: true,
             fontSize: 13,
             lineHeight: 22,

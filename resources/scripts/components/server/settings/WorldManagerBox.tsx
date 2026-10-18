@@ -334,7 +334,7 @@ export default () => {
                                             {active && (
                                                 <span
                                                     className={
-                                                        'ml-2 rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-white'
+                                                        'ml-2 rounded-full bg-primary-600 px-2 py-0.5 text-xs font-medium text-snow'
                                                     }
                                                 >
                                                     Active

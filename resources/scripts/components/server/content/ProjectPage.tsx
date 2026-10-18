@@ -413,7 +413,7 @@ export default () => {
                                 className={classNames(
                                     'rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150',
                                     {
-                                        'bg-primary-600 text-white shadow': tab === t.id,
+                                        'bg-primary-600 text-snow shadow': tab === t.id,
                                         'text-neutral-300 hover:text-neutral-50': tab !== t.id,
                                     }
                                 )}

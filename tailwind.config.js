@@ -1,32 +1,23 @@
-const colors = require('tailwindcss/colors');
+const { scales, singles } = require('./resources/scripts/assets/css/palette');
 
-// Light theme. The "gray" / "neutral" scales are surface-oriented: 50-400 are text tones (darkest to muted),
-// 500 is a border / divider tone and 600-900 are progressively lighter surfaces.
-const gray = {
-    50: '#0f172a',
-    100: '#1e293b',
-    200: '#334155',
-    300: '#475569',
-    400: '#64748b',
-    500: '#e5e7eb',
-    600: '#f3f4f6',
-    700: '#ffffff',
-    800: '#f5f5f6',
-    900: '#fafafa',
-};
+// Every colour is a CSS variable with the three numbers of the colour (theme.css has the values of the light and the dark theme, see
+// resources/scripts/assets/css/palette.js), so a change of theme re-colours the whole panel. Tailwind and twin.macro both call these
+// with the variable of the opacity when a utility has one.
+const variable =
+    (name) =>
+    ({ opacityValue, opacityVariable }) => {
+        if (opacityValue !== undefined) return `rgb(var(${name}) / ${opacityValue})`;
+        if (opacityVariable) return `rgb(var(${name}) / var(${opacityVariable}, 1))`;
 
-const blue = {
-    50: '#eff4ff',
-    100: '#dbe6fe',
-    200: '#bfd3fe',
-    300: '#93b4fd',
-    400: '#608bfa',
-    500: '#2f62f0',
-    600: '#1447e6',
-    700: '#1138c2',
-    800: '#122f9a',
-    900: '#142a78',
-};
+        return `rgb(var(${name}))`;
+    };
+
+const scale = (name) =>
+    Object.fromEntries(Object.keys(scales[name].light).map((shade) => [shade, variable(`--c-${name}-${shade}`)]));
+
+const palette = Object.fromEntries(Object.keys(scales).map((name) => [name, scale(name)]));
+const gray = palette.neutral;
+const blue = palette.primary;
 
 module.exports = {
     content: ['./resources/scripts/**/*.{js,ts,tsx}'],
@@ -37,12 +28,15 @@ module.exports = {
                 header: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
             },
             colors: {
-                black: '#eef0f3',
+                ...palette,
+                black: variable('--c-black'),
+                // Cards: white in the light theme, a dark surface in the dark one.
+                white: variable('--c-white'),
+                // White that stays white, for the text on a coloured button or over a picture.
+                snow: '#ffffff',
                 primary: blue,
-                blue: blue,
-                gray: gray,
-                neutral: gray,
-                cyan: colors.cyan,
+                blue,
+                gray,
             },
             borderRadius: {
                 DEFAULT: '0.5rem',

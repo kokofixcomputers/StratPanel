@@ -6,7 +6,7 @@ interface Props {
     color?: string;
 }
 
-export default ({ percent, size = 76, color = '#1447e6' }: Props) => {
+export default ({ percent, size = 76, color = 'rgb(var(--c-primary-600))' }: Props) => {
     const stroke = 8;
     const radius = (size - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
@@ -15,7 +15,14 @@ export default ({ percent, size = 76, color = '#1447e6' }: Props) => {
     return (
         <div className={'relative'} style={{ width: size, height: size }}>
             <svg width={size} height={size} className={'-rotate-90'}>
-                <circle cx={size / 2} cy={size / 2} r={radius} fill={'none'} stroke={'#e8eefc'} strokeWidth={stroke} />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill={'none'}
+                    stroke={'rgb(var(--c-primary-100))'}
+                    strokeWidth={stroke}
+                />
                 <circle
                     cx={size / 2}
                     cy={size / 2}

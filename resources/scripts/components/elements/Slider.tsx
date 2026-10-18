@@ -31,8 +31,8 @@ export default ({ label, value, min, max, step, display, hint, onChange }: Props
                 onChange={(e) => onChange(Number(e.currentTarget.value))}
                 className={'w-full h-2 rounded-full appearance-none cursor-pointer outline-none'}
                 style={{
-                    background: `linear-gradient(to right, #1447e6 ${percent}%, #e5e7eb ${percent}%)`,
-                    ...({ accentColor: '#1447e6' } as React.CSSProperties),
+                    background: `linear-gradient(to right, rgb(var(--c-primary-600)) ${percent}%, rgb(var(--c-neutral-500)) ${percent}%)`,
+                    ...({ accentColor: 'rgb(var(--c-primary-600))' } as React.CSSProperties),
                 }}
             />
             <div className={'flex justify-between mt-1 text-2xs text-neutral-400'}>

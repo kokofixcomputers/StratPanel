@@ -25,7 +25,7 @@ const Cell = ({
         className={classNames(
             'inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors duration-150',
             active
-                ? 'border-primary-600 bg-primary-600 text-white'
+                ? 'border-primary-600 bg-primary-600 text-snow'
                 : 'border-neutral-500 bg-white text-neutral-300 hover:bg-neutral-600 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white'
         )}
     >

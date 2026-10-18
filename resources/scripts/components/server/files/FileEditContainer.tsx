@@ -285,7 +285,7 @@ export default () => {
                 </div>
                 {hash.replace(/^#/, '').endsWith('.pteroignore') && (
                     <div css={tw`mb-3 p-3 border bg-primary-50 rounded-xl border-primary-200`}>
-                        <p css={tw`text-primary-800 text-sm`}>
+                        <p css={tw`text-primary-700 text-sm`}>
                             You&apos;re editing a{' '}
                             <code css={tw`font-mono bg-white rounded py-px px-1`}>.pteroignore</code> file. Anything
                             listed in here is excluded from backups. Wildcards are supported with an asterisk, and you

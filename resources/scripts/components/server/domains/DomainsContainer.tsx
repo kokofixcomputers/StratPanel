@@ -137,7 +137,7 @@ const RecordPanel = ({
 const Step = ({ index, children }: { index: number; children: React.ReactNode }) => (
     <li css={tw`flex items-start`}>
         <span
-            css={tw`flex items-center justify-center w-6 h-6 rounded-full bg-primary-600 text-white text-xs font-semibold flex-shrink-0 mt-0.5`}
+            css={tw`flex items-center justify-center w-6 h-6 rounded-full bg-primary-600 text-snow text-xs font-semibold flex-shrink-0 mt-0.5`}
         >
             {index}
         </span>

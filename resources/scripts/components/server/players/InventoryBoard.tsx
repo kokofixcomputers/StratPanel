@@ -256,7 +256,7 @@ export default ({
                                 )}
                                 {item.count > 1 && (
                                     <span
-                                        className={classNames(styles.mc, 'absolute text-white')}
+                                        className={classNames(styles.mc, 'absolute text-snow')}
                                         style={{ right: 0, bottom: 0, fontSize: px(8) }}
                                     >
                                         {item.count}
@@ -313,7 +313,7 @@ export default ({
                                 <div className={'flex items-center gap-1'}>
                                     <button
                                         type={'button'}
-                                        className={'rounded bg-red-600 px-2 py-0.5 font-medium text-white'}
+                                        className={'rounded bg-red-600 px-2 py-0.5 font-medium text-snow'}
                                         style={{ fontSize: text(5) }}
                                         onClick={() => {
                                             setLocal(view.filter((i) => i.slot !== current.slot));

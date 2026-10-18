@@ -22,7 +22,7 @@ const Spinner = ({ progress, className }: { progress: number; className?: string
         <circle {...svgProps} className={'opacity-25'} />
         <circle
             {...svgProps}
-            stroke={'#1447e6'}
+            stroke={'rgb(var(--c-primary-600))'}
             strokeDasharray={28 * Math.PI}
             className={'rotate-[-90deg] origin-[50%_50%] transition-[stroke-dashoffset] duration-300'}
             style={{ strokeDashoffset: ((100 - progress) / 100) * 28 * Math.PI }}

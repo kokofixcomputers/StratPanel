@@ -7,7 +7,8 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
 import detectCurrent from '@/components/server/versions/detectCurrent';
 import { readWorldSeed } from '@/lib/worldSeed';
-import { toolsTheme } from '@/lib/toolsTheme';
+import { toolsThemeFor } from '@/lib/toolsTheme';
+import { useTheme } from '@/lib/theme';
 import { findSchematicsFolder, MAX_SCHEMATIC_BYTES, saveSchematic } from '@/lib/worldEdit';
 import getFileContents from '@/api/server/files/getFileContents';
 import saveFileContents from '@/api/server/files/saveFileContents';
@@ -96,6 +97,8 @@ export default () => {
         frame.current?.contentWindow?.postMessage({ source: 'stratpanel', ...message }, window.location.origin);
     }, []);
 
+    const { theme } = useTheme();
+
     const pushState = useCallback(
         () =>
             post({
@@ -104,14 +107,14 @@ export default () => {
                 software: version.software,
                 server: name,
                 seed,
-                theme: toolsTheme,
+                theme: toolsThemeFor(theme),
                 worldEdit: schematics,
                 running,
                 canRun: canControl,
                 canEdit,
                 players: online,
             }),
-        [post, version, name, seed, schematics, running, canControl, canEdit, online]
+        [post, version, name, seed, schematics, running, canControl, canEdit, online, theme]
     );
 
     // Tell the tools about the server whenever any of it changes.

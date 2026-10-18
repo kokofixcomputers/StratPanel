@@ -37,8 +37,8 @@ const SpinnerComponent = styled.div<Props>`
               `
             : null};
 
-    border-color: rgba(20, 71, 230, 0.15);
-    border-top-color: #1447e6;
+    border-color: rgb(var(--c-primary-500) / 0.18);
+    border-top-color: rgb(var(--c-primary-600));
 `;
 
 const Spinner: Spinner = ({ centered, ...props }) =>

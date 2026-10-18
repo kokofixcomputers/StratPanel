@@ -17,7 +17,7 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${(props) =>
         ((!props.isSecondary && !props.color) || props.color === 'primary') &&
         css<Props>`
-            ${(props) => !props.isSecondary && tw`bg-primary-600 border-primary-600 text-white`};
+            ${(props) => !props.isSecondary && tw`bg-primary-600 border-primary-600 text-snow`};
 
             &:hover:not(:disabled) {
                 ${tw`bg-primary-700 border-primary-700`};
@@ -37,7 +37,7 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${(props) =>
         props.color === 'green' &&
         css<Props>`
-            ${tw`border-green-600 bg-green-600 text-white`};
+            ${tw`border-green-600 bg-green-600 text-snow`};
 
             &:hover:not(:disabled) {
                 ${tw`bg-green-700 border-green-700`};
@@ -47,7 +47,7 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
     ${(props) =>
         props.color === 'red' &&
         css<Props>`
-            ${tw`border-red-600 bg-red-600 text-white`};
+            ${tw`border-red-600 bg-red-600 text-snow`};
 
             &:hover:not(:disabled) {
                 ${tw`bg-red-700 border-red-700`};
@@ -66,14 +66,14 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
 
             &:hover:not(:disabled) {
                 ${tw`bg-neutral-600 text-neutral-50`};
-                ${(props) => props.color === 'red' && tw`bg-red-600 border-red-600 text-white`};
-                ${(props) => props.color === 'primary' && tw`bg-primary-600 border-primary-600 text-white`};
-                ${(props) => props.color === 'green' && tw`bg-green-600 border-green-600 text-white`};
+                ${(props) => props.color === 'red' && tw`bg-red-600 border-red-600 text-snow`};
+                ${(props) => props.color === 'primary' && tw`bg-primary-600 border-primary-600 text-snow`};
+                ${(props) => props.color === 'green' && tw`bg-green-600 border-green-600 text-snow`};
             }
         `};
 
     &:focus-visible {
-        box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.25);
+        box-shadow: 0 0 0 3px rgb(var(--c-primary-500) / 0.3);
     }
 
     &:disabled {

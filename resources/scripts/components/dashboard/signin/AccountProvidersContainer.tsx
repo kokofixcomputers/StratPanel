@@ -43,7 +43,7 @@ const Row = ({ provider, onUnlink }: { provider: LinkedProvider; onUnlink: (prov
             <a
                 href={providerUrl(provider.key, true)}
                 className={
-                    'inline-flex items-center rounded-lg border border-primary-600 bg-primary-600 px-2.5 py-1 text-xs font-medium text-white no-underline transition-colors duration-150 hover:bg-primary-700'
+                    'inline-flex items-center rounded-lg border border-primary-600 bg-primary-600 px-2.5 py-1 text-xs font-medium text-snow no-underline transition-colors duration-150 hover:bg-primary-800'
                 }
             >
                 Link

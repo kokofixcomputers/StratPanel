@@ -33,7 +33,7 @@ const checkboxStyle = css<Props>`
 
     &:focus {
         ${tw`outline-none border-primary-500`};
-        box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.18);
+        box-shadow: 0 0 0 3px rgb(var(--c-primary-500) / 0.22);
     }
 `;
 
@@ -61,9 +61,9 @@ const inputStyle = css<Props>`
 
     &:not(:disabled):not(:read-only):focus {
         ${tw`border-primary-500`};
-        box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.15);
+        box-shadow: 0 0 0 3px rgb(var(--c-primary-500) / 0.2);
         ${(props) => props.hasError && tw`border-red-500`};
-        ${(props) => props.hasError && 'box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15)'};
+        ${(props) => props.hasError && 'box-shadow: 0 0 0 3px rgb(var(--c-red-500) / 0.2)'};
     }
 
     &:disabled {

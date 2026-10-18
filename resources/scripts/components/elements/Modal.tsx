@@ -121,7 +121,7 @@ const Modal: React.FC<ModalProps> = ({
                         <Fade timeout={150} appear in>
                             <div
                                 css={tw`absolute w-full h-full rounded-2xl flex items-center justify-center`}
-                                style={{ background: 'rgba(255, 255, 255, 0.7)', zIndex: 9999 }}
+                                style={{ background: 'rgb(var(--c-white) / 0.7)', zIndex: 9999 }}
                             >
                                 <Spinner />
                             </div>

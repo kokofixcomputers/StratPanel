@@ -3,7 +3,8 @@ import { XIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
 import { usePermissions } from '@/plugins/usePermissions';
 import detectCurrent from '@/components/server/versions/detectCurrent';
-import { toolsTheme } from '@/lib/toolsTheme';
+import { toolsThemeFor } from '@/lib/toolsTheme';
+import { useTheme } from '@/lib/theme';
 import { httpErrorToHuman } from '@/api/http';
 
 // The Superflat page of the tools build (see tools/install-mctools.sh), opened in its embedded mode.
@@ -42,20 +43,22 @@ export default ({ settings, onClose, onSave }: Props) => {
         frame.current?.contentWindow?.postMessage({ source: 'stratpanel', ...message }, window.location.origin);
     }, []);
 
+    const { theme } = useTheme();
+
     const pushState = useCallback(
         () =>
             post({
                 type: 'state',
                 version,
                 server: name,
-                theme: toolsTheme,
+                theme: toolsThemeFor(theme),
                 flat: settings,
                 running: false,
                 canRun: false,
                 canEdit,
                 players: [],
             }),
-        [post, version, name, settings, canEdit]
+        [post, version, name, settings, canEdit, theme]
     );
 
     useEffect(() => {
@@ -95,7 +98,7 @@ export default ({ settings, onClose, onSave }: Props) => {
                     type={'button'}
                     onClick={onClose}
                     aria-label={'Close the editor'}
-                    className={'p-1 text-neutral-300 hover:text-white'}
+                    className={'p-1 text-neutral-300 hover:text-snow'}
                 >
                     <XIcon className={'w-6 h-6'} />
                 </button>

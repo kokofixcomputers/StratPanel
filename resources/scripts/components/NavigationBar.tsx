@@ -14,6 +14,7 @@ import Avatar from '@/components/Avatar';
 import PanelLogo from '@/components/elements/PanelLogo';
 import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
+import ThemeToggle from '@/components/elements/ThemeToggle';
 
 const RightNavigation = styled.div`
     ${tw`flex items-center space-x-1`};
@@ -98,6 +99,7 @@ export default () => {
                             </a>
                         </Tooltip>
                     )}
+                    <ThemeToggle />
                     <Tooltip placement={'bottom'} content={'Account Settings'}>
                         <NavLink to={'/account'}>
                             <span className={'flex items-center w-6 h-6 rounded-full overflow-hidden'}>

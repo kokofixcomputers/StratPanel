@@ -86,7 +86,7 @@ export default ({ images }: { images: GalleryImage[] }) => {
                             aria-label={'Close'}
                             onClick={() => setOpen(null)}
                             className={
-                                'absolute right-4 top-4 rounded-full bg-white bg-opacity-10 p-2 text-white hover:bg-opacity-20'
+                                'absolute right-4 top-4 rounded-full bg-white bg-opacity-10 p-2 text-snow hover:bg-opacity-20'
                             }
                         >
                             <XIcon className={'h-6 w-6'} />
@@ -101,7 +101,7 @@ export default ({ images }: { images: GalleryImage[] }) => {
                                         step(-1);
                                     }}
                                     className={
-                                        'absolute left-3 rounded-full bg-white bg-opacity-10 p-2 text-white hover:bg-opacity-20'
+                                        'absolute left-3 rounded-full bg-white bg-opacity-10 p-2 text-snow hover:bg-opacity-20'
                                     }
                                 >
                                     <ChevronLeftIcon className={'h-7 w-7'} />
@@ -114,7 +114,7 @@ export default ({ images }: { images: GalleryImage[] }) => {
                                         step(1);
                                     }}
                                     className={
-                                        'absolute right-3 rounded-full bg-white bg-opacity-10 p-2 text-white hover:bg-opacity-20'
+                                        'absolute right-3 rounded-full bg-white bg-opacity-10 p-2 text-snow hover:bg-opacity-20'
                                     }
                                 >
                                     <ChevronRightIcon className={'h-7 w-7'} />
@@ -128,7 +128,7 @@ export default ({ images }: { images: GalleryImage[] }) => {
                             className={'max-h-[78vh] max-w-full rounded-lg object-contain shadow-xl'}
                             onClick={(e) => e.stopPropagation()}
                         />
-                        <div className={'mt-3 max-w-2xl text-center text-white'} onClick={(e) => e.stopPropagation()}>
+                        <div className={'mt-3 max-w-2xl text-center text-snow'} onClick={(e) => e.stopPropagation()}>
                             {current.title && <p className={'text-base font-semibold'}>{current.title}</p>}
                             {current.description && <p className={'mt-1 text-sm opacity-80'}>{current.description}</p>}
                             <p className={'mt-1 text-xs opacity-60'}>

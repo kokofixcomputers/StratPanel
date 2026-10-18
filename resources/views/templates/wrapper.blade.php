@@ -12,6 +12,7 @@
             @include('partials.favicon')
             <meta name="theme-color" content="#ffffff">
         @show
+        @include('partials.theme')
 
         @section('user-data')
             @if(!is_null(Auth::user()))

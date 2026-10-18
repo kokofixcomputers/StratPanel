@@ -90,7 +90,7 @@ const PowerActions = ({
                 onAction(signal);
             }}
             className={classNames(
-                'flex h-9 w-9 items-center justify-center rounded-lg text-white shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-40',
+                'flex h-9 w-9 items-center justify-center rounded-lg text-snow shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-40',
                 color
             )}
         >

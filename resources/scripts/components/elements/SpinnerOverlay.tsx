@@ -17,7 +17,7 @@ const SpinnerOverlay: React.FC<Props> = ({ size, fixed, visible, backgroundOpaci
                 tw`top-0 left-0 flex items-center justify-center w-full h-full rounded-xl flex-col z-40`,
                 !fixed ? tw`absolute` : tw`fixed`,
             ]}
-            style={{ background: `rgba(255, 255, 255, ${backgroundOpacity || 0.7})` }}
+            style={{ background: `rgb(var(--c-white) / ${backgroundOpacity || 0.7})` }}
         >
             <Spinner size={size} />
             {children && (typeof children === 'string' ? <p css={tw`mt-4 text-neutral-300`}>{children}</p> : children)}

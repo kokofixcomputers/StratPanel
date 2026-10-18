@@ -43,10 +43,11 @@ import {
 } from '@/lib/consoleLog';
 
 import WorldClockPill from '@/components/server/console/WorldClockPill';
+import { currentTheme, Theme, useTheme } from '@/lib/theme';
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
 
-const theme = {
+const lightTheme = {
     background: '#ffffff',
     foreground: '#1f2937',
     cursor: 'transparent',
@@ -69,6 +70,33 @@ const theme = {
     selection: 'rgba(20, 71, 230, 0.2)',
 };
 
+// The same colours for a dark surface (the background is the one of the cards): black text is light, the others are lighter so they can be
+// read on it.
+const darkTheme = {
+    background: '#141a23',
+    foreground: '#e2e8f0',
+    cursor: 'transparent',
+    black: '#94a3b8',
+    red: '#f87171',
+    green: '#4ade80',
+    yellow: '#fbbf24',
+    blue: '#7aa2ff',
+    magenta: '#c084fc',
+    cyan: '#22d3ee',
+    white: '#cbd5e1',
+    brightBlack: '#64748b',
+    brightRed: '#fca5a5',
+    brightGreen: '#86efac',
+    brightYellow: '#fcd34d',
+    brightBlue: '#9db8ff',
+    brightMagenta: '#d8b4fe',
+    brightCyan: '#67e8f9',
+    brightWhite: '#f8fafc',
+    selection: 'rgba(91, 134, 247, 0.35)',
+};
+
+const terminalTheme = (mode: Theme) => (mode === 'dark' ? darkTheme : lightTheme);
+
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
     cursorStyle: 'underline',
@@ -78,7 +106,7 @@ const terminalProps: ITerminalOptions = {
     rows: 30,
     // The console keeps more than the default thousand lines, a filter writes them again from the log of the server.
     scrollback: 3000,
-    theme: theme,
+    theme: lightTheme,
 };
 
 interface Chunk {
@@ -91,7 +119,12 @@ interface Chunk {
 export default () => {
     const TERMINAL_PRELUDE = '\u001b[1m\u001b[33mcontainer@pterodactyl~ \u001b[0m';
     const ref = useRef<HTMLDivElement>(null);
-    const terminal = useMemo(() => new Terminal({ ...terminalProps }), []);
+    const { theme: mode } = useTheme();
+    const terminal = useMemo(() => new Terminal({ ...terminalProps, theme: terminalTheme(currentTheme()) }), []);
+    // The colours of the console follow the theme of the panel when it changes.
+    useEffect(() => {
+        terminal.setOption('theme', terminalTheme(mode));
+    }, [terminal, mode]);
     const fitAddon = new FitAddon();
     // The addon that is actually attached to the terminal, a new one is created on every render.
     const activeFit = useRef<FitAddon>();

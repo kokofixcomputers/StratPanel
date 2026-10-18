@@ -20,7 +20,7 @@ const Bar = styled.div`
     position: relative;
     height: 6px;
     border-radius: 9999px;
-    background: #e8eefc;
+    background: rgb(var(--c-primary-100));
     overflow: hidden;
 
     & > div {
@@ -29,7 +29,7 @@ const Bar = styled.div`
         bottom: 0;
         width: 30%;
         border-radius: 9999px;
-        background: #1447e6;
+        background: rgb(var(--c-primary-600));
         animation: ${slide} 1.3s ease-in-out infinite;
     }
 `;
