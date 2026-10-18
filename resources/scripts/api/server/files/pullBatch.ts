@@ -13,7 +13,7 @@ export interface PullBatchResult {
 
 /**
  * Downloads a list of files to the server as one job on the node: three at a time, a failed file is tried again, and the job goes on if
- * the page is closed (it is in the Jobs tab). onProgress is called as it goes (1/100, 2/100, ...). Resolves when the job is over.
+ * the page is closed (the box in the bottom right corner shows it). onProgress is called as it goes (1/100, 2/100, ...). Resolves when the job is over.
  */
 export default async (
     uuid: string,

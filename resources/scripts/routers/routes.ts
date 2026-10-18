@@ -15,7 +15,6 @@ import WorldsContainer from '@/components/server/worlds/WorldsContainer';
 import ProjectPage from '@/components/server/content/ProjectPage';
 import TrashContainer from '@/components/server/trash/TrashContainer';
 import ImporterContainer from '@/components/server/importer/ImporterContainer';
-import JobsContainer from '@/components/server/jobs/JobsContainer';
 import ToolsContainer from '@/components/server/tools/ToolsContainer';
 import { FilesPage, FileEditPage } from '@/components/server/files/FilesPage';
 import SettingsContainer from '@/components/server/settings/SettingsContainer';
@@ -156,13 +155,6 @@ export default {
             permission: 'file.create',
             name: 'Importer',
             component: ImporterContainer,
-        },
-        {
-            // What the node does in the background: imports, archives, extractions, downloads.
-            path: '/jobs',
-            permission: 'file.*',
-            name: 'Jobs',
-            component: JobsContainer,
         },
         {
             path: '/databases',

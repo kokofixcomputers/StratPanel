@@ -1,13 +1,13 @@
 # Jobs
 
 Work that takes a while runs as a **job** on the node, not in the browser or in a request: **imports** from another server, **archives** (compress),
-**extractions** (decompress) and **downloads** (mods, plugins, worlds, modpacks, "pull" in the file manager). The **Jobs** tab of a server shows
-them while they run and afterwards, so you can close the page, reload it or come back the next day: the node goes on, and what it did is
+**extractions** (decompress) and **downloads** (mods, plugins, worlds, modpacks, "pull" in the file manager). A small box in the bottom right corner of a server's pages shows
+them while they run and afterwards (it only appears when there is a job, finished ones included, can be folded away, and has **Clear all completed**), so you can close the page, reload it or come back the next day: the node goes on, and what it did is
 still there.
 
 * Each job shows a bar (files or bytes), the numbers, the file it is on, what it made (the name of an archive), and a list of the files that
   could not be done and why. **Cancel** stops one that is going, **Remove** forgets one that is over. What was done before a cancel is kept.
-* **Imports** (`docs/importer.md`) start from the Importer page and move you to the Jobs tab. One import at a time per server.
+* **Imports** (`docs/importer.md`) start from the Importer page and show up in that box. One import at a time per server.
 * **Archives and extractions** started in the file manager are jobs too (one of the two at a time per server). The file manager follows the job
   and shows the new archive when it is done, like before, but it no longer matters whether the page stays open. The progress is the bytes of
   the files archived, or of the archive read.

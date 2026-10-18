@@ -4,7 +4,6 @@ import classNames from 'classnames';
 import {
     ArchiveIcon,
     ChipIcon,
-    ClipboardListIcon,
     ClockIcon,
     CloudDownloadIcon,
     CogIcon,
@@ -54,7 +53,6 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     '/tools': SparklesIcon,
     '/files': FolderIcon,
     '/import': DownloadIcon,
-    '/jobs': ClipboardListIcon,
     '/databases': DatabaseIcon,
     '/schedules': ClockIcon,
     '/users': UserGroupIcon,
@@ -69,7 +67,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 const GROUPS: { title: string; paths: string[] }[] = [
     { title: 'Server', paths: ['/', '/players'] },
     { title: 'Minecraft', paths: ['/versions', '/properties', '/mods', '/worlds', '/tools'] },
-    { title: 'Manage', paths: ['/files', '/import', '/jobs', '/databases', '/schedules', '/backups', '/users'] },
+    { title: 'Manage', paths: ['/files', '/import', '/databases', '/schedules', '/backups', '/users'] },
     { title: 'Configuration', paths: ['/network', '/domains', '/startup', '/settings', '/activity'] },
 ];
 

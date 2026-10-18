@@ -1,5 +1,6 @@
 import http from '@/api/http';
 import archiveTask from '@/api/server/files/archiveTask';
+import { refreshJobs } from '@/api/server/jobs';
 
 export default async (uuid: string, directory: string, file: string, background = false): Promise<void> => {
     const { data } = await http.post(
@@ -8,5 +9,6 @@ export default async (uuid: string, directory: string, file: string, background 
         background ? { headers: { 'X-Panel-Background': '1' } } : {}
     );
 
+    refreshJobs(uuid);
     await archiveTask(uuid, data);
 };

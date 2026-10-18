@@ -1,4 +1,4 @@
-import useSWR, { ConfigInterface } from 'swr';
+import useSWR, { ConfigInterface, mutate } from 'swr';
 import { AxiosError } from 'axios';
 import http from '@/api/http';
 import { ServerContext } from '@/state/server';
@@ -68,6 +68,11 @@ export const isActive = (job: Pick<ServerJob, 'status'>): boolean =>
 
 const POLL_SLOW = 15000;
 
+/** Makes the list of jobs (and so the box in the corner) look again right away, for after something started a job. */
+export const refreshJobs = (uuid: string): void => {
+    mutate([uuid, '/jobs']);
+};
+
 /** The jobs of the server, newest first. The page asks for a faster refresh while one is going. */
 export const useJobs = (config?: ConfigInterface<ServerJob[], AxiosError>) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -104,6 +109,7 @@ export const startPull = async (
     files: { url: string; directory: string; filename?: string }[]
 ): Promise<ServerJob> => {
     const { data } = await http.post(`/api/client/servers/${uuid}/jobs/pull`, { files });
+    refreshJobs(uuid);
 
     return rawDataToJob(data);
 };
@@ -111,6 +117,7 @@ export const startPull = async (
 /** Starts copying a folder of another server into this one. */
 export const startImportJob = async (uuid: string, payload: Record<string, unknown>): Promise<ServerJob> => {
     const { data } = await http.post(`/api/client/servers/${uuid}/jobs/import`, payload, { timeout: 120000 });
+    refreshJobs(uuid);
 
     return rawDataToJob(data);
 };

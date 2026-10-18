@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircleIcon, DocumentIcon, ExclamationIcon, FolderIcon, ServerIcon } from '@heroicons/react/outline';
 import tw from 'twin.macro';
-import { Link, useHistory } from 'react-router-dom';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
@@ -34,7 +33,6 @@ type Step = 'form' | 'checked';
 /** Copies everything from an SFTP or FTP server into this server: the node connects to the other server and downloads the files itself. */
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
-    const id = ServerContext.useStoreState((state) => state.server.data!.id);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const { clearFlashes, addFlash } = useFlash();
@@ -44,7 +42,6 @@ export default () => {
     const [busy, setBusy] = useState(false);
     const [checked, setChecked] = useState<ImportTestResult | null>(null);
     const [overwrite, setOverwrite] = useState(true);
-    const history = useHistory();
     const { data: jobs } = useJobs();
     const importing = (jobs || []).find((j) => j.type === 'import' && isActive(j));
 
@@ -68,7 +65,7 @@ export default () => {
             .then(() => setBusy(false));
     };
 
-    // The node does the import as a job: it goes on when this page is closed. This only starts it and moves to the Jobs tab.
+    // The node does the import as a job: it goes on when this page is closed. This only starts it; the box in the bottom right corner shows how it goes.
     const start = () => {
         clearFlashes('importer');
         setBusy(true);
@@ -77,7 +74,8 @@ export default () => {
             .then(() => {
                 // The login is not kept around once the node has it.
                 setForm((f) => ({ ...f, password: '', passphrase: '', privateKey: '' }));
-                history.push(`/server/${id}/jobs`);
+                setBusy(false);
+                setStep('form');
             })
             .catch((e) => {
                 setBusy(false);
@@ -111,11 +109,8 @@ export default () => {
                 >
                     <ServerIcon css={tw`w-5 h-5 flex-shrink-0 mt-0.5`} />
                     <p>
-                        An import is already running for this server ({importing.title}). Follow it in the{' '}
-                        <Link to={`/server/${id}/jobs`} css={tw`font-semibold underline`}>
-                            Jobs tab
-                        </Link>
-                        . Only one import runs at a time.
+                        An import is already running for this server ({importing.title}). Follow it in the box in the
+                        bottom right corner. Only one import runs at a time.
                     </p>
                 </div>
             )}

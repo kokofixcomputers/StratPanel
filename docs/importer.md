@@ -7,7 +7,7 @@ host: type the login, press Connect, check the fingerprint and press Import.
   Stratosphere (`docs/updates.md`), a node without it says so.
 * **Connect** only looks: it logs in, shows the first entries of the folder and the SSH fingerprint of the other server (SFTP). The import
   is then pinned to that fingerprint, so a different server on the same address is refused.
-* The import is a **job** on the node (`docs/jobs.md`): after you press Import you are taken to the **Jobs** tab, which shows `37 of 100 files`,
+* The import is a **job** on the node (`docs/jobs.md`): after you press Import the box in the bottom right corner shows `37 of 100 files`,
   the bytes, the file it is on and every file that failed, with the reason. You can close the page or reload it, the import goes on. **Cancel**
   there stops it; files that were done stay.
 * *Replace files that are already here* is on by default; off keeps the files that exist and skips the ones from the other server. Replacing
