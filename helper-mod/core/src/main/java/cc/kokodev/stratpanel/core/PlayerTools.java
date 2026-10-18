@@ -229,7 +229,18 @@ public final class PlayerTools {
     if (item.enchants() != null && !item.enchants().isEmpty()) {
       fields.put("enchants", item.enchants());
     }
+    if (item.trim() != null) {
+      Map<String, Object> trim = new LinkedHashMap<>();
+      trim.put("material", shortId(item.trim().material()));
+      trim.put("pattern", shortId(item.trim().pattern()));
+      fields.put("trim", trim);
+    }
     return fields;
+  }
+
+  /** An id without {@code minecraft:}, which is the namespace of everything the game itself has. */
+  static String shortId(String id) {
+    return id.startsWith("minecraft:") ? id.substring("minecraft:".length()) : id;
   }
 
   /** Text a player chose, without anything that could break a console line. */

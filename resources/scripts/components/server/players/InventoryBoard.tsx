@@ -131,6 +131,13 @@ export default ({
                         {enchantmentLine(id, level)}
                     </div>
                 ))}
+            {item.trim && (
+                <div className={'font-normal text-slate-300'}>
+                    <div className={'text-slate-400'}>Upgrade:</div>
+                    <div className={'pl-1'}>{prettyItem(item.trim.pattern)} Armor Trim</div>
+                    <div className={'pl-1'}>{prettyItem(item.trim.material)} Material</div>
+                </div>
+            )}
             {item.damage !== undefined && item.maxDamage !== undefined && (
                 <div className={'font-normal text-slate-300'}>
                     Durability {item.maxDamage - item.damage} / {item.maxDamage}
@@ -225,7 +232,7 @@ export default ({
                     >
                         {item && (
                             <>
-                                <ItemIcon id={item.id} version={version} />
+                                <ItemIcon id={item.id} version={version} trim={item.trim} />
                                 {(item.enchants || alwaysShimmers(item.id)) && <span className={styles.glint} />}
                                 {left !== undefined && left < 1 && (
                                     <span

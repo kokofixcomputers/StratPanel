@@ -60,6 +60,13 @@ const FILES = [
     [/^textures\/item\/[^/]+\.png$/, 'items'],
     [/^textures\/entity\/chest\/[^/]+\.png$/, 'entity/chest'],
     [/^textures\/entity\/shield\/shield_base_nopattern\.png$/, 'entity/shield'],
+    // The armor trim on an item: a grey overlay per piece, and the colours of each material to paint it with. The layout is the one
+    // the older versions have (trims/items, trims/color_palettes with trim_palette.png as the grey the overlay is made of), 26.x keeps
+    // the palettes in textures/palettes under other names.
+    [/^textures\/trims\/items\/(helmet|chestplate|leggings|boots)_trim\.png$/, 'trims/items'],
+    [/^textures\/trims\/color_palettes\/[^/]+\.png$/, 'trims/color_palettes'],
+    [/^textures\/palettes\/trim\/[^/]+\.png$/, 'trims/color_palettes'],
+    [/^textures\/palettes\/trim_base\.png$/, 'trims/color_palettes', () => 'trim_palette.png'],
 ];
 const MODELS = /^models\/block\/([^/]+)\.json$/;
 
@@ -85,8 +92,8 @@ for (const [path, data] of Object.entries(files)) {
         continue;
     }
 
-    const [, folder] = FILES.find(([pattern]) => pattern.test(name));
-    const target = join(out, folder, name.slice(name.lastIndexOf('/') + 1));
+    const [, folder, rename] = FILES.find(([pattern]) => pattern.test(name));
+    const target = join(out, folder, rename ? rename() : name.slice(name.lastIndexOf('/') + 1));
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, data);
     counts[folder] = (counts[folder] || 0) + 1;

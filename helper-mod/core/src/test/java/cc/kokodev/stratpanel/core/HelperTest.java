@@ -71,6 +71,13 @@ class HelperTest {
       items[slot] = new ItemInfo("minecraft:" + id, count, 0, 0, null, Map.of());
       return this;
     }
+
+    Slots withTrim(int slot, String id, String material, String pattern) {
+      items[slot] =
+          new ItemInfo(
+              "minecraft:" + id, 1, 0, 0, null, Map.of(), new ItemInfo.Trim(material, pattern));
+      return this;
+    }
   }
 
   static class Steve implements PlayerHandle {
@@ -363,6 +370,37 @@ class HelperTest {
     run("enderdelete Steve 26");
     assertEquals(0, last().getAsJsonArray("items").size());
     assertEquals("That is not a slot of the inventory.", errorOf("enderswap Steve 0 27"));
+  }
+
+  @Test
+  void anArmorTrimIsSentWithTheItem() {
+    steve.inventory.withTrim(7, "iron_helmet", "minecraft:gold", "minecraft:coast");
+    steve.inventory.withTrim(8, "diamond_boots", "mymod:ruby", "mymod:swirl");
+    steve.inventory.with(9, "iron_chestplate", 1);
+
+    run("inventory Steve");
+
+    var items = last().getAsJsonArray("items");
+    JsonObject helmet = items.get(0).getAsJsonObject();
+    assertEquals(7, helmet.get("slot").getAsInt());
+    // Everything the game has is sent without minecraft:, a modded trim keeps its namespace.
+    assertEquals("gold", helmet.getAsJsonObject("trim").get("material").getAsString());
+    assertEquals("coast", helmet.getAsJsonObject("trim").get("pattern").getAsString());
+    JsonObject boots = items.get(1).getAsJsonObject();
+    assertEquals("mymod:ruby", boots.getAsJsonObject("trim").get("material").getAsString());
+    assertEquals("mymod:swirl", boots.getAsJsonObject("trim").get("pattern").getAsString());
+    // Armor without a trim has no trim field.
+    assertFalse(items.get(2).getAsJsonObject().has("trim"));
+  }
+
+  @Test
+  void aTrimedItemInAShulkerBoxIsSentToo() {
+    steve.box(false, 4, "shulker_box").withTrim(0, "netherite_leggings", "minecraft:netherite", "minecraft:rib");
+
+    run("shulker Steve inv 4");
+
+    JsonObject item = last().getAsJsonArray("items").get(0).getAsJsonObject();
+    assertEquals("netherite", item.getAsJsonObject("trim").get("material").getAsString());
   }
 
   @Test

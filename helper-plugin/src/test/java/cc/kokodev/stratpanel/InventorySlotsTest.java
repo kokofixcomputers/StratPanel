@@ -24,6 +24,13 @@ class InventorySlotsTest {
   }
 
   @Test
+  void aTrimIdLosesTheNamespaceOfTheGameOnly() {
+    org.junit.jupiter.api.Assertions.assertEquals("gold", PlayerTools.shortId("minecraft:gold"));
+    org.junit.jupiter.api.Assertions.assertEquals("mymod:ruby", PlayerTools.shortId("mymod:ruby"));
+    org.junit.jupiter.api.Assertions.assertEquals("coast", PlayerTools.shortId("coast"));
+  }
+
+  @Test
   void aShulkerBoxHasTwentySevenSlotsAndIsRecognisedInEveryColour() {
     assertTrue(InventorySlots.isValidIn(26, InventorySlots.SHULKER_COUNT));
     assertFalse(InventorySlots.isValidIn(27, InventorySlots.SHULKER_COUNT));

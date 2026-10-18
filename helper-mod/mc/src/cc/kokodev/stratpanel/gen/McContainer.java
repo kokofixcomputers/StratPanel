@@ -49,13 +49,15 @@ final class McContainer implements ItemContainer {
       String name = entry.getKey().getRegisteredName();
       enchants.put(name.substring(name.indexOf(':') + 1), entry.getIntValue());
     }
+    String[] trim = Compat.trimOf(stack);
     return new ItemInfo(
         id,
         stack.getCount(),
         wears ? stack.getDamageValue() : 0,
         wears ? stack.getMaxDamage() : 0,
         custom == null ? null : custom.getString(),
-        enchants);
+        enchants,
+        trim == null ? null : new ItemInfo.Trim(trim[0], trim[1]));
   }
 
   @Override

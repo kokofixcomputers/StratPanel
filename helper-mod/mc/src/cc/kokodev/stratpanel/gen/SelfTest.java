@@ -45,6 +45,13 @@ final class SelfTest {
     player.getInventory().setItem(36, new ItemStack(Items.IRON_BOOTS));
     player.getInventory().setItem(40, new ItemStack(Items.SHIELD));
     player.getEnderChestInventory().setItem(0, new ItemStack(Items.DIAMOND, 5));
+    // Armor with a trim: gold on iron, and iron on iron (the game draws the second one with the darker iron).
+    ItemStack trimmedHelmet = new ItemStack(Items.IRON_HELMET);
+    Compat.testTrim(trimmedHelmet, server, true);
+    player.getInventory().setItem(7, trimmedHelmet);
+    ItemStack trimmedChestplate = new ItemStack(Items.IRON_CHESTPLATE);
+    Compat.testTrim(trimmedChestplate, server, false);
+    player.getInventory().setItem(12, trimmedChestplate);
     // A shulker box with a few items in the inventory and an empty one in the ender chest, for the box tools.
     ItemStack box = new ItemStack(Items.SHULKER_BOX);
     NonNullList<ItemStack> inside = NonNullList.withSize(27, ItemStack.EMPTY);

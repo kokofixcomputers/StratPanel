@@ -14,9 +14,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.block.ShulkerBox;
+import org.bukkit.inventory.meta.ArmorMeta;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.trim.ArmorTrim;
 
 /** What the panel can do to a player who is online: look into the inventory, move and delete items, heal and feed. */
 final class PlayerTools {
@@ -271,6 +273,16 @@ final class PlayerTools {
         fields.put("name", clean(PlainTextComponentSerializer.plainText().serialize(name)));
       }
     }
+    // The trim of a piece of armor: its material and pattern, without minecraft: for what the game has.
+    if (meta instanceof ArmorMeta armor && armor.hasTrim()) {
+      ArmorTrim trim = armor.getTrim();
+      if (trim != null) {
+        Map<String, Object> trimFields = new LinkedHashMap<>();
+        trimFields.put("material", shortId(trim.getMaterial().getKey().toString()));
+        trimFields.put("pattern", shortId(trim.getPattern().getKey().toString()));
+        fields.put("trim", trimFields);
+      }
+    }
     Map<Enchantment, Integer> enchantments = item.getEnchantments();
     if (!enchantments.isEmpty()) {
       Map<String, Integer> enchants = new LinkedHashMap<>();
@@ -278,6 +290,11 @@ final class PlayerTools {
       fields.put("enchants", enchants);
     }
     return fields;
+  }
+
+  /** An id without {@code minecraft:}, which is the namespace of everything the game itself has. */
+  static String shortId(String id) {
+    return id.startsWith("minecraft:") ? id.substring("minecraft:".length()) : id;
   }
 
   /** Text a player chose, without anything that could break a console line. */

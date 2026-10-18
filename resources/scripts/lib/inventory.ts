@@ -19,6 +19,8 @@ export interface InventoryItem {
     // The name a player gave it, if any.
     name?: string;
     enchants?: Record<string, number>;
+    // The armor trim on a piece of armor, such as { material: 'gold', pattern: 'coast' }.
+    trim?: { material: string; pattern: string };
 }
 
 export const SLOT_COUNT = 41;
@@ -37,6 +39,8 @@ const ID = /^[a-z0-9_.-]+:[a-z0-9_./-]+$/;
 /** Whether an item is a shulker box, of any colour. A double click on one opens it. */
 export const isShulkerBox = (id: string): boolean => /(^|:)([a-z_]+_)?shulker_box$/.test(id);
 const ENCHANT = /^[a-z0-9_.-]{1,60}$/;
+// A material or pattern of a trim: "gold", or with the namespace of a mod.
+const TRIM_ID = /^(?!.*\.\.)(?:[a-z0-9_.-]{1,40}:)?[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*$/;
 
 const whole = (value: unknown, min: number, max: number): number | null =>
     typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : null;
@@ -66,6 +70,20 @@ export const parseItem = (value: unknown, slots = SLOT_COUNT): InventoryItem | n
                 if (ENCHANT.test(key) && n !== null) enchants[key] = n;
             });
         if (Object.keys(enchants).length) item.enchants = enchants;
+    }
+    // A trim that is not valid only leaves the trim out, the item is still shown.
+    if (v.trim && typeof v.trim === 'object') {
+        const { material, pattern } = v.trim as Record<string, unknown>;
+        if (
+            typeof material === 'string' &&
+            typeof pattern === 'string' &&
+            material.length <= 100 &&
+            pattern.length <= 100 &&
+            TRIM_ID.test(material) &&
+            TRIM_ID.test(pattern)
+        ) {
+            item.trim = { material, pattern };
+        }
     }
 
     return item;

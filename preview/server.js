@@ -149,6 +149,13 @@ const mockPlayer = {
     health: 14.5, food: 12, saturation: 5.4, level: 27, mode: 'survival',
     items: [
         { slot: 6, id: 'minecraft:red_shulker_box', count: 1 },
+        { slot: 13, id: 'minecraft:iron_helmet', count: 1, trim: { material: 'gold', pattern: 'coast' } },
+        { slot: 14, id: 'minecraft:diamond_chestplate', count: 1, damage: 40, maxDamage: 528, trim: { material: 'netherite', pattern: 'rib' }, enchants: { protection: 4 } },
+        { slot: 15, id: 'minecraft:iron_leggings', count: 1, trim: { material: 'iron', pattern: 'sentry' } },
+        { slot: 16, id: 'minecraft:golden_boots', count: 1, trim: { material: 'amethyst', pattern: 'wild' } },
+        { slot: 17, id: 'minecraft:chainmail_helmet', count: 1, trim: { material: 'redstone', pattern: 'eye' } },
+        { slot: 18, id: 'minecraft:diamond_boots', count: 1, trim: { material: 'diamond', pattern: 'snout' } },
+        { slot: 19, id: 'minecraft:iron_boots', count: 1 },
         { slot: 0, id: 'minecraft:diamond_sword', count: 1, damage: 120, maxDamage: 1561, name: 'Excalibur', enchants: { sharpness: 5, fire_aspect: 2 } },
         { slot: 1, id: 'minecraft:diamond_pickaxe', count: 1, damage: 900, maxDamage: 1561, enchants: { efficiency: 5, unbreaking: 3 } },
         { slot: 2, id: 'minecraft:cooked_beef', count: 64 },

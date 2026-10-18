@@ -429,3 +429,49 @@ describe('shulker boxes', () => {
         ).toBeNull();
     });
 });
+
+describe('armor trims', () => {
+    const helmet = { slot: 7, id: 'minecraft:iron_helmet', count: 1 };
+
+    it('reads the trim of a piece of armor', () => {
+        expect(parseItem({ ...helmet, trim: { material: 'gold', pattern: 'coast' } })?.trim).toEqual({
+            material: 'gold',
+            pattern: 'coast',
+        });
+        expect(parseItem(helmet)?.trim).toBeUndefined();
+    });
+
+    it('keeps the namespace of a modded material and pattern', () => {
+        expect(parseItem({ ...helmet, trim: { material: 'mymod:ruby', pattern: 'mymod:swirl' } })?.trim).toEqual({
+            material: 'mymod:ruby',
+            pattern: 'mymod:swirl',
+        });
+    });
+
+    it('leaves out a trim that is not valid but still shows the item', () => {
+        for (const trim of [
+            { material: 'gold' },
+            { material: 5, pattern: 'coast' },
+            { material: 'GOLD!', pattern: 'coast' },
+            { material: 'gold', pattern: '../../etc' },
+            { material: 'a'.repeat(200), pattern: 'coast' },
+            'gold',
+            null,
+        ]) {
+            const item = parseItem({ ...helmet, trim });
+            expect(item?.id).toBe('minecraft:iron_helmet');
+            expect(item?.trim).toBeUndefined();
+        }
+    });
+
+    it('comes with the items of an inventory and of a shulker box', () => {
+        const items = [{ ...helmet, trim: { material: 'netherite', pattern: 'rib' } }];
+        const message = { event: 'inventory', name: 'Steve', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', items };
+
+        expect(parseInventory(message)?.items[0].trim).toEqual({ material: 'netherite', pattern: 'rib' });
+        expect(
+            parseShulkerBox({ ...message, event: 'shulkerbox', where: 'inv', box: 4, boxId: 'minecraft:shulker_box' })
+                ?.view.items[0].trim?.pattern
+        ).toBe('rib');
+    });
+});
