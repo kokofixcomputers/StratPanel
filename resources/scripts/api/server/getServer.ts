@@ -36,6 +36,8 @@ export interface Server {
     node: string;
     isNodeUnderMaintenance: boolean;
     status: ServerStatus;
+    // Which of the power buttons the user may use.
+    canControl: { start: boolean; stop: boolean; restart: boolean };
     // Auto sleep stops the server when nobody is online, it is off until the owner turns it on.
     autoSleep: { enabled: boolean; sleeping: boolean };
     // Whether deleted files and schedules are kept in a trash bin for a while, and for how many days.
@@ -77,6 +79,11 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     node: data.node,
     isNodeUnderMaintenance: data.is_node_under_maintenance,
     status: data.status,
+    canControl: {
+        start: !!data.can_control?.start,
+        stop: !!data.can_control?.stop,
+        restart: !!data.can_control?.restart,
+    },
     autoSleep: { enabled: !!data.auto_sleep?.enabled, sleeping: !!data.auto_sleep?.sleeping },
     trash: { enabled: !!data.trash?.enabled, retentionDays: data.trash?.retention_days ?? 30 },
     invocation: data.invocation,

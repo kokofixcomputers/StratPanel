@@ -46,7 +46,7 @@ export default ({
                     <div className={'font-normal text-slate-300'}>
                         Hunger {vitals.food} / 20, saturation {exactNumber(vitals.saturation, 2)}
                     </div>
-                    <div className={'font-normal text-slate-300'}>Level {vitals.level}</div>
+                    <div className={'font-normal text-slate-300'}>Level {vitals.level.toLocaleString()}</div>
                 </div>
             }
         >

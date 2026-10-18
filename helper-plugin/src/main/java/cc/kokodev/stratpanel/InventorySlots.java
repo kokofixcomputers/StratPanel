@@ -19,8 +19,15 @@ final class InventorySlots {
   static final int COUNT = 41;
   /** An ender chest has 3 rows of 9. */
   static final int ENDER_COUNT = 27;
+  /** A shulker box has 3 rows of 9, the same as an ender chest. */
+  static final int SHULKER_COUNT = 27;
 
   private InventorySlots() {}
+
+  /** Whether the name of a material (such as {@code RED_SHULKER_BOX}) is a shulker box, of any colour. */
+  static boolean isShulkerBox(String material) {
+    return material != null && material.toUpperCase(Locale.ROOT).endsWith("SHULKER_BOX");
+  }
 
   static boolean isValid(int slot) {
     return isValidIn(slot, COUNT);

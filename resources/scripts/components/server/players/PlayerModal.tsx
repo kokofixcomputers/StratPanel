@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { HeartIcon, RefreshIcon, XIcon } from '@heroicons/react/solid';
+import { ArrowLeftIcon, HeartIcon, RefreshIcon, XIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
 import { ModalMask } from '@/components/elements/Modal';
 import { Button } from '@/components/elements/button/index';
@@ -15,12 +15,15 @@ import { usePermissions } from '@/plugins/usePermissions';
 import { useBridgeStatus } from '@/lib/bridge';
 import { EXPERIENCE_BAR_BACKGROUND, EXPERIENCE_BAR_PROGRESS } from '@/lib/hudIcons';
 import {
+    BoxWhere,
     PlayerCommand,
     playerCommandLine,
+    prettyItem,
     textureVersion,
     useEnderChest,
     useInventory,
     usePlayerError,
+    useShulkerBox,
 } from '@/lib/inventory';
 import { exactNumber } from '@/lib/statFormat';
 import { GAME_MODES, useVitals } from '@/lib/vitals';
@@ -52,17 +55,24 @@ export default ({ name, uuid, online, onClose }: Props) => {
     const vitals = useVitals(server)[name];
     const inventory = useInventory(server, name);
     const enderChest = useEnderChest(server, name);
+    const lastBox = useShulkerBox(server, name);
     const error = usePlayerError(server);
     const opened = useRef(Date.now());
     const [notice, setNotice] = useState<string | null>(null);
     // Which of the two the board shows.
     const [tab, setTab] = useState<'inventory' | 'ender'>('inventory');
+    // The shulker box that is open instead of the board, by where it lies and its slot.
+    const [box, setBox] = useState<{ where: BoxWhere; slot: number } | null>(null);
 
     const capable = bridge.state === 'connected' && (bridge.protocol || 1) >= 4;
     // The ender chest came with a later version of the plugin.
     const canEnder = capable && (bridge.protocol || 1) >= 5;
+    // Shulker boxes can be opened with a still later version of the plugin.
+    const canShulker = capable && (bridge.protocol || 1) >= 9;
     const items = tab === 'ender' ? enderChest : inventory;
     const live = online && running && capable;
+    // What the plugin last said about a box, when it is the one that is open (an older answer is another box).
+    const inside = box && lastBox && lastBox.where === box.where && lastBox.box === box.slot ? lastBox : null;
 
     const send = (command: PlayerCommand) => {
         const line = playerCommandLine(command);
@@ -73,26 +83,31 @@ export default ({ name, uuid, online, onClose }: Props) => {
     useEffect(() => {
         if (!live || !instance) return;
         const ask = () => {
-            if (!document.hidden) send({ action: tab === 'ender' ? 'ender' : 'inventory', name });
+            if (document.hidden) return;
+            if (box) send({ action: 'shulker', name, where: box.where, slot: box.slot });
+            else send({ action: tab === 'ender' ? 'ender' : 'inventory', name });
         };
         ask();
         const timer = setInterval(ask, REFRESH_MS);
 
         return () => clearInterval(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [live, instance, name, tab]);
+    }, [live, instance, name, tab, box]);
 
     useEffect(() => {
-        const listener = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+        // Escape first leaves the shulker box, then the window.
+        const listener = (e: KeyboardEvent) => e.key === 'Escape' && (box ? setBox(null) : onClose());
         window.addEventListener('keydown', listener);
 
         return () => window.removeEventListener('keydown', listener);
-    }, [onClose]);
+    }, [onClose, box]);
 
     // A refusal of the plugin, such as an item that does not fit an armor slot, for a few seconds.
     useEffect(() => {
         if (!error || error.name !== name || error.at < opened.current) return;
         setNotice(error.error);
+        // The box is not where it was (it was moved or taken since): back to the list it was in.
+        if (error.error === 'That is not a shulker box.') setBox(null);
         const timer = setTimeout(() => setNotice(null), 6000);
 
         return () => clearTimeout(timer);
@@ -346,39 +361,58 @@ export default ({ name, uuid, online, onClose }: Props) => {
 
                         <div className={'min-w-0 flex-shrink-0'}>
                             <div className={'mb-2 flex items-center justify-between gap-3'}>
-                                <div className={'flex gap-2'} role={'tablist'}>
-                                    {(
-                                        [
-                                            ['inventory', 'Inventory'],
-                                            ['ender', 'Ender chest'],
-                                        ] as const
-                                    ).map(([id, label]) => (
-                                        <button
-                                            key={id}
-                                            type={'button'}
-                                            role={'tab'}
-                                            aria-selected={tab === id}
-                                            disabled={id === 'ender' && !canEnder}
-                                            title={
-                                                id === 'ender' && !canEnder
-                                                    ? 'Update the Stratosphere plugin to see the ender chest'
-                                                    : undefined
-                                            }
-                                            onClick={() => setTab(id)}
-                                            className={classNames(
-                                                'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
-                                                tab === id
-                                                    ? 'border-primary-300 bg-primary-50 text-primary-700'
-                                                    : 'border-neutral-500 bg-white text-neutral-300 hover:bg-neutral-600'
-                                            )}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
+                                {box ? (
+                                    <button
+                                        type={'button'}
+                                        onClick={() => setBox(null)}
+                                        className={
+                                            'inline-flex items-center rounded-full border border-neutral-500 bg-white px-3 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-600'
+                                        }
+                                    >
+                                        <ArrowLeftIcon className={'mr-1 h-3.5 w-3.5'} />
+                                        Back to {box.where === 'ender' ? 'the ender chest' : 'the inventory'}
+                                    </button>
+                                ) : (
+                                    <div className={'flex gap-2'} role={'tablist'}>
+                                        {(
+                                            [
+                                                ['inventory', 'Inventory'],
+                                                ['ender', 'Ender chest'],
+                                            ] as const
+                                        ).map(([id, label]) => (
+                                            <button
+                                                key={id}
+                                                type={'button'}
+                                                role={'tab'}
+                                                aria-selected={tab === id}
+                                                disabled={id === 'ender' && !canEnder}
+                                                title={
+                                                    id === 'ender' && !canEnder
+                                                        ? 'Update the Stratosphere plugin to see the ender chest'
+                                                        : undefined
+                                                }
+                                                onClick={() => setTab(id)}
+                                                className={classNames(
+                                                    'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+                                                    tab === id
+                                                        ? 'border-primary-300 bg-primary-50 text-primary-700'
+                                                        : 'border-neutral-500 bg-white text-neutral-300 hover:bg-neutral-600'
+                                                )}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <button
                                     type={'button'}
-                                    onClick={() => send({ action: tab === 'ender' ? 'ender' : 'inventory', name })}
+                                    onClick={() =>
+                                        send(
+                                            box
+                                                ? { action: 'shulker', name, where: box.where, slot: box.slot }
+                                                : { action: tab === 'ender' ? 'ender' : 'inventory', name }
+                                        )
+                                    }
                                     className={'flex items-center text-xs text-neutral-300 hover:text-neutral-50'}
                                 >
                                     <RefreshIcon className={'mr-1 h-3.5 w-3.5'} />
@@ -388,7 +422,41 @@ export default ({ name, uuid, online, onClose }: Props) => {
                             {notice && (
                                 <p className={'mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700'}>{notice}</p>
                             )}
-                            {items ? (
+                            {box ? (
+                                inside ? (
+                                    <InventoryBoard
+                                        key={`box-${box.where}-${box.slot}`}
+                                        layout={'shulker'}
+                                        title={prettyItem(inside.boxId)}
+                                        items={inside.items}
+                                        version={version}
+                                        uuid={uuid}
+                                        name={name}
+                                        canEdit={canControl}
+                                        onSwap={(from, to) =>
+                                            send({
+                                                action: 'shulkerswap',
+                                                name,
+                                                where: box.where,
+                                                slot: box.slot,
+                                                from,
+                                                to,
+                                            })
+                                        }
+                                        onDelete={(inner) =>
+                                            send({
+                                                action: 'shulkerdelete',
+                                                name,
+                                                where: box.where,
+                                                slot: box.slot,
+                                                inner,
+                                            })
+                                        }
+                                    />
+                                ) : (
+                                    <Spinner size={'small'} />
+                                )
+                            ) : items ? (
                                 <InventoryBoard
                                     key={tab}
                                     layout={tab}
@@ -402,6 +470,11 @@ export default ({ name, uuid, online, onClose }: Props) => {
                                     }
                                     onDelete={(slot) =>
                                         send({ action: tab === 'ender' ? 'enderdelete' : 'delete', name, slot })
+                                    }
+                                    onOpenBox={
+                                        canShulker && live
+                                            ? (slot) => setBox({ where: tab === 'ender' ? 'ender' : 'inv', slot })
+                                            : undefined
                                     }
                                 />
                             ) : (

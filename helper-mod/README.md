@@ -2,7 +2,7 @@
 
 The mod version of the [helper plugin](../helper-plugin). It speaks the same protocol, see
 [`docs/stratosphere-commands.md`](../docs/stratosphere-commands.md), so the panel treats it like the plugin: tab completion
-from the command tree of the server, the list of players, their vitals, inventory and ender chest, TPS and MSPT.
+from the command tree of the server, the list of players, their vitals, inventory, ender chest and the shulker boxes in them, TPS and MSPT.
 
 There is **one jar per loader** and each works on **Minecraft 1.21.1, 26.2 and 26.3** (26.1 and newer in general):
 
@@ -51,7 +51,7 @@ scripts/bundle.sh [version]    # the same, and copies them into ../public/helper
 
 `scripts/test-server.sh <fabric|neoforge> <1.21.1|26.2|26.3>` downloads the server and the loader, installs the jar, starts it
 and sends the panel's commands to the console. The server runs with `-Dstratosphere.selftest=true`, which adds a player that is
-not connected, `TestBot`, with an enchanted sword, stone, boots and an ender chest item, so the player tools can be tried without
+not connected, `TestBot`, with an enchanted sword, stone, boots, an ender chest item and shulker boxes (one with items in it), so the player tools can be tried without
 a game client. The script prints what the mod answered. This is how all six combinations were checked; changing the game
 mode (`gamemode`) needs a real connection and is not covered.
 

@@ -24,6 +24,8 @@ export interface InventoryItem {
 export const SLOT_COUNT = 41;
 // The ender chest has 3 rows of 9, slot 0 to 26.
 export const ENDER_SLOT_COUNT = 27;
+// A shulker box is laid out the same: 3 rows of 9.
+export const SHULKER_SLOT_COUNT = 27;
 export const HELMET = 39;
 export const CHESTPLATE = 38;
 export const LEGGINGS = 37;
@@ -31,6 +33,9 @@ export const BOOTS = 36;
 export const OFF_HAND = 40;
 
 const ID = /^[a-z0-9_.-]+:[a-z0-9_./-]+$/;
+
+/** Whether an item is a shulker box, of any colour. A double click on one opens it. */
+export const isShulkerBox = (id: string): boolean => /(^|:)([a-z_]+_)?shulker_box$/.test(id);
 const ENCHANT = /^[a-z0-9_.-]{1,60}$/;
 
 const whole = (value: unknown, min: number, max: number): number | null =>
@@ -90,6 +95,34 @@ export const parseInventory = (message: BridgeMessage) => parseItems(message, 'i
 /** The same for the ender chest. */
 export const parseEnderChest = (message: BridgeMessage) => parseItems(message, 'enderchest', ENDER_SLOT_COUNT);
 
+/** Where a shulker box is: in the inventory of the player or in the ender chest. */
+export type BoxWhere = 'inv' | 'ender';
+
+/** What is in a shulker box, and which box it is: the slot of the inventory or the ender chest it lies in. */
+export interface ShulkerBoxView {
+    where: BoxWhere;
+    // The slot the box itself is in.
+    box: number;
+    // The item of the box, for its colour and name.
+    boxId: string;
+    items: InventoryItem[];
+}
+
+/** The player and the contents of a "shulkerbox" message, null when it is not one the plugin could have sent. */
+export const parseShulkerBox = (message: BridgeMessage): { name: string; view: ShulkerBoxView } | null => {
+    const parsed = parseItems(message, 'shulkerbox', SHULKER_SLOT_COUNT);
+    if (!parsed) return null;
+
+    const where = message.where;
+    const box = whole(message.box, 0, SLOT_COUNT - 1);
+    const boxId = message.boxId;
+    if ((where !== 'inv' && where !== 'ender') || box === null) return null;
+    if (where === 'ender' && box >= ENDER_SLOT_COUNT) return null;
+    if (typeof boxId !== 'string' || !ID.test(boxId) || boxId.length > 100 || !isShulkerBox(boxId)) return null;
+
+    return { name: parsed.name, view: { where, box, boxId, items: parsed.items } };
+};
+
 // ---- the store ---------------------------------------------------------------------------------------------------------
 
 export interface PlayerError {
@@ -101,6 +134,8 @@ export interface PlayerError {
 
 const inventories = new Map<string, Record<string, InventoryItem[]>>();
 const enderChests = new Map<string, Record<string, InventoryItem[]>>();
+const shulkerBoxes = new Map<string, Record<string, ShulkerBoxView>>();
+const noBoxes: Record<string, ShulkerBoxView> = {};
 const errors = new Map<string, PlayerError>();
 const listeners = new Set<() => void>();
 const nobody: Record<string, InventoryItem[]> = {};
@@ -109,6 +144,7 @@ const notify = () => listeners.forEach((listener) => listener());
 
 export const readInventories = (server: string): Record<string, InventoryItem[]> => inventories.get(server) || nobody;
 export const readEnderChests = (server: string): Record<string, InventoryItem[]> => enderChests.get(server) || nobody;
+export const readShulkerBoxes = (server: string): Record<string, ShulkerBoxView> => shulkerBoxes.get(server) || noBoxes;
 export const readPlayerError = (server: string): PlayerError | null => errors.get(server) || null;
 
 export const handleInventoryMessage = (server: string, message: BridgeMessage) => {
@@ -124,6 +160,14 @@ export const handleEnderChestMessage = (server: string, message: BridgeMessage) 
     if (!parsed) return;
 
     enderChests.set(server, { ...readEnderChests(server), [parsed.name]: parsed.items });
+    notify();
+};
+
+export const handleShulkerBoxMessage = (server: string, message: BridgeMessage) => {
+    const parsed = parseShulkerBox(message);
+    if (!parsed) return;
+
+    shulkerBoxes.set(server, { ...readShulkerBoxes(server), [parsed.name]: parsed.view });
     notify();
 };
 
@@ -144,7 +188,12 @@ export const handlePlayerError = (server: string, message: BridgeMessage) => {
 
 /** Nobody is online while the server is not running. */
 export const clearInventories = (server: string) => {
-    const had = [inventories.delete(server), enderChests.delete(server), errors.delete(server)].some(Boolean);
+    const had = [
+        inventories.delete(server),
+        enderChests.delete(server),
+        shulkerBoxes.delete(server),
+        errors.delete(server),
+    ].some(Boolean);
     if (had) notify();
 };
 
@@ -180,6 +229,23 @@ export const useEnderChest = (server: string, name: string | null): InventoryIte
     return name ? state[name] ?? null : null;
 };
 
+/** The last shulker box that was looked into for a player. Check where and box: it may be an older one. */
+export const useShulkerBox = (server: string, name: string | null): ShulkerBoxView | null => {
+    const [state, setState] = useState(readShulkerBoxes(server));
+
+    useEffect(() => {
+        const update = () => setState(readShulkerBoxes(server));
+        listeners.add(update);
+        update();
+
+        return () => {
+            listeners.delete(update);
+        };
+    }, [server]);
+
+    return name ? state[name] ?? null : null;
+};
+
 export const usePlayerError = (server: string): PlayerError | null => {
     const [state, setState] = useState(readPlayerError(server));
 
@@ -204,6 +270,10 @@ export type PlayerCommand =
     | { action: 'inventory' | 'ender' | 'heal' | 'feed'; name: string }
     | { action: 'swap' | 'enderswap'; name: string; from: number; to: number }
     | { action: 'delete' | 'enderdelete'; name: string; slot: number }
+    // A shulker box in the inventory or the ender chest: look into it, move items inside it, delete one from it.
+    | { action: 'shulker'; name: string; where: BoxWhere; slot: number }
+    | { action: 'shulkerswap'; name: string; where: BoxWhere; slot: number; from: number; to: number }
+    | { action: 'shulkerdelete'; name: string; where: BoxWhere; slot: number; inner: number }
     // Adds to (or, negative, takes from) the health in hit points, the hunger bar or the experience level.
     | { action: 'health' | 'hunger' | 'levels'; name: string; delta: number }
     | { action: 'gamemode'; name: string; mode: string };
@@ -213,6 +283,21 @@ export const playerCommandLine = (command: PlayerCommand): string | null => {
     if (!NAME.test(command.name)) return null;
     const ender = command.action === 'enderswap' || command.action === 'enderdelete';
     const slot = (n: number) => Number.isInteger(n) && n >= 0 && n < (ender ? ENDER_SLOT_COUNT : SLOT_COUNT);
+
+    if (command.action === 'shulker' || command.action === 'shulkerswap' || command.action === 'shulkerdelete') {
+        const parent = (n: number) =>
+            Number.isInteger(n) && n >= 0 && n < (command.where === 'ender' ? ENDER_SLOT_COUNT : SLOT_COUNT);
+        const inner = (n: number) => Number.isInteger(n) && n >= 0 && n < SHULKER_SLOT_COUNT;
+        if ((command.where !== 'inv' && command.where !== 'ender') || !parent(command.slot)) return null;
+        const head = `${BRIDGE_COMMAND} ${command.action} ${command.name} ${command.where} ${command.slot}`;
+
+        if (command.action === 'shulker') return head;
+        if (command.action === 'shulkerdelete') return inner(command.inner) ? `${head} ${command.inner}` : null;
+
+        return inner(command.from) && inner(command.to) && command.from !== command.to
+            ? `${head} ${command.from} ${command.to}`
+            : null;
+    }
 
     switch (command.action) {
         case 'swap':
@@ -264,6 +349,9 @@ export const ENDER_POSITIONS: { slot: number; x: number; y: number }[] = Array.f
         y: 18 + Math.floor(i / 9) * 18,
     })
 );
+
+/** The inside of a shulker box has the same picture and places as the ender chest: 3 rows of 9. */
+export const SHULKER_POSITIONS = ENDER_POSITIONS;
 
 /** "diamond_sword" as "Diamond Sword". */
 export const prettyItem = (id: string): string =>

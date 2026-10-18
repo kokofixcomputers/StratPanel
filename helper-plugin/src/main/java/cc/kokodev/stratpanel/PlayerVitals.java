@@ -76,9 +76,13 @@ final class PlayerVitals {
     return (int) clamp((double) current + delta, 0.0, 20.0);
   }
 
-  /** The experience level after adding or taking some, never below 0. */
+  /**
+   * The experience level after adding or taking some, never below 0 and not above {@link #MAX_LEVEL}. A level that is above that
+   * already (a player can have billions, the game allows up to the largest int) is never lowered by a click on "+", it only stops
+   * growing.
+   */
   static int adjustedLevel(int current, int delta) {
-    return (int) clamp((double) current + delta, 0.0, MAX_LEVEL);
+    return (int) clamp((double) current + delta, 0.0, Math.max(MAX_LEVEL, current));
   }
 
   private static double clamp(double value, double min, double max) {

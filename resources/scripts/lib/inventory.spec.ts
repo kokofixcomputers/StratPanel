@@ -1,6 +1,11 @@
 import {
     clearInventories,
     ENDER_POSITIONS,
+    handleShulkerBoxMessage,
+    isShulkerBox,
+    parseShulkerBox,
+    readShulkerBoxes,
+    SHULKER_POSITIONS,
     handleEnderChestMessage,
     parseEnderChest,
     readEnderChests,
@@ -314,5 +319,113 @@ describe('textures', () => {
         );
         expect(alwaysShimmers('minecraft:enchanted_golden_apple')).toBe(true);
         expect(alwaysShimmers('minecraft:golden_apple')).toBe(false);
+    });
+});
+
+describe('shulker boxes', () => {
+    const message = (patch: Record<string, unknown> = {}) => ({
+        event: 'shulkerbox',
+        name: 'Steve',
+        uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03',
+        where: 'inv',
+        box: 4,
+        boxId: 'minecraft:red_shulker_box',
+        items: [
+            { slot: 0, id: 'minecraft:emerald', count: 12 },
+            { slot: 26, id: 'minecraft:golden_apple', count: 3 },
+        ],
+        ...patch,
+    });
+
+    it('knows a shulker box of any colour and nothing else', () => {
+        expect(isShulkerBox('minecraft:shulker_box')).toBe(true);
+        expect(isShulkerBox('minecraft:red_shulker_box')).toBe(true);
+        expect(isShulkerBox('minecraft:light_blue_shulker_box')).toBe(true);
+        expect(isShulkerBox('minecraft:shulker_shell')).toBe(false);
+        expect(isShulkerBox('minecraft:shulker_box_fake')).toBe(false);
+        expect(isShulkerBox('minecraft:chest')).toBe(false);
+        expect(isShulkerBox('shulker_box_of_someone')).toBe(false);
+    });
+
+    it('reads what is in a box and which box it is', () => {
+        const parsed = parseShulkerBox(message());
+
+        expect(parsed?.name).toBe('Steve');
+        expect(parsed?.view).toMatchObject({ where: 'inv', box: 4, boxId: 'minecraft:red_shulker_box' });
+        expect(parsed?.view.items.map((i) => i.slot)).toEqual([0, 26]);
+        expect(parseShulkerBox(message({ where: 'ender', box: 10 }))?.view.where).toBe('ender');
+    });
+
+    it('refuses a box that is not one the plugin could have sent', () => {
+        expect(parseShulkerBox(message({ where: 'elsewhere' }))).toBeNull();
+        expect(parseShulkerBox(message({ box: 41 }))).toBeNull();
+        expect(parseShulkerBox(message({ box: -1 }))).toBeNull();
+        expect(parseShulkerBox(message({ where: 'ender', box: 27 }))).toBeNull();
+        expect(parseShulkerBox(message({ boxId: 'minecraft:chest' }))).toBeNull();
+        expect(parseShulkerBox(message({ boxId: 'nonsense' }))).toBeNull();
+        expect(parseShulkerBox({ ...message(), event: 'inventory' })).toBeNull();
+        expect(parseShulkerBox(message({ name: 'bad name!' }))).toBeNull();
+    });
+
+    it('has room for 27 slots only', () => {
+        const items = [
+            { slot: 27, id: 'minecraft:stone', count: 1 },
+            { slot: 5, id: 'minecraft:stone', count: 1 },
+            { slot: 5, id: 'minecraft:dirt', count: 1 },
+        ];
+
+        expect(parseShulkerBox(message({ items }))?.view.items).toEqual([{ slot: 5, id: 'minecraft:stone', count: 1 }]);
+        expect(SHULKER_POSITIONS).toBe(ENDER_POSITIONS);
+        expect(SHULKER_POSITIONS).toHaveLength(27);
+    });
+
+    it('keeps the last box for each player and forgets them with the server', () => {
+        handleShulkerBoxMessage('shulk', message());
+        handleShulkerBoxMessage('shulk', message({ name: 'Alex', where: 'ender', box: 10 }));
+        expect(Object.keys(readShulkerBoxes('shulk')).sort()).toEqual(['Alex', 'Steve']);
+
+        handleShulkerBoxMessage('shulk', message({ items: [] }));
+        expect(readShulkerBoxes('shulk').Steve.items).toEqual([]);
+
+        // Something else, or a box that is not valid, changes nothing.
+        handleShulkerBoxMessage('shulk', { event: 'inventory', name: 'Steve', items: [] });
+        handleShulkerBoxMessage('shulk', message({ boxId: 'minecraft:chest' }));
+        expect(readShulkerBoxes('shulk').Steve.items).toEqual([]);
+
+        clearInventories('shulk');
+        expect(Object.keys(readShulkerBoxes('shulk'))).toEqual([]);
+    });
+
+    it('builds the commands for a box', () => {
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'inv', slot: 4 })).toBe(
+            'stratpanelhidepanellogs shulker Steve inv 4'
+        );
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'ender', slot: 26 })).toBe(
+            'stratpanelhidepanellogs shulker Steve ender 26'
+        );
+        expect(
+            playerCommandLine({ action: 'shulkerswap', name: 'Steve', where: 'inv', slot: 4, from: 0, to: 20 })
+        ).toBe('stratpanelhidepanellogs shulkerswap Steve inv 4 0 20');
+        expect(playerCommandLine({ action: 'shulkerdelete', name: 'Steve', where: 'ender', slot: 10, inner: 7 })).toBe(
+            'stratpanelhidepanellogs shulkerdelete Steve ender 10 7'
+        );
+    });
+
+    it('does not build a command that is out of range or has a name that is not one', () => {
+        // The inventory has 41 slots, the ender chest 27, a box 27.
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'inv', slot: 41 })).toBeNull();
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'ender', slot: 27 })).toBeNull();
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'inv', slot: -1 })).toBeNull();
+        expect(playerCommandLine({ action: 'shulker', name: 'Steve', where: 'elsewhere' as any, slot: 1 })).toBeNull();
+        expect(playerCommandLine({ action: 'shulker', name: 'a b; stop', where: 'inv', slot: 1 })).toBeNull();
+        expect(
+            playerCommandLine({ action: 'shulkerswap', name: 'Steve', where: 'inv', slot: 4, from: 0, to: 27 })
+        ).toBeNull();
+        expect(
+            playerCommandLine({ action: 'shulkerswap', name: 'Steve', where: 'inv', slot: 4, from: 5, to: 5 })
+        ).toBeNull();
+        expect(
+            playerCommandLine({ action: 'shulkerdelete', name: 'Steve', where: 'inv', slot: 4, inner: 27 })
+        ).toBeNull();
     });
 });

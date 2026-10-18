@@ -110,6 +110,77 @@ public final class PlayerTools {
     container.clear(slot);
   }
 
+  private static final String NOT_A_BOX = "That is not a shulker box.";
+
+  private ItemContainer parentOf(PlayerHandle player, boolean ender) {
+    return ender ? player.enderChest() : player.inventory();
+  }
+
+  /**
+   * What is in the shulker box in a slot of the inventory or the ender chest, null after telling the panel why not: the slot is
+   * not one, or there is no shulker box in it (it was moved since the panel looked).
+   */
+  private ItemContainer openBox(PlayerHandle player, String action, boolean ender, int slot) {
+    int size = ender ? InventorySlots.ENDER_COUNT : InventorySlots.COUNT;
+    if (!InventorySlots.isValidIn(slot, size)) {
+      error(player, action, "That is not a slot of the inventory.");
+      return null;
+    }
+    ItemInfo box = parentOf(player, ender).describe(slot);
+    ItemContainer contents =
+        box != null && InventorySlots.isShulkerBox(box.id()) ? player.shulkerBox(ender, slot) : null;
+    if (contents == null) {
+      error(player, action, NOT_A_BOX);
+    }
+    return contents;
+  }
+
+  /**
+   * Sends what is in a shulker box: the {@code shulkerbox} message with where the box is ({@code inv} or {@code ender}), its
+   * slot, its item id and the items by the slots 0 to 26 of the box.
+   */
+  public void sendShulker(PlayerHandle player, boolean ender, int slot) {
+    ItemContainer contents = openBox(player, "shulker", ender, slot);
+    if (contents == null) {
+      return;
+    }
+    List<Map<String, Object>> items = new ArrayList<>();
+    for (int inner = 0; inner < InventorySlots.SHULKER_COUNT; inner++) {
+      ItemInfo item = contents.describe(inner);
+      if (item != null) {
+        items.add(snapshot(inner, item));
+      }
+    }
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("name", player.name());
+    fields.put("uuid", player.uuid());
+    fields.put("where", ender ? "ender" : "inv");
+    fields.put("box", slot);
+    fields.put("boxId", parentOf(player, ender).describe(slot).id());
+    fields.put("items", items);
+    bridge.send("shulkerbox", fields);
+  }
+
+  /** Moves items inside a shulker box like in the ender chest. Returns whether the box was found. */
+  public boolean swapShulker(PlayerHandle player, boolean ender, int slot, int from, int to) {
+    ItemContainer contents = openBox(player, "swap", ender, slot);
+    if (contents == null) {
+      return false;
+    }
+    swapIn(player, contents, InventorySlots.SHULKER_COUNT, false, from, to);
+    return true;
+  }
+
+  /** Deletes an item from inside a shulker box. Returns whether the box was found. */
+  public boolean deleteShulker(PlayerHandle player, boolean ender, int slot, int inner) {
+    ItemContainer contents = openBox(player, "delete", ender, slot);
+    if (contents == null) {
+      return false;
+    }
+    deleteIn(player, contents, InventorySlots.SHULKER_COUNT, inner);
+    return true;
+  }
+
   /** Sends the whole inventory: every slot that is not empty. */
   public void sendInventory(PlayerHandle player) {
     send(player, player.inventory(), InventorySlots.COUNT, "inventory");

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faServer } from '@fortawesome/free-solid-svg-icons';
+import { PlayIcon, RefreshIcon, StopIcon } from '@heroicons/react/solid';
+import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import { Server } from '@/api/server/getServer';
 import getServerResourceUsage, { ServerPowerState, ServerStats } from '@/api/server/getServerResourceUsage';
@@ -11,6 +13,8 @@ import Spinner from '@/components/elements/Spinner';
 import styled from 'styled-components/macro';
 import useServerSoftware from '@/components/dashboard/useServerSoftware';
 import { iconFor, SoftwareType } from '@/lib/mcjars';
+import sendPowerAction, { PowerSignal } from '@/api/server/sendPowerAction';
+import { httpErrorToHuman } from '@/api/http';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
 // than the more faded default style.
@@ -54,15 +58,127 @@ const Metric = ({ label, value, limit, alarm, ratio }: Record<string, any>) => (
 
 type Timer = ReturnType<typeof setInterval>;
 
+/**
+ * Start, restart and stop of a server, small enough for a row of the list. Only the ones the user may use are shown. The row is a
+ * link to the server, so a click on a button must not follow it.
+ */
+const PowerActions = ({
+    server,
+    status,
+    busy,
+    error,
+    onAction,
+}: {
+    server: Server;
+    status: ServerPowerState | undefined;
+    busy: PowerSignal | null;
+    error: string | null;
+    onAction: (signal: PowerSignal) => void;
+}) => {
+    const { start, stop, restart } = server.canControl;
+    if (!start && !stop && !restart) return null;
+
+    const button = (signal: PowerSignal, label: string, color: string, icon: React.ReactNode, disabled: boolean) => (
+        <button
+            type={'button'}
+            title={label}
+            aria-label={`${label} ${server.name}`}
+            disabled={disabled || !!busy}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAction(signal);
+            }}
+            className={classNames(
+                'flex h-9 w-9 items-center justify-center rounded-lg text-white shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-40',
+                color
+            )}
+        >
+            {busy === signal ? <Spinner size={'small'} /> : icon}
+        </button>
+    );
+
+    return (
+        <div css={tw`flex flex-shrink-0 flex-col items-end`} onClick={(e) => e.stopPropagation()}>
+            <div css={tw`flex items-center gap-2`}>
+                {start &&
+                    button(
+                        'start',
+                        'Start',
+                        'bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/30',
+                        <PlayIcon className={'h-5 w-5'} />,
+                        status !== 'offline'
+                    )}
+                {restart &&
+                    button(
+                        'restart',
+                        'Restart',
+                        'bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-500/30',
+                        <RefreshIcon className={'h-5 w-5'} />,
+                        status !== 'running' && status !== 'starting'
+                    )}
+                {stop &&
+                    button(
+                        'stop',
+                        status === 'stopping' ? 'Stopping' : 'Stop',
+                        'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600/30',
+                        <StopIcon className={'h-5 w-5'} />,
+                        status !== 'running' && status !== 'starting'
+                    )}
+            </div>
+            {error && <p css={tw`mt-1 max-w-[14rem] text-right text-2xs text-red-600`}>{error}</p>}
+        </div>
+    );
+};
+
 export default ({ server, className }: { server: Server; className?: string }) => {
     const interval = useRef<Timer>(null) as React.MutableRefObject<Timer>;
     const [isSuspended, setIsSuspended] = useState(server.status === 'suspended');
     const [stats, setStats] = useState<ServerStats | null>(null);
+    const [busy, setBusy] = useState<PowerSignal | null>(null);
+    const [powerError, setPowerError] = useState<string | null>(null);
+    const watching = useRef<Timer | null>(null);
 
     const getStats = () =>
         getServerResourceUsage(server.uuid)
             .then((data) => setStats(data))
             .catch((error) => console.error(error));
+
+    // The state of the server after a power action is looked at every 2 seconds for a while, instead of every 30.
+    const watchAfterAction = () => {
+        if (watching.current) clearInterval(watching.current);
+        let looks = 0;
+        watching.current = setInterval(() => {
+            getStats();
+            if (++looks >= 12 && watching.current) {
+                clearInterval(watching.current);
+                watching.current = null;
+            }
+        }, 2000);
+    };
+
+    useEffect(
+        () => () => {
+            if (watching.current) clearInterval(watching.current);
+        },
+        []
+    );
+
+    const power = (signal: PowerSignal) => {
+        setPowerError(null);
+        setBusy(signal);
+
+        sendPowerAction(server.uuid, signal)
+            .then(() => {
+                getStats();
+                watchAfterAction();
+            })
+            .catch((error) => {
+                setPowerError(httpErrorToHuman(error));
+                setTimeout(() => setPowerError(null), 6000);
+            })
+            .then(() => setBusy(null));
+    };
 
     useEffect(() => {
         setIsSuspended(stats?.isSuspended || server.status === 'suspended');
@@ -103,6 +219,13 @@ export default ({ server, className }: { server: Server; className?: string }) =
         .filter((alloc) => alloc.isDefault)
         .map((allocation) => `${allocation.alias || ip(allocation.ip)}:${allocation.port}`)
         .join(', ');
+
+    // Buttons only for a server that can be reached: not suspended, not on a node in maintenance, not installing or transferring.
+    const controllable =
+        !!stats && !isSuspended && !server.isNodeUnderMaintenance && !server.status && !server.isTransferring;
+    const powerActions = controllable ? (
+        <PowerActions server={server} status={stats?.status} busy={busy} error={powerError} onAction={power} />
+    ) : null;
 
     const badge = (text: string, style: TwStyle) => (
         <span css={[tw`rounded-full px-3 py-1 text-xs font-medium border`, style]}>{text}</span>
@@ -194,7 +317,9 @@ export default ({ server, className }: { server: Server; className?: string }) =
                         />
                     </>
                 )}
+                {powerActions}
             </div>
+            {powerActions && <div css={tw`sm:hidden col-span-12 flex justify-end pr-4`}>{powerActions}</div>}
             <div className={'status-bar'} />
         </StatusIndicatorBox>
     );

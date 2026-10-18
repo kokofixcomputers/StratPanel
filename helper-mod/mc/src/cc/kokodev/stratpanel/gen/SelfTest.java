@@ -2,6 +2,7 @@ package cc.kokodev.stratpanel.gen;
 
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -10,6 +11,7 @@ import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.enchantment.Enchantments;
 
 /**
@@ -43,6 +45,15 @@ final class SelfTest {
     player.getInventory().setItem(36, new ItemStack(Items.IRON_BOOTS));
     player.getInventory().setItem(40, new ItemStack(Items.SHIELD));
     player.getEnderChestInventory().setItem(0, new ItemStack(Items.DIAMOND, 5));
+    // A shulker box with a few items in the inventory and an empty one in the ender chest, for the box tools.
+    ItemStack box = new ItemStack(Items.SHULKER_BOX);
+    NonNullList<ItemStack> inside = NonNullList.withSize(27, ItemStack.EMPTY);
+    inside.set(0, new ItemStack(Items.EMERALD, 12));
+    inside.set(1, new ItemStack(Items.COBBLESTONE, 64));
+    inside.set(26, new ItemStack(Items.GOLDEN_APPLE, 3));
+    box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(inside));
+    player.getInventory().setItem(4, box);
+    player.getEnderChestInventory().setItem(10, new ItemStack(Items.SHULKER_BOX));
     player.setHealth(10.0F);
     return player;
   }

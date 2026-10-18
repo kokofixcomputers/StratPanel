@@ -14,7 +14,13 @@ import {
 import { findCommandsFile } from '@/lib/commandTree';
 import { clearPerformance, handlePerformanceMessage } from '@/lib/performance';
 import { clearVitals, handleVitalsMessage } from '@/lib/vitals';
-import { clearInventories, handleEnderChestMessage, handleInventoryMessage, handlePlayerError } from '@/lib/inventory';
+import {
+    clearInventories,
+    handleEnderChestMessage,
+    handleInventoryMessage,
+    handlePlayerError,
+    handleShulkerBoxMessage,
+} from '@/lib/inventory';
 
 /**
  * Follows the console for the whole time a server is open, so the Players tab is right when it is opened. Players come
@@ -66,6 +72,7 @@ export default () => {
             handleVitalsMessage(uuid, message);
             handleInventoryMessage(uuid, message);
             handleEnderChestMessage(uuid, message);
+            handleShulkerBoxMessage(uuid, message);
             handlePlayerError(uuid, message);
 
             return handleBridgeMessage(uuid, message);

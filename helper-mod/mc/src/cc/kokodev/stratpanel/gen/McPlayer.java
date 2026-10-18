@@ -1,8 +1,12 @@
 package cc.kokodev.stratpanel.gen;
 
+import cc.kokodev.stratpanel.core.InventorySlots;
 import cc.kokodev.stratpanel.core.ItemContainer;
 import cc.kokodev.stratpanel.core.PlayerHandle;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 
 /** A player who is online. */
@@ -102,5 +106,19 @@ final class McPlayer implements PlayerHandle {
   @Override
   public ItemContainer enderChest() {
     return new McContainer(player, player.getEnderChestInventory(), false);
+  }
+
+  @Override
+  public ItemContainer shulkerBox(boolean ender, int slot) {
+    Container parent = ender ? player.getEnderChestInventory() : player.getInventory();
+    if (slot < 0 || slot >= parent.getContainerSize()) {
+      return null;
+    }
+    ItemStack stack = parent.getItem(slot);
+    if (stack.isEmpty() || !InventorySlots.isShulkerBox(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString())) {
+      return null;
+    }
+    // The contents are a container of their own, it is not "worn": every slot takes everything.
+    return new McContainer(player, new McShulkerContents(stack), false);
   }
 }

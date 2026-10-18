@@ -42,4 +42,13 @@ public interface PlayerHandle {
   ItemContainer inventory();
 
   ItemContainer enderChest();
+
+  /**
+   * What is in the shulker box in a slot of the inventory (or, with {@code ender}, of the ender chest): a container of
+   * {@link InventorySlots#SHULKER_COUNT} slots that writes every change back to the item. Null when the slot does not hold a
+   * shulker box.
+   */
+  default ItemContainer shulkerBox(boolean ender, int slot) {
+    return null;
+  }
 }

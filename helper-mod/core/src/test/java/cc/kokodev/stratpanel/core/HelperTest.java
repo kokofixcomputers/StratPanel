@@ -151,6 +151,21 @@ class HelperTest {
     public ItemContainer enderChest() {
       return ender;
     }
+
+    /** The contents of the shulker boxes, by where and slot. */
+    final Map<String, Slots> boxes = new java.util.HashMap<>();
+
+    /** Puts a shulker box in a slot of the inventory (or the ender chest) and returns what is in it. */
+    Slots box(boolean inEnder, int slot, String id) {
+      (inEnder ? ender : inventory).with(slot, id, 1);
+      Slots contents = new Slots(InventorySlots.SHULKER_COUNT);
+      boxes.put((inEnder ? "ender:" : "inv:") + slot, contents);
+      return contents;
+    }
+
+    public ItemContainer shulkerBox(boolean inEnder, int slot) {
+      return boxes.get((inEnder ? "ender:" : "inv:") + slot);
+    }
   }
 
   private final List<String> log = new ArrayList<>();
@@ -260,7 +275,7 @@ class HelperTest {
     assertEquals("handshake", all.get(0).get("event").getAsString());
     assertEquals("fabric", all.get(0).get("platform").getAsString());
     assertEquals("26.3", all.get(0).get("minecraft").getAsString());
-    assertEquals(8, all.get(0).get("protocol").getAsInt());
+    assertEquals(9, all.get(0).get("protocol").getAsInt());
     assertEquals("players", all.get(1).get("event").getAsString());
     assertEquals("Steve", all.get(1).getAsJsonArray("players").get(0).getAsJsonObject().get("name").getAsString());
   }
@@ -348,6 +363,117 @@ class HelperTest {
     run("enderdelete Steve 26");
     assertEquals(0, last().getAsJsonArray("items").size());
     assertEquals("That is not a slot of the inventory.", errorOf("enderswap Steve 0 27"));
+  }
+
+  @Test
+  void aShulkerBoxIsOpenedWithItsItemsBySlot() {
+    Slots contents = steve.box(false, 4, "red_shulker_box");
+    contents.with(0, "diamond", 5).with(26, "apple", 3);
+
+    run("shulker Steve inv 4");
+
+    JsonObject message = last();
+    assertEquals("shulkerbox", message.get("event").getAsString());
+    assertEquals("Steve", message.get("name").getAsString());
+    assertEquals("inv", message.get("where").getAsString());
+    assertEquals(4, message.get("box").getAsInt());
+    assertEquals("minecraft:red_shulker_box", message.get("boxId").getAsString());
+    assertEquals(2, message.getAsJsonArray("items").size());
+    JsonObject last = message.getAsJsonArray("items").get(1).getAsJsonObject();
+    assertEquals(26, last.get("slot").getAsInt());
+    assertEquals("minecraft:apple", last.get("id").getAsString());
+  }
+
+  @Test
+  void aShulkerBoxInTheEnderChestIsOpenedToo() {
+    steve.box(true, 10, "shulker_box").with(3, "gold_ingot", 9);
+
+    run("shulker Steve ender 10");
+
+    assertEquals("shulkerbox", last().get("event").getAsString());
+    assertEquals("ender", last().get("where").getAsString());
+    assertEquals(10, last().get("box").getAsInt());
+    assertEquals(3, last().getAsJsonArray("items").get(0).getAsJsonObject().get("slot").getAsInt());
+  }
+
+  @Test
+  void itemsAreMovedInsideAShulkerBoxAndTheBoxIsSentAgain() {
+    Slots contents = steve.box(false, 4, "blue_shulker_box");
+    contents.with(0, "diamond", 5).with(1, "stone", 64);
+
+    run("shulkerswap Steve inv 4 0 20");
+    assertEquals("minecraft:diamond", contents.items[20].id());
+    assertEquals(null, contents.items[0]);
+    assertEquals("shulkerbox", last().get("event").getAsString());
+
+    // The same item is added to the stack, like in the other containers.
+    contents.with(21, "diamond", 7);
+    run("shulkerswap Steve inv 4 20 21");
+    assertEquals(12, contents.items[21].count());
+
+    // Two different items trade places.
+    run("shulkerswap Steve inv 4 1 21");
+    assertEquals("minecraft:diamond", contents.items[1].id());
+    assertEquals("minecraft:stone", contents.items[21].id());
+  }
+
+  @Test
+  void itemsAreDeletedFromInsideAShulkerBox() {
+    Slots contents = steve.box(false, 4, "shulker_box");
+    contents.with(7, "tnt", 12).with(8, "apple", 1);
+
+    run("shulkerdelete Steve inv 4 7");
+
+    assertEquals(null, contents.items[7]);
+    assertEquals(1, last().getAsJsonArray("items").size());
+    assertEquals("shulkerbox", last().get("event").getAsString());
+  }
+
+  @Test
+  void slotsOutsideTheBoxAreRefused() {
+    steve.box(false, 4, "shulker_box");
+
+    assertEquals("That is not a slot of the inventory.", errorOf("shulkerswap Steve inv 4 0 27"));
+    assertEquals("That is not a slot of the inventory.", errorOf("shulkerdelete Steve inv 4 27"));
+    assertEquals("That is not a slot of the inventory.", errorOf("shulker Steve inv 41"));
+    assertEquals("That is not a slot of the inventory.", errorOf("shulker Steve ender 27"));
+  }
+
+  @Test
+  void somethingThatIsNotAShulkerBoxIsRefusedAndNothingElseIsSent() {
+    steve.inventory.with(5, "chest", 1);
+    steve.inventory.with(6, "red_shulker_box_fake", 1);
+
+    assertEquals("That is not a shulker box.", errorOf("shulker Steve inv 5"));
+    assertEquals("That is not a shulker box.", errorOf("shulker Steve inv 9"));
+    assertEquals("That is not a shulker box.", errorOf("shulkerswap Steve inv 5 0 1"));
+    // The error is the last thing that was sent, no box and no inventory followed it.
+    assertEquals("player-error", last().get("event").getAsString());
+    assertEquals("That is not a shulker box.", errorOf("shulkerdelete Steve inv 5 0"));
+  }
+
+  @Test
+  void aShulkerBoxThatTheGameDoesNotOpenIsRefused() {
+    // The item says shulker box but the game has no contents for it (a platform without the support).
+    steve.inventory.with(4, "shulker_box", 1);
+
+    assertEquals("That is not a shulker box.", errorOf("shulker Steve inv 4"));
+  }
+
+  @Test
+  void theShulkerCommandsOnlyTakeWhatTheyExpect() {
+    steve.box(false, 4, "shulker_box").with(0, "apple", 1);
+    int before = log.size();
+
+    run("shulker Steve elsewhere 4");
+    run("shulker Steve inv x");
+    run("shulker Steve inv 4 5");
+    run("shulkerswap Steve inv 4 0");
+    run("shulkerswap Steve inv 4 0 1 2");
+    run("shulkerdelete Steve inv 4");
+    run("shulkerdelete Steve nowhere 4 0");
+
+    assertEquals(before, log.size(), "nothing was sent for a command that is not well formed");
   }
 
   @Test

@@ -24,6 +24,19 @@ class InventorySlotsTest {
   }
 
   @Test
+  void aShulkerBoxHasTwentySevenSlotsAndIsRecognisedInEveryColour() {
+    assertTrue(InventorySlots.isValidIn(26, InventorySlots.SHULKER_COUNT));
+    assertFalse(InventorySlots.isValidIn(27, InventorySlots.SHULKER_COUNT));
+
+    assertTrue(InventorySlots.isShulkerBox("SHULKER_BOX"));
+    assertTrue(InventorySlots.isShulkerBox("LIGHT_BLUE_SHULKER_BOX"));
+    assertTrue(InventorySlots.isShulkerBox("red_shulker_box"));
+    assertFalse(InventorySlots.isShulkerBox("SHULKER_SHELL"));
+    assertFalse(InventorySlots.isShulkerBox("CHEST"));
+    assertFalse(InventorySlots.isShulkerBox(null));
+  }
+
+  @Test
   void armorSlotsOnlyTakeArmor() {
     assertTrue(InventorySlots.accepts(InventorySlots.HELMET, "DIAMOND_HELMET"));
     assertTrue(InventorySlots.accepts(InventorySlots.HELMET, "CARVED_PUMPKIN"));

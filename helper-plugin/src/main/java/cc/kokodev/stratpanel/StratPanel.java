@@ -211,9 +211,44 @@ public class StratPanel extends JavaPlugin implements Listener {
           tools.sendEnderChest(player);
         }
         break;
+      case "shulker":
+        // shulker <name> <inv|ender> <slot of the box>
+        if (args.length == 4 && isWhere(args[2]) && isNumber(args[3])) {
+          tools.sendShulker(player, args[2].equals("ender"), Integer.parseInt(args[3]));
+        }
+        break;
+      case "shulkerswap":
+        // shulkerswap <name> <inv|ender> <slot of the box> <from> <to>
+        if (args.length == 6
+            && isWhere(args[2])
+            && isNumber(args[3])
+            && isNumber(args[4])
+            && isNumber(args[5])) {
+          boolean ender = args[2].equals("ender");
+          int box = Integer.parseInt(args[3]);
+          if (tools.swapShulker(player, ender, box, Integer.parseInt(args[4]), Integer.parseInt(args[5]))) {
+            tools.sendShulker(player, ender, box);
+          }
+        }
+        break;
+      case "shulkerdelete":
+        // shulkerdelete <name> <inv|ender> <slot of the box> <slot in the box>
+        if (args.length == 5 && isWhere(args[2]) && isNumber(args[3]) && isNumber(args[4])) {
+          boolean ender = args[2].equals("ender");
+          int box = Integer.parseInt(args[3]);
+          if (tools.deleteShulker(player, ender, box, Integer.parseInt(args[4]))) {
+            tools.sendShulker(player, ender, box);
+          }
+        }
+        break;
       default:
         break;
     }
+  }
+
+  /** Where a shulker box is: in the inventory of the player or in the ender chest. */
+  private static boolean isWhere(String text) {
+    return text.equals("inv") || text.equals("ender");
   }
 
   /** A whole number that may have a minus in front, of a size no one asks for more than a few thousand. */
@@ -233,8 +268,8 @@ public class StratPanel extends JavaPlugin implements Listener {
     // 2: the "perf" subcommand and the "performance" message. 3: "vitals". 4: the player commands (inventory, heal,
     // feed, swap, delete). 5: the same for the ender chest. 6: health, hunger
     // and levels can be changed. 7: the game mode is sent and can be changed. 8: the "performance" message carries the time
-    // and the weather of the main world.
-    fields.put("protocol", 8);
+    // and the weather of the main world. 9: shulker boxes can be opened and changed (the "shulkerbox" message).
+    fields.put("protocol", 9);
     bridge.send("handshake", fields);
   }
 

@@ -72,7 +72,7 @@ const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, status: null, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -134,8 +134,21 @@ const mockPlayer = {
         { slot: 11, id: 'minecraft:netherrack', count: 64 },
         { slot: 26, id: 'minecraft:dragon_egg', count: 1 },
     ],
+    // What is inside the shulker boxes, by where they lie and their slot.
+    boxes: {
+        'inv:6': [
+            { slot: 0, id: 'minecraft:diamond', count: 32 },
+            { slot: 1, id: 'minecraft:netherite_ingot', count: 4 },
+            { slot: 2, id: 'minecraft:enchanted_golden_apple', count: 2 },
+            { slot: 9, id: 'minecraft:elytra', count: 1, damage: 100, maxDamage: 432, enchants: { unbreaking: 3, mending: 1 } },
+            { slot: 10, id: 'minecraft:firework_rocket', count: 64 },
+            { slot: 26, id: 'minecraft:totem_of_undying', count: 1 },
+        ],
+        'ender:0': [{ slot: 4, id: 'minecraft:tnt', count: 16 }],
+    },
     health: 14.5, food: 12, saturation: 5.4, level: 27, mode: 'survival',
     items: [
+        { slot: 6, id: 'minecraft:red_shulker_box', count: 1 },
         { slot: 0, id: 'minecraft:diamond_sword', count: 1, damage: 120, maxDamage: 1561, name: 'Excalibur', enchants: { sharpness: 5, fire_aspect: 2 } },
         { slot: 1, id: 'minecraft:diamond_pickaxe', count: 1, damage: 900, maxDamage: 1561, enchants: { efficiency: 5, unbreaking: 3 } },
         { slot: 2, id: 'minecraft:cooked_beef', count: 64 },
@@ -452,6 +465,16 @@ api.post('/servers/:id/jobs/pull', (req, res) => {
     res.status(202).json({ object: 'server_job', attributes: jobShape(j) });
 });
 
+// Power actions over the API (the buttons of the server list): the state changes a moment later, like on a node.
+api.post('/servers/:id/power', (req, res) => {
+    const signal = req.body && req.body.signal;
+    if (!['start', 'stop', 'restart', 'kill'].includes(signal)) return res.status(422).end();
+    if (signal === 'start') { state.status = 'starting'; setTimeout(() => { state.status = 'running'; }, 2500); }
+    else if (signal === 'restart') { state.status = 'stopping'; setTimeout(() => { state.status = 'starting'; }, 1500); setTimeout(() => { state.status = 'running'; }, 4000); }
+    else { state.status = 'stopping'; setTimeout(() => { state.status = 'offline'; }, 2000); }
+    res.status(204).end();
+});
+
 // Anything else that mutates: pretend it worked.
 api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', data: [] }) : res.status(204).end()));
 app.use('/api/client', api);
@@ -524,13 +547,33 @@ wss.on('connection', (ws) => {
             const sub = String(args[0]).split(' ')[1];
             const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
             if (sub === 'handshake') {
-                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":8}');
+                send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":9}');
                 send('console output', prefix + players);
             } else if (sub === 'vitals') {
                 send('console output', prefix + JSON.stringify({ event: 'vitals', players: [
                     { name: 'kokofixcomputers', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', health: mockPlayer.health, maxHealth: 20, absorption: 0, food: mockPlayer.food, saturation: Math.min(mockPlayer.food, mockPlayer.saturation), level: mockPlayer.level, exp: 0.42, gameMode: mockPlayer.mode },
                     { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', health: 20, maxHealth: 40, absorption: 4, food: 20, saturation: 5, level: 3, exp: 0.9 },
                 ] }));
+            } else if (['shulker', 'shulkerswap', 'shulkerdelete'].includes(sub)) {
+                const [, , who, where, slotText, c, d] = String(args[0]).split(' ');
+                const uuid = '13bc7d5e-f906-41ff-a949-6c1eb677fe03';
+                if (who !== 'kokofixcomputers') return send('console output', prefix + JSON.stringify({ event: 'player-error', name: who, action: sub, error: 'That player is not online.' }));
+                const slot = Number(slotText);
+                const parent = where === 'ender' ? mockPlayer.ender : mockPlayer.items;
+                const box = parent.find((i) => i.slot === slot);
+                const key = `${where}:${slot}`;
+                if (!box || !/shulker_box$/.test(box.id) || !mockPlayer.boxes[key]) mockPlayer.boxes[key] = box && /shulker_box$/.test(box.id) ? [] : null;
+                if (!mockPlayer.boxes[key]) return send('console output', prefix + JSON.stringify({ event: 'player-error', name: who, action: sub, error: 'That is not a shulker box.' }));
+                let inside = mockPlayer.boxes[key];
+                if (sub === 'shulkerswap') {
+                    const from = Number(c), to = Number(d), x = inside.find((i) => i.slot === from), y = inside.find((i) => i.slot === to);
+                    inside = inside.filter((i) => i.slot !== from && i.slot !== to);
+                    if (x) inside.push({ ...x, slot: to });
+                    if (y) inside.push({ ...y, slot: from });
+                }
+                if (sub === 'shulkerdelete') inside = inside.filter((i) => i.slot !== Number(c));
+                mockPlayer.boxes[key] = inside;
+                send('console output', prefix + JSON.stringify({ event: 'shulkerbox', name: who, uuid, where, box: slot, boxId: box.id, items: inside }));
             } else if (['inventory', 'heal', 'feed', 'swap', 'delete', 'ender', 'enderswap', 'enderdelete', 'health', 'hunger', 'levels', 'gamemode'].includes(sub)) {
                 const [, , who, a, b] = String(args[0]).split(' ');
                 if (who !== 'kokofixcomputers') return send('console output', prefix + JSON.stringify({ event: 'player-error', name: who, action: sub, error: 'That player is not online.' }));

@@ -13,6 +13,8 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.block.ShulkerBox;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -128,6 +130,89 @@ final class PlayerTools {
       return;
     }
     inventory.setItem(slot, null);
+  }
+
+  private static final String NOT_A_BOX = "That is not a shulker box.";
+
+  /** A shulker box that is an item: what is in it, and how to put a change back in the item. */
+  private record Box(Inventory contents, Runnable save, String id) {}
+
+  /**
+   * The shulker box in a slot of the inventory or the ender chest, null after telling the panel why not: the slot is not one,
+   * or there is no shulker box in it (it was moved since the panel looked).
+   */
+  private Box openBox(Player player, String action, boolean ender, int slot) {
+    Inventory parent = ender ? player.getEnderChest() : player.getInventory();
+    int size = ender ? InventorySlots.ENDER_COUNT : InventorySlots.COUNT;
+    if (!InventorySlots.isValidIn(slot, size)) {
+      error(player, action, "That is not a slot of the inventory.");
+      return null;
+    }
+    ItemStack item = parent.getItem(slot);
+    if (item != null
+        && InventorySlots.isShulkerBox(item.getType().name())
+        && item.getItemMeta() instanceof BlockStateMeta meta
+        && meta.getBlockState() instanceof ShulkerBox shulker) {
+      // The state is a copy of the box: its inventory is changed and then put back in the item.
+      return new Box(
+          shulker.getInventory(),
+          () -> {
+            meta.setBlockState(shulker);
+            item.setItemMeta(meta);
+            parent.setItem(slot, item);
+          },
+          item.getType().getKey().toString());
+    }
+    error(player, action, NOT_A_BOX);
+    return null;
+  }
+
+  /**
+   * Sends what is in a shulker box: the {@code shulkerbox} message with where the box is ({@code inv} or {@code ender}), its
+   * slot, its item id and the items by the slots 0 to 26 of the box.
+   */
+  void sendShulker(Player player, boolean ender, int slot) {
+    Box box = openBox(player, "shulker", ender, slot);
+    if (box == null) {
+      return;
+    }
+    List<Map<String, Object>> items = new ArrayList<>();
+    for (int inner = 0; inner < InventorySlots.SHULKER_COUNT; inner++) {
+      ItemStack item = box.contents().getItem(inner);
+      if (item != null && !item.getType().isAir()) {
+        items.add(snapshot(inner, item));
+      }
+    }
+    Map<String, Object> fields = new LinkedHashMap<>();
+    fields.put("name", player.getName());
+    fields.put("uuid", player.getUniqueId().toString());
+    fields.put("where", ender ? "ender" : "inv");
+    fields.put("box", slot);
+    fields.put("boxId", box.id());
+    fields.put("items", items);
+    bridge.send("shulkerbox", fields);
+  }
+
+  /** Moves items inside a shulker box like in the ender chest. Returns whether the box was found. */
+  boolean swapShulker(Player player, boolean ender, int slot, int from, int to) {
+    Box box = openBox(player, "swap", ender, slot);
+    if (box == null) {
+      return false;
+    }
+    swapIn(player, box.contents(), InventorySlots.SHULKER_COUNT, false, from, to);
+    box.save().run();
+    return true;
+  }
+
+  /** Deletes an item from inside a shulker box. Returns whether the box was found. */
+  boolean deleteShulker(Player player, boolean ender, int slot, int inner) {
+    Box box = openBox(player, "delete", ender, slot);
+    if (box == null) {
+      return false;
+    }
+    deleteIn(player, box.contents(), InventorySlots.SHULKER_COUNT, inner);
+    box.save().run();
+    return true;
   }
 
   /** Sends the whole inventory: every slot that is not empty. */

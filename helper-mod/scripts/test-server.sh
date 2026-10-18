@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Starts a real server with the helper installed, sends the panel's commands to it and prints what came back.
-#   scripts/test-server.sh <fabric|neoforge> <1.21.1|26.2|26.3> [work dir]
+#   [FABRIC_LOADER=0.20.0] scripts/test-server.sh <fabric|neoforge> <1.21.1|26.2|26.3> [work dir]
+# (use another work dir for another loader version: the downloaded server launcher is cached by Minecraft version)
 # Needs the jars from `./gradlew mods`, Java 21 for 1.21.1 and Java 25 for 26.x (JAVA21 / JAVA25 override the defaults).
 # The server runs with -Dstratosphere.selftest=true, which adds an unconnected player "TestBot" with a few items.
 set -euo pipefail
@@ -21,8 +22,8 @@ case "$MC" in
   1.21.4) FABRIC_API_VERSION="0.119.4+1.21.4"; NEOFORGE_VERSION="21.4.161" ;; # not supported: checks that the helper steps aside
   *) echo "unknown Minecraft version $MC" >&2; exit 1 ;;
 esac
-FABRIC_LOADER=0.19.5
-FABRIC_INSTALLER=1.1.2
+FABRIC_LOADER=${FABRIC_LOADER:-0.19.5}
+FABRIC_INSTALLER=${FABRIC_INSTALLER:-1.1.2}
 
 DIR="$WORK/$LOADER-$MC"
 CACHE="$WORK/cache"
@@ -76,6 +77,14 @@ COMMANDS=(
   "stratpanelhidepanellogs enderswap TestBot 0 5"
   "stratpanelhidepanellogs enderdelete TestBot 5"
   "stratpanelhidepanellogs ender TestBot"
+  "stratpanelhidepanellogs shulker TestBot inv 4"
+  "stratpanelhidepanellogs shulkerswap TestBot inv 4 0 5"
+  "stratpanelhidepanellogs shulkerswap TestBot inv 4 1 26"
+  "stratpanelhidepanellogs shulkerdelete TestBot inv 4 5"
+  "stratpanelhidepanellogs shulker TestBot ender 10"
+  "stratpanelhidepanellogs shulker TestBot inv 5"
+  "stratpanelhidepanellogs shulkerswap TestBot inv 4 0 99"
+  "stratpanelhidepanellogs inventory TestBot"
   "stratpanelhidepanellogs heal TestBot"
   "stratpanelhidepanellogs health TestBot -5"
   "stratpanelhidepanellogs hunger TestBot -7"

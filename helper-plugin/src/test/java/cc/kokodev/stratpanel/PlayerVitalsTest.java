@@ -50,6 +50,11 @@ class PlayerVitalsTest {
     assertEquals(0, PlayerVitals.adjustedLevel(3, -5));
     assertEquals(32, PlayerVitals.adjustedLevel(27, 5));
     assertEquals(PlayerVitals.MAX_LEVEL, PlayerVitals.adjustedLevel(PlayerVitals.MAX_LEVEL, 1000));
+    // A level above the limit is not cut down by stepping up, and can still be stepped down, also at the largest int.
+    assertEquals(Integer.MAX_VALUE - 96, PlayerVitals.adjustedLevel(Integer.MAX_VALUE - 96, 5));
+    assertEquals(Integer.MAX_VALUE - 97, PlayerVitals.adjustedLevel(Integer.MAX_VALUE - 96, -1));
+    assertEquals(Integer.MAX_VALUE, PlayerVitals.adjustedLevel(Integer.MAX_VALUE, 1));
+    assertEquals(0, PlayerVitals.adjustedLevel(Integer.MAX_VALUE, Integer.MIN_VALUE));
   }
 
   @Test

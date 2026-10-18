@@ -1,5 +1,5 @@
 {
-  "version": "261016-0242-SNAPSHOT",
+  "version": "261017-0230-SNAPSHOT",
   "file": "Stratosphere.jar",
   "platforms": [
     "paper",
@@ -8,11 +8,11 @@
   ],
   "mods": {
     "fabric": {
-      "version": "261016-0243-SNAPSHOT",
+      "version": "261017-0230-SNAPSHOT",
       "file": "Stratosphere-fabric.jar"
     },
     "neoforge": {
-      "version": "261016-0243-SNAPSHOT",
+      "version": "261017-0230-SNAPSHOT",
       "file": "Stratosphere-neoforge.jar"
     }
   }

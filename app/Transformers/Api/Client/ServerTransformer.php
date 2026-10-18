@@ -76,6 +76,12 @@ class ServerTransformer extends BaseClientTransformer
                 'backups' => $server->backup_limit,
             ],
             'status' => $server->status,
+            // Which power buttons the user may use, for the buttons of the server list (the power route checks it again).
+            'can_control' => [
+                'start' => $user->can(Permission::ACTION_CONTROL_START, $server),
+                'stop' => $user->can(Permission::ACTION_CONTROL_STOP, $server),
+                'restart' => $user->can(Permission::ACTION_CONTROL_RESTART, $server),
+            ],
             // Whether auto sleep is on, and whether the server is asleep because of it (stopped because nobody was online).
             'auto_sleep' => [
                 'enabled' => (bool) $server->autoSleep?->enabled,

@@ -15,9 +15,11 @@ import {
     enchantmentLine,
     HELMET,
     InventoryItem,
+    isShulkerBox,
     LEGGINGS,
     OFF_HAND,
     prettyItem,
+    SHULKER_POSITIONS,
     SLOT_POSITIONS,
 } from '@/lib/inventory';
 
@@ -36,14 +38,23 @@ const SLOT_NAMES: Record<number, string> = {
 const slotName = (slot: number, layout: Layout): string =>
     layout === 'ender'
         ? `Ender chest ${slot + 1}`
+        : layout === 'shulker'
+        ? `Shulker box ${slot + 1}`
         : SLOT_NAMES[slot] || (slot < 9 ? `Hotbar ${slot + 1}` : `Inventory ${slot - 8}`);
 
-export type Layout = 'inventory' | 'ender';
+export type Layout = 'inventory' | 'ender' | 'shulker';
 
 // The two screens: the picture, how big it is, where the items are and where the details of the chosen item go.
 const LAYOUTS = {
     inventory: { image: INVENTORY_GUI, height: 166, positions: SLOT_POSITIONS, info: { x: 97, y: 17, w: 75, h: 37 } },
     ender: { image: ENDER_CHEST_GUI, height: 118, positions: ENDER_POSITIONS, info: { x: 8, y: 76, w: 160, h: 32 } },
+    // The inside of a shulker box is the same screen as the ender chest.
+    shulker: {
+        image: ENDER_CHEST_GUI,
+        height: 118,
+        positions: SHULKER_POSITIONS,
+        info: { x: 8, y: 76, w: 160, h: 32 },
+    },
 } as const;
 
 /** The same items with two slots exchanged, shown at once while the plugin does it and answers with the real inventory. */
@@ -57,6 +68,8 @@ const exchanged = (items: InventoryItem[], from: number, to: number): InventoryI
 
 interface Props {
     layout?: Layout;
+    // The title of a shulker box screen, such as "Red Shulker Box".
+    title?: string;
     items: InventoryItem[];
     version: string;
     uuid: string;
@@ -65,6 +78,8 @@ interface Props {
     canEdit: boolean;
     onSwap: (from: number, to: number) => void;
     onDelete: (slot: number) => void;
+    // When given, a double click on a shulker box (or its Open button) calls this with the slot of the box.
+    onOpenBox?: (slot: number) => void;
 }
 
 /**
@@ -72,7 +87,18 @@ interface Props {
  * and then the slot it is to go to, and deleted from the panel in the place of the crafting grid. The picture is the one of the
  * game with the player and the crafting grid taken out, the head of the player is where the player was.
  */
-export default ({ layout = 'inventory', items, version, uuid, name, canEdit, onSwap, onDelete }: Props) => {
+export default ({
+    layout = 'inventory',
+    title,
+    items,
+    version,
+    uuid,
+    name,
+    canEdit,
+    onSwap,
+    onDelete,
+    onOpenBox,
+}: Props) => {
     const screen = LAYOUTS[layout];
     const [local, setLocal] = useState<InventoryItem[] | null>(null);
     const [selected, setSelected] = useState<number | null>(null);
@@ -111,6 +137,9 @@ export default ({ layout = 'inventory', items, version, uuid, name, canEdit, onS
                 </div>
             )}
             <div className={'font-normal text-slate-400'}>{slotName(item.slot, layout)}</div>
+            {onOpenBox && isShulkerBox(item.id) && (
+                <div className={'font-normal text-sky-300'}>Double click to look inside</div>
+            )}
         </div>
     );
 
@@ -140,7 +169,7 @@ export default ({ layout = 'inventory', items, version, uuid, name, canEdit, onS
                         lineHeight: 1,
                     }}
                 >
-                    Ender Chest
+                    {layout === 'shulker' ? title || 'Shulker Box' : 'Ender Chest'}
                 </p>
             )}
 
@@ -190,6 +219,9 @@ export default ({ layout = 'inventory', items, version, uuid, name, canEdit, onS
                             if (!isNaN(from)) move(from, slot);
                         }}
                         onDragEnd={() => setOver(null)}
+                        onDoubleClick={() => {
+                            if (item && onOpenBox && isShulkerBox(item.id)) onOpenBox(slot);
+                        }}
                     >
                         {item && (
                             <>
@@ -259,6 +291,16 @@ export default ({ layout = 'inventory', items, version, uuid, name, canEdit, onS
                                 {slotName(current.slot, layout)}
                             </p>
                         </div>
+                        {onOpenBox && isShulkerBox(current.id) && !confirming && (
+                            <button
+                                type={'button'}
+                                className={'self-start rounded bg-primary-100 px-2 py-0.5 font-medium text-primary-700'}
+                                style={{ fontSize: text(5) }}
+                                onClick={() => onOpenBox(current.slot)}
+                            >
+                                Open
+                            </button>
+                        )}
                         {canEdit &&
                             (confirming ? (
                                 <div className={'flex items-center gap-1'}>

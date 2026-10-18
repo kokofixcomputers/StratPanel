@@ -24,6 +24,20 @@ class InventorySlotsTest {
   }
 
   @Test
+  void aShulkerBoxHasTwentySevenSlotsAndIsRecognisedInEveryColour() {
+    assertTrue(InventorySlots.isValidIn(26, InventorySlots.SHULKER_COUNT));
+    assertFalse(InventorySlots.isValidIn(27, InventorySlots.SHULKER_COUNT));
+
+    assertTrue(InventorySlots.isShulkerBox("minecraft:shulker_box"));
+    assertTrue(InventorySlots.isShulkerBox("minecraft:light_blue_shulker_box"));
+    assertTrue(InventorySlots.isShulkerBox("MINECRAFT:RED_SHULKER_BOX"));
+    assertFalse(InventorySlots.isShulkerBox("minecraft:shulker_shell"));
+    assertFalse(InventorySlots.isShulkerBox("minecraft:chest"));
+    assertFalse(InventorySlots.isShulkerBox("minecraft:shulker_box_fake"));
+    assertFalse(InventorySlots.isShulkerBox(null));
+  }
+
+  @Test
   void armorSlotsOnlyTakeArmor() {
     assertTrue(InventorySlots.accepts(InventorySlots.HELMET, "DIAMOND_HELMET"));
     assertTrue(InventorySlots.accepts(InventorySlots.HELMET, "CARVED_PUMPKIN"));

@@ -34,6 +34,9 @@ export interface Vitals {
 /** How often the panel asks while somebody has the player list open. */
 export const VITALS_POLL_MS = 3000;
 
+/** The most levels the game can hold (a Java int). */
+const MAX_LEVEL = 2147483647;
+
 const num = (value: unknown, min: number, max: number): number | null =>
     typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : null;
 
@@ -46,7 +49,8 @@ export const parseVitals = (value: unknown): Vitals | null => {
     const absorption = num(v.absorption ?? 0, 0, 2048);
     const food = num(v.food, 0, 20);
     const saturation = num(v.saturation, 0, 20);
-    const level = num(v.level ?? 0, 0, 1000000);
+    // Up to the largest int: a player can be given billions of levels, and not showing their health for it would be wrong.
+    const level = num(v.level ?? 0, 0, MAX_LEVEL);
     const exp = num(v.exp ?? 0, 0, 1);
     if ([health, maxHealth, absorption, food, saturation, level, exp].some((n) => n === null)) return null;
 

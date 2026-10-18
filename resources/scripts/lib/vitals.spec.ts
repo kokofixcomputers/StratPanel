@@ -77,6 +77,14 @@ describe('parseVitals', () => {
         expect(parseVitals({ ...entry, gameMode: 'spectator' })?.gameMode).toBe('spectator');
     });
 
+    it('keeps a player whose level is enormous', () => {
+        // The game allows the largest int, and one player with it must not make his health and hunger disappear.
+        expect(parseVitals({ ...entry, level: 2147483551 })?.level).toBe(2147483551);
+        expect(parseVitals({ ...entry, level: 2147483647 })?.level).toBe(2147483647);
+        expect(parseVitals({ ...entry, level: 2147483648 })).toBeNull();
+        expect(parseVitals({ ...entry, level: -1 })).toBeNull();
+    });
+
     it('refuses numbers out of range and keeps saturation under food', () => {
         expect(parseVitals({ ...entry, health: -1 })).toBeNull();
         expect(parseVitals({ ...entry, food: 25 })).toBeNull();
