@@ -7,6 +7,7 @@ import { Theme } from '@/lib/theme';
  */
 const light = {
     mode: 'light' as Theme,
+    bg: '#f5f5f6',
     accent: '#1447e6',
     accentFg: '#ffffff',
     text: '#0f172a',
@@ -29,6 +30,7 @@ const light = {
 
 const dark = {
     mode: 'dark' as Theme,
+    bg: '#0c1017',
     accent: '#3b69ef',
     accentFg: '#ffffff',
     text: '#f1f5f9',
