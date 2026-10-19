@@ -10,7 +10,7 @@ use Pterodactyl\Models\Node;
 use Pterodactyl\Models\Role;
 use Pterodactyl\Models\User;
 use Pterodactyl\Models\Location;
-use Pterodactyl\Services\Nodes\NodeUpdateService;
+use Pterodactyl\Services\Nodes\WingsUpdateService;
 use Pterodactyl\Services\Updates\ToolUpdateService;
 use Pterodactyl\Repositories\Wings\DaemonSelfUpdateRepository;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
@@ -82,9 +82,9 @@ class UpdatesTest extends IntegrationTestCase
         ]);
     }
 
-    private function nodes(): NodeUpdateService
+    private function nodes(): WingsUpdateService
     {
-        return $this->app->make(NodeUpdateService::class);
+        return $this->app->make(WingsUpdateService::class);
     }
 
     // ---- the newest version --------------------------------------------------------------------------------------------

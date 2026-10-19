@@ -10,6 +10,8 @@ import usePerformancePolling from '@/plugins/usePerformancePolling';
 import { useBridgeStatus } from '@/lib/bridge';
 import { msptAlarm, tpsAlarm, usePerformance } from '@/lib/performance';
 import { exactBytes, exactNumber } from '@/lib/statFormat';
+import BurstBolt from '@/components/server/console/BurstBolt';
+import { BurstState, initialBurst, nextBurst } from '@/lib/cpuBurst';
 
 type Stats = Record<'memory' | 'cpu' | 'disk' | 'uptime' | 'rx' | 'tx', number>;
 
@@ -44,11 +46,13 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
         tx: emptyHistory(),
     });
     const previous = React.useRef({ rx: -1, tx: -1 });
+    const [burst, setBurst] = useState<BurstState>(initialBurst);
 
     const status = ServerContext.useStoreState((state) => state.status.value);
     const connected = ServerContext.useStoreState((state) => state.socket.connected);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const limits = ServerContext.useStoreState((state) => state.server.data!.limits);
+    const cpuBurst = ServerContext.useStoreState((state) => state.server.data!.cpuBurst);
     const offline = status === 'offline' || status === null;
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const bridge = useBridgeStatus(uuid);
@@ -81,6 +85,7 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
     useEffect(() => {
         if (offline) {
             previous.current = { rx: -1, tx: -1 };
+            setBurst(initialBurst);
             setHistory({ cpu: emptyHistory(), memory: emptyHistory(), rx: emptyHistory(), tx: emptyHistory() });
         }
     }, [offline]);
@@ -101,6 +106,18 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
             rx: stats.network.rx_bytes,
             uptime: stats.uptime || 0,
         });
+
+        // The counter of the kernel for burst (Wings sends it when it can read it) tells when the server bursts.
+        if (cpuBurst?.enabled && limits.cpu > 0) {
+            setBurst((b) =>
+                nextBurst(b, {
+                    cpu: stats.cpu_absolute,
+                    limit: limits.cpu,
+                    usec: typeof stats.cpu_burst?.microseconds === 'number' ? stats.cpu_burst.microseconds : undefined,
+                    now: Date.now(),
+                })
+            );
+        }
 
         setHistory((h) => ({
             cpu: push(h.cpu, stats.cpu_absolute),
@@ -134,6 +151,10 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
                 </StatBlock>
                 <StatBlock
                     title={'CPU Usage'}
+                    adornment={
+                        cpuBurst?.enabled &&
+                        limits.cpu > 0 && <BurstBolt state={burst} limit={limits.cpu} percent={cpuBurst.percent} />
+                    }
                     alarm={getAlarm(cpu, limits.cpu)}
                     subtitle={`of ${textLimits.cpu || 'unlimited'} limit`}
                     exact={

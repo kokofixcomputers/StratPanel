@@ -7,11 +7,11 @@ use Illuminate\Http\Request;
 use Pterodactyl\Models\Node;
 use Spatie\QueryBuilder\QueryBuilder;
 use Pterodactyl\Http\Controllers\Controller;
-use Pterodactyl\Services\Nodes\NodeUpdateService;
+use Pterodactyl\Services\Nodes\WingsUpdateService;
 
 class NodeController extends Controller
 {
-    public function __construct(private NodeUpdateService $updates)
+    public function __construct(private WingsUpdateService $updates)
     {
     }
 

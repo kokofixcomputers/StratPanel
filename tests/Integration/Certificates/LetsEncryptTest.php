@@ -73,7 +73,7 @@ class LetsEncryptTest extends CertificateTestCase
 
     private function pointsHere(ServerDomain $domain): void
     {
-        Cache::put("domains:dns:{$domain->domain}:203.0.113.5", true, 60);
+        Cache::put("domains:dns:resolved:{$domain->domain}", ['203.0.113.5'], 60);
     }
 
     // ---- the challenge --------------------------------------------------------------------------------------------------

@@ -82,6 +82,26 @@ const RecordField = ({ label, value }: { label: string; value: string }) => (
     </div>
 );
 
+/** What the panel finds when it looks the domain up, so a wrong or slow record can be told apart. */
+const DnsNote = ({ domain }: { domain: ServerDomain }) => (
+    <p css={tw`mt-2 text-xs text-neutral-400`}>
+        {domain.dns.resolvesTo.length === 0 ? (
+            <>The panel finds no address for this domain yet.</>
+        ) : (
+            <>
+                The panel sees <span css={tw`font-mono`}>{domain.dns.resolvesTo.join(', ')}</span>
+                {domain.dns.expected.length > 0 && (
+                    <>
+                        , it expects <span css={tw`font-mono`}>{domain.dns.expected.join(' or ')}</span>
+                    </>
+                )}
+                . If the domain works in your browser, the panel may be looking from behind another address (set{' '}
+                <code>PTERODACTYL_DOMAINS_TARGET_IP</code> to the public address).
+            </>
+        )}
+    </p>
+);
+
 const RecordPanel = ({
     domain,
     targetIp,
@@ -109,6 +129,7 @@ const RecordPanel = ({
                             The panel added the DNS record. It can take a minute or two to reach everyone; this page
                             checks again by itself.
                         </p>
+                        <DnsNote domain={domain} />
                     </div>
                 )
             ) : domain.dnsOk ? (
@@ -120,6 +141,7 @@ const RecordPanel = ({
                 <div css={tw`mb-4`}>
                     <p css={tw`text-sm font-medium text-yellow-700 mb-2`}>Waiting for DNS...</p>
                     <SlidingBar role={'progressbar'} aria-label={'Waiting for DNS'} />
+                    <DnsNote domain={domain} />
                     <p css={tw`mt-2 text-xs text-neutral-400`}>
                         Add this record at your domain provider. This page checks again every 30 seconds, DNS changes
                         can take a few minutes to arrive.

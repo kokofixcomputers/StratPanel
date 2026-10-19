@@ -16,7 +16,7 @@
 })(typeof window !== 'undefined' ? window : this, function () {
     'use strict';
 
-    var GROUP_ORDER = ['This server', 'Servers', 'Go to', 'Admin', 'Account'];
+    var GROUP_ORDER = ['Suggested', 'This server', 'Servers', 'Go to', 'Admin', 'Account'];
 
     function isWordStart(text, at) { return at === 0 || !/[a-z0-9]/.test(text.charAt(at - 1)); }
 
@@ -38,6 +38,7 @@
     }
 
     function scoreItem(item, query) {
+        if (item.always) { return 1000; }
         var tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
         if (tokens.length === 0) { return 1; }
         var label = item.label.toLowerCase();
@@ -72,7 +73,7 @@
         });
         return names.map(function (group) {
             var entries = sections[group].items.sort(function (a, b) { return (typed ? b.score - a.score : 0) || a.index - b.index; });
-            var limit = group === 'Servers' ? 6 : (typed ? 8 : 6);
+            var limit = group === 'Servers' ? 6 : (group === 'Suggested' ? 4 : (typed ? 8 : 6));
             return { group: group, items: entries.slice(0, limit).map(function (e) { return e.item; }) };
         });
     }
@@ -115,6 +116,53 @@
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': cookie('XSRF-TOKEN'), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ signal: verb })
             }).then(function (r) { if (!r.ok) { throw new Error('The server did not accept that (' + r.status + ').'); } });
+        }
+
+        function post(path, body, what) {
+            return win.fetch(path, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': cookie('XSRF-TOKEN'), 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(function (r) { if (!r.ok) { throw new Error('The panel did not accept that (' + r.status + ').'); } });
+        }
+
+        /** What was typed, understood as a sentence ("restart my survival server", "create a backup called weekly for lobby"). */
+        function sentenceItems(query, servers) {
+            var nlu = win.StratNlu;
+            if (!nlu || query.trim().length < 3) { return []; }
+            var r = nlu.interpret(query, { servers: servers, current: null });
+            if (!r) { return []; }
+            var out = [];
+            function add(id, label, icon, extra) {
+                var item = { id: 'nl:' + id, label: label, hint: 'Understood', group: 'Suggested', icon: icon, always: true };
+                for (var k in extra) { item[k] = extra[k]; }
+                out.push(item);
+            }
+            var verbs = { start: ['Start', 'play'], restart: ['Restart', 'refresh'], stop: ['Stop', 'stop'], kill: ['Kill', 'bolt'] };
+            r.servers.forEach(function (s) {
+                if (verbs[r.intent]) {
+                    var control = r.intent === 'kill' ? 'stop' : r.intent;
+                    if (!s.canControl[control]) { return; }
+                    add(r.intent + ':' + s.uuid, verbs[r.intent][0] + ' ' + s.name, verbs[r.intent][1], {
+                        run: function () { return power(s.uuid, r.signal).then(function () { return verbs[r.intent][0] + ' sent to ' + s.name; }); }
+                    });
+                } else if (r.intent === 'backup') {
+                    var name = r.backupName || '';
+                    add('backup:' + s.uuid, name ? 'Back up ' + s.name + ' as \u201c' + name + '\u201d' : 'Back up ' + s.name, 'archive', {
+                        run: function () { return post('/api/client/servers/' + s.uuid + '/backups', { name: name || undefined, is_locked: false }).then(function () { return 'Backup of ' + s.name + ' started'; }); }
+                    });
+                } else if (r.intent === 'command') {
+                    add('command:' + s.uuid, 'Run \u201c' + r.command + '\u201d on ' + s.name, 'terminal', {
+                        run: function () { return post('/api/client/servers/' + s.uuid + '/command', { command: r.command }).then(function () { return 'Sent \u201c' + r.command + '\u201d to ' + s.name; }); }
+                    });
+                } else if (r.intent === 'page') {
+                    add('page:' + s.uuid, 'Open ' + r.page.name + ' of ' + s.name, 'th-list', { href: '/server/' + s.id + (r.page.path === '/' ? '' : r.page.path) });
+                } else if (r.intent === 'open') {
+                    add('open:' + s.uuid, 'Open ' + s.name, 'server', { href: '/server/' + s.id });
+                }
+            });
+            if (r.intent === 'site') { add('site', 'Open ' + r.site.name, 'user', { href: r.site.path }); }
+            return out;
         }
 
         function toServer(datum) {
@@ -163,7 +211,12 @@
             state.remote.forEach(function (s) { if (!known[s.uuid]) { servers.push(s); } });
             var typed = state.query.trim() !== '';
 
-            items = items.concat(verbItems(state.query, servers, power));
+            var sentence = sentenceItems(state.query, servers);
+            items = items.concat(sentence);
+            // "restart lobby" is already there as a sentence.
+            items = items.concat(verbItems(state.query, servers, power).filter(function (v) {
+                return !sentence.some(function (n) { return n.label === v.label; });
+            }));
             servers.forEach(function (s) {
                 var words = s.address + ' ' + s.node + ' ' + s.description;
                 items.push({ id: 'server-admin:' + s.uuid, label: s.name + ': admin page', hint: 'Admin', group: 'Servers', words: words, icon: 'cog', href: '/admin/servers/view/' + s.internalId });
@@ -261,7 +314,7 @@
             var head = el('div', 'pal-head');
             head.appendChild(el('i', 'fa fa-search'));
             input = el('input', 'pal-input');
-            input.setAttribute('type', 'text'); input.setAttribute('placeholder', 'Search admin pages, servers and actions');
+            input.setAttribute('type', 'text'); input.setAttribute('placeholder', 'Search, or say what you want: restart lobby');
             input.setAttribute('autocomplete', 'off'); input.setAttribute('spellcheck', 'false'); input.setAttribute('role', 'combobox'); input.setAttribute('aria-controls', 'pal-list');
             head.appendChild(input);
             head.appendChild(el('kbd', 'pal-kbd', 'Esc'));

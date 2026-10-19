@@ -5,11 +5,11 @@ namespace Pterodactyl\Http\Controllers\Admin\Nodes;
 use Pterodactyl\Models\Node;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Http\Controllers\Controller;
-use Pterodactyl\Services\Nodes\NodeUpdateService;
+use Pterodactyl\Services\Nodes\WingsUpdateService;
 
 class NodeUpdateController extends Controller
 {
-    public function __construct(private NodeUpdateService $updates)
+    public function __construct(private WingsUpdateService $updates)
     {
     }
 

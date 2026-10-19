@@ -25,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * @property string $scheme
  * @property bool $behind_proxy
  * @property bool $maintenance_mode
+ * @property bool $cpu_burst_enabled
+ * @property int $cpu_burst_percent
  * @property int $memory
  * @property int $memory_overallocate
  * @property int $disk
@@ -83,6 +85,8 @@ class Node extends Model implements Identifiable
         'certificate_pushed_at' => 'datetime',
         'public' => 'boolean',
         'maintenance_mode' => 'boolean',
+        'cpu_burst_enabled' => 'boolean',
+        'cpu_burst_percent' => 'integer',
     ];
 
     /**
@@ -95,6 +99,7 @@ class Node extends Model implements Identifiable
         'disk_overallocate', 'upload_size', 'daemonBase',
         'daemonSFTP', 'daemonListen',
         'description', 'maintenance_mode',
+        'cpu_burst_enabled', 'cpu_burst_percent',
     ];
 
     public static array $validationRules = [
@@ -114,6 +119,8 @@ class Node extends Model implements Identifiable
         'daemonListen' => 'required|numeric|between:1,65535',
         'maintenance_mode' => 'boolean',
         'upload_size' => 'int|min:1',
+        'cpu_burst_enabled' => 'sometimes|boolean',
+        'cpu_burst_percent' => 'sometimes|integer|between:1,100',
     ];
 
     /**
@@ -128,6 +135,8 @@ class Node extends Model implements Identifiable
         'daemonSFTP' => 2022,
         'daemonListen' => 8080,
         'maintenance_mode' => false,
+        'cpu_burst_enabled' => true,
+        'cpu_burst_percent' => 100,
     ];
 
     /**
@@ -162,6 +171,13 @@ class Node extends Model implements Identifiable
                 'data' => $this->daemonBase,
                 'sftp' => [
                     'bind_port' => $this->daemonSFTP,
+                ],
+            ],
+            // The one container setting the panel hands to Wings: whether servers may burst above their CPU limit.
+            'docker' => [
+                'cpu_burst' => [
+                    'enabled' => (bool) $this->cpu_burst_enabled,
+                    'percent' => (int) $this->cpu_burst_percent,
                 ],
             ],
             'allowed_mounts' => $this->mounts->pluck('source')->toArray(),

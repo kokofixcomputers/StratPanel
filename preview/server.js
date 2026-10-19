@@ -72,7 +72,7 @@ const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -585,11 +585,11 @@ const warnings = [
 const startup = ['[17:04:11] [main/INFO]: Loading Minecraft 1.21.4 with Fabric Loader 0.16.9', '[17:04:13] [main/INFO]: Preparing spawn area: 100%', '[17:04:14] [Server thread/INFO]: Done (3.412s)! For help, type "help"'];
 wss.on('connection', (ws) => {
     const send = (event, ...args) => ws.readyState === 1 && ws.send(JSON.stringify({ event, args }));
-    let uptime = 0, rx = 0, tx = 0, timer;
+    let uptime = 0, rx = 0, tx = 0, timer, burstUsec = 0, burstTick = 0;
     const stats = () => {
         const on = state.status === 'running';
-        if (on) { uptime += 1000; rx += Math.random() * 4000; tx += Math.random() * 9000; }
-        send('stats', JSON.stringify({ memory_bytes: on ? 1.4e9 + Math.random() * 2e8 : 0, memory_limit_bytes: 6.4e9, cpu_absolute: on ? 20 + Math.random() * 50 : 0, network: { rx_bytes: rx, tx_bytes: tx }, state: state.status, disk_bytes: 201457664, uptime: on ? uptime : 0 }));
+        if (on) { uptime += 1000; rx += Math.random() * 4000; tx += Math.random() * 9000; burstTick += 1; if (burstTick % 24 > 14) burstUsec += 40000 + Math.random() * 30000; }
+        send('stats', JSON.stringify({ memory_bytes: on ? 1.4e9 + Math.random() * 2e8 : 0, memory_limit_bytes: 6.4e9, cpu_absolute: on ? 20 + Math.random() * 50 : 0, network: { rx_bytes: rx, tx_bytes: tx }, state: state.status, disk_bytes: 201457664, uptime: on ? uptime : 0, cpu_burst: { periods: Math.floor(burstUsec / 50000), microseconds: Math.floor(burstUsec) } }));
     };
     const setStatus = (s) => { state.status = s; send('status', s); };
     ws.on('message', (raw) => {

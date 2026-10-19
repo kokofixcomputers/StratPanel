@@ -53,6 +53,11 @@ class ServerTransformer extends BaseClientTransformer
             'name' => $server->name,
             'node' => $server->node->name,
             'is_node_under_maintenance' => $server->node->isUnderMaintenance(),
+            // Whether the node lets this server burst above its CPU limit for short spikes (it needs a limit to burst above).
+            'cpu_burst' => [
+                'enabled' => (bool) $server->node->cpu_burst_enabled && $server->cpu > 0,
+                'percent' => (int) $server->node->cpu_burst_percent,
+            ],
             'sftp_details' => [
                 'ip' => $server->node->fqdn,
                 'port' => $server->node->daemonSFTP,

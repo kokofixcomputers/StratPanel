@@ -36,10 +36,12 @@ export interface PaletteItem {
     words?: string;
     icon: IconKey;
     action: PaletteAction;
+    // Shown whatever is typed: it is what the words were understood as, not something that has to contain them.
+    always?: boolean;
 }
 
 /** The groups in the order they show when nothing is typed. */
-export const GROUP_ORDER = ['This server', 'Servers', 'Go to', 'Admin', 'Account'];
+export const GROUP_ORDER = ['Suggested', 'This server', 'Servers', 'Go to', 'Admin', 'Account'];
 
 const isWordStart = (text: string, at: number) => at === 0 || !/[a-z0-9]/.test(text[at - 1]);
 
@@ -63,6 +65,7 @@ const tokenScore = (token: string, label: string, words: string): number => {
 
 /** 0 when the item does not match every word of the query, else how well it does. */
 export const scoreItem = (item: PaletteItem, query: string): number => {
+    if (item.always) return 1000;
     const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return 1;
 
@@ -83,7 +86,7 @@ export interface PaletteSection {
     items: PaletteItem[];
 }
 
-const LIMITS: Record<string, number> = { Servers: 6 };
+const LIMITS: Record<string, number> = { Servers: 6, Suggested: 4 };
 
 /**
  * The items that match, in sections. With nothing typed the sections keep their usual order and a few items each; with a query the

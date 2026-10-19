@@ -6,6 +6,8 @@ import Tooltip from '@/components/elements/tooltip/Tooltip';
 
 interface StatBlockProps {
     title: string;
+    // Something small next to the title, such as an icon.
+    adornment?: React.ReactNode;
     subtitle?: React.ReactNode;
     copyOnClick?: string;
     alarm?: 'warning' | 'danger';
@@ -17,7 +19,18 @@ interface StatBlockProps {
     className?: string;
 }
 
-export default ({ title, subtitle, copyOnClick, alarm, visual, mono, exact, className, children }: StatBlockProps) => {
+export default ({
+    title,
+    adornment,
+    subtitle,
+    copyOnClick,
+    alarm,
+    visual,
+    mono,
+    exact,
+    className,
+    children,
+}: StatBlockProps) => {
     const value = (
         <div
             className={classNames('mt-2 font-semibold truncate', {
@@ -36,7 +49,10 @@ export default ({ title, subtitle, copyOnClick, alarm, visual, mono, exact, clas
         <CopyOnClick text={copyOnClick}>
             <div className={classNames(styles.stat_block, className)}>
                 <div className={'min-w-0 flex-1 pr-4'}>
-                    <p className={'text-sm text-neutral-300'}>{title}</p>
+                    <p className={'flex items-center gap-1.5 text-sm text-neutral-300'}>
+                        {title}
+                        {adornment}
+                    </p>
                     {exact ? (
                         <Tooltip arrow placement={'bottom-start'} content={exact}>
                             {value}

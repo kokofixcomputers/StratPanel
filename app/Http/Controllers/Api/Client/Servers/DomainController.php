@@ -153,6 +153,8 @@ class DomainController extends ClientApiController
             // The domain of the admin it is under (the panel made and keeps the DNS record), null for a domain somebody brought.
             'managed' => $domain->dns_zone_id ? ($domain->zone?->domain) : null,
             'dns_ok' => $domain->pointsAtRouter($target),
+            // What the domain leads to as the panel sees it, and what it should lead to: for when it does not match yet.
+            'dns' => ['resolves_to' => $domain->resolvedAddresses(), 'expected' => ServerDomain::routerAddresses($target)],
             // Served over the web (http, and https once there is a certificate) by panel-edge, and the state of that certificate.
             'https' => app(DomainCertificateService::class)->describe($domain),
             'created_at' => $domain->created_at?->toAtomString(),

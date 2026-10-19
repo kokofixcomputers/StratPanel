@@ -328,6 +328,27 @@ class ManagedDomainsTest extends ClientApiIntegrationTestCase
         \DB::table('roles')->where('name', 'like', 'dom-%')->delete();
     }
 
+    public function testTheDnsCheckAcceptsAnyAddressOfTheRouterAndSaysWhatItSees(): void
+    {
+        [$user, $server] = $this->generateTestAccount();
+        $domain = ServerDomain::query()->create(['server_id' => $server->id, 'allocation_id' => $server->allocation_id, 'domain' => 'localhost', 'web' => true]);
+        \Illuminate\Support\Facades\Cache::flush();
+
+        config(['app.url' => 'http://panel.invalid']);
+        // localhost leads to 127.0.0.1 here: it is "the router" when that is the address set, or an address of the panel's own host.
+        $this->assertTrue($domain->pointsAtRouter('127.0.0.1'));
+        $this->assertFalse($domain->pointsAtRouter('203.0.113.77'));
+        $this->assertFalse($domain->pointsAtRouter(''));
+        config(['app.url' => 'http://localhost']);
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->assertTrue($domain->pointsAtRouter('203.0.113.77'), 'an address of the host of the panel counts as well');
+
+        $this->actingAs($user)->getJson("/api/client/servers/{$server->uuid}/domains")->assertOk()
+            ->assertJsonPath('data.0.dns_ok', true)
+            ->assertJsonPath('data.0.dns.expected.0', '203.0.113.5');
+        $this->assertContains('127.0.0.1', $domain->resolvedAddresses());
+    }
+
     public function testTheServiceNormalizesAndKnowsReservedNames(): void
     {
         $service = $this->app->make(ManagedDomainService::class);

@@ -37,6 +37,8 @@ export interface Server {
     isNodeUnderMaintenance: boolean;
     // Whether the person is the owner, as opposed to a subuser.
     isOwner: boolean;
+    // Whether the node lets the server burst above its CPU limit for short spikes, and by how much of the limit.
+    cpuBurst: { enabled: boolean; percent: number };
     status: ServerStatus;
     // Which of the power buttons the user may use.
     canControl: { start: boolean; stop: boolean; restart: boolean };
@@ -81,6 +83,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     node: data.node,
     isNodeUnderMaintenance: data.is_node_under_maintenance,
     isOwner: !!data.server_owner,
+    cpuBurst: { enabled: !!data.cpu_burst?.enabled, percent: data.cpu_burst?.percent ?? 0 },
     status: data.status,
     canControl: {
         start: !!data.can_control?.start,

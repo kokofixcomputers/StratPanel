@@ -8,6 +8,8 @@ export interface ServerDomain {
     dnsOk: boolean;
     // The domain of the admin it is under, when the panel made (and keeps) the DNS record. Null for a domain somebody brought.
     managed: string | null;
+    // What the domain leads to as the panel sees it, and the addresses it should lead to.
+    dns: { resolvesTo: string[]; expected: string[] };
     https: DomainHttps;
 }
 
@@ -38,6 +40,7 @@ export const toDomain = (d: any): ServerDomain => ({
     allocation: d.allocation,
     dnsOk: d.dns_ok,
     managed: d.managed ?? null,
+    dns: { resolvesTo: d.dns?.resolves_to ?? [], expected: d.dns?.expected ?? [] },
     https: {
         web: !!d.https?.web,
         status: d.https?.status ?? 'none',

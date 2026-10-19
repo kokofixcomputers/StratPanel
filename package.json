@@ -136,6 +136,7 @@
     "scripts": {
         "clean": "cd public/assets && find . \\( -name \"*.js\" -o -name \"*.map\" \\) -type f -delete",
         "test": "jest",
+        "nlu:train": "node tools/train-nlu.js",
         "ext:build": "node tools/build-extension.mjs",
         "ext:new": "node tools/new-extension.mjs",
         "tsc": "tsc --noEmit",

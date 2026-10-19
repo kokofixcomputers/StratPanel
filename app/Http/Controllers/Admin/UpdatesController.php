@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 use Pterodactyl\Models\Node;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Http\Controllers\Controller;
-use Pterodactyl\Services\Nodes\NodeUpdateService;
+use Pterodactyl\Services\Nodes\WingsUpdateService;
 use Pterodactyl\Services\Updates\ToolUpdateService;
 
 class UpdatesController extends Controller
 {
-    public function __construct(private ToolUpdateService $tools, private NodeUpdateService $nodes)
+    public function __construct(private ToolUpdateService $tools, private WingsUpdateService $nodes)
     {
     }
 

@@ -75,8 +75,52 @@ class ServerDomain extends Model
     }
 
     /**
-     * Whether the domain currently has an A record pointing at the router. Results are cached for a short while so
-     * refreshing a page does not trigger a flood of DNS lookups.
+     * The addresses the domain leads to right now, as this machine sees them: its A and AAAA records, and whatever a CNAME in
+     * between leads to. Kept for a short while so refreshing a page does not trigger a flood of DNS lookups.
+     *
+     * @return list<string>
+     */
+    public function resolvedAddresses(): array
+    {
+        $domain = $this->domain;
+
+        return Cache::remember("domains:dns:resolved:$domain", 20, function () use ($domain) {
+            $found = [];
+            foreach ((array) @dns_get_record($domain, DNS_A | DNS_AAAA) as $record) {
+                $found[] = $record['ip'] ?? $record['ipv6'] ?? null;
+            }
+            // The system resolver as well: it follows a CNAME, and it is what the router itself will use.
+            foreach ((array) @gethostbynamel($domain) as $ip) {
+                $found[] = $ip;
+            }
+
+            return array_values(array_unique(array_filter($found)));
+        });
+    }
+
+    /**
+     * Every address that is "the router": the one that was set (or found), and the addresses of the panel's own host name. The panel
+     * can sit behind a name that has several addresses, and the address it found for itself is not always the one in the record.
+     *
+     * @return list<string>
+     */
+    public static function routerAddresses(string $target): array
+    {
+        $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+        $addresses = [$target];
+        if ($host !== '' && !filter_var($host, FILTER_VALIDATE_IP)) {
+            foreach ((array) @gethostbynamel($host) as $ip) {
+                $addresses[] = $ip;
+            }
+        } elseif ($host !== '') {
+            $addresses[] = $host;
+        }
+
+        return array_values(array_unique(array_filter($addresses)));
+    }
+
+    /**
+     * Whether the domain leads to the router (or the machine the panel is on) right now.
      */
     public function pointsAtRouter(string $target): bool
     {
@@ -84,12 +128,6 @@ class ServerDomain extends Model
             return false;
         }
 
-        $domain = $this->domain;
-
-        return Cache::remember("domains:dns:$domain:$target", 60, function () use ($domain, $target) {
-            $records = @dns_get_record($domain, DNS_A);
-
-            return is_array($records) && collect($records)->contains(fn ($record) => ($record['ip'] ?? null) === $target);
-        });
+        return count(array_intersect($this->resolvedAddresses(), self::routerAddresses($target))) > 0;
     }
 }

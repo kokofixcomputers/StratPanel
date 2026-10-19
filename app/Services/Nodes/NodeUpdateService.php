@@ -2,87 +2,79 @@
 
 namespace Pterodactyl\Services\Nodes;
 
+use Illuminate\Support\Str;
 use Pterodactyl\Models\Node;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
-use Pterodactyl\Repositories\Wings\DaemonSelfUpdateRepository;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Contracts\Encryption\Encrypter;
+use Pterodactyl\Repositories\Eloquent\NodeRepository;
+use Pterodactyl\Repositories\Wings\DaemonConfigurationRepository;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
+use Pterodactyl\Exceptions\Service\Node\ConfigurationNotPersistedException;
 
-/**
- * Brings the Wings of nodes up to the newest build of Stratosphere.
- */
 class NodeUpdateService
 {
-    public function __construct(private DaemonSelfUpdateRepository $repository)
-    {
+    /**
+     * NodeUpdateService constructor.
+     */
+    public function __construct(
+        private ConnectionInterface $connection,
+        private DaemonConfigurationRepository $configurationRepository,
+        private Encrypter $encrypter,
+        private NodeRepository $repository,
+    ) {
     }
 
-    /** The version of the newest build, null when it can not be found out. */
-    public function latest(): ?string
+    /**
+     * Update the configuration values for a given node on the machine.
+     *
+     * @throws \Throwable
+     */
+    public function handle(Node $node, array $data, bool $resetToken = false): Node
     {
-        return Cache::remember('wings:latest', now()->addMinutes(10), function () {
+        if ($resetToken) {
+            $data['daemon_token'] = $this->encrypter->encrypt(Str::random(Node::DAEMON_TOKEN_LENGTH));
+            $data['daemon_token_id'] = Str::random(Node::DAEMON_TOKEN_ID_LENGTH);
+        }
+
+        [$updated, $exception] = $this->connection->transaction(function () use ($data, $node) {
+            /** @var Node $updated */
+            $updated = $this->repository->withFreshModel()->update($node->id, $data, true, true);
+
             try {
-                $response = Http::timeout(5)->get(rtrim(config('updates.wings_url'), '/') . '/version.txt');
-            } catch (\Throwable) {
-                return null;
+                // If we're changing the FQDN for the node, use the newly provided FQDN for the connection
+                // address. This should alleviate issues where the node gets pointed to a "valid" FQDN that
+                // isn't actually running the daemon software, and therefore you can't actually change it
+                // back.
+                //
+                // This makes more sense anyways, because only the Panel uses the FQDN for connecting, the
+                // node doesn't actually care about this.
+                //
+                // @see https://github.com/pterodactyl/panel/issues/1931
+                $node->fqdn = $updated->fqdn;
+
+                $this->configurationRepository->setNode($node)->update($updated);
+            } catch (DaemonConnectionException $exception) {
+                Log::warning($exception, ['node_id' => $node->id]);
+
+                // Never actually throw these exceptions up the stack. If we were able to change the settings
+                // but something went wrong with Wings we just want to store the update and let the user manually
+                // make changes as needed.
+                //
+                // This avoids issues with proxies such as Cloudflare which will see Wings as offline and then
+                // inject their own response pages, causing this logic to get fucked up.
+                //
+                // @see https://github.com/pterodactyl/panel/issues/2712
+                return [$updated, true];
             }
-            $version = trim($response->body());
 
-            return $response->successful() && $version !== '' && strlen($version) < 100 ? $version : null;
-        }) ?: null;
-    }
+            return [$updated, false];
+        });
 
-    /** Whether a node runs something else than the newest build. A node whose version is not known counts as not outdated. */
-    public function outdated(?string $version): bool
-    {
-        $latest = $this->latest();
-
-        return $latest !== null && $version !== null && $version !== '' && ltrim($version, 'v') !== $latest;
-    }
-
-    /**
-     * Updates one node. It never throws: what happened comes back as text, so a list of nodes goes on after a node that fails.
-     *
-     * @return array{node: int, name: string, status: 'updated'|'current'|'failed', message: string, from?: string, to?: string}
-     */
-    public function update(Node $node): array
-    {
-        $out = ['node' => $node->id, 'name' => $node->name];
-
-        try {
-            $result = $this->repository->setNode($node)->update();
-        } catch (DaemonConnectionException) {
-            return $out + ['status' => 'failed', 'message' => 'The node could not be reached.'];
+        if ($exception) {
+            throw new ConfigurationNotPersistedException(trans('exceptions.node.daemon_off_config_updated'));
         }
 
-        if (!empty($result['unsupported'])) {
-            return $out + ['status' => 'failed', 'message' => 'This Wings is too old to update itself (or is not the Wings of Stratosphere). Replace its binary once by hand with the newest build, see docs/updates.md.'];
-        }
-        if (!empty($result['error'])) {
-            return $out + ['status' => 'failed', 'message' => $result['error']];
-        }
-
-        $to = $result['to'] ?? '';
-        if (empty($result['updated'])) {
-            return $out + ['status' => 'current', 'message' => 'Already on ' . $to . '.', 'to' => $to];
-        }
-
-        return $out + ['status' => 'updated', 'message' => 'Updated to ' . $to . ', restarting.', 'from' => $result['from'] ?? '', 'to' => $to];
-    }
-
-    /**
-     * Updates every node.
-     *
-     * @param  iterable<Node>  $nodes
-     * @return array<int, array<string, mixed>>
-     */
-    public function updateAll(iterable $nodes): array
-    {
-        $results = [];
-        foreach ($nodes as $node) {
-            $results[] = $this->update($node);
-        }
-
-        return $results;
+        return $updated;
     }
 }

@@ -105,6 +105,28 @@
                         </div>
                         <p class="text-muted small">If the node is marked as 'Under Maintenance' users won't be able to access servers that are on this node.</p>
                     </div>
+                    <div class="form-group col-xs-12">
+                        <label class="form-label"><span class="label label-primary"><i class="fa fa-bolt"></i></span> CPU Burst</label>
+                        <div>
+                            <div class="radio radio-success radio-inline">
+                                <input type="radio" id="pBurstTrue" value="1" name="cpu_burst_enabled" {{ old('cpu_burst_enabled', $node->cpu_burst_enabled) ? 'checked' : '' }}>
+                                <label for="pBurstTrue"> Enabled</label>
+                            </div>
+                            <div class="radio radio-inline">
+                                <input type="radio" id="pBurstFalse" value="0" name="cpu_burst_enabled" {{ old('cpu_burst_enabled', $node->cpu_burst_enabled) ? '' : 'checked' }}>
+                                <label for="pBurstFalse"> Disabled</label>
+                            </div>
+                        </div>
+                        <div class="input-group" style="max-width: 200px; margin-top: 10px;">
+                            <input type="number" name="cpu_burst_percent" class="form-control" min="1" max="100" value="{{ old('cpu_burst_percent', $node->cpu_burst_percent) }}">
+                            <span class="input-group-addon">% of the limit</span>
+                        </div>
+                        <p class="text-muted small">
+                            A server that stays under its CPU limit saves up the CPU it did not use, up to this share of its limit, and can spend it on a short spike above the limit.
+                            It never raises the limit for good. Needs Linux 5.14 or newer on the node; a server whose node does this shows a bolt on its console page.
+                            Applies to a server the next time it starts.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

@@ -25,6 +25,9 @@ import getServer, { Server } from '@/api/server/getServer';
 import getServers, { getAllServers } from '@/api/getServers';
 import sendPowerAction from '@/api/server/sendPowerAction';
 import createServerBackup from '@/api/server/backups/createServerBackup';
+import sendCommand from '@/api/server/sendCommand';
+import { nlItems } from '@/lib/paletteNl';
+import { exampleQueries } from '@/lib/nlu';
 import { getAdminPalette } from '@/api/palette';
 import { httpErrorToHuman } from '@/api/http';
 import { setThemeChoice, useTheme } from '@/lib/theme';
@@ -135,8 +138,26 @@ const Dialog = ({ onClose, onToast }: { onClose: () => void; onToast: (toast: To
                 ...serverPageItems(server, granted)
             );
         }
+        // What was typed, understood as a sentence: "restart my survival server", "create a backup called weekly for lobby".
+        const sentence = nlItems(
+            query,
+            {
+                servers: [...own, ...others],
+                current: current ? { server: toListed(current[0]), permissions: current[1] } : null,
+            },
+            {
+                power: (uuid, signal) => sendPowerAction(uuid, signal),
+                backup: (uuid, name) => createServerBackup(uuid, { name: name || undefined, isLocked: false }),
+                command: (uuid, command) => sendCommand(uuid, command),
+                theme: (mode) => setThemeChoice(mode === 'toggle' ? (theme === 'dark' ? 'light' : 'dark') : mode),
+            }
+        );
+        all.push(...sentence);
         all.push(
-            ...verbItems(query, [...own, ...others], (uuid, signal) => sendPowerAction(uuid, signal)),
+            // "restart lobby" is already there as a sentence.
+            ...verbItems(query, [...own, ...others], (uuid, signal) => sendPowerAction(uuid, signal)).filter(
+                (v) => !sentence.some((n) => n.label === v.label)
+            ),
             ...serverItems([...own, ...others], canAdmin, query),
             ...goToItems(),
             ...adminItems(admin ?? [])
@@ -198,6 +219,11 @@ const Dialog = ({ onClose, onToast }: { onClose: () => void; onToast: (toast: To
         }
     };
 
+    // Things to try, with the names of servers of this person.
+    const examples = useMemo(() => exampleQueries((servers ?? []).map((x) => x.name)), [servers]);
+    const [shown] = useState(() => Math.floor(Math.random() * examples.length));
+    const tryThese = [0, 1, 2].map((i) => examples[(shown + i * 3) % examples.length]);
+
     let index = -1;
 
     return createPortal(
@@ -225,7 +251,7 @@ const Dialog = ({ onClose, onToast }: { onClose: () => void; onToast: (toast: To
                         aria-activedescendant={flat[active] ? `palette-${flat[active].id}` : undefined}
                         autoComplete={'off'}
                         spellCheck={false}
-                        placeholder={'Search servers, pages and actions'}
+                        placeholder={'Search, or say what you want: restart lobby'}
                         className={
                             'w-full bg-transparent py-4 text-base text-neutral-50 placeholder-neutral-400 outline-none'
                         }
@@ -294,8 +320,25 @@ const Dialog = ({ onClose, onToast }: { onClose: () => void; onToast: (toast: To
                     }
                 >
                     <span>↑↓ to move</span>
-                    <span>Enter to open</span>
-                    <span className={'ml-auto'}>Try &quot;restart&quot; and a server name</span>
+                    <span>Enter to do it</span>
+                    <span className={'ml-auto flex min-w-0 items-center gap-2'}>
+                        Try:
+                        {tryThese.slice(0, 2).map((example) => (
+                            <button
+                                key={example}
+                                type={'button'}
+                                className={
+                                    'max-w-[12rem] truncate rounded border border-neutral-500 px-1.5 py-0.5 hover:text-neutral-100'
+                                }
+                                onClick={() => {
+                                    setQuery(example);
+                                    input.current?.focus();
+                                }}
+                            >
+                                {example}
+                            </button>
+                        ))}
+                    </span>
                 </div>
             </div>
         </div>,

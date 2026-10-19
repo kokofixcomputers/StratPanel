@@ -184,6 +184,7 @@
                 window.StratPalette = { admin: {!! json_encode(\Pterodactyl\Services\Palette\AdminDestinations::for(Auth::user())) !!} };
                 if (/Mac|iPhone|iPad/.test(navigator.platform)) { document.querySelector('.admin-search-kbd').textContent = '\u2318K'; }
             </script>
+            <script src="/js/stratosphere-nlu.js?v={{ filemtime(public_path('js/stratosphere-nlu.js')) }}" type="application/javascript"></script>
             <script src="/js/admin-palette.js?v={{ filemtime(public_path('js/admin-palette.js')) }}" type="application/javascript"></script>
 
             @if(Auth::user()->canAccessAdmin())
