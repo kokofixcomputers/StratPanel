@@ -4,10 +4,12 @@ import http, { getPaginationSet, PaginatedResult } from '@/api/http';
 interface QueryParams {
     query?: string;
     page?: number;
+    // The most the panel gives at once is 100.
+    per_page?: number;
     type?: string;
 }
 
-export default ({ query, ...params }: QueryParams): Promise<PaginatedResult<Server>> => {
+const getServers = ({ query, ...params }: QueryParams): Promise<PaginatedResult<Server>> => {
     return new Promise((resolve, reject) => {
         http.get('/api/client', {
             params: {
@@ -23,4 +25,18 @@ export default ({ query, ...params }: QueryParams): Promise<PaginatedResult<Serv
             )
             .catch(reject);
     });
+};
+
+export default getServers;
+
+/** All the servers of the person, page after page (a person with more than a thousand gets the first thousand). */
+export const getAllServers = async (): Promise<Server[]> => {
+    const all: Server[] = [];
+    for (let page = 1; page <= 10; page++) {
+        const result = await getServers({ page, per_page: 100 });
+        all.push(...result.items);
+        if (result.pagination.currentPage >= result.pagination.totalPages) break;
+    }
+
+    return all;
 };

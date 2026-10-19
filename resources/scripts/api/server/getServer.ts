@@ -35,6 +35,8 @@ export interface Server {
     name: string;
     node: string;
     isNodeUnderMaintenance: boolean;
+    // Whether the person is the owner, as opposed to a subuser.
+    isOwner: boolean;
     status: ServerStatus;
     // Which of the power buttons the user may use.
     canControl: { start: boolean; stop: boolean; restart: boolean };
@@ -78,6 +80,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     name: data.name,
     node: data.node,
     isNodeUnderMaintenance: data.is_node_under_maintenance,
+    isOwner: !!data.server_owner,
     status: data.status,
     canControl: {
         start: !!data.can_control?.start,

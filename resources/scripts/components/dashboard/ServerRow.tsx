@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faServer } from '@fortawesome/free-solid-svg-icons';
-import { PlayIcon, RefreshIcon, StopIcon } from '@heroicons/react/solid';
+import { PlayIcon, RefreshIcon, StarIcon as StarSolid, StopIcon } from '@heroicons/react/solid';
+import { CheckIcon, FolderAddIcon, FolderIcon, StarIcon } from '@heroicons/react/outline';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import { Server } from '@/api/server/getServer';
-import getServerResourceUsage, { ServerPowerState, ServerStats } from '@/api/server/getServerResourceUsage';
+import { ServerPowerState, ServerStats } from '@/api/server/getServerResourceUsage';
 import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import tw, { TwStyle } from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
@@ -15,6 +16,8 @@ import useServerSoftware from '@/components/dashboard/useServerSoftware';
 import { iconFor, SoftwareType } from '@/lib/mcjars';
 import sendPowerAction, { PowerSignal } from '@/api/server/sendPowerAction';
 import { httpErrorToHuman } from '@/api/http';
+import { DashboardFolder } from '@/api/dashboardLayout';
+import DropdownMenu, { DropdownButtonRow } from '@/components/elements/DropdownMenu';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
 // than the more faded default style.
@@ -131,25 +134,83 @@ const PowerActions = ({
     );
 };
 
-export default ({ server, className }: { server: Server; className?: string }) => {
-    const interval = useRef<Timer>(null) as React.MutableRefObject<Timer>;
-    const [isSuspended, setIsSuspended] = useState(server.status === 'suspended');
-    const [stats, setStats] = useState<ServerStats | null>(null);
+/** What a person can do with a server on the dashboard besides opening it: star it and put it in a folder. */
+export interface RowOrganizer {
+    starred: boolean;
+    onToggleStar: () => void;
+    folders: DashboardFolder[];
+    folder: number | null;
+    onMove: (folder: number | null) => void;
+    onNewFolder: () => void;
+}
+
+const FolderMenu = ({ organizer, name }: { organizer: RowOrganizer; name: string }) => (
+    <DropdownMenu
+        renderToggle={(onClick) => (
+            <button
+                type={'button'}
+                title={'Move to a folder'}
+                aria-label={`Move ${name} to a folder`}
+                className={classNames(
+                    'rounded-md p-1 text-neutral-400 transition-opacity hover:text-neutral-50 focus-visible:opacity-100',
+                    organizer.folder === null && 'opacity-0 group-hover:opacity-100'
+                )}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClick(e);
+                }}
+            >
+                <FolderIcon className={'h-4 w-4'} />
+            </button>
+        )}
+    >
+        <div css={tw`p-1 w-56`}>
+            {organizer.folders.map((f) => (
+                <DropdownButtonRow key={f.id} type={'button'} onClick={() => organizer.onMove(f.id)}>
+                    <FolderIcon css={tw`w-4 h-4 mr-2 flex-shrink-0`} />
+                    <span css={tw`truncate flex-1 text-left`}>{f.name}</span>
+                    {organizer.folder === f.id && <CheckIcon css={tw`w-4 h-4 ml-2 flex-shrink-0`} />}
+                </DropdownButtonRow>
+            ))}
+            {organizer.folder !== null && (
+                <DropdownButtonRow type={'button'} onClick={() => organizer.onMove(null)}>
+                    Take out of the folder
+                </DropdownButtonRow>
+            )}
+            <DropdownButtonRow type={'button'} onClick={organizer.onNewFolder}>
+                <FolderAddIcon css={tw`w-4 h-4 mr-2 flex-shrink-0`} />
+                New folder...
+            </DropdownButtonRow>
+        </div>
+    </DropdownMenu>
+);
+
+export default ({
+    server,
+    stats,
+    onRefresh,
+    organizer,
+    className,
+}: {
+    server: Server;
+    stats: ServerStats | undefined;
+    // Looks at the state of the server again, now.
+    onRefresh: () => Promise<unknown>;
+    organizer?: RowOrganizer;
+    className?: string;
+}) => {
     const [busy, setBusy] = useState<PowerSignal | null>(null);
     const [powerError, setPowerError] = useState<string | null>(null);
     const watching = useRef<Timer | null>(null);
-
-    const getStats = () =>
-        getServerResourceUsage(server.uuid)
-            .then((data) => setStats(data))
-            .catch((error) => console.error(error));
+    const isSuspended = !!stats?.isSuspended || server.status === 'suspended';
 
     // The state of the server after a power action is looked at every 2 seconds for a while, instead of every 30.
     const watchAfterAction = () => {
         if (watching.current) clearInterval(watching.current);
         let looks = 0;
         watching.current = setInterval(() => {
-            getStats();
+            onRefresh();
             if (++looks >= 12 && watching.current) {
                 clearInterval(watching.current);
                 watching.current = null;
@@ -170,7 +231,7 @@ export default ({ server, className }: { server: Server; className?: string }) =
 
         sendPowerAction(server.uuid, signal)
             .then(() => {
-                getStats();
+                onRefresh();
                 watchAfterAction();
             })
             .catch((error) => {
@@ -179,24 +240,6 @@ export default ({ server, className }: { server: Server; className?: string }) =
             })
             .then(() => setBusy(null));
     };
-
-    useEffect(() => {
-        setIsSuspended(stats?.isSuspended || server.status === 'suspended');
-    }, [stats?.isSuspended, server.status]);
-
-    useEffect(() => {
-        // Don't waste a HTTP request if there is nothing important to show to the user because
-        // the server is suspended.
-        if (isSuspended || server.isNodeUnderMaintenance) return;
-
-        getStats().then(() => {
-            interval.current = setInterval(() => getStats(), 30000);
-        });
-
-        return () => {
-            interval.current && clearInterval(interval.current);
-        };
-    }, [isSuspended, server.isNodeUnderMaintenance]);
 
     // A faint logo of the software behind the card, only for servers that can be reached.
     const software = useServerSoftware(server.uuid, !isSuspended && !server.isNodeUnderMaintenance && !server.status);
@@ -235,7 +278,8 @@ export default ({ server, className }: { server: Server; className?: string }) =
         <StatusIndicatorBox
             as={Link}
             to={`/server/${server.id}`}
-            className={className}
+            draggable={false}
+            className={classNames('group', className)}
             $status={stats?.status}
             style={{ isolation: 'isolate', overflow: 'hidden' }}
         >
@@ -262,7 +306,37 @@ export default ({ server, className }: { server: Server; className?: string }) =
                     <FontAwesomeIcon icon={faServer} />
                 </div>
                 <div css={tw`min-w-0`}>
-                    <p css={tw`text-base font-semibold text-neutral-50 truncate`}>{server.name}</p>
+                    <div css={tw`flex items-center gap-1 min-w-0`}>
+                        <p css={tw`text-base font-semibold text-neutral-50 truncate`}>{server.name}</p>
+                        {organizer && (
+                            <>
+                                <button
+                                    type={'button'}
+                                    title={organizer.starred ? 'Remove the star' : 'Star this server'}
+                                    aria-label={`${organizer.starred ? 'Unstar' : 'Star'} ${server.name}`}
+                                    aria-pressed={organizer.starred}
+                                    className={classNames(
+                                        'rounded-md p-1 transition-opacity focus-visible:opacity-100',
+                                        organizer.starred
+                                            ? 'text-amber-500'
+                                            : 'text-neutral-400 opacity-0 hover:text-amber-500 group-hover:opacity-100'
+                                    )}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        organizer.onToggleStar();
+                                    }}
+                                >
+                                    {organizer.starred ? (
+                                        <StarSolid className={'h-4 w-4'} />
+                                    ) : (
+                                        <StarIcon className={'h-4 w-4'} />
+                                    )}
+                                </button>
+                                <FolderMenu organizer={organizer} name={server.name} />
+                            </>
+                        )}
+                    </div>
                     {address && <p css={tw`text-xs font-mono text-neutral-400 truncate mt-0.5`}>{address}</p>}
                     {!!server.description && (
                         <p css={tw`text-sm text-neutral-400 truncate mt-0.5`}>{server.description}</p>

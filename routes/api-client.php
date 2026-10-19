@@ -23,6 +23,23 @@ Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
+| Dashboard folders and stars
+|--------------------------------------------------------------------------
+|
+| Endpoint: /api/client/dashboard
+|
+*/
+Route::prefix('/dashboard')->group(function () {
+    Route::get('/', [Client\DashboardLayoutController::class, 'index']);
+    Route::post('/folders', [Client\DashboardLayoutController::class, 'storeFolder']);
+    Route::post('/folders/order', [Client\DashboardLayoutController::class, 'reorder']);
+    Route::patch('/folders/{folder}', [Client\DashboardLayoutController::class, 'updateFolder'])->whereNumber('folder');
+    Route::delete('/folders/{folder}', [Client\DashboardLayoutController::class, 'destroyFolder'])->whereNumber('folder');
+    Route::put('/servers/{uuid}', [Client\DashboardLayoutController::class, 'setServer'])->whereUuid('uuid');
+});
+
+/*
+|--------------------------------------------------------------------------
 | CurseForge
 |--------------------------------------------------------------------------
 |

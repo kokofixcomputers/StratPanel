@@ -105,7 +105,41 @@ app.use(express.json());
 
 const api = express.Router();
 const otherServer = (name, uuid, port) => ({ ...serverAttrs(), name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
-api.get('/', (req, res) => res.json(paginated([item('server', serverAttrs()), item('server', otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570)), item('server', otherServer('Creative Plots!', 'b1b2c3d4-0000-4000-8000-000000000002', 25571))])));
+const dashServers = () => [
+    item('server', { ...serverAttrs(), server_owner: true }),
+    item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true }),
+    item('server', { ...otherServer('Creative Plots!', 'b1b2c3d4-0000-4000-8000-000000000002', 25571), server_owner: false, node: 'Dallas-1' }),
+    ...['Lobby', 'Skyblock', 'Bedwars', 'Modded Fun', 'Test Server 10', 'Test Server 2'].map((n, i) =>
+        item('server', { ...otherServer(n, `c${i}b2c3d4-0000-4000-8000-00000000010${i}`, 25580 + i), server_owner: i % 3 !== 0, node: i % 2 ? 'Singapore-1' : 'Frankfurt-1', description: i === 2 ? 'Minigames for the whole family' : '' })
+    ),
+];
+api.get('/', (req, res) => {
+    if (req.query.type === 'admin') return res.json(paginated([]));
+    const per = Math.min(Number(req.query.per_page || 50), 100);
+    res.json(paginated(dashServers().slice(0, per)));
+});
+// Dashboard folders and stars, kept in memory.
+const dash = { next: 1, folders: [], servers: {} };
+const dashLayout = () => ({ object: 'dashboard_layout', attributes: { folders: dash.folders.map((f) => ({ id: f.id, name: f.name })), servers: Object.entries(dash.servers).filter(([, m]) => m.folder !== null || m.starred).map(([uuid, m]) => ({ uuid, folder: m.folder, starred: m.starred })) } });
+api.get('/dashboard', (req, res) => res.json(dashLayout()));
+api.post('/dashboard/folders', (req, res) => {
+    if (dash.folders.some((f) => f.name === req.body.name)) return res.status(422).json({ errors: [{ code: 'ValidationException', detail: 'You already have a folder with that name.' }] });
+    dash.folders.push({ id: dash.next++, name: req.body.name });
+    res.json(dashLayout());
+});
+api.post('/dashboard/folders/order', (req, res) => { dash.folders.sort((a, b) => req.body.order.indexOf(a.id) - req.body.order.indexOf(b.id)); res.json(dashLayout()); });
+api.patch('/dashboard/folders/:id', (req, res) => { const f = dash.folders.find((x) => x.id === Number(req.params.id)); if (f) f.name = req.body.name; res.json(dashLayout()); });
+api.delete('/dashboard/folders/:id', (req, res) => {
+    dash.folders = dash.folders.filter((x) => x.id !== Number(req.params.id));
+    Object.values(dash.servers).forEach((m) => { if (m.folder === Number(req.params.id)) m.folder = null; });
+    res.json(dashLayout());
+});
+api.put('/dashboard/servers/:uuid', (req, res) => {
+    const m = dash.servers[req.params.uuid] || (dash.servers[req.params.uuid] = { folder: null, starred: false });
+    if ('folder' in req.body) m.folder = req.body.folder;
+    if ('starred' in req.body) m.starred = !!req.body.starred;
+    res.json(dashLayout());
+});
 api.get('/self-service', (req, res) => res.json({ object: 'self_service', attributes: { enabled: true, can_create: true, max_servers: 3, owned: 1, limits: { memory: 2048, disk: 10240, cpu: 200 }, max: { memory: 8192, disk: 51200, cpu: 400 }, nodes: [{ id: 1, name: 'Frankfurt-1', location: 'fra', description: 'Frankfurt', ping_url: `http://localhost:${PORT}`, memory_free: 16384, disk_free: 200000, free_allocations: 40 }, { id: 2, name: 'Singapore-1', location: 'sgp', description: 'Singapore', ping_url: 'http://10.255.255.1:8080', memory_free: 1024, disk_free: 200000, free_allocations: 10 }, { id: 3, name: 'Dallas-1', location: 'dal', description: 'Dallas', ping_url: `http://127.0.0.1:${PORT}`, memory_free: 8192, disk_free: 90000, free_allocations: 0 }] } }));
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 api.get('/permissions', (req, res) => res.json({ object: 'system_permissions', attributes: { permissions: {} } }));
