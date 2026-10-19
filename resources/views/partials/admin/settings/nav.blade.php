@@ -24,6 +24,9 @@
                     @if(Auth::user()->hasPermission('settings.certificates.view'))
                     <li @if($activeTab === 'certificates')class="active"@endif><a href="{{ route('admin.settings.certificates') }}">Certificates</a></li>
                     @endif
+                    @if(Auth::user()->hasPermission('settings.domains.view'))
+                    <li @if($activeTab === 'domains')class="active"@endif><a href="{{ route('admin.settings.domains') }}">Domains</a></li>
+                    @endif
                     @if(Auth::user()->hasPermission('settings.trash.view'))
                     <li @if($activeTab === 'trash')class="active"@endif><a href="{{ route('admin.settings.trash') }}">Trash</a></li>
                     @endif

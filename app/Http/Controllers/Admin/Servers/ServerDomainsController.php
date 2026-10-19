@@ -87,8 +87,8 @@ class ServerDomainsController extends Controller
 
     public function destroy(Server $server, int $domain): RedirectResponse
     {
-        $record = ServerDomain::query()->where('server_id', $server->id)->findOrFail($domain);
-        $record->delete();
+        $record = ServerDomain::query()->with('zone')->where('server_id', $server->id)->findOrFail($domain);
+        app(\Pterodactyl\Services\Domains\ManagedDomainService::class)->remove($record);
 
         Activity::event('server:domain.delete')->property(['domain' => $record->domain])->log();
 

@@ -1,4 +1,4 @@
-import { anyPending, httpsSummary } from '@/lib/domainHttps';
+import { anyPending, cleanLabel, httpsSummary, validLabel } from '@/lib/domainHttps';
 import { DomainHttps } from '@/api/server/domains';
 
 const https = (patch: Partial<DomainHttps> = {}): DomainHttps => ({
@@ -64,5 +64,22 @@ describe('lib/domainHttps', () => {
         expect(anyPending([{ https: https() }, { https: https({ status: 'pending' }) }])).toBe(true);
         expect(anyPending([{ https: https({ status: 'issued' }) }])).toBe(false);
         expect(anyPending([])).toBe(false);
+    });
+});
+
+describe('cleanLabel and validLabel', () => {
+    it('keeps what a name can hold', () => {
+        expect(cleanLabel('Play Now!')).toBe('playnow');
+        expect(cleanLabel('my-server.example.com')).toBe('my-serverexamplecom');
+        expect(cleanLabel('a'.repeat(80))).toHaveLength(63);
+    });
+
+    it('knows a name from a typo', () => {
+        expect(validLabel('play')).toBe(true);
+        expect(validLabel('play-2')).toBe(true);
+        expect(validLabel('a')).toBe(true);
+        expect(validLabel('-play')).toBe(false);
+        expect(validLabel('play-')).toBe(false);
+        expect(validLabel('')).toBe(false);
     });
 });

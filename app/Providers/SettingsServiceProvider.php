@@ -29,6 +29,7 @@ class SettingsServiceProvider extends ServiceProvider
         'acme:email',
         'acme:staging',
         'trash:enabled',
+        'pterodactyl:domains:enabled',
         'trash:retention_days',
         'auth:passkeys:enabled',
         'auth:registration:enabled',

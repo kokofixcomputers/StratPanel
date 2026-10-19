@@ -241,5 +241,10 @@ return [
         'max_per_server' => (int) env('PTERODACTYL_DOMAINS_MAX_PER_SERVER', 5),
         // Shared secret the router uses to read the domain list. Leave empty to disable the router API.
         'router_token' => env('PTERODACTYL_DOMAINS_ROUTER_TOKEN'),
+        // Names people cannot take under the domains of the admin (play.example.com: "play" is fine, "mail" is not).
+        'reserved_labels' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+            'PTERODACTYL_DOMAINS_RESERVED',
+            'www,mail,smtp,imap,pop,pop3,ftp,sftp,ns,ns1,ns2,ns3,admin,administrator,panel,api,dashboard,login,status,wings,node,webmail,autodiscover,autoconfig,cpanel,vpn,git,cdn,static,assets,root,support,billing,store,shop,help,docs,blog,test,localhost'
+        ))))),
     ],
 ];

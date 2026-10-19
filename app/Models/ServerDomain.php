@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $server_id
  * @property int $allocation_id
  * @property string $domain
+ * @property int|null $dns_zone_id
+ * @property string|null $dns_record_id
  * @property \Carbon\CarbonImmutable|null $created_at
  * @property \Carbon\CarbonImmutable|null $updated_at
  * @property \Pterodactyl\Models\Server $server
@@ -27,6 +29,12 @@ class ServerDomain extends Model
     protected function casts(): array
     {
         return ['web' => 'boolean'];
+    }
+
+    /** The domain of the admin this name is under, null for a domain somebody brought along. */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(DnsZone::class, 'dns_zone_id');
     }
 
     /** The certificate this domain is served over https with (made by Let's Encrypt, or an uploaded one that covers it). */

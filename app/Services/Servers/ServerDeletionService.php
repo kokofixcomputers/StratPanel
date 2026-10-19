@@ -56,6 +56,11 @@ class ServerDeletionService
             Log::warning($exception);
         }
 
+        // Names under the domains of the admin take their DNS records with them (the rows go with the server).
+        $managed = app(\Pterodactyl\Services\Domains\ManagedDomainService::class);
+        \Pterodactyl\Models\ServerDomain::query()->with('zone')->where('server_id', $server->id)->whereNotNull('dns_zone_id')->get()
+            ->each(fn ($domain) => $managed->remove($domain));
+
         $this->connection->transaction(function () use ($server) {
             foreach ($server->databases as $database) {
                 try {

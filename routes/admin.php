@@ -77,6 +77,14 @@ Route::group(['prefix' => 'settings'], function () {
     Route::get('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'edit'])->name('admin.settings.providers.edit')->whereNumber('provider')->middleware('admin.can:settings.providers.view');
     Route::patch('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'update'])->whereNumber('provider')->middleware('admin.can:settings.providers.update');
     Route::delete('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'destroy'])->name('admin.settings.providers.delete')->whereNumber('provider')->middleware('admin.can:settings.providers.update');
+    Route::get('/domains', [Admin\Settings\DomainsController::class, 'index'])->name('admin.settings.domains')->middleware('admin.can:settings.domains.view');
+    Route::patch('/domains', [Admin\Settings\DomainsController::class, 'update'])->middleware('admin.can:settings.domains.update');
+    Route::get('/domains/new', [Admin\Settings\DomainsController::class, 'create'])->name('admin.settings.domains.new')->middleware('admin.can:settings.domains.update');
+    Route::post('/domains/zones', [Admin\Settings\DomainsController::class, 'store'])->name('admin.settings.domains.store')->middleware('admin.can:settings.domains.update');
+    Route::get('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'edit'])->name('admin.settings.domains.edit')->whereNumber('zone')->middleware('admin.can:settings.domains.view');
+    Route::patch('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'updateZone'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
+    Route::post('/domains/zones/{zone}/test', [Admin\Settings\DomainsController::class, 'test'])->name('admin.settings.domains.test')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
+    Route::delete('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->name('admin.settings.domains.delete')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
     Route::get('/trash', [Admin\Settings\TrashController::class, 'index'])->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::patch('/trash', [Admin\Settings\TrashController::class, 'update'])->middleware('admin.can:settings.trash.update');
     Route::get('/certificates', [Admin\Settings\CertificatesController::class, 'index'])->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');

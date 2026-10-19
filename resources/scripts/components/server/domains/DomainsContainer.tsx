@@ -32,14 +32,17 @@ import { httpErrorToHuman } from '@/api/http';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 import { forcedServerByHost, ProxyHosts, readProxyHosts, setForcedHost } from '@/lib/proxyHosts';
 import {
+    checkDomainName,
     createDomain,
+    createManagedDomain,
     deleteDomain,
+    NameCheck,
     DomainList,
     getDomains,
     requestDomainCertificate,
     ServerDomain,
 } from '@/api/server/domains';
-import { anyPending, httpsSummary } from '@/lib/domainHttps';
+import { anyPending, cleanLabel, httpsSummary, validLabel } from '@/lib/domainHttps';
 
 const slide = keyframes`
     0% { transform: translateX(-100%); }
@@ -92,7 +95,23 @@ const RecordPanel = ({
 
     return (
         <div css={tw`border-t border-neutral-500 bg-neutral-700/40 rounded-b-xl px-4 py-4`}>
-            {domain.dnsOk ? (
+            {domain.managed ? (
+                domain.dnsOk ? (
+                    <p css={tw`flex items-center text-sm font-medium text-green-700`}>
+                        <CheckCircleIcon css={tw`w-5 h-5 mr-2`} />
+                        Ready, players can join with this name. The panel set up the DNS for you.
+                    </p>
+                ) : (
+                    <div>
+                        <p css={tw`text-sm font-medium text-yellow-700 mb-2`}>Almost there...</p>
+                        <SlidingBar role={'progressbar'} aria-label={'Waiting for DNS'} />
+                        <p css={tw`mt-2 text-xs text-neutral-400`}>
+                            The panel added the DNS record. It can take a minute or two to reach everyone; this page
+                            checks again by itself.
+                        </p>
+                    </div>
+                )
+            ) : domain.dnsOk ? (
                 <p css={tw`flex items-center text-sm font-medium text-green-700 mb-4`}>
                     <CheckCircleIcon css={tw`w-5 h-5 mr-2`} />
                     DNS is ready, players can join with this domain.
@@ -107,17 +126,21 @@ const RecordPanel = ({
                     </p>
                 </div>
             )}
-            <div css={tw`grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}>
-                <RecordField label={'Type'} value={'A'} />
-                <RecordField label={'Name / Host'} value={recordName(domain.domain)} />
-                <RecordField label={'Value / Points to'} value={targetIp || 'the address of this panel'} />
-                <RecordField label={'TTL'} value={'Auto (or 300)'} />
-            </div>
-            <p css={tw`mt-3 text-xs text-neutral-400`}>
-                Full name: <span css={tw`font-mono`}>{domain.domain}</span>. Some providers want the full name instead
-                of just the host part.
-            </p>
-            {!domain.dnsOk && (
+            {!domain.managed && (
+                <>
+                    <div css={tw`grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}>
+                        <RecordField label={'Type'} value={'A'} />
+                        <RecordField label={'Name / Host'} value={recordName(domain.domain)} />
+                        <RecordField label={'Value / Points to'} value={targetIp || 'the address of this panel'} />
+                        <RecordField label={'TTL'} value={'Auto (or 300)'} />
+                    </div>
+                    <p css={tw`mt-3 text-xs text-neutral-400`}>
+                        Full name: <span css={tw`font-mono`}>{domain.domain}</span>. Some providers want the full name
+                        instead of just the host part.
+                    </p>
+                </>
+            )}
+            {!domain.dnsOk && !domain.managed && (
                 <Button.Text
                     css={tw`mt-3`}
                     disabled={checking}
@@ -156,6 +179,11 @@ export default () => {
     const [list, setList] = useState<DomainList | null>(null);
     const [adding, setAdding] = useState(false);
     const [domain, setDomain] = useState('');
+    // The two ways: bring a domain, or take a name under a domain of the admin (the panel makes the DNS record).
+    const [mode, setMode] = useState<'own' | 'managed'>('own');
+    const [label, setLabel] = useState('');
+    const [zoneId, setZoneId] = useState(0);
+    const [nameCheck, setNameCheck] = useState<'idle' | 'checking' | NameCheck>('idle');
     const [allocationId, setAllocationId] = useState<number>(0);
     const [saving, setSaving] = useState(false);
     const [removing, setRemoving] = useState<ServerDomain | null>(null);
@@ -227,7 +255,39 @@ export default () => {
         return () => clearInterval(timer);
     }, [list, load]);
 
+    const canOwn = !!list?.enabled;
+    const zones = list?.zones ?? [];
+    const canManaged = zones.length > 0;
+    const zone = zones.find((z) => z.id === zoneId);
+
+    // Whether the name is free, asked when typing stops.
+    useEffect(() => {
+        if (!adding || mode !== 'managed' || !zoneId || !label) {
+            setNameCheck('idle');
+            return;
+        }
+        if (!validLabel(label)) {
+            setNameCheck({ available: false, reason: 'Use letters, numbers and dashes, not at the start or the end.' });
+            return;
+        }
+        let stale = false;
+        setNameCheck('checking');
+        const timer = setTimeout(() => {
+            checkDomainName(uuid, zoneId, label)
+                .then((result) => !stale && setNameCheck(result))
+                .catch(() => !stale && setNameCheck('idle'));
+        }, 400);
+
+        return () => {
+            stale = true;
+            clearTimeout(timer);
+        };
+    }, [adding, mode, zoneId, label, uuid]);
+
     const openAdd = () => {
+        setMode(canManaged ? 'managed' : 'own');
+        setLabel('');
+        setZoneId(zones[0]?.id ?? 0);
         setDomain('');
         setError('');
         setAllocationId((allocations.find((a) => a.isDefault) || allocations[0])?.id || 0);
@@ -239,12 +299,15 @@ export default () => {
         setSaving(true);
         setError('');
         try {
-            await createDomain(uuid, domain, allocationId);
-            if (target) await applyForcedHost(domain.trim().toLowerCase().replace(/\.$/, ''), target);
+            const full =
+                mode === 'managed' ? `${label}.${zone?.domain}` : domain.trim().toLowerCase().replace(/\.$/, '');
+            if (mode === 'managed') await createManagedDomain(uuid, zoneId, label, allocationId);
+            else await createDomain(uuid, domain, allocationId);
+            if (target) await applyForcedHost(full, target);
             setAdding(false);
             const refreshed = await getDomains(uuid);
             setList(refreshed);
-            const created = refreshed.domains.find((d) => d.domain === domain.trim().toLowerCase().replace(/\.$/, ''));
+            const created = refreshed.domains.find((d) => d.domain === full);
             if (created) setExpanded((ids) => [...ids, created.id]);
         } catch (e) {
             setError(httpErrorToHuman(e));
@@ -276,34 +339,59 @@ export default () => {
             <FlashMessageRender byKey={'domains'} css={tw`mb-4`} />
 
             <div css={tw`bg-white border border-neutral-500 rounded-xl shadow-md p-5 mb-4`}>
-                <p css={tw`text-base font-semibold text-neutral-50 mb-4`}>How it works</p>
-                <ol css={tw`space-y-3 m-0 p-0 list-none`}>
-                    <Step index={1}>
-                        At your domain provider, add an <strong>A record</strong> for the domain or subdomain you want
-                        (for example <code>play</code> or <code>@</code>) pointing to{' '}
-                        {list?.targetIp ? (
-                            <button
-                                type={'button'}
-                                onClick={() => copy(list.targetIp)}
-                                title={'Copy'}
-                                css={tw`inline-flex items-center font-mono text-primary-700 bg-primary-50 rounded px-1.5 py-0.5 hover:bg-primary-100`}
-                            >
-                                {list.targetIp}
-                                <ClipboardCopyIcon css={tw`w-3.5 h-3.5 ml-1.5`} />
-                            </button>
-                        ) : (
-                            'the address of this panel'
-                        )}
-                        .
-                    </Step>
-                    <Step index={2}>
-                        Add the domain below and choose which port of this server it should lead to. On a proxy you can
-                        also pick the server behind it that players of that domain land on.
-                    </Step>
-                    <Step index={3}>
-                        Players type just the domain, no port needed. DNS changes can take a few minutes to arrive.
-                    </Step>
-                </ol>
+                {canManaged && (
+                    <div css={canOwn ? tw`mb-5 pb-5 border-b border-neutral-500` : undefined}>
+                        <p css={tw`text-base font-semibold text-neutral-50 mb-2`}>
+                            {canOwn ? 'Take a name here' : 'How it works'}
+                        </p>
+                        <p css={tw`text-sm text-neutral-300`}>
+                            Type a name and pick one of{' '}
+                            {zones.slice(0, 3).map((z, i) => (
+                                <React.Fragment key={z.id}>
+                                    {i > 0 && ', '}
+                                    <code>{z.domain}</code>
+                                </React.Fragment>
+                            ))}
+                            {zones.length > 3 ? ` and ${zones.length - 3} more` : ''}. The panel sets up the DNS for
+                            you, there is nothing to configure.
+                        </p>
+                    </div>
+                )}
+                {canOwn && (
+                    <>
+                        <p css={tw`text-base font-semibold text-neutral-50 mb-4`}>
+                            {canManaged ? 'Or bring your own domain' : 'How it works'}
+                        </p>
+                        <ol css={tw`space-y-3 m-0 p-0 list-none`}>
+                            <Step index={1}>
+                                At your domain provider, add an <strong>A record</strong> for the domain or subdomain
+                                you want (for example <code>play</code> or <code>@</code>) pointing to{' '}
+                                {list?.targetIp ? (
+                                    <button
+                                        type={'button'}
+                                        onClick={() => copy(list.targetIp)}
+                                        title={'Copy'}
+                                        css={tw`inline-flex items-center font-mono text-primary-700 bg-primary-50 rounded px-1.5 py-0.5 hover:bg-primary-100`}
+                                    >
+                                        {list.targetIp}
+                                        <ClipboardCopyIcon css={tw`w-3.5 h-3.5 ml-1.5`} />
+                                    </button>
+                                ) : (
+                                    'the address of this panel'
+                                )}
+                                .
+                            </Step>
+                            <Step index={2}>
+                                Add the domain below and choose which port of this server it should lead to. On a proxy
+                                you can also pick the server behind it that players of that domain land on.
+                            </Step>
+                            <Step index={3}>
+                                Players type just the domain, no port needed. DNS changes can take a few minutes to
+                                arrive.
+                            </Step>
+                        </ol>
+                    </>
+                )}
             </div>
 
             <ListHeader
@@ -312,7 +400,7 @@ export default () => {
                 count={list ? `${list.domains.length}${list.max > 0 ? ` / ${list.max}` : ''}` : undefined}
             >
                 <Can action={'allocation.update'}>
-                    {list?.enabled && (list.max === 0 || list.domains.length < list.max) && (
+                    {(canOwn || canManaged) && (list!.max === 0 || list!.domains.length < list!.max) && (
                         <Button onClick={openAdd}>
                             <PlusIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
                             Add domain
@@ -323,8 +411,8 @@ export default () => {
 
             {!list ? (
                 <Spinner size={'large'} centered />
-            ) : !list.enabled ? (
-                <EmptyState>Custom domains are not enabled on this panel.</EmptyState>
+            ) : !canOwn && !canManaged ? (
+                <EmptyState>Domains are not enabled on this panel.</EmptyState>
             ) : list.domains.length === 0 ? (
                 <EmptyState>No domains yet. Add one to let players join with a custom address.</EmptyState>
             ) : (
@@ -512,27 +600,123 @@ export default () => {
                 onDismissed={() => setAdding(false)}
             >
                 <h2 css={tw`text-xl mb-2 pr-10`}>Add a domain</h2>
-                <p css={tw`text-sm text-neutral-400 mb-6`}>
-                    Make sure the A record already points to {list?.targetIp || 'this panel'}, or add it right after.
-                </p>
+                {canOwn && canManaged ? (
+                    <div
+                        role={'radiogroup'}
+                        aria-label={'Kind of domain'}
+                        css={tw`grid grid-cols-2 gap-2 mb-5 p-1 rounded-xl bg-neutral-600`}
+                    >
+                        {(
+                            [
+                                ['managed', 'A name here', 'We set up the DNS'],
+                                ['own', 'My own domain', 'You add an A record'],
+                            ] as const
+                        ).map(([value, title, text]) => (
+                            <button
+                                key={value}
+                                type={'button'}
+                                role={'radio'}
+                                aria-checked={mode === value}
+                                onClick={() => setMode(value)}
+                                className={`rounded-lg px-3 py-2 text-left transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30 ${
+                                    mode === value
+                                        ? 'bg-white shadow text-primary-700'
+                                        : 'text-neutral-300 hover:text-neutral-50'
+                                }`}
+                            >
+                                <span className={'block text-sm font-semibold'}>{title}</span>
+                                <span className={'block text-xs opacity-75'}>{text}</span>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <p css={tw`text-sm text-neutral-400 mb-6`}>
+                        {mode === 'managed'
+                            ? 'Pick a name, the panel adds the DNS record.'
+                            : `Make sure the A record already points to ${
+                                  list?.targetIp || 'this panel'
+                              }, or add it right after.`}
+                    </p>
+                )}
                 {error && (
                     <p css={tw`mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700`}>
                         {error}
                     </p>
                 )}
                 <div css={tw`space-y-4`}>
-                    <div>
-                        <Label htmlFor={'domain-name'}>Domain</Label>
-                        <Input
-                            id={'domain-name'}
-                            type={'text'}
-                            autoFocus
-                            value={domain}
-                            placeholder={'play.example.com'}
-                            css={tw`font-mono`}
-                            onChange={(e) => setDomain(e.currentTarget.value)}
-                        />
-                    </div>
+                    {mode === 'managed' ? (
+                        <div>
+                            <Label htmlFor={'domain-label'}>Name</Label>
+                            <div css={tw`flex items-center gap-2`}>
+                                <Input
+                                    id={'domain-label'}
+                                    type={'text'}
+                                    autoFocus
+                                    value={label}
+                                    maxLength={63}
+                                    placeholder={'play'}
+                                    autoComplete={'off'}
+                                    spellCheck={false}
+                                    css={tw`font-mono flex-1 min-w-0`}
+                                    onChange={(e) => setLabel(cleanLabel(e.currentTarget.value))}
+                                />
+                                <span css={tw`text-neutral-400 font-mono`}>.</span>
+                                {zones.length === 1 ? (
+                                    <span css={tw`font-mono text-sm text-neutral-50 truncate`}>{zones[0].domain}</span>
+                                ) : (
+                                    <Select
+                                        aria-label={'Domain'}
+                                        value={zoneId}
+                                        css={tw`flex-1 min-w-0 font-mono`}
+                                        onChange={(e) => setZoneId(Number(e.currentTarget.value))}
+                                    >
+                                        {zones.map((z) => (
+                                            <option key={z.id} value={z.id}>
+                                                {z.domain}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                )}
+                            </div>
+                            <p
+                                css={tw`mt-2 min-h-[1.25rem] text-sm flex items-center`}
+                                aria-live={'polite'}
+                                role={'status'}
+                            >
+                                {nameCheck === 'checking' ? (
+                                    <span css={tw`text-neutral-400 flex items-center`}>
+                                        <Spinner size={'small'} css={tw`mr-2`} /> Checking...
+                                    </span>
+                                ) : nameCheck !== 'idle' && nameCheck.available ? (
+                                    <span css={tw`text-green-700 flex items-center`}>
+                                        <CheckCircleIcon css={tw`w-4 h-4 mr-1.5`} />
+                                        <span css={tw`font-mono`}>{nameCheck.domain}</span>
+                                        <span css={tw`ml-1`}>is free</span>
+                                    </span>
+                                ) : nameCheck !== 'idle' ? (
+                                    <span css={tw`text-red-600 flex items-center`}>
+                                        <ExclamationIcon css={tw`w-4 h-4 mr-1.5`} />
+                                        {nameCheck.reason}
+                                    </span>
+                                ) : label === '' ? (
+                                    <span css={tw`text-neutral-400`}>Players will join with this name.</span>
+                                ) : null}
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <Label htmlFor={'domain-name'}>Domain</Label>
+                            <Input
+                                id={'domain-name'}
+                                type={'text'}
+                                autoFocus
+                                value={domain}
+                                placeholder={'play.example.com'}
+                                css={tw`font-mono`}
+                                onChange={(e) => setDomain(e.currentTarget.value)}
+                            />
+                        </div>
+                    )}
                     <div>
                         <Label htmlFor={'domain-allocation'}>Send players to</Label>
                         <Select
@@ -575,7 +759,19 @@ export default () => {
                     <LegacyButton isSecondary onClick={() => setAdding(false)}>
                         Cancel
                     </LegacyButton>
-                    <LegacyButton disabled={!domain.trim() || !allocationId || saving} onClick={submit}>
+                    <LegacyButton
+                        disabled={
+                            saving ||
+                            !allocationId ||
+                            (mode === 'managed'
+                                ? !zoneId ||
+                                  !validLabel(label) ||
+                                  nameCheck === 'checking' ||
+                                  (nameCheck !== 'idle' && !nameCheck.available)
+                                : !domain.trim())
+                        }
+                        onClick={submit}
+                    >
                         Add domain
                     </LegacyButton>
                 </div>

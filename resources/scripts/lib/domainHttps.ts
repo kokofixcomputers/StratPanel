@@ -23,3 +23,13 @@ export const httpsSummary = (https: DomainHttps, now: Date = new Date()): string
 /** Whether anything is being requested, the page looks again every few seconds while so. */
 export const anyPending = (domains: { https: DomainHttps }[]): boolean =>
     domains.some((d) => d.https.status === 'pending');
+
+/** The part before the domain that people may type for a name under a domain of the admin: letters, numbers and dashes. */
+export const cleanLabel = (value: string): string =>
+    value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .slice(0, 63);
+
+/** Whether a label could be a name (the panel checks it too). */
+export const validLabel = (label: string): boolean => /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label);

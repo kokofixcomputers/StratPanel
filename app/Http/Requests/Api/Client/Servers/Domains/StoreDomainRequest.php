@@ -18,11 +18,23 @@ class StoreDomainRequest extends ClientApiRequest
      */
     protected function prepareForValidation(): void
     {
-        $this->merge(['domain' => strtolower(rtrim(trim((string) $this->input('domain')), '.'))]);
+        $this->merge([
+            'domain' => strtolower(rtrim(trim((string) $this->input('domain')), '.')),
+            'label' => strtolower(trim((string) $this->input('label'))),
+        ]);
     }
 
     public function rules(): array
     {
+        // A name under a domain of the admin: only the part before the domain is typed.
+        if ($this->filled('zone_id')) {
+            return [
+                'zone_id' => ['required', 'integer', Rule::exists('dns_zones', 'id')->where('enabled', true)],
+                'label' => ['required', 'string', 'max:63', 'regex:' . \Pterodactyl\Services\Domains\ManagedDomainService::LABEL_REGEX],
+                'allocation_id' => ['required', 'integer'],
+            ];
+        }
+
         return [
             'domain' => [
                 'required',
@@ -40,6 +52,8 @@ class StoreDomainRequest extends ClientApiRequest
         return [
             'domain.regex' => 'Enter a valid domain name such as play.example.com.',
             'domain.unique' => 'That domain is already in use.',
+            'label.regex' => 'Use letters, numbers and dashes only, not starting or ending with a dash.',
+            'zone_id.exists' => 'That domain is not available.',
         ];
     }
 }
