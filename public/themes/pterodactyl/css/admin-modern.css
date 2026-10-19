@@ -702,3 +702,46 @@ body.admin-modern ::selection { background: rgba(20, 71, 230, 0.18); }
 .admin-modern .ov-item-main { font-weight: 600; font-size: 14px; }
 .admin-modern .ov-empty { padding: 22px 12px; text-align: center; color: var(--muted); font-size: 13px; }
 .admin-modern .ov-empty i { display: block; font-size: 20px; margin-bottom: 8px; color: #94a3b8; }
+
+/* ---- the updates page: pills, a progress bar that scrolls while it works, steps and the backups ------------------------- */
+.admin-modern .up-channel { display: inline-flex; gap: 8px; }
+.admin-modern .up-pill { margin: 0; cursor: pointer; }
+.admin-modern .up-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.admin-modern .up-pill span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); font-size: 13px; font-weight: 600; color: var(--text-2); transition: all 0.15s; }
+.admin-modern .up-pill input:checked + span { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+.admin-modern .up-pill input:focus-visible + span { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25); }
+.admin-modern .up-pill input:disabled + span { opacity: 0.5; cursor: not-allowed; }
+.admin-modern .up-progress { margin-top: 20px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: #f8fafc; }
+.admin-modern .up-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.admin-modern .up-title { font-weight: 700; font-size: 15px; color: var(--text); }
+.admin-modern .up-bar { height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.admin-modern .up-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--primary); transition: width 0.6s ease; }
+.admin-modern .up-bar.up-working > span {
+    background-image: linear-gradient(135deg, rgba(255,255,255,0.28) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0.28) 75%, transparent 75%);
+    background-size: 24px 24px; animation: up-scroll 0.8s linear infinite;
+}
+.admin-modern .up-bar.up-done > span { background: #16a34a; }
+.admin-modern .up-bar.up-failed > span { background: #dc2626; }
+@keyframes up-scroll { from { background-position: 0 0; } to { background-position: 24px 0; } }
+@media (prefers-reduced-motion: reduce) { .admin-modern .up-bar.up-working > span { animation: none; } }
+.admin-modern .up-steps { display: flex; justify-content: space-between; gap: 6px; list-style: none; padding: 0; margin: 14px 0 0; }
+.admin-modern .up-steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
+.admin-modern .up-steps li > i { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 14px; }
+.admin-modern .up-steps li.up-step-now { color: var(--primary); }
+.admin-modern .up-steps li.up-step-now > i { background: #eef2ff; color: var(--primary); }
+.admin-modern .up-steps li.up-step-done { color: #15803d; }
+.admin-modern .up-steps li.up-step-done > i { background: #dcfce7; color: #16a34a; }
+.admin-modern .up-steps li.up-step-failed { color: #b91c1c; }
+.admin-modern .up-steps li.up-step-failed > i { background: #fee2e2; color: #dc2626; }
+.admin-modern .up-results { list-style: none; padding: 0; margin: 14px 0 0; }
+.admin-modern .up-results:empty { display: none; }
+.admin-modern .up-results li { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; font-size: 13px; border-top: 1px solid var(--border); }
+.admin-modern .up-results li > i { width: 16px; text-align: center; }
+.admin-modern .up-results li > span { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.admin-modern .up-r-success > i { color: #16a34a; }
+.admin-modern .up-r-danger > i, .admin-modern .up-r-danger > span { color: #dc2626; }
+.admin-modern .up-more { margin-top: 16px; }
+.admin-modern .up-more summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+.admin-modern .up-backup { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.admin-modern .up-backup:first-child { border-top: 0; }
+.admin-modern .up-backup-actions { display: flex; gap: 6px; flex-shrink: 0; }

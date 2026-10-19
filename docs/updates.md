@@ -52,9 +52,11 @@ sudo bash tools/updater/install.sh
 ```
 
 The panel's web user can not restart services, so a small root service (`stratosphere-updater.path`) waits for the panel to write a request
-file, `storage/app/updates/request`, with one of five words: `local`, `download`, `download-nightly`, `panel` or `panel-nightly`. Nothing else the panel writes is used: the download address
+file, `storage/app/updates/request`, with one of these words: `local`, `download`, `download-nightly`, `panel`, `panel-nightly`, `backups`, or `restore:NAME` / `delete-backup:NAME` (NAME must look like `panel-backup-YYYY-MM-DD-HHMM.tar.gz`, optionally with `-before`; the panel and the updater both refuse anything else, so it can never be a path). Nothing else the panel writes is used: the download address
 and paths come from `/etc/stratosphere-updater.env`, which only root can change. The result is written to `storage/app/updates/status.json`
-and shown on the page.
+and shown on the page. While it works the status says which step it is at (`download`, `backup`, `install`, `migrate`, `finish`, `tools`), which the progress bar of the page follows; while the panel is in maintenance mode the page cannot ask, shows "restarting" and carries on when the panel is back.
+
+**Backups.** Every panel update first saves the panel files to `/var/backups/stratosphere` (the last three are kept). The Backups box on the Updates page lists them (the updater writes `storage/app/updates/backups.json`, because that folder is root's), and can **restore** one or **delete** it. A restore saves the current files first as `panel-backup-...-before.tar.gz` (never pruned by a restore), puts the chosen files back, runs composer, clears caches and restarts the queue worker. **The database is not rolled back**: a backup from before a migration may not work with the newer database.
 
 Because the web user owns the panel files, a hacked panel could replace the binaries in `tools/*/dist` and have root run them. For that reason
 **the files on this machine are only used when they do not belong to the web user**: run this once after extracting the panel,

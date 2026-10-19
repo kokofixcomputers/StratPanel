@@ -32,6 +32,15 @@ STATUS="$DIR/status.json"
 [ -f "$REQUEST" ] || exit 0
 ACTION="$(tr -d '[:space:]' < "$REQUEST")"
 rm -f "$REQUEST"
+# "restore:NAME" and "delete-backup:NAME" name one of the backups in BACKUP_DIR. Only a name made by this script is accepted, never a path.
+ARG=""
+case "$ACTION" in
+  restore:* | delete-backup:*)
+    ARG="${ACTION#*:}"
+    ACTION="${ACTION%%:*}"
+    ;;
+esac
+BACKUP_NAME_RE='^panel-backup-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4}(-[a-z]+)?\.tar\.gz$'
 
 case "$(uname -m)" in
   x86_64 | amd64) ARCH=amd64 ;;
@@ -41,6 +50,11 @@ esac
 
 # The panel page shows this while the work goes on.
 printf '{"running":true,"action":"%s"}\n' "$ACTION" > "$STATUS.tmp" && chmod 644 "$STATUS.tmp" && mv "$STATUS.tmp" "$STATUS"
+
+# The step the work is at, for the progress bar of the page (the page knows the order of the steps).
+progress() {
+  printf '{"running":true,"action":"%s","step":"%s"}\n' "$ACTION" "$1" > "$STATUS.tmp" && chmod 644 "$STATUS.tmp" && mv "$STATUS.tmp" "$STATUS"
+}
 
 RESULTS=()
 note() { # name status detail
@@ -54,7 +68,25 @@ note() { # name status detail
   detail="${detail:0:400}"
   RESULTS+=("{\"name\":\"$1\",\"status\":\"$2\",\"detail\":\"$detail\"}")
 }
+# The backups, for the panel page: it cannot read the folder (root's), so the list is written here.
+write_backups() {
+  local items=() f name size created
+  for f in $(ls -1t "$BACKUP_DIR"/panel-backup-*.tar.gz 2> /dev/null); do
+    name="$(basename "$f")"
+    [[ "$name" =~ $BACKUP_NAME_RE ]] || continue
+    size="$(stat -c %s "$f" 2> /dev/null || stat -f %z "$f" 2> /dev/null || echo 0)"
+    created="$(stat -c %Y "$f" 2> /dev/null || stat -f %m "$f" 2> /dev/null || echo 0)"
+    items+=("{\"name\":\"$name\",\"size\":$size,\"created\":$created}")
+  done
+  local joined
+  joined="$(IFS=,; echo "${items[*]-}")"
+  printf '[%s]\n' "$joined" > "$DIR/backups.json.tmp"
+  chmod 644 "$DIR/backups.json.tmp"
+  chown "$WEB_USER" "$DIR/backups.json.tmp" 2> /dev/null || true
+  mv "$DIR/backups.json.tmp" "$DIR/backups.json"
+}
 finish() {
+  write_backups
   local joined
   joined="$(IFS=,; echo "${RESULTS[*]-}")"
   printf '{"action":"%s","finished_at":"%s","results":[%s]}\n' "${ACTION:-}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$joined" > "$STATUS.tmp"
@@ -68,11 +100,13 @@ SRC="$PANEL_DIR/tools"
 TMP=""
 case "$ACTION" in
   local) ;;
+  backups | delete-backup | restore) ;;
   download | download-nightly | panel | panel-nightly)
     URL="$PANEL_TAR_URL"
     case "$ACTION" in *-nightly) URL="$PANEL_TAR_NIGHTLY_URL" ;; esac
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"; finish' EXIT
+    progress download
     if ! curl -fsSL --max-time 300 -o "$TMP/panel.tar.gz" "$URL"; then
       note download failed "could not download $URL"
       exit 0
@@ -181,6 +215,7 @@ update_panel() {
   strip="$(printf '%s' "$prefix" | tr -cd '/' | wc -c | tr -d ' ')"
   [ "$prefix" = "./" ] && strip=0
 
+  progress backup
   mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
   backup="$BACKUP_DIR/panel-backup-$(date +%F-%H%M).tar.gz"
   # Everything the archive can touch except vendor and storage. The .env stays where it is, the archive has none.
@@ -189,6 +224,7 @@ update_panel() {
   ls -1t "$BACKUP_DIR"/panel-backup-*.tar.gz 2> /dev/null | tail -n +4 | while read -r old; do rm -f "$old"; done
 
   cd "$PANEL_DIR" || return 1
+  progress install
   php artisan down > /dev/null 2>&1 || true
 
   # The shipped eggs are data of the archive: start from an empty folder so a removed or renamed file does not stay behind.
@@ -210,6 +246,7 @@ update_panel() {
     return 1
   fi
 
+  progress migrate
   local failed=""
   if ! out="$(php artisan migrate --force 2>&1)"; then
     failed="the database migration failed: $(printf '%s' "$out" | tail -n 3)"
@@ -218,6 +255,7 @@ update_panel() {
   if ! php artisan db:seed --force > /dev/null 2>&1; then
     warn=" (the eggs were not updated)"
   fi
+  progress finish
   for c in view:clear config:clear route:clear cache:clear; do php artisan "$c" > /dev/null 2>&1 || true; done
   chown -R "$WEB_USER": "$PANEL_DIR"
   systemctl restart "$QUEUE_SERVICE" > /dev/null 2>&1 || warn="$warn (could not restart $QUEUE_SERVICE)"
@@ -239,7 +277,58 @@ update_panel() {
   return 0
 }
 
+# Puts one of the backups back over the panel. The database is not rolled back (the backup has no database), so the page says so.
+restore_backup() {
+  local file="$BACKUP_DIR/$ARG" out safety
+  if [[ ! "$ARG" =~ $BACKUP_NAME_RE ]] || [ ! -f "$file" ] || [ -L "$file" ]; then
+    note restore failed "that backup does not exist"
+    return 1
+  fi
+  cd "$PANEL_DIR" || return 1
+
+  # What is there now is saved first, so a restore can be undone. It is never pruned here (the one restored from must stay).
+  progress backup
+  safety="$BACKUP_DIR/panel-backup-$(date +%F-%H%M)-before.tar.gz"
+  tar -czf "$safety" -C "$PANEL_DIR" .env app bootstrap config database public resources routes composer.json composer.lock tools 2> /dev/null || true
+
+  progress install
+  php artisan down > /dev/null 2>&1 || true
+  rm -rf "$PANEL_DIR/database/Seeders/eggs"
+  if ! out="$(tar -xzf "$file" -C "$PANEL_DIR" 2>&1)"; then
+    tar -xzf "$safety" -C "$PANEL_DIR" 2> /dev/null || true
+    chown -R "$WEB_USER": "$PANEL_DIR"
+    php artisan up > /dev/null 2>&1 || true
+    note restore failed "could not extract the backup, the files from before were put back ($out)"
+    return 1
+  fi
+  chown -R "$WEB_USER": "$PANEL_DIR"
+  out="$(as_web composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$PANEL_DIR" 2>&1)" \
+    || note composer failed "composer install failed: $(printf '%s' "$out" | tail -n 3)"
+
+  progress finish
+  for c in view:clear config:clear route:clear cache:clear; do php artisan "$c" > /dev/null 2>&1 || true; done
+  chown -R "$WEB_USER": "$PANEL_DIR"
+  systemctl restart "$QUEUE_SERVICE" > /dev/null 2>&1 || true
+  php artisan up > /dev/null 2>&1 || true
+  note restore updated "restored $ARG. The database was not changed; the files from before are in $(basename "$safety")"
+  return 0
+}
+
 case "$ACTION" in
+  backups) exit 0 ;;
+  delete-backup)
+    if [[ "$ARG" =~ $BACKUP_NAME_RE ]] && [ -f "$BACKUP_DIR/$ARG" ] && [ ! -L "$BACKUP_DIR/$ARG" ]; then
+      rm -f "$BACKUP_DIR/$ARG"
+      note backup updated "deleted $ARG"
+    else
+      note backup failed "that backup does not exist"
+    fi
+    exit 0
+    ;;
+  restore)
+    restore_backup
+    exit 0
+    ;;
   panel | panel-nightly)
     if ! update_panel; then
       exit 0
@@ -247,6 +336,7 @@ case "$ACTION" in
     ;;
 esac
 
+progress tools
 update mc-router
 update panel-edge
 exit 0

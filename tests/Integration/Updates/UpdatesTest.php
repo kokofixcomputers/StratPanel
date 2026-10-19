@@ -265,6 +265,48 @@ class UpdatesTest extends IntegrationTestCase
         $this->assertFileDoesNotExist($this->dir . '/request');
     }
 
+    public function testBackupsAreRestoredAndDeletedByTheirNameOnly(): void
+    {
+        touch($this->dir . '/installed');
+        $this->as($this->user([], true));
+        $name = 'panel-backup-2026-10-18-1658.tar.gz';
+
+        $this->post('/admin/updates', ['action' => 'restore', 'backup' => $name])->assertStatus(202);
+        $this->assertSame('restore:' . $name, file_get_contents($this->dir . '/request'));
+
+        unlink($this->dir . '/request');
+        $this->post('/admin/updates', ['action' => 'delete-backup', 'backup' => $name])->assertStatus(202);
+        $this->assertSame('delete-backup:' . $name, file_get_contents($this->dir . '/request'));
+
+        // Never a path, never another file, never a second command.
+        unlink($this->dir . '/request');
+        foreach (['../../etc/passwd', 'panel-backup-2026-10-18-1658.tar.gz/../x', "{$name}\nlocal", 'x.tar.gz', '', '/etc/passwd'] as $bad) {
+            $this->post('/admin/updates', ['action' => 'restore', 'backup' => $bad])->assertStatus(422);
+            $this->assertFileDoesNotExist($this->dir . '/request');
+        }
+    }
+
+    public function testOnlyRootAdminsCanRestoreABackup(): void
+    {
+        touch($this->dir . '/installed');
+        $this->as($this->user(['nodes.view', 'nodes.software']))->post('/admin/updates', ['action' => 'restore', 'backup' => 'panel-backup-2026-10-18-1658.tar.gz'])->assertStatus(403);
+        $this->assertFileDoesNotExist($this->dir . '/request');
+    }
+
+    public function testTheListOfBackupsIsWhatTheUpdaterWrote(): void
+    {
+        touch($this->dir . '/installed');
+        $this->as($this->user([], true));
+        $this->assertNull($this->app->make(ToolUpdateService::class)->backups());
+
+        file_put_contents($this->dir . '/backups.json', json_encode([
+            ['name' => 'panel-backup-2026-10-18-1658.tar.gz', 'size' => 1234, 'created' => 1792369481],
+            ['name' => '../evil.tar.gz', 'size' => 1, 'created' => 1],
+        ]));
+
+        $this->get('/admin/updates/status')->assertOk()->assertJsonCount(1, 'backups')->assertJsonPath('backups.0.size', 1234);
+    }
+
     public function testTheServiceRefusesUnknownActions(): void
     {
         touch($this->dir . '/installed');

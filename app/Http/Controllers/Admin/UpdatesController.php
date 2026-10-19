@@ -22,6 +22,7 @@ class UpdatesController extends Controller
             'installed' => $this->tools->installed(),
             'status' => $this->tools->status(),
             'pending' => $this->tools->pending(),
+            'backups' => $this->tools->backups(),
             'wingsLatest' => $this->nodes->latest(),
             'nodeCount' => Node::query()->count(),
             'tarUrl' => config('updates.panel_tar_url'),
@@ -32,20 +33,29 @@ class UpdatesController extends Controller
     /** What the updater is doing, for the page to follow. */
     public function status(): JsonResponse
     {
-        return new JsonResponse(['pending' => $this->tools->pending(), 'status' => $this->tools->status()]);
+        return new JsonResponse(['pending' => $this->tools->pending(), 'status' => $this->tools->status(), 'backups' => $this->tools->backups()]);
     }
 
     public function run(Request $request): JsonResponse
     {
+        $backup = null;
         // Anything unknown means the harmless one.
         $action = match ($request->input('action')) {
+            ToolUpdateService::BACKUPS => ToolUpdateService::BACKUPS,
+            ToolUpdateService::RESTORE, ToolUpdateService::DELETE_BACKUP => (function () use ($request, &$backup) {
+                $backup = (string) $request->input('backup');
+
+                return $request->input('action');
+            })(),
             ToolUpdateService::DOWNLOAD => $request->input('channel') === 'nightly' ? ToolUpdateService::DOWNLOAD_NIGHTLY : ToolUpdateService::DOWNLOAD,
             ToolUpdateService::PANEL => $request->input('channel') === 'nightly' ? ToolUpdateService::PANEL_NIGHTLY : ToolUpdateService::PANEL,
             default => ToolUpdateService::LOCAL,
         };
 
         try {
-            $this->tools->request($action);
+            $this->tools->request($action, $backup);
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], 422);
         } catch (\RuntimeException $exception) {
             return new JsonResponse(['error' => $exception->getMessage()], 409);
         }
