@@ -28,7 +28,8 @@ export const ModalMask = styled.div`
 
 const ModalContainer = styled.div<{ alignTop?: boolean }>`
     max-width: 95%;
-    max-height: calc(100vh - 6rem);
+    /* Always inside the window: the room above it (a share of the height, never of the width) and a little below are left out. */
+    max-height: ${(props) => (props.alignTop ? 'calc(100vh - clamp(1rem, 8vh, 4rem) - 1.5rem)' : 'calc(100vh - 3rem)')};
     ${breakpoint('md')`max-width: 640px`};
     ${breakpoint('lg')`max-width: 640px`};
 
@@ -36,8 +37,7 @@ const ModalContainer = styled.div<{ alignTop?: boolean }>`
     ${(props) =>
         props.alignTop &&
         css`
-            margin-top: 15%;
-            ${breakpoint('md')`margin-top: 8%`};
+            margin-top: clamp(1rem, 8vh, 4rem);
         `};
 
     margin-bottom: auto;

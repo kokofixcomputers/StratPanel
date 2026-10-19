@@ -13,10 +13,12 @@ import tw from 'twin.macro';
 import Label from '@/components/elements/Label';
 import { Textarea } from '@/components/elements/Input';
 import { Button } from '@/components/elements/button/index';
-import Select from '@/components/elements/Select';
 import ModalContext from '@/context/ModalContext';
 import asModal from '@/hoc/asModal';
 import FormikSwitch from '@/components/elements/FormikSwitch';
+import { ArchiveIcon, ClipboardListIcon, LightningBoltIcon, TerminalIcon } from '@heroicons/react/outline';
+import { PlayIcon, RefreshIcon, StopIcon, XCircleIcon } from '@heroicons/react/solid';
+import ModalHeading, { SectionLabel } from '@/components/server/schedules/ModalHeading';
 
 interface Props {
     schedule: Schedule;
@@ -46,6 +48,19 @@ const schema = object().shape({
         .min(0, 'The time offset must be at least 0 seconds.')
         .max(900, 'The time offset must be less than 900 seconds.'),
 });
+
+const ACTIONS = [
+    { value: 'command', label: 'Command', text: 'Type into the console', Icon: TerminalIcon },
+    { value: 'power', label: 'Power', text: 'Start, restart or stop', Icon: LightningBoltIcon },
+    { value: 'backup', label: 'Backup', text: 'Back up the server', Icon: ArchiveIcon },
+];
+
+const POWER = [
+    { value: 'start', label: 'Start', Icon: PlayIcon },
+    { value: 'restart', label: 'Restart', Icon: RefreshIcon },
+    { value: 'stop', label: 'Stop', Icon: StopIcon },
+    { value: 'kill', label: 'Kill', Icon: XCircleIcon },
+];
 
 const ActionListener = () => {
     const [{ value }, { initialValue: initialAction }] = useField<string>('action');
@@ -116,76 +131,130 @@ const TaskDetailsModal = ({ schedule, task }: Props) => {
                 continueOnFailure: task?.continueOnFailure || false,
             }}
         >
-            {({ isSubmitting, values }) => (
+            {({ isSubmitting, values, setFieldValue }) => (
                 <Form css={tw`m-0`}>
+                    <ModalHeading
+                        icon={<ClipboardListIcon className={'h-6 w-6'} />}
+                        title={task ? 'Edit task' : 'New task'}
+                        subtitle={`A step of ${schedule.name}.`}
+                    />
                     <FlashMessageRender byKey={'schedule:task'} css={tw`mb-4`} />
-                    <h2 css={tw`text-xl mb-6 pr-10`}>{task ? 'Edit Task' : 'Create Task'}</h2>
-                    <div css={tw`flex`}>
-                        <div css={tw`mr-2 w-1/3`}>
-                            <Label>Action</Label>
-                            <ActionListener />
-                            <FormikFieldWrapper name={'action'}>
-                                <FormikField as={Select} name={'action'}>
-                                    <option value={'command'}>Send command</option>
-                                    <option value={'power'}>Send power action</option>
-                                    <option value={'backup'}>Create backup</option>
-                                </FormikField>
-                            </FormikFieldWrapper>
-                        </div>
-                        <div css={tw`flex-1 ml-6`}>
-                            <Field
-                                name={'timeOffset'}
-                                label={'Time offset (in seconds)'}
-                                description={
-                                    'The amount of time to wait after the previous task executes before running this one. If this is the first task on a schedule this will not be applied.'
-                                }
-                            />
-                        </div>
+                    <ActionListener />
+
+                    <SectionLabel>What to do</SectionLabel>
+                    <div css={tw`grid grid-cols-1 sm:grid-cols-3 gap-3`} role={'radiogroup'} aria-label={'Action'}>
+                        {ACTIONS.map(({ value, label, text, Icon }) => (
+                            <button
+                                key={value}
+                                type={'button'}
+                                role={'radio'}
+                                aria-checked={values.action === value}
+                                onClick={() => setFieldValue('action', value)}
+                                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30 sm:flex-col sm:items-start ${
+                                    values.action === value
+                                        ? 'border-primary-600 bg-primary-50 text-primary-700'
+                                        : 'border-neutral-500 bg-white text-neutral-100 hover:border-neutral-400'
+                                }`}
+                            >
+                                <Icon className={'h-5 w-5 flex-shrink-0'} />
+                                <span>
+                                    <span className={'block text-sm font-semibold'}>{label}</span>
+                                    <span className={'block text-xs opacity-75'}>{text}</span>
+                                </span>
+                            </button>
+                        ))}
                     </div>
-                    <div css={tw`mt-6`}>
+
+                    <div css={tw`mt-5`}>
                         {values.action === 'command' ? (
                             <div>
-                                <Label>Payload</Label>
-                                <FormikFieldWrapper name={'payload'}>
-                                    <FormikField as={Textarea} name={'payload'} rows={6} />
+                                <Label>Command</Label>
+                                <FormikFieldWrapper
+                                    name={'payload'}
+                                    description={'As typed in the console, without the slash. One command per task.'}
+                                >
+                                    <FormikField
+                                        as={Textarea}
+                                        name={'payload'}
+                                        rows={3}
+                                        placeholder={'say The server restarts in 5 minutes'}
+                                        css={tw`font-mono text-sm`}
+                                    />
                                 </FormikFieldWrapper>
                             </div>
                         ) : values.action === 'power' ? (
                             <div>
-                                <Label>Payload</Label>
+                                <Label>Power action</Label>
                                 <FormikFieldWrapper name={'payload'}>
-                                    <FormikField as={Select} name={'payload'}>
-                                        <option value={'start'}>Start the server</option>
-                                        <option value={'restart'}>Restart the server</option>
-                                        <option value={'stop'}>Stop the server</option>
-                                        <option value={'kill'}>Terminate the server</option>
-                                    </FormikField>
+                                    <div css={tw`grid grid-cols-2 sm:grid-cols-4 gap-2`} role={'radiogroup'}>
+                                        {POWER.map(({ value, label, Icon }) => (
+                                            <button
+                                                key={value}
+                                                type={'button'}
+                                                role={'radio'}
+                                                aria-checked={values.payload === value}
+                                                onClick={() => setFieldValue('payload', value)}
+                                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30 ${
+                                                    values.payload === value
+                                                        ? 'border-primary-600 bg-primary-50 text-primary-700'
+                                                        : 'border-neutral-500 bg-white text-neutral-100 hover:border-neutral-400'
+                                                }`}
+                                            >
+                                                <Icon className={'h-4 w-4'} />
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </FormikFieldWrapper>
                             </div>
                         ) : (
                             <div>
-                                <Label>Ignored Files</Label>
+                                <Label>Files to leave out</Label>
                                 <FormikFieldWrapper
                                     name={'payload'}
                                     description={
-                                        'Optional. Include the files and folders to be excluded in this backup. By default, the contents of your .pteroignore file will be used. If you have reached your backup limit, the oldest backup will be rotated.'
+                                        'Optional. Files and folders left out of the backup; without any, your .pteroignore is used. When the backup limit is reached the oldest backup is replaced.'
                                     }
                                 >
-                                    <FormikField as={Textarea} name={'payload'} rows={6} />
+                                    <FormikField
+                                        as={Textarea}
+                                        name={'payload'}
+                                        rows={3}
+                                        placeholder={'logs/\ncache/'}
+                                        css={tw`font-mono text-sm`}
+                                    />
                                 </FormikFieldWrapper>
                             </div>
                         )}
                     </div>
-                    <div css={tw`mt-6 bg-neutral-900 border border-neutral-500 p-4 rounded-xl`}>
-                        <FormikSwitch
-                            name={'continueOnFailure'}
-                            description={'Future tasks will be run when this task fails.'}
-                            label={'Continue on Failure'}
+
+                    <div css={tw`mt-5`}>
+                        <Field
+                            name={'timeOffset'}
+                            label={'Wait first (seconds)'}
+                            description={'Time to wait after the task before this one. Not used for the first task.'}
                         />
                     </div>
-                    <div css={tw`flex justify-end mt-6`}>
-                        <Button type={'submit'} disabled={isSubmitting}>
-                            {task ? 'Save Changes' : 'Create Task'}
+
+                    <div css={tw`mt-5 rounded-xl border border-neutral-500 bg-neutral-700/40 p-4`}>
+                        <FormikSwitch
+                            name={'continueOnFailure'}
+                            description={'Go on with the next tasks even when this one fails.'}
+                            label={'Continue on failure'}
+                        />
+                    </div>
+
+                    <div css={tw`mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3`}>
+                        <Button.Text
+                            type={'button'}
+                            variant={Button.Variants.Secondary}
+                            onClick={dismiss}
+                            css={tw`w-full sm:w-auto`}
+                        >
+                            Cancel
+                        </Button.Text>
+                        <Button type={'submit'} disabled={isSubmitting} className={'w-full sm:w-auto'}>
+                            {task ? 'Save changes' : 'Create task'}
                         </Button>
                     </div>
                 </Form>

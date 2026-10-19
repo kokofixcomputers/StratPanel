@@ -3,6 +3,8 @@ import { action, Action } from 'easy-peasy';
 export interface SiteSettings {
     name: string;
     locale: string;
+    // The time zone of the panel, which schedules run by.
+    timezone?: string;
     // What the admin set under Settings > Branding, as the server sends it (see parseBranding).
     branding?: unknown;
     // The browser part of the extensions that are on, see lib/extensions.ts.

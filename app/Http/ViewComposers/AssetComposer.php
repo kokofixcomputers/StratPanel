@@ -36,6 +36,8 @@ class AssetComposer
             'branding' => $this->branding->toArray(Auth::check()),
             'name' => config('app.name') ?? 'Pterodactyl',
             'locale' => config('app.locale') ?? 'en',
+            // The clock the schedules run by.
+            'timezone' => config('app.timezone') ?? 'UTC',
             // Kept for scripts written before there was a choice of captcha.
             'recaptcha' => [
                 'enabled' => $this->captcha->provider() === CaptchaService::RECAPTCHA,

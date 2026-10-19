@@ -1,55 +1,37 @@
 import React from 'react';
-import tw from 'twin.macro';
 
-export default () => {
-    return (
-        <>
-            <div css={tw`md:w-1/2 h-full bg-neutral-600`}>
-                <div css={tw`flex flex-col`}>
-                    <h2 css={tw`py-4 px-6 font-bold`}>Examples</h2>
-                    <div css={tw`flex py-4 px-6 bg-neutral-500`}>
-                        <div css={tw`w-1/2`}>*/5 * * * *</div>
-                        <div css={tw`w-1/2`}>every 5 minutes</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6`}>
-                        <div css={tw`w-1/2`}>0 */1 * * *</div>
-                        <div css={tw`w-1/2`}>every hour</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6 bg-neutral-500`}>
-                        <div css={tw`w-1/2`}>0 8-12 * * *</div>
-                        <div css={tw`w-1/2`}>hour range</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6`}>
-                        <div css={tw`w-1/2`}>0 0 * * *</div>
-                        <div css={tw`w-1/2`}>once a day</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6 bg-neutral-500`}>
-                        <div css={tw`w-1/2`}>0 0 * * MON</div>
-                        <div css={tw`w-1/2`}>every Monday</div>
-                    </div>
+const SYMBOLS: [string, string][] = [
+    ['*', 'any value'],
+    [',', 'a list: 1,15'],
+    ['-', 'a range: 8-12'],
+    ['/', 'every nth: */5'],
+];
+
+const EXAMPLES: [string, string][] = [
+    ['*/5 * * * *', 'every 5 minutes'],
+    ['0 */1 * * *', 'every hour'],
+    ['0 8-12 * * *', 'hourly, 08:00 to 12:00'],
+    ['0 0 * * MON', 'Mondays at midnight'],
+];
+
+const Table = ({ title, rows }: { title: string; rows: [string, string][] }) => (
+    <div>
+        <p className={'mb-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-400'}>{title}</p>
+        <dl className={'divide-y divide-neutral-500 rounded-lg border border-neutral-500 bg-white text-sm'}>
+            {rows.map(([code, text]) => (
+                <div key={code} className={'flex items-center justify-between gap-3 px-3 py-1.5'}>
+                    <dt className={'font-mono text-xs text-primary-700'}>{code}</dt>
+                    <dd className={'text-xs text-neutral-300'}>{text}</dd>
                 </div>
-            </div>
-            <div css={tw`md:w-1/2 h-full bg-neutral-600`}>
-                <h2 css={tw`py-4 px-6 font-bold`}>Special Characters</h2>
-                <div css={tw`flex flex-col`}>
-                    <div css={tw`flex py-4 px-6 bg-neutral-500`}>
-                        <div css={tw`w-1/2`}>*</div>
-                        <div css={tw`w-1/2`}>any value</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6`}>
-                        <div css={tw`w-1/2`}>,</div>
-                        <div css={tw`w-1/2`}>value list separator</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6 bg-neutral-500`}>
-                        <div css={tw`w-1/2`}>-</div>
-                        <div css={tw`w-1/2`}>range values</div>
-                    </div>
-                    <div css={tw`flex py-4 px-6`}>
-                        <div css={tw`w-1/2`}>/</div>
-                        <div css={tw`w-1/2`}>step values</div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-};
+            ))}
+        </dl>
+    </div>
+);
+
+/** The cron symbols and a few examples, small enough to sit in a window. */
+export default () => (
+    <div className={'grid gap-4 sm:grid-cols-2'}>
+        <Table title={'Symbols'} rows={SYMBOLS} />
+        <Table title={'Examples'} rows={EXAMPLES} />
+    </div>
+);

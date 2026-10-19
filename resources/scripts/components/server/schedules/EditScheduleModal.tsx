@@ -1,7 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect } from 'react';
+import { CalendarIcon } from '@heroicons/react/outline';
 import { Schedule } from '@/api/server/schedules/getServerSchedules';
 import Field from '@/components/elements/Field';
-import { Form, Formik, FormikHelpers } from 'formik';
+import { Form, Formik, FormikHelpers, useFormikContext } from 'formik';
 import FormikSwitch from '@/components/elements/FormikSwitch';
 import createOrUpdateSchedule from '@/api/server/schedules/createOrUpdateSchedule';
 import { ServerContext } from '@/state/server';
@@ -12,8 +13,10 @@ import tw from 'twin.macro';
 import { Button } from '@/components/elements/button/index';
 import ModalContext from '@/context/ModalContext';
 import asModal from '@/hoc/asModal';
-import Switch from '@/components/elements/Switch';
 import ScheduleCheatsheetCards from '@/components/server/schedules/ScheduleCheatsheetCards';
+import CronPreview, { cronIssue } from '@/components/server/schedules/CronPreview';
+import ModalHeading, { SectionLabel } from '@/components/server/schedules/ModalHeading';
+import { CRON_PRESETS } from '@/lib/cron';
 
 interface Props {
     schedule?: Schedule;
@@ -30,13 +33,70 @@ interface Values {
     onlyWhenOnline: boolean;
 }
 
+const PRESET_KEYS = ['minute', 'hour', 'dayOfMonth', 'month', 'dayOfWeek'] as const;
+
+/** A click fills the five fields. The one that matches what is typed is marked. */
+const Presets = () => {
+    const { values, setFieldValue } = useFormikContext<Values>();
+
+    return (
+        <div css={tw`flex flex-wrap gap-2 mb-4`}>
+            {CRON_PRESETS.map((preset) => {
+                const active = PRESET_KEYS.every((k) => values[k].trim() === preset.cron[k]);
+
+                return (
+                    <button
+                        key={preset.label}
+                        type={'button'}
+                        aria-pressed={active}
+                        onClick={() => PRESET_KEYS.forEach((k) => setFieldValue(k, preset.cron[k]))}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30 ${
+                            active
+                                ? 'border-primary-600 bg-primary-50 text-primary-700'
+                                : 'border-neutral-500 bg-white text-neutral-300 hover:border-neutral-400 hover:text-neutral-50'
+                        }`}
+                    >
+                        {preset.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+};
+
+const Footer = ({ editing, isSubmitting }: { editing: boolean; isSubmitting: boolean }) => {
+    const { values } = useFormikContext<Values>();
+    const { dismiss } = useContext(ModalContext);
+    const issue = cronIssue(values);
+
+    return (
+        <div css={tw`mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3`}>
+            <Button.Text
+                type={'button'}
+                variant={Button.Variants.Secondary}
+                onClick={dismiss}
+                css={tw`w-full sm:w-auto`}
+            >
+                Cancel
+            </Button.Text>
+            <Button
+                className={'w-full sm:w-auto'}
+                type={'submit'}
+                disabled={isSubmitting || !!issue}
+                title={issue ?? undefined}
+            >
+                {editing ? 'Save changes' : 'Create schedule'}
+            </Button>
+        </div>
+    );
+};
+
 const EditScheduleModal = ({ schedule }: Props) => {
     const { addError, clearFlashes } = useFlash();
     const { dismiss } = useContext(ModalContext);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const appendSchedule = ServerContext.useStoreActions((actions) => actions.schedules.appendSchedule);
-    const [showCheatsheet, setShowCheetsheet] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -50,11 +110,11 @@ const EditScheduleModal = ({ schedule }: Props) => {
             id: schedule?.id,
             name: values.name,
             cron: {
-                minute: values.minute,
-                hour: values.hour,
-                dayOfWeek: values.dayOfWeek,
-                month: values.month,
-                dayOfMonth: values.dayOfMonth,
+                minute: values.minute.trim(),
+                hour: values.hour.trim(),
+                dayOfWeek: values.dayOfWeek.trim(),
+                month: values.month.trim(),
+                dayOfMonth: values.dayOfMonth.trim(),
             },
             onlyWhenOnline: values.onlyWhenOnline,
             isActive: values.enabled,
@@ -89,58 +149,57 @@ const EditScheduleModal = ({ schedule }: Props) => {
             }
         >
             {({ isSubmitting }) => (
-                <Form>
-                    <h3 css={tw`text-xl mb-6 pr-10`}>{schedule ? 'Edit schedule' : 'Create new schedule'}</h3>
-                    <FlashMessageRender byKey={'schedule:edit'} css={tw`mb-6`} />
-                    <Field
-                        name={'name'}
-                        label={'Schedule name'}
-                        description={'A human readable identifier for this schedule.'}
+                <Form css={tw`m-0`}>
+                    <ModalHeading
+                        icon={<CalendarIcon className={'h-6 w-6'} />}
+                        title={schedule ? 'Edit schedule' : 'New schedule'}
+                        subtitle={'Runs its tasks, one after the other, whenever the time comes.'}
                     />
-                    <div css={tw`grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6`}>
-                        <Field name={'minute'} label={'Minute'} />
-                        <Field name={'hour'} label={'Hour'} />
-                        <Field name={'dayOfMonth'} label={'Day of month'} />
-                        <Field name={'month'} label={'Month'} />
-                        <Field name={'dayOfWeek'} label={'Day of week'} />
-                    </div>
-                    <p css={tw`text-neutral-400 text-xs mt-2`}>
-                        The schedule system supports the use of Cronjob syntax when defining when tasks should begin
-                        running. Use the fields above to specify when these tasks should begin running.
-                    </p>
-                    <div css={tw`mt-6 bg-neutral-900 border border-neutral-500 p-4 rounded-xl`}>
-                        <Switch
-                            name={'show_cheatsheet'}
-                            description={'Show the cron cheatsheet for some examples.'}
-                            label={'Show Cheatsheet'}
-                            defaultChecked={showCheatsheet}
-                            onChange={() => setShowCheetsheet((s) => !s)}
-                        />
-                        {showCheatsheet && (
-                            <div css={tw`block md:flex w-full`}>
+                    <FlashMessageRender byKey={'schedule:edit'} css={tw`mb-6`} />
+                    <Field name={'name'} label={'Name'} placeholder={'Nightly restart'} />
+
+                    <div css={tw`mt-6`}>
+                        <SectionLabel>When</SectionLabel>
+                        <Presets />
+                        <div css={tw`grid grid-cols-2 sm:grid-cols-5 gap-3`}>
+                            <Field name={'minute'} label={'Minute'} description={'0-59'} />
+                            <Field name={'hour'} label={'Hour'} description={'0-23'} />
+                            <Field name={'dayOfMonth'} label={'Day'} description={'1-31'} />
+                            <Field name={'month'} label={'Month'} description={'1-12'} />
+                            <Field name={'dayOfWeek'} label={'Weekday'} description={'0-6, MON-SUN'} />
+                        </div>
+                        <CronPreview />
+                        <details css={tw`mt-3`}>
+                            <summary
+                                css={tw`cursor-pointer text-xs font-medium text-neutral-400 hover:text-neutral-100`}
+                            >
+                                Cron syntax help
+                            </summary>
+                            <div css={tw`mt-3`}>
                                 <ScheduleCheatsheetCards />
                             </div>
-                        )}
+                        </details>
                     </div>
-                    <div css={tw`mt-6 bg-neutral-900 border border-neutral-500 p-4 rounded-xl`}>
-                        <FormikSwitch
-                            name={'onlyWhenOnline'}
-                            description={'Only execute this schedule when the server is in a running state.'}
-                            label={'Only When Server Is Online'}
-                        />
+
+                    <div
+                        css={tw`mt-6 divide-y divide-neutral-500 rounded-xl border border-neutral-500 bg-neutral-700/40`}
+                    >
+                        <div css={tw`p-4`}>
+                            <FormikSwitch
+                                name={'onlyWhenOnline'}
+                                description={'Skip a run while the server is not running.'}
+                                label={'Only when the server is online'}
+                            />
+                        </div>
+                        <div css={tw`p-4`}>
+                            <FormikSwitch
+                                name={'enabled'}
+                                description={'Turn this off to keep the schedule without running it.'}
+                                label={'Enabled'}
+                            />
+                        </div>
                     </div>
-                    <div css={tw`mt-6 bg-neutral-900 border border-neutral-500 p-4 rounded-xl`}>
-                        <FormikSwitch
-                            name={'enabled'}
-                            description={'This schedule will be executed automatically if enabled.'}
-                            label={'Schedule Enabled'}
-                        />
-                    </div>
-                    <div css={tw`mt-6 text-right`}>
-                        <Button className={'w-full sm:w-auto'} type={'submit'} disabled={isSubmitting}>
-                            {schedule ? 'Save changes' : 'Create schedule'}
-                        </Button>
-                    </div>
+                    <Footer editing={!!schedule} isSubmitting={isSubmitting} />
                 </Form>
             )}
         </Formik>
