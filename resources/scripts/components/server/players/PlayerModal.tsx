@@ -9,6 +9,7 @@ import { PlayerHead } from '@/components/server/players/PlayerListCard';
 import PlayerVitals from '@/components/server/players/PlayerVitals';
 import InventoryBoard from '@/components/server/players/InventoryBoard';
 import Adjuster from '@/components/server/players/Adjuster';
+import PlayerModActions from '@/components/server/players/PlayerModActions';
 import styles from '@/components/server/players/PlayerModal.module.css';
 import useServerVersion from '@/components/server/content/useServerVersion';
 import { usePermissions } from '@/plugins/usePermissions';
@@ -161,6 +162,14 @@ export default ({ name, uuid, online, onClose }: Props) => {
                         </p>
                     </div>
                 </div>
+
+                <PlayerModActions
+                    name={name}
+                    online={online}
+                    allowed={canControl}
+                    running={running && !!instance}
+                    send={(command) => instance?.send('send command', command)}
+                />
 
                 {!online ? (
                     <p className={'rounded-lg bg-neutral-600 px-3 py-3 text-sm text-neutral-300'}>

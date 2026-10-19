@@ -2,7 +2,9 @@
 
 namespace Pterodactyl\Http\Controllers\Api\Client;
 
+use Illuminate\Http\Request;
 use Pterodactyl\Models\Server;
+use Pterodactyl\Services\Palette\AdminDestinations;
 use Pterodactyl\Models\Permission;
 use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
@@ -64,6 +66,19 @@ class ClientController extends ClientApiController
         $servers = $builder->paginate(min($request->query('per_page', 50), 100))->appends($request->query());
 
         return $this->fractal->transformWith($transformer)->collection($servers)->toArray();
+    }
+
+    /**
+     * The admin pages and actions the person may open, for the search box. Empty for people who cannot open the admin area.
+     */
+    public function palette(Request $request): array
+    {
+        $user = $request->user();
+
+        return [
+            'object' => 'palette',
+            'attributes' => ['admin' => $user->canAccessAdmin() ? AdminDestinations::for($user) : []],
+        ];
     }
 
     /**

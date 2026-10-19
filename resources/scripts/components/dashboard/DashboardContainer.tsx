@@ -22,6 +22,7 @@ import FolderSection from '@/components/dashboard/FolderSection';
 import FolderNameModal from '@/components/dashboard/FolderNameModal';
 import ConfirmationModal from '@/components/elements/ConfirmationModal';
 import useServerStats from '@/components/dashboard/useServerStats';
+import useServerPlayers from '@/components/dashboard/useServerPlayers';
 import {
     createFolder,
     DashboardLayout,
@@ -107,6 +108,7 @@ export default () => {
     }, [layout]);
 
     const { stats, refresh } = useServerStats(servers ?? []);
+    const players = useServerPlayers(servers ?? [], stats);
 
     useEffect(() => {
         setPage(1);
@@ -196,6 +198,7 @@ export default () => {
             <ServerRow
                 server={server}
                 stats={stats[server.uuid]}
+                players={players[server.uuid]}
                 onRefresh={() => refresh(server.uuid)}
                 organizer={organize ? organizerFor(server) : undefined}
             />

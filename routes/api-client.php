@@ -19,6 +19,7 @@ use Pterodactyl\Http\Middleware\Api\Client\Server\AuthenticateServerAccess;
 */
 Route::get('/', [Client\ClientController::class, 'index'])->name('api:client.index');
 Route::get('/permissions', [Client\ClientController::class, 'permissions']);
+Route::get('/palette', [Client\ClientController::class, 'palette']);
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 
 /*
@@ -31,6 +32,7 @@ Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 */
 Route::prefix('/dashboard')->group(function () {
     Route::get('/', [Client\DashboardLayoutController::class, 'index']);
+    Route::get('/players', [Client\PlayerCountsController::class, 'index'])->middleware('throttle:60,1');
     Route::post('/folders', [Client\DashboardLayoutController::class, 'storeFolder']);
     Route::post('/folders/order', [Client\DashboardLayoutController::class, 'reorder']);
     Route::patch('/folders/{folder}', [Client\DashboardLayoutController::class, 'updateFolder'])->whereNumber('folder');

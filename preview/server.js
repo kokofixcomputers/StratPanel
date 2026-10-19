@@ -142,13 +142,26 @@ api.put('/dashboard/servers/:uuid', (req, res) => {
 });
 api.get('/self-service', (req, res) => res.json({ object: 'self_service', attributes: { enabled: true, can_create: true, max_servers: 3, owned: 1, limits: { memory: 2048, disk: 10240, cpu: 200 }, max: { memory: 8192, disk: 51200, cpu: 400 }, nodes: [{ id: 1, name: 'Frankfurt-1', location: 'fra', description: 'Frankfurt', ping_url: `http://localhost:${PORT}`, memory_free: 16384, disk_free: 200000, free_allocations: 40 }, { id: 2, name: 'Singapore-1', location: 'sgp', description: 'Singapore', ping_url: 'http://10.255.255.1:8080', memory_free: 1024, disk_free: 200000, free_allocations: 10 }, { id: 3, name: 'Dallas-1', location: 'dal', description: 'Dallas', ping_url: `http://127.0.0.1:${PORT}`, memory_free: 8192, disk_free: 90000, free_allocations: 0 }] } }));
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
+api.get('/palette', (req, res) => res.json({ object: 'palette', attributes: { admin: [
+    { id: 'admin:0', label: 'Overview', url: '/admin', kind: 'page', words: 'admin home' },
+    { id: 'admin:1', label: 'Servers', url: '/admin/servers', kind: 'page', words: 'list' },
+    { id: 'admin:2', label: 'Updates', url: '/admin/updates', kind: 'page', words: 'update upgrade' },
+    { id: 'admin:3', label: 'Update the panel', url: '/admin/updates', kind: 'action', words: 'update upgrade install' },
+    { id: 'admin:4', label: 'Restore a panel backup', url: '/admin/updates', kind: 'action', words: 'rollback backups' },
+    { id: 'admin:5', label: 'Create a server', url: '/admin/servers/new', kind: 'action', words: 'new add' },
+] } }));
+api.get('/dashboard/players', (req, res) => {
+    const out = {};
+    String(req.query.servers || '').split(',').forEach((u, i) => { if (u) out[u] = { online: (i * 3 + 2) % 9, max: 20 }; });
+    res.json({ object: 'player_counts', attributes: out });
+});
 api.get('/permissions', (req, res) => res.json({ object: 'system_permissions', attributes: { permissions: {} } }));
 api.get('/account/activity', (req, res) => res.json(paginated([])));
 api.get('/account/api-keys', (req, res) => res.json({ object: 'list', data: [] }));
 api.get('/account/ssh-keys', (req, res) => res.json({ object: 'list', data: [] }));
 api.get('/servers/:id', (req, res) => res.json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 api.get('/servers/:id/websocket', (req, res) => res.json({ data: { token: 'preview-token', socket: `ws://localhost:${PORT}/ws` } }));
-api.get('/servers/:id/resources', (req, res) => res.json({ object: 'stats', attributes: { current_state: state.status, is_suspended: false, resources: { memory_bytes: 0, cpu_absolute: 0, disk_bytes: 201457664, network_rx_bytes: 0, network_tx_bytes: 0, uptime: 0 } } }));
+api.get('/servers/:id/resources', (req, res) => res.json({ object: 'stats', attributes: { current_state: /^c\d/.test(req.params.id) ? 'running' : state.status, is_suspended: false, resources: { memory_bytes: 0, cpu_absolute: 0, disk_bytes: 201457664, network_rx_bytes: 0, network_tx_bytes: 0, uptime: 0 } } }));
 api.get('/servers/:id/activity', (req, res) => res.json(paginated([])));
 
 files['/mods'] = [['sodium-fabric-0.5.0.jar', true, 1200000, 'application/jar'], ['lithium-fabric-0.14.jar', true, 900000, 'application/jar']];

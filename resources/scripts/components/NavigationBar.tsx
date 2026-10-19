@@ -4,7 +4,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { LogoutIcon, ViewGridIcon, AdjustmentsIcon } from '@heroicons/react/outline';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
-import SearchContainer from '@/components/dashboard/search/SearchContainer';
+import CommandPalette from '@/components/palette/CommandPalette';
 import tw from 'twin.macro';
 import styled from 'styled-components/macro';
 import http from '@/api/http';
@@ -85,8 +85,8 @@ export default () => {
                         ))}
                     </div>
                 )}
+                <CommandPalette />
                 <RightNavigation>
-                    <SearchContainer />
                     <Tooltip placement={'bottom'} content={'Dashboard'}>
                         <NavLink to={'/'} exact>
                             <ViewGridIcon />

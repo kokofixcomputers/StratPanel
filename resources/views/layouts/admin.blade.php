@@ -123,6 +123,13 @@
                 </div>
             </aside>
             <div class="content-wrapper">
+                <div class="admin-topbar">
+                    <button type="button" id="admin-search" class="admin-search" aria-label="Search" aria-haspopup="dialog">
+                        <i class="fa fa-search"></i>
+                        <span class="admin-search-text">Search pages, servers and actions...</span>
+                        <kbd class="admin-search-kbd">Ctrl K</kbd>
+                    </button>
+                </div>
                 <section class="content-header">
                     @yield('content-header')
                 </section>
@@ -173,6 +180,11 @@
             {!! Theme::js('vendor/select2/select2.full.min.js?t={cache-version}') !!}
             {!! Theme::js('js/admin/functions.js?t={cache-version}') !!}
             <script src="/js/autocomplete.js" type="application/javascript"></script>
+            <script>
+                window.StratPalette = { admin: {!! json_encode(\Pterodactyl\Services\Palette\AdminDestinations::for(Auth::user())) !!} };
+                if (/Mac|iPhone|iPad/.test(navigator.platform)) { document.querySelector('.admin-search-kbd').textContent = '\u2318K'; }
+            </script>
+            <script src="/js/admin-palette.js?v={{ filemtime(public_path('js/admin-palette.js')) }}" type="application/javascript"></script>
 
             @if(Auth::user()->canAccessAdmin())
                 <script>

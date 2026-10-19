@@ -191,10 +191,13 @@ export default ({
     stats,
     onRefresh,
     organizer,
+    players,
     className,
 }: {
     server: Server;
     stats: ServerStats | undefined;
+    // Who is online, when the server told.
+    players?: { online: number; max: number };
     // Looks at the state of the server again, now.
     onRefresh: () => Promise<unknown>;
     organizer?: RowOrganizer;
@@ -368,6 +371,16 @@ export default ({
                     )
                 ) : (
                     <>
+                        {!players && <div css={tw`w-32 hidden lg:block`} aria-hidden />}
+                        {players && (
+                            <Metric
+                                label={'Players'}
+                                value={`${players.online}/${players.max || '?'}`}
+                                limit={players.online === 1 ? '1 player online' : `${players.online} online`}
+                                alarm={players.max > 0 && players.online >= players.max}
+                                ratio={percent(players.online, players.max)}
+                            />
+                        )}
                         <Metric
                             label={'CPU'}
                             value={`${stats.cpuUsagePercent.toFixed(1)}%`}
