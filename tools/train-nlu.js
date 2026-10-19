@@ -25,7 +25,7 @@ const random = (seed) => () => {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-const SAMPLES = { start: 520, stop: 520, restart: 520, kill: 460, backup: 700, open: 480, page: 760, command: 520, site: 380, theme: 0, none: 0 };
+const SAMPLES = { start: 520, stop: 520, restart: 520, kill: 460, backup: 700, open: 480, page: 1500, command: 520, site: 560, theme: 0, none: 0 };
 
 function generate(rand) {
     const pick = (list) => list[Math.floor(rand() * list.length)];
@@ -71,8 +71,9 @@ function generate(rand) {
         }
     }
     for (let i = 0; i < SAMPLES.page; i++) {
-        const phrase = pick(data.PAGE_PHRASES);
-        const t = phrase.includes('{t}') ? target(0.6) : '';
+        // A good share are questions ("what are the players for lobby"): the ones that sound least like a request.
+        const phrase = rand() < 0.45 ? pick(data.PAGE_QUESTIONS) : pick(data.PAGE_PHRASES);
+        const t = phrase.includes('{t}') ? target(0.75) : '';
         add('page', finish(phrase.replace('{t}', t).replace('{p}', pick(data.PAGE_WORDS))));
     }
     for (let i = 0; i < SAMPLES.command; i++) {
@@ -88,8 +89,11 @@ function generate(rand) {
     for (const phrase of data.NONE_PHRASES) {
         for (let k = 0; k < 3; k++) add('none', k === 0 ? phrase : finish(phrase));
     }
+    for (let i = 0; i < 320; i++) {
+        add('none', finish(pick(data.NONE_TEMPLATES).replace('{t}', target(0.7) || 'my server').replace('{p}', pick(data.PAGE_WORDS))));
+    }
     // Phrases that are only a name, or a name with a few ordinary words.
-    const ordinary = ['the', 'a', 'my', 'is', 'are', 'what', 'how', 'why', 'when', 'good', 'great', 'bad', 'new', 'old', 'big', 'small', 'game', 'play', 'players', 'world', 'time', 'day', 'night', 'fun', 'cool', 'server', 'minecraft', 'about', 'with', 'and', 'or', 'but', 'today', 'tomorrow'];
+    const ordinary = ['the', 'a', 'my', 'is', 'are', 'what', 'how', 'why', 'when', 'good', 'great', 'bad', 'new', 'old', 'big', 'small', 'game', 'play', 'time', 'day', 'night', 'fun', 'cool', 'server', 'minecraft', 'about', 'with', 'and', 'or', 'but', 'today', 'tomorrow'];
     for (let i = 0; i < 260; i++) {
         const n = 1 + Math.floor(rand() * 5);
         const parts = Array.from({ length: n }, () => (rand() < 0.3 ? '_srv_' : pick(ordinary)));

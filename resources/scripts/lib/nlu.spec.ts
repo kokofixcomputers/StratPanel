@@ -274,6 +274,15 @@ describe('pages and places', () => {
         ['check the settings of lobby', { intent: 'page', server: 'Lobby', page: '/settings' }],
         ['view modded fun network', { intent: 'page', server: 'Modded Fun', page: '/network' }],
         ['edit the config files of skyblock', { intent: 'page', server: 'Skyblock', page: '/files' }],
+        ['what are the players for bedwars', { intent: 'page', server: 'Bedwars', page: '/players' }],
+        ['who is online on bedwars', { intent: 'page', server: 'Bedwars', page: '/players' }],
+        ['how many players are on lobby', { intent: 'page', server: 'Lobby', page: '/players' }],
+        ['bedwars players', { intent: 'page', server: 'Bedwars', page: '/players' }],
+        ['players for skyblock', { intent: 'page', server: 'Skyblock', page: '/players' }],
+        ['list the players on survival', { intent: 'page', server: 'Survival SMP', page: '/players' }],
+        ['what are the backups of lobby', { intent: 'page', server: 'Lobby', page: '/backups' }],
+        ['which mods are on skyblock', { intent: 'page', server: 'Skyblock', page: '/mods' }],
+        ['what files does hardcore have', { intent: 'page', server: 'Hardcore', page: '/files' }],
         ['open survival', { intent: 'open', server: 'Survival SMP' }],
         ['go to creative plots', { intent: 'open', server: 'Creative Plots' }],
         ['jump to the lobby server', { intent: 'open', server: 'Lobby' }],
@@ -335,6 +344,9 @@ describe('what it leaves alone', () => {
         'restart your computer',
         'tell me a joke',
         'is my server online',
+        'what are the best plugins for survival',
+        'how do i use mods',
+        'my backups are broken',
     ])('%j', (phrase) => check(phrase, null));
 });
 

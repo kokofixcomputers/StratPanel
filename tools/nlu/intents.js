@@ -66,17 +66,26 @@ const PAGE_PHRASES = [
     'where are the {p} of {t}', 'navigate to {p}', 'take me to {p}', 'edit the {p} of {t}', 'look at the {p} of {t}', 'i need the {p} of {t}', 'open {t} and go to {p}', 'see {p}',
     'show me {p}', 'show me {t} {p}', 'go to {t} then {p}', 'switch to the {p}', 'switch to {p} for {t}',
 ];
+// Questions about what a page holds, asked to be taken there.
+const PAGE_QUESTIONS = [
+    'what are the {p} for {t}', 'what are the {p} of {t}', 'what are {t} {p}', 'what {p} does {t} have', 'what is in the {p} of {t}', 'which {p} are on {t}',
+    'list the {p} of {t}', 'list the {p} on {t}', 'list {p} for {t}', 'who is on {t}', 'who is online on {t}', 'who is playing on {t}', 'how many players are on {t}',
+    'how many players on {t}', 'how many {p} does {t} have', 'where are the {p} for {t}', 'where can i find the {p} of {t}', 'can you show the {p} for {t}',
+    'can i see the {p} of {t}', 'see the {p} of {t}', 'see {p} of {t}', 'see {p} for {t}', '{p} {t}', 'show {t} {p}', "{t}'s {p}", 'the {p} of {t}', 'the {p} for {t}',
+    'what {p} are there on {t}', 'any {p} on {t}', 'check {t} {p}', 'peek at the {p} of {t}', 'have a look at the {p} of {t}', 'what {p} does {t} have installed',
+    'what are the current {p} on {t}', 'give me the {p} of {t}', 'tell me the {p} of {t}', 'which {p} does {t} have', 'show all {p} for {t}', 'what are all the {p} for {t}',
+];
 const PAGE_WORDS = [
     'console', 'logs', 'terminal', 'players', 'player list', 'who is online', 'whitelist', 'versions', 'version', 'software', 'properties', 'server properties', 'motd', 'difficulty',
     'game rules', 'content', 'mods', 'plugins', 'datapacks', 'modrinth', 'worlds', 'seed', 'tools', 'files', 'file manager', 'file editor', 'config files', 'importer', 'databases',
     'database', 'schedules', 'scheduled tasks', 'cron', 'users', 'subusers', 'access', 'backups', 'backup list', 'snapshots', 'network', 'ports', 'allocations', 'domains',
     'subdomain', 'trash', 'recycle bin', 'deleted files', 'startup', 'environment variables', 'java version', 'startup command', 'settings', 'sftp', 'activity', 'activity log', 'audit log',
-    'restore backup', 'restore', 'output', 'editor', 'folders', 'variables', 'ip address',
+    'restore backup', 'restore', 'output', 'editor', 'folders', 'variables', 'ip address', 'players', 'players', 'online players', 'player count', 'players online', 'bans', 'operators',
 ];
 
 const SITE_PHRASES = [
     'go to {s}', 'open {s}', 'take me to {s}', 'show {s}', 'show me {s}', 'i want to see {s}', 'open my {s}', 'go to my {s}', 'open the {s} page', 'jump to {s}', 'navigate to {s}',
-    'bring up {s}', 'where is {s}', 'let me see {s}', 'manage {s}', 'change {s}', 'edit {s}', 'view {s}', 'open up {s}', 'i need {s}', 'take me back to {s}',
+    'go {s}', 'go back {s}', 'go back to {s}', 'back to {s}', 'return to {s}', 'take me {s}', 'bring up {s}', 'where is {s}', 'let me see {s}', 'manage {s}', 'change {s}', 'edit {s}', 'view {s}', 'open up {s}', 'i need {s}', 'take me back to {s}',
 ];
 const SITE_WORDS = [
     'dashboard', 'home', 'home page', 'all my servers', 'server list', 'my servers', 'main page', 'account', 'account settings', 'profile', 'my account', 'change my password',
@@ -115,13 +124,19 @@ const NONE_PHRASES = [
     'best minecraft mods', 'best plugins for survival', 'how many players can join', 'is my server online', 'what is my server ip', 'what version is my server',
     'tell me a joke', 'play some music', 'what is the meaning of life', 'my password is secret', 'i love minecraft', 'minecraft', 'survival', 'creative mode', 'bedwars',
     'skyblock', 'lobby', 'play', 'test', 'asdf', 'qwerty', 'abc', 'lorem ipsum dolor sit amet', 'the quick brown fox', 'nothing', 'something', 'whatever', 'cool', 'nice server',
-    'why is it slow', 'where did my world go', 'when does it restart', 'how long does a backup take', 'can i restart it later', 'did the backup finish', 'who is online',
+    'why is it slow', 'where did my world go', 'when does it restart', 'how long does a backup take', 'can i restart it later', 'did the backup finish', 
     'how do i start', 'how to stop lag', 'what happens when i kill a server', 'is it safe to stop', 'restarting is fun', 'the server is great', 'start menu', 'stop sign',
     'backup plan', 'a backup singer', 'kill time', 'restart your computer', 'reboot the universe', 'create a sandwich', 'make me a coffee', 'open the door', 'close the window',
     'run to the store', 'send a letter', 'back to the future', 'the files are here', 'my account is great', 'dark souls', 'light bulb', 'start a band', 'turn left',
     'install a plugin', 'update minecraft', 'buy a server', 'delete everything', 'format the disk', 'rm rf', 'drop table users', 'sudo make me a sandwich',
 ];
 
+// Talk about the things pages hold, not a request to go there: advice and how-to.
+const NONE_TEMPLATES = [
+    'best {p} for {t}', 'top {p} for {t}', 'good {p} for {t}', 'recommend some {p} for {t}', 'what are the best {p} for {t}', 'cool {p}', 'how to use {p}', 'how do i use {p}',
+    '{p} tutorial', 'what is {p}', 'what are {p}', 'why are my {p} broken', 'my {p} are broken', 'i love {p}', '{p} suck', 'new {p} for {t}', 'favourite {p}', 'which {p} are the best',
+];
+
 module.exports = {
-    TARGETS, NO_TARGETS, POLITE_BEFORE, POLITE_AFTER, VERBS, PAGE_PHRASES, PAGE_WORDS, SITE_PHRASES, SITE_WORDS, COMMANDS, COMMAND_PHRASES, THEME_PHRASES, NONE_PHRASES,
+    NONE_TEMPLATES, TARGETS, NO_TARGETS, POLITE_BEFORE, POLITE_AFTER, VERBS, PAGE_PHRASES, PAGE_QUESTIONS, PAGE_WORDS, SITE_PHRASES, SITE_WORDS, COMMANDS, COMMAND_PHRASES, THEME_PHRASES, NONE_PHRASES,
 };

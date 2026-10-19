@@ -331,7 +331,7 @@
     // The pages of a server (path under /server/<id>) and what people call them, longest names are looked for first.
     var PAGES = [
         ['/', 'Console', ['console', 'logs', 'log', 'terminal', 'output', 'server console']],
-        ['/players', 'Players', ['players', 'player list', 'who is online', 'whitelist', 'operators', 'bans', 'banned players', 'online players']],
+        ['/players', 'Players', ['players', 'player list', 'who is online', 'whitelist', 'operators', 'bans', 'banned players', 'online players', 'players online', 'player count', 'how many players', 'who is on', 'who is playing', 'who is online on', 'who is online']],
         ['/versions', 'Versions', ['versions', 'version', 'minecraft version', 'software', 'server software', 'change version', 'update minecraft']],
         ['/properties', 'Properties', ['properties', 'server properties', 'motd', 'difficulty', 'game mode', 'gamemode', 'game rules', 'gamerules']],
         ['/mods', 'Content', ['content', 'mods', 'plugins', 'datapacks', 'data packs', 'modrinth', 'curseforge', 'mod list', 'plugin list', 'resource packs']],
