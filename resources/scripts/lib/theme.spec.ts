@@ -58,8 +58,8 @@ describe('lib/theme', () => {
         expect(currentTheme()).toBe('dark');
 
         setThemeChoice('system');
-        // "system" is not kept, it is the default.
-        expect(window.localStorage.getItem(THEME_KEY)).toBeNull();
+        // "system" is kept as well, otherwise it would turn into the mode the admin set as the default.
+        expect(window.localStorage.getItem(THEME_KEY)).toBe('system');
         expect(currentTheme()).toBe('light');
         expect(seen).toEqual(['dark', 'system']);
     });

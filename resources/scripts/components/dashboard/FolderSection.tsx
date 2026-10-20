@@ -126,7 +126,7 @@ export default ({
             )}
             {!collapsed &&
                 (count > 0 ? (
-                    <div className={'space-y-3'}>{children}</div>
+                    <div className={'server-list'}>{children}</div>
                 ) : emptyHint ? (
                     <p
                         className={

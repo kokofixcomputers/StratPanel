@@ -5,6 +5,7 @@
  * the wrong theme.
  */
 import { useEffect, useState } from 'react';
+import { pageThemeConfig } from '@/lib/themeConfig';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 export type Theme = 'light' | 'dark';
@@ -17,14 +18,15 @@ const BAR: Record<Theme, string> = { light: '#ffffff', dark: '#141a23' };
 
 const isChoice = (value: unknown): value is ThemeChoice => value === 'system' || value === 'light' || value === 'dark';
 
-/** What the person chose, "system" when they never did (or the browser does not keep it). */
+/** What the person chose; when they never did (or the browser does not keep it) the one the admin set in the theme editor. */
 export const readChoice = (): ThemeChoice => {
+    const fallback = pageThemeConfig().mode;
     try {
         const value = window.localStorage.getItem(THEME_KEY);
 
-        return isChoice(value) ? value : 'system';
+        return isChoice(value) ? value : fallback;
     } catch (e) {
-        return 'system';
+        return fallback;
     }
 };
 
@@ -56,8 +58,8 @@ export const currentTheme = (): Theme => (document.documentElement.classList.con
 /** Remembers a choice and shows it. */
 export const setThemeChoice = (choice: ThemeChoice): void => {
     try {
-        if (choice === 'system') window.localStorage.removeItem(THEME_KEY);
-        else window.localStorage.setItem(THEME_KEY, choice);
+        // "system" is kept too, otherwise it would turn into the mode the admin set as the default.
+        window.localStorage.setItem(THEME_KEY, choice);
     } catch (e) {
         // The theme still changes for this page, it is only not remembered.
     }

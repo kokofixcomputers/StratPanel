@@ -22,6 +22,41 @@ export default createGlobalStyle`
         letter-spacing: -0.005em;
     }
 
+    /* The picture behind the panel from the theme editor (--bg-image), blurred and dimmed with the colour of the page. */
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+    }
+    body::before {
+        background: var(--bg-image, none) center / cover no-repeat;
+        filter: blur(var(--bg-blur, 0px));
+        transform: scale(1.05);
+    }
+    body::after {
+        background: rgb(var(--c-neutral-800) / var(--bg-dim, 0));
+    }
+
+    /* See-through cards (--card-alpha), with what is behind them blurred. */
+    html .bg-white, html .bg-neutral-700 {
+        --tw-bg-opacity: var(--card-alpha, 1);
+        backdrop-filter: blur(var(--card-blur, 0px));
+    }
+
+    /* The servers of the dashboard: one under the other, or side by side. */
+    .server-list {
+        display: grid;
+        grid-template-columns: repeat(var(--server-columns, 1), minmax(0, 1fr));
+        gap: var(--server-gap, 0.75rem);
+    }
+    @media (max-width: 767px) {
+        .server-list {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
     h1, h2, h3, h4, h5, h6 {
         ${tw`font-semibold tracking-tight font-header text-neutral-50`};
     }

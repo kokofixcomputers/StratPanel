@@ -19,6 +19,12 @@ use Pterodactyl\Http\Middleware\Api\Client\Server\AuthenticateServerAccess;
 */
 Route::get('/', [Client\ClientController::class, 'index'])->name('api:client.index');
 Route::get('/permissions', [Client\ClientController::class, 'permissions']);
+Route::prefix('/theme')->middleware('admin.can:settings.branding.update')->group(function () {
+    Route::get('/', [Client\ThemeController::class, 'show']);
+    Route::put('/', [Client\ThemeController::class, 'update']);
+    Route::delete('/', [Client\ThemeController::class, 'destroy']);
+    Route::post('/background', [Client\ThemeController::class, 'background']);
+});
 Route::get('/palette', [Client\ClientController::class, 'palette']);
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 

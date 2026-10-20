@@ -18,6 +18,7 @@ import { iconFor, SoftwareType } from '@/lib/mcjars';
 import sendPowerAction, { PowerSignal } from '@/api/server/sendPowerAction';
 import { httpErrorToHuman } from '@/api/http';
 import { DashboardFolder } from '@/api/dashboardLayout';
+import { useThemeConfig } from '@/lib/themeConfig';
 import DropdownMenu, { DropdownButtonRow } from '@/components/elements/DropdownMenu';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
@@ -44,8 +45,8 @@ const StatusIndicatorBox = styled(GreyRowBox)<{ $status: ServerPowerState | unde
     }
 `;
 
-const Metric = ({ label, value, limit, alarm, ratio }: Record<string, any>) => (
-    <div css={tw`w-32`}>
+const Metric = ({ label, value, limit, alarm, ratio, card }: Record<string, any>) => (
+    <div css={card ? tw`min-w-0` : tw`w-32`}>
         <div css={tw`flex items-baseline justify-between`}>
             <span css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
             <span css={[tw`text-xs font-semibold`, alarm ? tw`text-red-600` : tw`text-neutral-100`]}>{value}</span>
@@ -204,6 +205,7 @@ export default ({
     organizer?: RowOrganizer;
     className?: string;
 }) => {
+    const card = useThemeConfig().layout === 'grid';
     const [busy, setBusy] = useState<PowerSignal | null>(null);
     const [powerError, setPowerError] = useState<string | null>(null);
     const watching = useRef<Timer | null>(null);
@@ -305,7 +307,7 @@ export default ({
                     }}
                 />
             )}
-            <div css={tw`flex items-center col-span-12 sm:col-span-6 lg:col-span-5 min-w-0`}>
+            <div css={[tw`flex items-center col-span-12 min-w-0`, !card && tw`sm:col-span-6 lg:col-span-5`]}>
                 <div className={'icon mr-4 !w-12 !h-12 flex-shrink-0'}>
                     <FontAwesomeIcon icon={faServer} />
                 </div>
@@ -351,7 +353,14 @@ export default ({
                     )}
                 </div>
             </div>
-            <div css={tw`hidden sm:flex col-span-12 sm:col-span-6 lg:col-span-7 items-center justify-end gap-6 pr-4`}>
+            <div
+                css={[
+                    tw`hidden col-span-12`,
+                    card
+                        ? tw`grid grid-cols-2 gap-x-4 gap-y-3 pr-4`
+                        : tw`sm:col-span-6 lg:col-span-7 justify-end gap-6 pr-4`,
+                ]}
+            >
                 {!stats || isSuspended || server.isNodeUnderMaintenance ? (
                     isSuspended ? (
                         badge(
@@ -376,9 +385,10 @@ export default ({
                     )
                 ) : (
                     <>
-                        {!players && <div css={tw`w-32 hidden lg:block`} aria-hidden />}
+                        {!players && !card && <div css={tw`w-32 hidden lg:block`} aria-hidden />}
                         {players && (
                             <Metric
+                                card={card}
                                 label={'Players'}
                                 value={`${players.online}/${players.max || '?'}`}
                                 limit={players.online === 1 ? '1 player online' : `${players.online} online`}
@@ -387,6 +397,7 @@ export default ({
                             />
                         )}
                         <Metric
+                            card={card}
                             label={'CPU'}
                             value={`${stats.cpuUsagePercent.toFixed(1)}%`}
                             limit={cpuLimit}
@@ -394,6 +405,7 @@ export default ({
                             ratio={percent(stats.cpuUsagePercent, server.limits.cpu)}
                         />
                         <Metric
+                            card={card}
                             label={'Memory'}
                             value={bytesToString(stats.memoryUsageInBytes)}
                             limit={memoryLimit}
@@ -401,6 +413,7 @@ export default ({
                             ratio={percent(stats.memoryUsageInBytes, mbToBytes(server.limits.memory))}
                         />
                         <Metric
+                            card={card}
                             label={'Disk'}
                             value={bytesToString(stats.diskUsageInBytes)}
                             limit={diskLimit}
@@ -409,9 +422,11 @@ export default ({
                         />
                     </>
                 )}
-                {powerActions}
+                {!card && powerActions}
             </div>
-            {powerActions && <div css={tw`sm:hidden col-span-12 flex justify-end pr-4`}>{powerActions}</div>}
+            {powerActions && (
+                <div css={[tw`col-span-12 flex justify-end pr-4`, !card && tw`sm:hidden`]}>{powerActions}</div>
+            )}
             <div className={'status-bar'} />
         </StatusIndicatorBox>
     );

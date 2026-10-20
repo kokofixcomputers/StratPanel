@@ -7,6 +7,8 @@ export interface SiteSettings {
     timezone?: string;
     // What the admin set under Settings > Branding, as the server sends it (see parseBranding).
     branding?: unknown;
+    // The look the admin built in the theme editor, null for the default (see lib/themeConfig.ts).
+    theme?: Partial<import('@/lib/themeConfig').ThemeConfig> | null;
     // The browser part of the extensions that are on, see lib/extensions.ts.
     extensions?: import('@/lib/extensions').ExtensionInfo[];
     recaptcha: {

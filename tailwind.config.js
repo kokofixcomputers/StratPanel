@@ -24,8 +24,9 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-                header: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                // --font-sans is set by the theme editor (lib/themeConfig.ts) when an admin picked another font.
+                sans: ['var(--font-sans, "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif)'],
+                header: ['var(--font-sans, "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif)'],
             },
             colors: {
                 ...palette,
@@ -38,18 +39,20 @@ module.exports = {
                 blue,
                 gray,
             },
+            // The corners and shadows can be changed in the theme editor, which sets these variables.
             borderRadius: {
-                DEFAULT: '0.5rem',
-                md: '0.625rem',
-                lg: '0.75rem',
-                xl: '1rem',
-                '2xl': '1.25rem',
+                sm: 'var(--r-sm, 0.125rem)',
+                DEFAULT: 'var(--r, 0.5rem)',
+                md: 'var(--r-md, 0.625rem)',
+                lg: 'var(--r-lg, 0.75rem)',
+                xl: 'var(--r-xl, 1rem)',
+                '2xl': 'var(--r-2xl, 1.25rem)',
             },
             boxShadow: {
-                DEFAULT: '0 1px 2px 0 rgb(15 23 42 / 0.04)',
-                md: '0 2px 6px -1px rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04)',
-                lg: '0 10px 24px -6px rgb(15 23 42 / 0.10), 0 4px 8px -4px rgb(15 23 42 / 0.05)',
-                xl: '0 24px 48px -12px rgb(15 23 42 / 0.22)',
+                DEFAULT: 'var(--shadow, 0 1px 2px 0 rgb(15 23 42 / 0.04))',
+                md: 'var(--shadow-md, 0 2px 6px -1px rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04))',
+                lg: 'var(--shadow-lg, 0 10px 24px -6px rgb(15 23 42 / 0.10), 0 4px 8px -4px rgb(15 23 42 / 0.05))',
+                xl: 'var(--shadow-xl, 0 24px 48px -12px rgb(15 23 42 / 0.22))',
             },
             fontSize: {
                 '2xs': '0.6875rem',

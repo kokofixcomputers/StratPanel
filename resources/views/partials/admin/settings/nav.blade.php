@@ -12,6 +12,10 @@
                     @if(Auth::user()->hasPermission('settings.branding.view'))
                     <li @if($activeTab === 'branding')class="active"@endif><a href="{{ route('admin.settings.branding') }}">Branding</a></li>
                     @endif
+                    @if(Auth::user()->hasPermission('settings.branding.update'))
+                    {{-- The theme editor is a page of the React panel, not of this admin area. --}}
+                    <li><a href="/theme-editor">Theme editor <i class="fa fa-external-link" style="font-size:11px;"></i></a></li>
+                    @endif
                     @if(Auth::user()->hasPermission('settings.authentication.view'))
                     <li @if($activeTab === 'authentication')class="active"@endif><a href="{{ route('admin.settings.authentication') }}">Authentication</a></li>
                     @endif

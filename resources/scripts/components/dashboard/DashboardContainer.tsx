@@ -313,7 +313,7 @@ export default () => {
                 <Pagination data={{ items: shown, pagination: others.data!.pagination }} onPageSelect={setPage}>
                     {({ items }) =>
                         items.length > 0 ? (
-                            <div css={tw`space-y-3`}>{items.map((server) => row(server, false))}</div>
+                            <div className={'server-list'}>{items.map((server) => row(server, false))}</div>
                         ) : (
                             empty
                         )

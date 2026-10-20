@@ -3,7 +3,7 @@
 <script>
     (function () {
         try {
-            var choice = localStorage.getItem('stratosphere:theme');
+            var choice = localStorage.getItem('stratosphere:theme') || @json($themeConfig['mode'] ?? 'system');
             var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
             var root = document.documentElement;
             root.classList.toggle('dark', dark);
@@ -16,3 +16,7 @@
 <style>
     html.dark { background: #0c1017; color-scheme: dark; }
 </style>
+@if(!empty($themeCss))
+    {{-- The look an admin built in the theme editor, checked by Services/Theme/ThemeService.php: only CSS variables. --}}
+    <style id="stratosphere-custom-theme">{!! $themeCss !!}</style>
+@endif

@@ -41,7 +41,8 @@ const inputStyle = css<Props>`
     // Reset to normal styling.
     resize: none;
     ${tw`appearance-none outline-none w-full min-w-0`};
-    ${tw`px-4 py-3 border rounded-lg text-sm transition-all duration-150`};
+    ${tw`px-4 py-3 border text-sm transition-all duration-150`};
+    border-radius: var(--input-radius, var(--r-lg, 0.75rem));
     ${tw`bg-white border-neutral-500 hover:border-neutral-400 text-neutral-100 shadow-none focus:ring-0`};
 
     &::placeholder {
