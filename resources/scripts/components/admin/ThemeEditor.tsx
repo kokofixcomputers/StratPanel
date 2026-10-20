@@ -42,7 +42,6 @@ import {
     DEFAULT_CONFIG,
     FONTS,
     FontChoice,
-    GRADIENTS,
     PRESETS,
     presetConfig,
     ROW_METRICS,
