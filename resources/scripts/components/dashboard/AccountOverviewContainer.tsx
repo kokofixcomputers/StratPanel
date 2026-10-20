@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useStoreState } from 'easy-peasy';
 import { useLocation } from 'react-router-dom';
-import { CalendarIcon, KeyIcon, MailIcon, ShieldCheckIcon } from '@heroicons/react/solid';
+import { CalendarIcon, EyeOffIcon, KeyIcon, MailIcon, ShieldCheckIcon } from '@heroicons/react/solid';
 import { format } from 'date-fns';
 import { ApplicationStore } from '@/state';
 import UpdatePasswordForm from '@/components/dashboard/forms/UpdatePasswordForm';
@@ -12,6 +12,9 @@ import PageHeader from '@/components/elements/PageHeader';
 import SectionCard from '@/components/elements/SectionCard';
 import MessageBox from '@/components/MessageBox';
 import Avatar from '@/components/Avatar';
+import Switch from '@/components/elements/Switch';
+import { usePrivacy } from '@/lib/privacy';
+import Sensitive from '@/components/elements/Sensitive';
 
 const Pill = ({ tone, children }: { tone: 'green' | 'grey' | 'blue'; children: React.ReactNode }) => (
     <span
@@ -31,6 +34,7 @@ const Pill = ({ tone, children }: { tone: 'green' | 'grey' | 'blue'; children: R
 export default () => {
     const { state } = useLocation<undefined | { twoFactorRedirect?: boolean }>();
     const user = useStoreState((s: ApplicationStore) => s.user.data!);
+    const [hidden, setHidden] = usePrivacy();
 
     return (
         <PageContentBlock title={'Account Settings'}>
@@ -57,7 +61,9 @@ export default () => {
                 </span>
                 <div className={'min-w-0 flex-1'}>
                     <p className={'truncate text-xl font-semibold text-neutral-50'}>{user.username}</p>
-                    <p className={'truncate text-sm text-neutral-300'}>{user.email}</p>
+                    <p className={'truncate text-sm text-neutral-300'}>
+                        <Sensitive>{user.email}</Sensitive>
+                    </p>
                     <div className={'mt-2 flex flex-wrap items-center gap-2'}>
                         {user.rootAdmin && <Pill tone={'blue'}>Root admin</Pill>}
                         <Pill tone={user.useTotp ? 'green' : 'grey'}>
@@ -89,6 +95,24 @@ export default () => {
                     flash={'account:password'}
                 >
                     <UpdatePasswordForm />
+                </SectionCard>
+                <SectionCard
+                    className={'lg:col-span-2'}
+                    icon={<EyeOffIcon className={'h-5 w-5'} />}
+                    title={'Hide sensitive information'}
+                    description={'For streaming, screen sharing and screenshots. Only in this browser, off by default.'}
+                    badge={<Pill tone={hidden ? 'green' : 'grey'}>{hidden ? 'On' : 'Off'}</Pill>}
+                >
+                    <Switch
+                        key={String(hidden)}
+                        name={'hide_sensitive'}
+                        label={'Hide sensitive information'}
+                        description={
+                            'Shows IP addresses, the addresses and domains of servers, email addresses, database and SFTP details blurred until you hover over them (or tap them), and replaces addresses in the console and tooltips with dots. Copying still copies the real value.'
+                        }
+                        defaultChecked={hidden}
+                        onChange={(e) => setHidden(e.currentTarget.checked)}
+                    />
                 </SectionCard>
                 <SectionCard
                     className={'lg:col-span-2'}

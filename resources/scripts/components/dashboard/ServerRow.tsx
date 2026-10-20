@@ -11,6 +11,7 @@ import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import tw, { TwStyle } from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 import Spinner from '@/components/elements/Spinner';
+import Sensitive from '@/components/elements/Sensitive';
 import styled from 'styled-components/macro';
 import useServerSoftware from '@/components/dashboard/useServerSoftware';
 import { iconFor, SoftwareType } from '@/lib/mcjars';
@@ -340,7 +341,11 @@ export default ({
                             </>
                         )}
                     </div>
-                    {address && <p css={tw`text-xs font-mono text-neutral-400 truncate mt-0.5`}>{address}</p>}
+                    {address && (
+                        <p css={tw`text-xs font-mono text-neutral-400 truncate mt-0.5`}>
+                            <Sensitive>{address}</Sensitive>
+                        </p>
+                    )}
                     {!!server.description && (
                         <p css={tw`text-sm text-neutral-400 truncate mt-0.5`}>{server.description}</p>
                     )}

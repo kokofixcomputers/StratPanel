@@ -19,6 +19,7 @@ import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
+import Sensitive from '@/components/elements/Sensitive';
 import Modal from '@/components/elements/Modal';
 import Input from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
@@ -67,7 +68,7 @@ export const recordName = (domain: string): string => {
     return labels.length <= 2 ? '@' : labels.slice(0, -2).join('.');
 };
 
-const RecordField = ({ label, value }: { label: string; value: string }) => (
+const RecordField = ({ label, value, sensitive }: { label: string; value: string; sensitive?: boolean }) => (
     <div css={tw`min-w-0`}>
         <p css={tw`text-xs uppercase tracking-wide text-neutral-400 mb-1`}>{label}</p>
         <button
@@ -76,7 +77,7 @@ const RecordField = ({ label, value }: { label: string; value: string }) => (
             onClick={() => copy(value)}
             css={tw`inline-flex max-w-full items-center rounded-lg border border-neutral-500 bg-white px-3 py-1.5 font-mono text-sm text-neutral-50 hover:border-primary-500`}
         >
-            <span css={tw`truncate`}>{value}</span>
+            <span css={tw`truncate`}>{sensitive ? <Sensitive>{value}</Sensitive> : value}</span>
             <ClipboardCopyIcon css={tw`w-3.5 h-3.5 ml-2 flex-shrink-0 text-neutral-400`} />
         </button>
     </div>
@@ -152,13 +153,20 @@ const RecordPanel = ({
                 <>
                     <div css={tw`grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}>
                         <RecordField label={'Type'} value={'A'} />
-                        <RecordField label={'Name / Host'} value={recordName(domain.domain)} />
-                        <RecordField label={'Value / Points to'} value={targetIp || 'the address of this panel'} />
+                        <RecordField label={'Name / Host'} value={recordName(domain.domain)} sensitive />
+                        <RecordField
+                            label={'Value / Points to'}
+                            value={targetIp || 'the address of this panel'}
+                            sensitive
+                        />
                         <RecordField label={'TTL'} value={'Auto (or 300)'} />
                     </div>
                     <p css={tw`mt-3 text-xs text-neutral-400`}>
-                        Full name: <span css={tw`font-mono`}>{domain.domain}</span>. Some providers want the full name
-                        instead of just the host part.
+                        Full name:{' '}
+                        <span css={tw`font-mono`}>
+                            <Sensitive>{domain.domain}</Sensitive>
+                        </span>
+                        . Some providers want the full name instead of just the host part.
                     </p>
                 </>
             )}
@@ -453,11 +461,13 @@ export default () => {
                                     title={'Copy'}
                                     css={tw`block max-w-full text-left text-base font-semibold font-mono text-neutral-50 truncate hover:text-primary-600`}
                                 >
-                                    {d.domain}
+                                    <Sensitive>{d.domain}</Sensitive>
                                 </button>
                                 <p css={tw`flex items-center text-xs text-neutral-400 mt-0.5`}>
                                     <ArrowRightIcon css={tw`w-3.5 h-3.5 mr-1.5`} />
-                                    <span css={tw`font-mono truncate`}>{d.allocation}</span>
+                                    <span css={tw`font-mono truncate`}>
+                                        <Sensitive>{d.allocation}</Sensitive>
+                                    </span>
                                 </p>
                             </div>
                             {proxy && (
@@ -595,7 +605,7 @@ export default () => {
                                 </p>
                                 <div css={tw`flex flex-wrap gap-4`}>
                                     <RecordField label={'Type'} value={'TXT'} />
-                                    <RecordField label={'Name'} value={d.https.dns.name} />
+                                    <RecordField label={'Name'} value={d.https.dns.name} sensitive />
                                     <RecordField label={'Value'} value={d.https.dns.value} />
                                 </div>
                             </div>

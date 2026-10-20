@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DatabaseIcon, EyeIcon, TrashIcon } from '@heroicons/react/outline';
 import Modal from '@/components/elements/Modal';
+import Sensitive, { useHiddenClass } from '@/components/elements/Sensitive';
 import { Form, Formik, FormikHelpers } from 'formik';
 import Field from '@/components/elements/Field';
 import { object, string } from 'yup';
@@ -29,6 +30,7 @@ export default ({ database, className }: Props) => {
     const { addError, clearFlashes } = useFlash();
     const [visible, setVisible] = useState(false);
     const [connectionVisible, setConnectionVisible] = useState(false);
+    const hiddenClass = useHiddenClass();
 
     const appendDatabase = ServerContext.useStoreActions((actions) => actions.databases.appendDatabase);
     const removeDatabase = ServerContext.useStoreActions((actions) => actions.databases.removeDatabase);
@@ -108,17 +110,17 @@ export default ({ database, className }: Props) => {
                 <div>
                     <Label>Endpoint</Label>
                     <CopyOnClick text={database.connectionString}>
-                        <Input type={'text'} readOnly value={database.connectionString} />
+                        <Input type={'text'} readOnly className={hiddenClass} value={database.connectionString} />
                     </CopyOnClick>
                 </div>
                 <div css={tw`mt-6`}>
                     <Label>Connections from</Label>
-                    <Input type={'text'} readOnly value={database.allowConnectionsFrom} />
+                    <Input type={'text'} readOnly className={hiddenClass} value={database.allowConnectionsFrom} />
                 </div>
                 <div css={tw`mt-6`}>
                     <Label>Username</Label>
                     <CopyOnClick text={database.username}>
-                        <Input type={'text'} readOnly value={database.username} />
+                        <Input type={'text'} readOnly className={hiddenClass} value={database.username} />
                     </CopyOnClick>
                 </div>
                 <Can action={'database.view_password'}>
@@ -154,17 +156,23 @@ export default ({ database, className }: Props) => {
                 <div css={tw`ml-8 hidden md:block`}>
                     <p css={tw`text-2xs text-neutral-400 uppercase tracking-wide select-none`}>Endpoint</p>
                     <CopyOnClick text={database.connectionString}>
-                        <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>{database.connectionString}</p>
+                        <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>
+                            <Sensitive>{database.connectionString}</Sensitive>
+                        </p>
                     </CopyOnClick>
                 </div>
                 <div css={tw`ml-8 hidden md:block`}>
                     <p css={tw`text-2xs text-neutral-400 uppercase tracking-wide select-none`}>Connections from</p>
-                    <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>{database.allowConnectionsFrom}</p>
+                    <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>
+                        <Sensitive>{database.allowConnectionsFrom}</Sensitive>
+                    </p>
                 </div>
                 <div css={tw`ml-8 hidden lg:block`}>
                     <p css={tw`text-2xs text-neutral-400 uppercase tracking-wide select-none`}>Username</p>
                     <CopyOnClick text={database.username}>
-                        <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>{database.username}</p>
+                        <p css={tw`mt-1 text-sm font-medium text-neutral-100`}>
+                            <Sensitive>{database.username}</Sensitive>
+                        </p>
                     </CopyOnClick>
                 </div>
                 <div css={tw`ml-8 flex items-center space-x-2`}>

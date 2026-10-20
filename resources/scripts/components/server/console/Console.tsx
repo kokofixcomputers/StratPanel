@@ -44,6 +44,7 @@ import {
 
 import WorldClockPill from '@/components/server/console/WorldClockPill';
 import { currentTheme, Theme, useTheme } from '@/lib/theme';
+import { censorText, privacyOn, usePrivacy } from '@/lib/privacy';
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
 
@@ -219,7 +220,8 @@ export default () => {
             chunks.current[chunks.current.length - 1].text += '\n' + entry.plain;
         }
 
-        terminal.writeln(entry.text, keepPosition);
+        // Addresses in the lines of the log (a player joining shows where from) are hidden while that setting is on.
+        terminal.writeln(privacyOn() ? censorText(entry.text) : entry.text, keepPosition);
     };
 
     /** Keeps the line in the log of the server, and shows it when the filter lets it through. */
@@ -265,6 +267,16 @@ export default () => {
         readLog(serverUuid).forEach((entry) => matchesFilter(filterRef.current, entry.level) && emit(entry));
         if (autoScrollRef.current) terminal.scrollToBottom();
     };
+
+    // What is already on the screen is drawn again when the setting to hide addresses is turned on or off.
+    const [hideSensitive] = usePrivacy();
+    const privacyShown = useRef(hideSensitive);
+    useEffect(() => {
+        if (privacyShown.current === hideSensitive) return;
+        privacyShown.current = hideSensitive;
+        redraw();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hideSensitive]);
 
     const applyFilter = (next: LogFilter) => {
         if (next === filterRef.current) return;

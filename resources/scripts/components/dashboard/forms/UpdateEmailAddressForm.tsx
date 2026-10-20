@@ -1,5 +1,6 @@
 import React from 'react';
 import { Actions, State, useStoreActions, useStoreState } from 'easy-peasy';
+import { useHiddenClass } from '@/components/elements/Sensitive';
 import { Form, Formik, FormikHelpers } from 'formik';
 import * as Yup from 'yup';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
@@ -24,6 +25,7 @@ const schema = (needsPassword: boolean) =>
 
 export default () => {
     const user = useStoreState((state: State<ApplicationStore>) => state.user.data);
+    const hiddenClass = useHiddenClass();
     const updateEmail = useStoreActions((state: Actions<ApplicationStore>) => state.user.updateUserEmail);
 
     const { clearFlashes, addFlash } = useStoreActions((actions: Actions<ApplicationStore>) => actions.flashes);
@@ -63,7 +65,13 @@ export default () => {
                 <React.Fragment>
                     <SpinnerOverlay size={'large'} visible={isSubmitting} />
                     <Form css={tw`m-0`}>
-                        <Field id={'current_email'} type={'email'} name={'email'} label={'Email'} />
+                        <Field
+                            id={'current_email'}
+                            type={'email'}
+                            name={'email'}
+                            label={'Email'}
+                            className={hiddenClass}
+                        />
                         {user!.passwordSet && (
                             <div css={tw`mt-6`}>
                                 <Field

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useHiddenClass } from '@/components/elements/Sensitive';
 import tw from 'twin.macro';
 import { Reorder, useDragControls } from 'framer-motion';
 import {
@@ -96,6 +97,7 @@ const ServerItem = ({
     onChange: (patch: Partial<ProxyServer>) => void;
     onRemove: () => void;
 }) => {
+    const hiddenClass = useHiddenClass();
     const controls = useDragControls();
 
     return (
@@ -163,6 +165,7 @@ const ServerItem = ({
                         value={server.address}
                         placeholder={'127.0.0.1:25566'}
                         aria-label={'Server address'}
+                        className={hiddenClass}
                         css={tw`font-mono`}
                         onChange={(e) => onChange({ address: e.currentTarget.value })}
                     />

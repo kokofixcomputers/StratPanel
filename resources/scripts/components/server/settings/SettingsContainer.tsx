@@ -19,6 +19,7 @@ import WorldManagerBox from '@/components/server/settings/WorldManagerBox';
 import AutoSleepBox from '@/components/server/settings/AutoSleepBox';
 import ExtensionSlot from '@/components/elements/ExtensionSlot';
 import { Button } from '@/components/elements/button/index';
+import { useHiddenClass } from '@/components/elements/Sensitive';
 
 export default () => {
     const username = useStoreState((state) => state.user.data!.username);
@@ -26,6 +27,7 @@ export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const node = ServerContext.useStoreState((state) => state.server.data!.node);
     const sftp = ServerContext.useStoreState((state) => state.server.data!.sftpDetails, isEqual);
+    const hiddenClass = useHiddenClass();
 
     return (
         <ServerContentBlock title={'Settings'}>
@@ -38,13 +40,18 @@ export default () => {
                             <div>
                                 <Label>Server Address</Label>
                                 <CopyOnClick text={`sftp://${ip(sftp.ip)}:${sftp.port}`}>
-                                    <Input type={'text'} value={`sftp://${ip(sftp.ip)}:${sftp.port}`} readOnly />
+                                    <Input
+                                        type={'text'}
+                                        value={`sftp://${ip(sftp.ip)}:${sftp.port}`}
+                                        className={hiddenClass}
+                                        readOnly
+                                    />
                                 </CopyOnClick>
                             </div>
                             <div css={tw`mt-6`}>
                                 <Label>Username</Label>
                                 <CopyOnClick text={`${username}.${id}`}>
-                                    <Input type={'text'} value={`${username}.${id}`} readOnly />
+                                    <Input type={'text'} value={`${username}.${id}`} className={hiddenClass} readOnly />
                                 </CopyOnClick>
                             </div>
                             <div css={tw`mt-6 flex items-center`}>

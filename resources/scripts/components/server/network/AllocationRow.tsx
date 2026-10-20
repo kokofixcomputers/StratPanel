@@ -18,6 +18,7 @@ import DeleteAllocationButton from '@/components/server/network/DeleteAllocation
 import setPrimaryServerAllocation from '@/api/server/network/setPrimaryServerAllocation';
 import getServerAllocations from '@/api/swr/getServerAllocations';
 import { ip } from '@/lib/formatters';
+import Sensitive from '@/components/elements/Sensitive';
 import Code from '@/components/elements/Code';
 
 const Label = styled.label`
@@ -69,12 +70,14 @@ const AllocationRow = ({ allocation }: Props) => {
                     {allocation.alias ? (
                         <CopyOnClick text={allocation.alias}>
                             <Code dark className={'max-w-[11rem] truncate'}>
-                                {allocation.alias}
+                                <Sensitive>{allocation.alias}</Sensitive>
                             </Code>
                         </CopyOnClick>
                     ) : (
                         <CopyOnClick text={ip(allocation.ip)}>
-                            <Code dark>{ip(allocation.ip)}</Code>
+                            <Code dark>
+                                <Sensitive>{ip(allocation.ip)}</Sensitive>
+                            </Code>
                         </CopyOnClick>
                     )}
                 </div>

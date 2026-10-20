@@ -9,6 +9,8 @@ import { FolderOpenIcon, TerminalIcon } from '@heroicons/react/solid';
 import classNames from 'classnames';
 import style from './style.module.css';
 import Avatar from '@/components/Avatar';
+import Sensitive from '@/components/elements/Sensitive';
+import { censor, censorDeep, usePrivacy } from '@/lib/privacy';
 import useLocationHash from '@/plugins/useLocationHash';
 import { getObjectKeys, isObject } from '@/lib/objects';
 
@@ -41,7 +43,8 @@ function wrapProperties(value: unknown): any {
 export default ({ activity, children }: Props) => {
     const { pathTo } = useLocationHash();
     const actor = activity.relationships.actor;
-    const properties = wrapProperties(activity.properties);
+    const [hidden] = usePrivacy();
+    const properties = wrapProperties(hidden ? censorDeep(activity.properties) : activity.properties);
 
     return (
         <div className={'grid grid-cols-10 py-4 border-b-2 border-neutral-500 last:rounded-b last:border-0 group'}>
@@ -53,7 +56,10 @@ export default ({ activity, children }: Props) => {
             <div className={'col-span-10 sm:col-span-9 flex'}>
                 <div className={'flex-1 px-4 sm:px-0'}>
                     <div className={'flex items-center font-medium text-neutral-50'}>
-                        <Tooltip placement={'top'} content={actor?.email || 'System User'}>
+                        <Tooltip
+                            placement={'top'}
+                            content={actor?.email ? (hidden ? censor(actor.email) : actor.email) : 'System User'}
+                        >
                             <span>{actor?.username || 'System'}</span>
                         </Tooltip>
                         <span className={'text-neutral-400'}>&nbsp;&mdash;&nbsp;</span>
@@ -85,7 +91,7 @@ export default ({ activity, children }: Props) => {
                     <div className={'mt-1 flex items-center text-sm'}>
                         {activity.ip && (
                             <span>
-                                {activity.ip}
+                                <Sensitive>{activity.ip}</Sensitive>
                                 <span className={'text-neutral-400'}>&nbsp;|&nbsp;</span>
                             </span>
                         )}
@@ -94,7 +100,9 @@ export default ({ activity, children }: Props) => {
                         </Tooltip>
                     </div>
                 </div>
-                {activity.hasAdditionalMetadata && <ActivityLogMetaButton meta={activity.properties} />}
+                {activity.hasAdditionalMetadata && (
+                    <ActivityLogMetaButton meta={hidden ? censorDeep(activity.properties) : activity.properties} />
+                )}
             </div>
         </div>
     );

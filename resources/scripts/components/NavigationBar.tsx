@@ -15,6 +15,7 @@ import PanelLogo from '@/components/elements/PanelLogo';
 import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
 import ThemeToggle from '@/components/elements/ThemeToggle';
+import PrivacyBadge from '@/components/elements/PrivacyBadge';
 
 const RightNavigation = styled.div`
     ${tw`flex items-center space-x-1`};
@@ -99,6 +100,7 @@ export default () => {
                             </a>
                         </Tooltip>
                     )}
+                    <PrivacyBadge />
                     <ThemeToggle />
                     <Tooltip placement={'bottom'} content={'Account Settings'}>
                         <NavLink to={'/account'}>

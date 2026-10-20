@@ -6,6 +6,7 @@ import EditSubuserModal from '@/components/server/users/EditSubuserModal';
 import Can from '@/components/elements/Can';
 import { useStoreState } from 'easy-peasy';
 import tw from 'twin.macro';
+import Sensitive from '@/components/elements/Sensitive';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 
 interface Props {
@@ -23,7 +24,9 @@ export default ({ subuser }: Props) => {
                 <img css={tw`w-full h-full`} src={`${subuser.image}?s=400`} />
             </div>
             <div css={tw`ml-4 flex-1 overflow-hidden`}>
-                <p css={tw`text-sm font-medium text-neutral-50 truncate`}>{subuser.email}</p>
+                <p css={tw`text-sm font-medium text-neutral-50 truncate`}>
+                    <Sensitive>{subuser.email}</Sensitive>
+                </p>
             </div>
             <div css={tw`ml-4`}>
                 <p css={tw`font-medium text-center`}>

@@ -24,6 +24,7 @@ import {
     ViewListIcon,
 } from '@heroicons/react/solid';
 import CopyOnClick from '@/components/elements/CopyOnClick';
+import Sensitive from '@/components/elements/Sensitive';
 import { ip } from '@/lib/formatters';
 import Can from '@/components/elements/Can';
 import { ServerContext } from '@/state/server';
@@ -159,7 +160,7 @@ export default ({
                                 }
                             >
                                 <span className={'break-all text-center font-mono text-xs text-neutral-100'}>
-                                    {address}
+                                    <Sensitive>{address}</Sensitive>
                                 </span>
                             </button>
                         </CopyOnClick>

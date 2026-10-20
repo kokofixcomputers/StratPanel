@@ -1,4 +1,5 @@
 import React from 'react';
+import Sensitive from '@/components/elements/Sensitive';
 import { Link, matchPath, useLocation } from 'react-router-dom';
 import classNames from 'classnames';
 import { useStoreState } from 'easy-peasy';
@@ -53,7 +54,9 @@ export default () => {
                                 />
                             )}
                         </p>
-                        <p className={'truncate text-xs text-neutral-300'}>{user.email}</p>
+                        <p className={'truncate text-xs text-neutral-300'}>
+                            <Sensitive>{user.email}</Sensitive>
+                        </p>
                     </div>
                 </div>
                 {routes.account

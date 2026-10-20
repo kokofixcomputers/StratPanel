@@ -3,6 +3,7 @@ import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
 import { ServerContext } from '@/state/server';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
 import StatBlock from '@/components/server/console/StatBlock';
+import Sensitive from '@/components/elements/Sensitive';
 import Sparkline from '@/components/server/console/Sparkline';
 import RingGauge from '@/components/server/console/RingGauge';
 import useWebsocketEvent from '@/plugins/useWebsocketEvent';
@@ -147,7 +148,7 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
         <div className={className}>
             <div className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'}>
                 <StatBlock title={'Server IP'} copyOnClick={allocation} subtitle={'Connection address'} mono>
-                    {allocation}
+                    <Sensitive>{allocation}</Sensitive>
                 </StatBlock>
                 <StatBlock
                     title={'CPU Usage'}

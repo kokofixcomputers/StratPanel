@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef } from 'react';
+import Sensitive from '@/components/elements/Sensitive';
 import { Subuser } from '@/state/server/subusers';
 import { Form, Formik } from 'formik';
 import { array, object, string } from 'yup';
@@ -105,9 +106,13 @@ const EditSubuserModal = ({ subuser }: Props) => {
             <Form>
                 <div css={tw`flex justify-between`}>
                     <h2 css={tw`text-2xl`} ref={ref}>
-                        {subuser
-                            ? `${canEditUser ? 'Modify' : 'View'} permissions for ${subuser.email}`
-                            : 'Create new subuser'}
+                        {subuser ? (
+                            <>
+                                {canEditUser ? 'Modify' : 'View'} permissions for <Sensitive>{subuser.email}</Sensitive>
+                            </>
+                        ) : (
+                            'Create new subuser'
+                        )}
                     </h2>
                     <div>
                         <Button type={'submit'} css={tw`w-full sm:w-auto`}>
