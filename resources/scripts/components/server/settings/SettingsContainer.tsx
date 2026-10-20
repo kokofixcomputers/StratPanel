@@ -15,6 +15,7 @@ import CopyOnClick from '@/components/elements/CopyOnClick';
 import { ip } from '@/lib/formatters';
 import DockerImageBox from '@/components/server/settings/DockerImageBox';
 import ServerLimitsBox from '@/components/server/settings/ServerLimitsBox';
+import MoveServerBox from '@/components/server/settings/MoveServerBox';
 import WorldManagerBox from '@/components/server/settings/WorldManagerBox';
 import AutoSleepBox from '@/components/server/settings/AutoSleepBox';
 import ExtensionSlot from '@/components/elements/ExtensionSlot';
@@ -95,6 +96,9 @@ export default () => {
                         <div css={tw`mb-6 md:mb-10`}>
                             <RenameServerBox />
                         </div>
+                    </Can>
+                    <Can action={'file.archive'}>
+                        <MoveServerBox />
                     </Can>
                     <Can action={'settings.reinstall'}>
                         <ReinstallServerBox />

@@ -22,8 +22,8 @@
                     <h3 class="box-title">Import a Server</h3>
                 </div>
                 <div class="box-body">
-                    <p class="text-muted" style="margin-bottom:10px;">Moving a server from another panel? Choose the file made by <em>Export Server</em> on its Manage page. The form below is filled in with its settings, egg, variables and schedules; pick the owner, node and allocation, and create it. Its files are pulled over afterwards with the importer in the server's Jobs tab.</p>
-                    <input type="file" id="importFile" accept=".json,application/json" />
+                    <p class="text-muted" style="margin-bottom:10px;">Moving a server from another panel? Choose the file made by <em>Export with files</em> in the server's Settings (or <em>Export Server</em> on its Manage page). The form below is filled in with its settings, egg, variables and schedules; pick the owner, node and allocation, and create it. If the file has the files in it, put them on the new server afterwards with <em>Import files from an export</em> in its Settings, once it has installed.</p>
+                    <input type="file" id="importFile" accept=".json,.tar.gz,.tgz" />
                     <p id="importResult" class="small" style="margin-top:10px;margin-bottom:0;"></p>
                     <input type="hidden" name="import_document" id="importDocument" value="" />
                 </div>
@@ -354,6 +354,7 @@
     </script>
 
     {!! Theme::js('js/admin/new-server.js?v=20261014') !!}
+    {!! Theme::js('js/admin/stratserver-file.js?v=20261020') !!}
 
     <script type="application/javascript">
         $(document).ready(function() {
@@ -418,11 +419,13 @@
                 const file = this.files[0];
                 if (!file) return;
 
-                const reader = new FileReader();
-                reader.onload = function () {
+                say('Reading the file...', true);
+                readStratserverFile(file, function (bytes) {
+                    say('Reading the file... ' + Math.round(bytes / 1048576) + ' MB', true);
+                }).then(function (contents) {
                     let doc;
                     try {
-                        doc = JSON.parse(reader.result);
+                        doc = JSON.parse(contents);
                     } catch (e) {
                         return say('That is not an export file.', false);
                     }
@@ -476,7 +479,7 @@
                         notes.push('The egg "' + (egg.name || 'unknown') + '" is not on this panel, so pick an egg yourself (import it first under Nests).');
                     }
 
-                    $('#importDocument').val(reader.result);
+                    $('#importDocument').val(contents);
 
                     const finish = function () {
                         say('Filled in from "' + (server.name || 'the file') + '". ' + notes.join(' ') + ' Pick the owner, node and allocation, then create it.', notes.length === 0);
@@ -492,8 +495,9 @@
                     } else {
                         finish();
                     }
-                };
-                reader.readAsText(file);
+                }, function (error) {
+                    say(error.message, false);
+                });
             });
         });
     </script>

@@ -112,4 +112,30 @@ class ServerExportTest extends RoleTestCase
         $this->assertStringContainsString('attachment; filename="survival.stratserver.json"', $response->headers->get('Content-Disposition'));
         $this->assertSame('Survival', $response->json('server.name'));
     }
+
+    public function testTheOwnerGetsTheExportFromTheClientApi(): void
+    {
+        $server = $this->server();
+
+        $this->actingAs($server->user)->getJson('/api/client/servers/' . $server->uuid . '/settings/export')
+            ->assertOk()
+            ->assertJsonPath('format', 'stratosphere-server')
+            ->assertJsonPath('server.name', 'Survival');
+    }
+
+    public function testASubuserCannotExport(): void
+    {
+        $server = $this->server();
+        $subuser = $this->makeUser();
+        \Pterodactyl\Models\Subuser::query()->create(['user_id' => $subuser->id, 'server_id' => $server->id, 'permissions' => ['settings.rename']]);
+
+        $this->actingAs($subuser)->getJson('/api/client/servers/' . $server->uuid . '/settings/export')->assertStatus(400);
+    }
+
+    public function testTheCreatePageLoadsTheImportScripts(): void
+    {
+        $this->actingAs($this->rootAdmin());
+
+        $this->page('/admin/servers/new')->assertOk()->assertSee('Import a Server')->assertSee('stratserver-file.js', false);
+    }
 }

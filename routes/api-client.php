@@ -140,7 +140,7 @@ Route::group([
         Route::delete('/{item}', [Client\Servers\TrashController::class, 'delete']);
     });
 
-    Route::group(['prefix' => '/files', 'middleware' => [\Pterodactyl\Http\Middleware\Api\Client\Server\ProtectTrashFolder::class]], function () {
+    Route::group(['prefix' => '/files', 'middleware' => [Pterodactyl\Http\Middleware\Api\Client\Server\ProtectTrashFolder::class]], function () {
         Route::get('/list', [Client\Servers\FileController::class, 'directory']);
         Route::get('/contents', [Client\Servers\FileController::class, 'contents']);
         Route::get('/download', [Client\Servers\FileController::class, 'download']);
@@ -235,6 +235,7 @@ Route::group([
         Route::post('/rename', [Client\Servers\SettingsController::class, 'rename']);
         Route::post('/reinstall', [Client\Servers\SettingsController::class, 'reinstall']);
         Route::put('/docker-image', [Client\Servers\SettingsController::class, 'dockerImage']);
+        Route::get('/export', Client\Servers\ExportController::class);
         Route::get('/auto-sleep', [Client\Servers\AutoSleepController::class, 'index']);
         Route::put('/auto-sleep', [Client\Servers\AutoSleepController::class, 'update']);
     });
