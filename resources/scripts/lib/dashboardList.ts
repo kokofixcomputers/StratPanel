@@ -102,3 +102,24 @@ export const groupServers = (servers: Server[], layout: DashboardLayout, hideEmp
 
     return [...groups.filter((g) => !hideEmpty || g.servers.length > 0), { folder: null, servers: loose }];
 };
+
+export type DotTone = 'online' | 'offline' | 'other' | 'empty';
+
+export interface FolderSummary {
+    online: number;
+    offline: number;
+    other: number;
+    // The colour of the dot of a folder: green when something runs, amber when something is starting or cannot be reached, red when all are off.
+    tone: DotTone;
+}
+
+/** How many of the servers are online, offline or something else, and the one dot that stands for all of them. */
+export const folderSummary = (servers: Server[], stats: Record<string, ServerStats>): FolderSummary => {
+    const counts = { online: 0, offline: 0, other: 0 };
+    servers.forEach((s) => (counts[statusGroup(s, stats[s.uuid])] += 1));
+
+    return {
+        ...counts,
+        tone: counts.online > 0 ? 'online' : counts.other > 0 ? 'other' : counts.offline > 0 ? 'offline' : 'empty',
+    };
+};

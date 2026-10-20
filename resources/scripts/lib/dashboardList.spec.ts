@@ -4,6 +4,7 @@ import { DashboardLayout, ServerMark } from '@/api/dashboardLayout';
 import {
     filterServers,
     filtersActive,
+    folderSummary,
     groupServers,
     matchesQuery,
     noFilters,
@@ -115,5 +116,25 @@ describe('groupServers', () => {
 
     it('leaves out folders with nothing to show while filtering', () => {
         expect(groupServers([a], layout, true).map((g) => g.folder?.name ?? null)).toEqual(['Survival', null]);
+    });
+});
+
+describe('folderSummary', () => {
+    const a = server('a', 'A');
+    const b = server('b', 'B');
+    const c = server('c', 'C');
+
+    it('counts the servers by state', () => {
+        const summary = folderSummary([a, b, c], { a: stat('running'), b: stat('offline'), c: stat('starting') });
+        expect(summary).toMatchObject({ online: 1, offline: 1, other: 1 });
+    });
+
+    it('picks the dot: green when something runs, amber for something else, red when all are off, grey when empty', () => {
+        expect(folderSummary([a, b], { a: stat('running'), b: stat('offline') }).tone).toBe('online');
+        expect(folderSummary([a, b], { a: stat('starting'), b: stat('offline') }).tone).toBe('other');
+        expect(folderSummary([a, b], { a: stat('offline'), b: stat('offline') }).tone).toBe('offline');
+        expect(folderSummary([], {}).tone).toBe('empty');
+        // A server that was not heard from yet is "other", not offline.
+        expect(folderSummary([a], {}).tone).toBe('other');
     });
 });

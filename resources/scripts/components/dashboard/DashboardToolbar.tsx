@@ -2,6 +2,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { FolderAddIcon, SearchIcon, StarIcon, XIcon } from '@heroicons/react/outline';
 import { ListFilters, noFilters, SortKey, StatusGroup } from '@/lib/dashboardList';
+import { StatusDot } from '@/components/dashboard/FolderViews';
 
 const field =
     'rounded-lg border border-neutral-500 bg-white text-sm text-neutral-50 placeholder-neutral-400 transition-colors focus:border-primary-600 focus:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-600/30';
@@ -106,6 +107,7 @@ export default ({
             <div className={'flex flex-wrap items-center gap-2'}>
                 {STATUSES.map(([value, label]) => (
                     <Chip key={value} active={filters.status === value} onClick={() => set({ status: value })}>
+                        {value !== 'all' && <StatusDot tone={value} className={'mr-1.5'} />}
                         {label}
                     </Chip>
                 ))}

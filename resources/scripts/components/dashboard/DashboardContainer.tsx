@@ -19,6 +19,8 @@ import Announcements from '@/components/dashboard/Announcements';
 import ExtensionSlot from '@/components/elements/ExtensionSlot';
 import DashboardToolbar from '@/components/dashboard/DashboardToolbar';
 import FolderSection from '@/components/dashboard/FolderSection';
+import { FolderCard, FolderChips, FolderEntry, FolderHeader, FolderMenu } from '@/components/dashboard/FolderViews';
+import { useThemeConfig } from '@/lib/themeConfig';
 import FolderNameModal from '@/components/dashboard/FolderNameModal';
 import ConfirmationModal from '@/components/elements/ConfirmationModal';
 import useServerStats from '@/components/dashboard/useServerStats';
@@ -40,6 +42,7 @@ import {
 import {
     filterServers,
     filtersActive,
+    folderSummary,
     groupServers,
     ListFilters,
     noFilters,
@@ -171,6 +174,12 @@ export default () => {
     const [naming, setNaming] = useState<null | { rename?: number; moveServer?: string }>(null);
     const [deleting, setDeleting] = useState<number | null>(null);
     const [dragging, setDragging] = useState<string | null>(null);
+    // For the chip and card styles: the folder that is open (its id, "none" for the servers in no folder, null for the overview).
+    const folderStyle = useThemeConfig().folders.style;
+    const [openFolder, setOpenFolder] = useState<number | 'none' | null>(null);
+    useEffect(() => {
+        if (typeof openFolder === 'number' && !layout.folders.some((f) => f.id === openFolder)) setOpenFolder(null);
+    }, [layout.folders, openFolder]);
 
     const toggleFolder = (id: number) =>
         setCollapsed(collapsed.includes(id) ? collapsed.filter((c) => c !== id) : [...collapsed, id]);
@@ -259,6 +268,90 @@ export default () => {
         </div>
     );
 
+    // The folders as chips or cards: which server is in which folder, and what each folder holds, for the dot and the counts.
+    const folderIdOf = (server: Server): number | null => {
+        const id = marks[server.uuid]?.folder ?? null;
+
+        return id !== null && layout.folders.some((f) => f.id === id) ? id : null;
+    };
+    const folderEntries: FolderEntry[] = layout.folders.map((folder) => {
+        const members = (servers ?? []).filter((s) => folderIdOf(s) === folder.id);
+
+        return { folder, summary: folderSummary(members, stats), total: members.length };
+    });
+    const looseServers = shown.filter((s) => folderIdOf(s) === null);
+    const dropIn = (uuid: string, folder: number | null) => {
+        setDragging(null);
+        if ((marks[uuid]?.folder ?? null) !== folder) mark(uuid, { folder });
+    };
+    const openAt = typeof openFolder === 'number' ? layout.folders.findIndex((f) => f.id === openFolder) : -1;
+    const folderMenu =
+        typeof openFolder === 'number' && openAt >= 0 ? (
+            <FolderMenu
+                name={layout.folders[openAt].name}
+                onRename={() => setNaming({ rename: openFolder })}
+                onDelete={() => setDeleting(openFolder)}
+                onMoveUp={openAt > 0 ? () => shiftFolder(openFolder, -1) : undefined}
+                onMoveDown={openAt < layout.folders.length - 1 ? () => shiftFolder(openFolder, 1) : undefined}
+            />
+        ) : null;
+
+    const folderBody = () => {
+        const list = (items: Server[]) => (
+            <div className={'server-list'}>{items.map((server) => row(server, true))}</div>
+        );
+        // A search or filter looks through everything, whichever folder it is in.
+        if (openFolder === null && filtering) return shown.length > 0 ? list(shown) : empty;
+        if (openFolder === null) {
+            if (folderStyle === 'chips') return shown.length > 0 ? list(shown) : empty;
+            if (folderEntries.length === 0 && looseServers.length === 0) return empty;
+
+            return (
+                <>
+                    <div className={'server-list mb-3'}>
+                        {folderEntries.map((entry) => (
+                            <FolderCard
+                                key={entry.folder.id}
+                                entry={entry}
+                                onOpen={() => setOpenFolder(entry.folder.id)}
+                                onDropServer={(uuid) => dropIn(uuid, entry.folder.id)}
+                            />
+                        ))}
+                    </div>
+                    {looseServers.length > 0 && list(looseServers)}
+                </>
+            );
+        }
+
+        const members = openFolder === 'none' ? looseServers : shown.filter((s) => folderIdOf(s) === openFolder);
+        const entry = folderEntries.find((e) => e.folder.id === openFolder);
+
+        return (
+            <>
+                {folderStyle === 'cards' && (
+                    <FolderHeader
+                        name={openFolder === 'none' ? 'Not in a folder' : entry?.folder.name ?? ''}
+                        summary={entry?.summary}
+                        total={members.length}
+                        onBack={() => setOpenFolder(null)}
+                        menu={folderMenu}
+                    />
+                )}
+                {members.length > 0 ? (
+                    list(members)
+                ) : (
+                    <p
+                        className={
+                            'rounded-xl border border-dashed border-neutral-500 px-4 py-6 text-center text-sm text-neutral-400'
+                        }
+                    >
+                        Nothing here yet. Drag a server onto the folder or use the folder button of a server.
+                    </p>
+                )}
+            </>
+        );
+    };
+
     return (
         <PageContentBlock title={'Dashboard'} showFlashKey={'dashboard'}>
             <Announcements css={tw`mb-6`} />
@@ -307,6 +400,18 @@ export default () => {
                     onNewFolder={() => setNaming({})}
                 />
             )}
+            {servers && folderStyle === 'chips' && !othersMode && (layout.folders.length > 0 || openFolder !== null) && (
+                <div className={'-mt-2 mb-5'}>
+                    <FolderChips
+                        folders={folderEntries}
+                        looseCount={(servers ?? []).filter((s) => folderIdOf(s) === null).length}
+                        open={openFolder}
+                        onOpen={setOpenFolder}
+                        onDropServer={dropIn}
+                        menu={folderMenu}
+                    />
+                </div>
+            )}
             {!servers ? (
                 <Spinner centered size={'large'} />
             ) : othersMode ? (
@@ -321,6 +426,8 @@ export default () => {
                 </Pagination>
             ) : shown.length === 0 && (filtering || servers.length === 0) && layout.folders.length === 0 ? (
                 empty
+            ) : folderStyle !== 'sections' ? (
+                folderBody()
             ) : (
                 <>
                     {shown.length === 0 && filtering && empty}

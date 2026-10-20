@@ -101,6 +101,7 @@ class ThemeController extends ClientApiController
             'config.customGradient.light.*' => ['required', 'string', ...$hex],
             'config.customGradient.dark' => 'required|array|min:2|max:3',
             'config.customGradient.dark.*' => ['required', 'string', ...$hex],
+            'config.folders.style' => ['required', Rule::in(['sections', 'chips', 'cards'])],
             'config.buttonStyle' => ['required', Rule::in(['solid', 'soft', 'outline', 'gradient'])],
             'config.borders' => ['required', Rule::in(['subtle', 'none', 'strong'])],
             'config.pageWidth' => ['required', Rule::in(['narrow', 'normal', 'wide', 'full'])],

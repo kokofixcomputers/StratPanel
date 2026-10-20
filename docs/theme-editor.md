@@ -70,3 +70,13 @@ Login page (fifth round): `login` in the config (`lib/themeConfig.ts`), edited i
 Gradients of your own: pick "Your own" next to the ready made gradients, in the Background section and in the Login page section (both use the
 same one, `customGradient` in the config). It has an angle, 2 or 3 colours, and a separate set of colours for the light and for the dark theme;
 `customGradientCss` writes it, `components/admin/theme/GradientPicker.tsx` edits it.
+
+Folders and status dots: `folders.style` in the config (Dashboard section) is *sections* (each folder a part of the list that folds, the way it was), *chips*
+(folders as chips under the filters, with a dot and a count, a click shows only that folder, "All servers" and "Not in a folder" next to them) or
+*cards* (folders drawn like servers, a click opens the folder with a way back; loose servers follow below). While a search or filter is on, chips and
+cards look through every folder. Servers can be dragged onto a chip or a card. The dot of a folder is green when something in it runs, amber when
+something is starting or cannot be reached, red when all are off (`folderSummary` in `lib/dashboardList.ts`), and the Online / Offline / Other
+filter chips have their own green / red / amber dots (`components/dashboard/FolderViews.tsx`).
+
+The image background of the page needed two fixes: the editor sent the upload as JSON (the client sets that by default, so the server never got the
+picture), and choosing "Image" before a picture existed switched straight back to "None" so the upload never showed.

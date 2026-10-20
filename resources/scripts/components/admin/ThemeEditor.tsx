@@ -145,6 +145,7 @@ export default () => {
     const [dark, setDark] = useState(false);
     const [page, setPage] = useState<PreviewPage>('dashboard');
     const [phone, setPhone] = useState(false);
+    const [pendingImage, setPendingImage] = useState(false);
     const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
@@ -229,7 +230,8 @@ export default () => {
         setError(null);
         const form = new FormData();
         form.append('image', picture);
-        http.post('/api/client/theme/background', form)
+        // The client sends JSON by default, a picture has to go as a form.
+        http.post('/api/client/theme/background', form, { headers: { 'Content-Type': 'multipart/form-data' } })
             .then(({ data }) => done(data.url))
             .catch((e) => setError(httpErrorToHuman(e)))
             .then(() => setWorking(null));
@@ -256,7 +258,8 @@ export default () => {
     const login = config.login;
     const setLogin = (changes: Partial<ThemeConfig['login']>) => set({ login: { ...login, ...changes } });
     const image = config.background.image;
-    const kind = !image ? 'none' : image.startsWith('gradient:') ? 'gradient' : 'image';
+    // "Image" is chosen before there is a picture, so that the upload is there to be used.
+    const kind = image ? (image.startsWith('gradient:') ? 'gradient' : 'image') : pendingImage ? 'image' : 'none';
 
     return (
         <div className={'min-h-screen'}>
@@ -734,6 +737,26 @@ export default () => {
                                     ]}
                                 />
                             </Row>
+                            <Row label={'Folders'}>
+                                <Segmented
+                                    value={config.folders.style}
+                                    onChange={(style) => set({ folders: { style } })}
+                                    options={[
+                                        { value: 'sections', label: 'Sections' },
+                                        { value: 'chips', label: 'Chips' },
+                                        { value: 'cards', label: 'Cards' },
+                                    ]}
+                                />
+                            </Row>
+                            <p className={'text-xs text-neutral-400'}>
+                                {
+                                    {
+                                        sections: 'Every folder is a part of the list that folds.',
+                                        chips: 'Folders are chips next to the filters, a click shows only its servers.',
+                                        cards: 'Folders are cards like servers, a click opens them.',
+                                    }[config.folders.style]
+                                }
+                            </p>
                             <Row label={'Size of a server'}>
                                 <Segmented
                                     value={config.row.size}
@@ -1061,9 +1084,10 @@ export default () => {
                                 <Segmented
                                     value={kind}
                                     onChange={(next) => {
+                                        setPendingImage(next === 'image');
                                         if (next === 'none') setBackground({ image: null });
                                         else if (next === 'gradient') setBackground({ image: 'gradient:mist' });
-                                        else setBackground({ image: kind === 'image' ? image : '' });
+                                        else if (kind !== 'image') setBackground({ image: null });
                                     }}
                                     options={[
                                         { value: 'none', label: 'None' },

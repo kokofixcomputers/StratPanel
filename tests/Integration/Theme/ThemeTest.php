@@ -23,6 +23,7 @@ class ThemeTest extends RoleTestCase
             'console' => ['style' => 'dark', 'brightness' => 80, 'fontSize' => 12],
             'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
             'customGradient' => ['angle' => 120, 'light' => ['#fdf6e3', '#f0e0c0'], 'dark' => ['#101010', '#202030', '#303040']],
+            'folders' => ['style' => 'cards'],
             'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
             'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
             'login' => [
@@ -127,6 +128,7 @@ class ThemeTest extends RoleTestCase
             ['status' => ['success' => 'green']],
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
+            ['folders' => ['style' => 'drawers']],
             ['customGradient' => ['light' => ['#ffffff', 'nope']]],
             ['customGradient' => ['dark' => ['#000000', 'red']]],
             ['customGradient' => ['angle' => 900]],
@@ -186,5 +188,26 @@ class ThemeTest extends RoleTestCase
     {
         $this->get('/auth/login?theme-preview=1')->assertHeader('X-Frame-Options', 'SAMEORIGIN');
         $this->get('/auth/login')->assertHeader('X-Frame-Options', 'DENY');
+    }
+
+    public function testAPictureCanBeUploadedForABackground(): void
+    {
+        $admin = $this->rootAdmin();
+
+        $response = $this->actingAs($admin)->post('/api/client/theme/background', ['image' => \Illuminate\Http\UploadedFile::fake()->image('bg.jpg', 64, 64)], ['Accept' => 'application/json'])->assertOk();
+        $url = $response->json('url');
+
+        try {
+            $this->assertMatchesRegularExpression('#^/branding/background-[a-f0-9]{12}\.jpg$#', $url);
+            $this->assertFileExists(public_path($url));
+            // The address it gives is one the theme accepts, in the CSS and in the settings.
+            $this->assertNotNull(app(ThemeService::class)->sanitize('html:root { --bg-image: url("' . $url . '"); }'));
+            $this->assertTrue(ThemeService::imageAllowed($url));
+        } finally {
+            @unlink(public_path($url));
+        }
+
+        $this->actingAs($admin)->post('/api/client/theme/background', ['image' => \Illuminate\Http\UploadedFile::fake()->create('evil.php', 1, 'application/x-php')], ['Accept' => 'application/json'])->assertStatus(422);
+        $this->actingAs($this->makeUser())->post('/api/client/theme/background', ['image' => \Illuminate\Http\UploadedFile::fake()->image('bg.jpg')], ['Accept' => 'application/json'])->assertForbidden();
     }
 }

@@ -78,6 +78,8 @@ export const customGradientCss = (gradient: CustomGradient, mode: 'light' | 'dar
     return `linear-gradient(${Math.round(gradient.angle)}deg, ${stops.join(', ')})`;
 };
 
+export type FolderStyle = 'sections' | 'chips' | 'cards';
+
 export type LoginLayout = 'card' | 'brand' | 'split' | 'showcase';
 export type LoginBackground = 'none' | 'gradient' | 'image' | 'scan' | 'squares' | 'eggs';
 
@@ -173,6 +175,9 @@ export interface ThemeConfig {
     motion: MotionOptions;
     login: LoginOptions;
     customGradient: CustomGradient;
+    // How the folders of the dashboard are shown: sections one under the other (the way it always was), chips next to the filters, or cards
+    // like servers that are opened by a click.
+    folders: { style: FolderStyle };
     // The navigation of a server: which items there are, in what order, and links of your own.
     sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
     // The servers of the dashboard as a list or as cards side by side.
@@ -230,6 +235,7 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     motion: DEFAULT_MOTION,
     login: DEFAULT_LOGIN,
     customGradient: DEFAULT_CUSTOM_GRADIENT,
+    folders: { style: 'sections' },
     sidebar: { order: [], hidden: [], extra: [] },
     layout: 'list',
     columns: 2,
@@ -347,6 +353,7 @@ export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): T
         motion: { ...DEFAULT_MOTION, ...(given.motion ?? {}) },
         login: { ...DEFAULT_LOGIN, ...(given.login ?? {}) },
         customGradient: { ...DEFAULT_CUSTOM_GRADIENT, ...(given.customGradient ?? {}) },
+        folders: { ...DEFAULT_CONFIG.folders, ...(given.folders ?? {}) },
         row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
         sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
     };

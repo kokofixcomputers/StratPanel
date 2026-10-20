@@ -147,7 +147,7 @@ let themeSaved = { config: null, css: '', attributes: {} };
 api.get('/theme', (req, res) => res.json(themeSaved));
 api.put('/theme', (req, res) => { themeSaved = { config: req.body.config, css: req.body.css || '', attributes: req.body.attributes || {} }; res.json(themeSaved); });
 api.delete('/theme', (req, res) => { themeSaved = { config: null, css: '', attributes: {} }; res.json(themeSaved); });
-api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.jpg' }));
+api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.svg' }));
 api.get('/palette', (req, res) => res.json({ object: 'palette', attributes: { admin: [
     { id: 'admin:0', label: 'Overview', url: '/admin', kind: 'page', words: 'admin home' },
     { id: 'admin:1', label: 'Servers', url: '/admin/servers', kind: 'page', words: 'list' },
@@ -548,6 +548,8 @@ const page = (title, guest = false) => `<!DOCTYPE html><html><head><meta charset
 
 app.use(middleware(webpack(config), { publicPath: '/assets/', writeToDisk: false }));
 const renderAdmin = require('./admin');
+// A picture for the background of the theme editor, as the panel serves from public/branding.
+app.get('/branding/background-demo.svg', (req, res) => res.type('image/svg+xml').send('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="900" cy="250" r="180" fill="#fff" opacity=".35"/></svg>'));
 app.use('/themes', express.static(path.join(root, 'public/themes')));
 app.use('/helper', express.static(path.join(root, 'public/helper')));
 app.use('/tools', express.static(path.join(root, 'public/tools')));
