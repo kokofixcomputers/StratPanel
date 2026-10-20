@@ -160,7 +160,7 @@ export const SERVER_PAGES: [string, string, string | string[] | null][] = [
 
 const PAGE_WORDS: Record<string, string> = {
     '/': 'logs terminal command',
-    '/mods': 'plugins datapacks modrinth curseforge install',
+    '/mods': 'plugins datapacks modrinth curseforge hangar install',
     '/files': 'editor sftp upload folder',
     '/properties': 'server.properties motd gamemode difficulty',
     '/backups': 'snapshot restore download',

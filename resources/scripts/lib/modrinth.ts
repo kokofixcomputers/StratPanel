@@ -132,8 +132,8 @@ export interface ProjectDetails {
     published: string;
     updated: string;
     team: string;
-    // Set for a project that comes from CurseForge instead of Modrinth.
-    source?: 'curseforge';
+    // Set for a project that comes from CurseForge or Hangar instead of Modrinth.
+    source?: 'curseforge' | 'hangar';
     // Its page on the site, and whether the author lets its files be downloaded from somewhere else.
     website_url?: string | null;
     distribution_allowed?: boolean;

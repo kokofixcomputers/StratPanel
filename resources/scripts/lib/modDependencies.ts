@@ -7,6 +7,7 @@ import {
     getProjectVersions,
     getVersion,
     loadersFor,
+    preferredVersion,
     ModrinthProjectInfo,
     ModrinthVersion,
     ProjectKind,
@@ -134,12 +135,12 @@ export const planDependencies = async (
     const loaders = loadersFor(opts.kind, opts.loader);
 
     const best = async (projectId: string, gameVersion: string | undefined) =>
-        (
+        preferredVersion(
             await api.getProjectVersions(projectId, {
                 loaders: loaders.length ? loaders : undefined,
                 gameVersions: gameVersion ? [gameVersion] : undefined,
             })
-        ).find((v) => v.files.length > 0);
+        );
 
     let level: ModrinthVersion[] = [opts.version];
     for (let depth = 0; depth < MAX_DEPTH && level.length && found.length < MAX_TOTAL; depth++) {

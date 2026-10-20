@@ -144,18 +144,26 @@ const Versions = ({
                         {kind !== 'modpack' &&
                             (v.restricted ? (
                                 <a
-                                    href={`${project.website_url || 'https://www.curseforge.com'}/files/${cfNumber(
-                                        v.id
-                                    )}`}
+                                    href={
+                                        curseForge
+                                            ? `${project.website_url || 'https://www.curseforge.com'}/files/${cfNumber(
+                                                  v.id
+                                              )}`
+                                            : v.external_url || project.website_url || '#'
+                                    }
                                     target={'_blank'}
                                     rel={'noopener noreferrer nofollow'}
                                     className={
                                         'inline-flex items-center rounded-lg border border-neutral-500 px-3 py-1.5 text-xs font-medium text-primary-600 no-underline hover:bg-neutral-600'
                                     }
-                                    title={'The author only lets this file be downloaded from CurseForge.'}
+                                    title={
+                                        curseForge
+                                            ? 'The author only lets this file be downloaded from CurseForge.'
+                                            : 'The author hosts this file elsewhere.'
+                                    }
                                 >
                                     <ExternalLinkIcon className={'mr-1.5 h-4 w-4'} />
-                                    On CurseForge
+                                    {curseForge ? 'On CurseForge' : 'Download page'}
                                 </a>
                             ) : (
                                 <Button size={Button.Sizes.Small} disabled={disabled} onClick={() => onInstall(v.id)}>
@@ -515,8 +523,7 @@ export default () => {
                         </Box>
                     )}
                     <p className={'px-1 text-xs text-neutral-400'}>
-                        The information comes from{' '}
-                        {sourceLabel(project.source === 'curseforge' ? 'curseforge' : 'modrinth')}.
+                        The information comes from {sourceLabel(project.source ?? 'modrinth')}.
                     </p>
                 </aside>
             </div>

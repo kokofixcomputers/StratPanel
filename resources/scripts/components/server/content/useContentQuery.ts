@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { ProjectKind } from '@/lib/minecraft';
 import { SortIndex } from '@/lib/modrinth';
-import { hasKind, isSource, SourceId, sortsFor } from '@/lib/contentSource';
+import { fallbackKind, hasKind, isSource, loaderFits, SourceId, sortsFor } from '@/lib/contentSource';
 
 /** What the Content page can show: the Modrinth project types, plus worlds which come from a link or an upload. */
 export type ContentKind = ProjectKind | 'world';
@@ -40,8 +40,8 @@ export const readQuery = (search: string, detectedVersion: string): ContentQuery
     const params = new URLSearchParams(search);
     const source: SourceId = isSource(params.get('s')) ? (params.get('s') as SourceId) : 'modrinth';
     const asked = KINDS.find((k) => k.id === params.get('t'))?.id || 'plugin';
-    // CurseForge has no modpacks here, what it does not have shows the nearest thing that it does.
-    const kind: ContentKind = hasKind(source, asked) ? asked : 'mod';
+    // CurseForge has no modpacks here and Hangar has only plugins: what a site does not have shows the nearest thing that it does.
+    const kind: ContentKind = hasKind(source, asked) ? asked : fallbackKind(source);
     const version = params.get('v');
     const serverSide = params.get('e');
     const sort = params.get('o') as SortIndex;
@@ -52,7 +52,7 @@ export const readQuery = (search: string, detectedVersion: string): ContentQuery
         kind,
         query: params.get('q') || '',
         categories: (params.get('c') || '').split(',').filter(Boolean),
-        loader: params.get('l') || '',
+        loader: loaderFits(source, params.get('l') || '') ? params.get('l') || '' : '',
         version: version === 'all' ? '' : version || detectedVersion,
         serverSide: serverSide === null ? serverSideByDefault(kind) : serverSide === '1',
         sort: sortsFor(source).some((s) => s.id === sort) ? sort : 'relevance',
@@ -82,7 +82,8 @@ export default (detectedVersion: string) => {
                 set('s', patch.source === 'modrinth' ? null : patch.source);
                 // The categories, the loaders and the ways to sort are not the same on both sites.
                 ['c', 'l', 'e', 'o'].forEach((key) => params.delete(key));
-                if (!hasKind(patch.source, kind)) set('t', 'mod');
+                if (!hasKind(patch.source, kind))
+                    set('t', fallbackKind(patch.source) === 'plugin' ? null : fallbackKind(patch.source));
             }
             if (patch.kind !== undefined) {
                 set('t', patch.kind === 'plugin' ? null : patch.kind);

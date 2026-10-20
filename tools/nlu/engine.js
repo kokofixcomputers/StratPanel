@@ -334,7 +334,7 @@
         ['/players', 'Players', ['players', 'player list', 'who is online', 'whitelist', 'operators', 'bans', 'banned players', 'online players', 'players online', 'player count', 'how many players', 'who is on', 'who is playing', 'who is online on', 'who is online']],
         ['/versions', 'Versions', ['versions', 'version', 'minecraft version', 'software', 'server software', 'change version', 'update minecraft']],
         ['/properties', 'Properties', ['properties', 'server properties', 'motd', 'difficulty', 'game mode', 'gamemode', 'game rules', 'gamerules']],
-        ['/mods', 'Content', ['content', 'mods', 'plugins', 'datapacks', 'data packs', 'modrinth', 'curseforge', 'mod list', 'plugin list', 'resource packs']],
+        ['/mods', 'Content', ['content', 'mods', 'plugins', 'datapacks', 'data packs', 'modrinth', 'curseforge', 'hangar', 'mod list', 'plugin list', 'resource packs']],
         ['/worlds', 'Worlds', ['worlds', 'maps', 'seed', 'map']],
         ['/tools', 'Tools', ['tools', 'generators', 'generator']],
         ['/files', 'Files', ['files', 'file manager', 'file browser', 'file editor', 'editor', 'folders', 'file', 'config files']],

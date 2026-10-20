@@ -4,6 +4,7 @@
  */
 import getFileContents from '@/api/server/files/getFileContents';
 import * as curseForge from '@/lib/curseforge';
+import * as hangar from '@/lib/hangar';
 
 export type PropertyType = 'boolean' | 'number' | 'text';
 
@@ -206,8 +207,12 @@ export interface ModrinthVersion {
     changelog?: string | null;
     downloads?: number;
     dependencies?: ModrinthDependency[];
-    // A file from CurseForge that its author only lets be downloaded there: there is nothing to install from here.
+    // A file that its author only lets be downloaded elsewhere (CurseForge's rule, or a plugin of Hangar that is hosted on GitHub): there is
+    // nothing to install from here.
     restricted?: boolean;
+    // Where such a file can be had, when the site says (Hangar does).
+    // eslint-disable-next-line camelcase
+    external_url?: string | null;
 }
 
 const modrinthError = () => new Error('Modrinth could not be reached, please try again in a moment.');
@@ -218,6 +223,7 @@ export const getProjectVersions = async (
     opts: { loaders?: string[]; gameVersions?: string[] } = {}
 ): Promise<ModrinthVersion[]> => {
     if (curseForge.isCurseForgeId(projectId)) return curseForge.getProjectVersions(projectId, opts);
+    if (hangar.isHangarId(projectId)) return hangar.getProjectVersions(projectId, opts);
 
     const params = new URLSearchParams();
     if (opts.loaders?.length) params.set('loaders', JSON.stringify(opts.loaders));
@@ -232,6 +238,7 @@ export const getProjectVersions = async (
 /** One version by its id, which is how a dependency can ask for an exact release. */
 export const getVersion = async (versionId: string): Promise<ModrinthVersion> => {
     if (curseForge.isCurseForgeId(versionId)) return curseForge.getVersion(versionId);
+    if (hangar.isHangarId(versionId)) return hangar.getVersion(versionId);
 
     const response = await fetch(`${API}/version/${versionId}`);
     if (!response.ok) throw modrinthError();
@@ -262,6 +269,20 @@ export const versionRange = (versions: string[]): string => {
     return sorted.length === 1 ? sorted[0] : `${sorted[0]} - ${sorted[sorted.length - 1]}`;
 };
 
+/**
+ * The version to offer first: the newest one that has a file. For a plugin of Hangar, where every build can be published in a snapshot
+ * channel, it is the newest release when there is one: a snapshot is only installed when it is chosen.
+ */
+export const preferredVersion = (versions: ModrinthVersion[]): ModrinthVersion | undefined => {
+    const installable = versions.filter((v) => v.files.length > 0);
+
+    return (
+        (installable[0] && hangar.isHangarId(installable[0].project_id)
+            ? installable.find((v) => v.version_type === 'release')
+            : undefined) || installable[0]
+    );
+};
+
 export const primaryFile = (version: ModrinthVersion): ModrinthFile =>
     version.files.find((file) => file.primary) || version.files[0];
 
@@ -275,7 +296,7 @@ export const findDownload = async (opts: {
         loaders: loadersFor(opts.kind, opts.loader),
         gameVersions: opts.version ? [opts.version] : undefined,
     });
-    const match = versions.find((version) => version.files.length > 0);
+    const match = preferredVersion(versions);
     if (!match) throw new Error('No compatible version was found for this server.');
 
     return {
@@ -320,14 +341,15 @@ export interface ModrinthProjectInfo {
 export const getProjects = async (ids: string[]): Promise<ModrinthProjectInfo[]> => {
     if (!ids.length) return [];
 
-    // Projects of both sites can be in one list (the installed ones), each site is asked for its own.
-    if (ids.some(curseForge.isCurseForgeId)) {
-        const [own, theirs] = await Promise.all([
-            getProjects(ids.filter((id) => !curseForge.isCurseForgeId(id))),
+    // Projects of the sites can be in one list (the installed ones), each site is asked for its own.
+    if (ids.some((id) => curseForge.isCurseForgeId(id) || hangar.isHangarId(id))) {
+        const [own, cf, hg] = await Promise.all([
+            getProjects(ids.filter((id) => !curseForge.isCurseForgeId(id) && !hangar.isHangarId(id))),
             curseForge.getProjects(ids.filter(curseForge.isCurseForgeId)),
+            hangar.getProjects(ids.filter(hangar.isHangarId)),
         ]);
 
-        return [...own, ...theirs];
+        return [...own, ...cf, ...hg];
     }
 
     const response = await fetch(`${API}/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);

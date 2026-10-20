@@ -6,14 +6,14 @@ import useCurseForgeEnabled from '@/components/server/content/useCurseForgeEnabl
 import useServerVersion from '@/components/server/content/useServerVersion';
 
 /**
- * Chooses where the projects come from: Modrinth, or CurseForge. Only there when an admin has added a CurseForge key, and
- * still there when the address asks for CurseForge, so the way back is not lost.
+ * Chooses where the projects come from: Modrinth, Hangar (plugins), or CurseForge. CurseForge is only there when an admin has added a key,
+ * and still there when the address asks for it, so the way back is not lost.
  */
 export default ({ className }: { className?: string }) => {
     const { query, update } = useContentQuery(useServerVersion());
     const enabled = useCurseForgeEnabled();
 
-    if (!enabled && query.source === 'modrinth') return null;
+    const sources = SOURCES.filter((s) => s.id !== 'curseforge' || enabled || query.source === 'curseforge');
 
     return (
         <div
@@ -21,7 +21,7 @@ export default ({ className }: { className?: string }) => {
             role={'group'}
             aria-label={'Source'}
         >
-            {SOURCES.map((source) => (
+            {sources.map((source) => (
                 <button
                     key={source.id}
                     type={'button'}

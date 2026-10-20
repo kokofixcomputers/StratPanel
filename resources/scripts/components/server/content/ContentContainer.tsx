@@ -11,8 +11,7 @@ import Select from '@/components/elements/Select';
 import { Button } from '@/components/elements/button/index';
 import useFlash from '@/plugins/useFlash';
 import { SearchHit, SortIndex } from '@/lib/modrinth';
-import { browsesKind, hasKind, loadTags, searchContent, sortsFor, sourceLabel } from '@/lib/contentSource';
-import { isCurseForgeId } from '@/lib/curseforge';
+import { browsesKind, hasKind, loadTags, searchContent, sortsFor, sourceLabel, sourceOfId } from '@/lib/contentSource';
 import SourceSwitch from '@/components/server/content/SourceSwitch';
 import useCurseForgeEnabled from '@/components/server/content/useCurseForgeEnabled';
 import detectCurrent from '@/components/server/versions/detectCurrent';
@@ -50,7 +49,7 @@ const Pill = ({ active, children, onClick }: { active: boolean; children: React.
     </button>
 );
 
-/** Browse Modrinth or CurseForge in the panel and manage what is installed: results with numbered pages, the filters are in the sidebar. */
+/** Browse Modrinth, Hangar or CurseForge in the panel and manage what is installed: results with numbered pages, the filters are in the sidebar. */
 export default () => {
     const id = ServerContext.useStoreState((state) => state.server.data!.id);
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -320,7 +319,9 @@ export default () => {
                                             to={{
                                                 pathname: `/server/${id}/mods/project/${record.slug}`,
                                                 search: `?t=${record.kind}${
-                                                    isCurseForgeId(record.projectId) ? '&s=curseforge' : ''
+                                                    sourceOfId(record.projectId) === 'modrinth'
+                                                        ? ''
+                                                        : `&s=${sourceOfId(record.projectId)}`
                                                 }`,
                                             }}
                                             className={'flex min-w-0 flex-1 basis-64 items-center gap-4 no-underline'}

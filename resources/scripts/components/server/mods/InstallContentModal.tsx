@@ -14,6 +14,7 @@ import LegacyButton from '@/components/elements/Button';
 import { bytesToString } from '@/lib/formatters';
 import {
     getProjectVersions,
+    preferredVersion,
     getVersion,
     loadersFor,
     ModrinthProject,
@@ -129,7 +130,7 @@ export default ({
                 list = list.filter((v) => v.files.length > 0);
 
                 // The picked version may be one the filters hid, it is added at the top then.
-                let first = list[0]?.id || '';
+                let first = preferredVersion(list)?.id || '';
                 if (versionId) {
                     if (list.some((v) => v.id === versionId)) first = versionId;
                     else {

@@ -10,6 +10,7 @@ import { fingerprint, isCurseForgeEnabled, lookupFingerprints } from '@/lib/curs
 import {
     getProjects,
     getProjectVersions,
+    preferredVersion,
     lookupHashes,
     ModrinthProject,
     ModrinthVersion,
@@ -76,8 +77,14 @@ export default (uuid: string, minecraftVersion: string) => {
                     loaders: record.loaders.length ? record.loaders : undefined,
                     gameVersions: gameVersion ? [gameVersion] : undefined,
                 });
-                const latest = versions.find((v) => v.files.length > 0);
-                if (latest && latest.id !== record.versionId) {
+                const latest = preferredVersion(versions);
+                // What is installed may be newer than what is offered (a snapshot build of a plugin of Hangar): that is not an update.
+                const installed = versions.find((v) => v.id === record.versionId);
+                if (
+                    latest &&
+                    latest.id !== record.versionId &&
+                    !(installed && installed.date_published >= latest.date_published)
+                ) {
                     found[record.projectId] = { versionId: latest.id, versionNumber: latest.version_number };
                 }
             } catch (e) {
@@ -258,7 +265,7 @@ export default (uuid: string, minecraftVersion: string) => {
             loaders: record.loaders.length ? record.loaders : undefined,
             gameVersions: gameVersion ? [gameVersion] : undefined,
         });
-        const latest = versions.find((v) => v.files.length > 0);
+        const latest = preferredVersion(versions);
         if (!latest) throw new Error('No compatible update was found.');
 
         const file = latest.files.find((f) => f.primary) || latest.files[0];
