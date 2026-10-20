@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DRAFT_MESSAGE, PREVIEW_PARAM, READY_MESSAGE } from '@/lib/themePreview';
 import { ThemeConfig } from '@/lib/themeConfig';
 
-export type PreviewPage = 'dashboard' | 'server' | 'account';
+export type PreviewPage = 'dashboard' | 'server' | 'account' | 'login';
 
 /**
  * The real panel in a frame, scaled to fit, that is sent the draft whenever it changes (the panel's side is lib/themePreview.ts). The frame
@@ -25,7 +25,14 @@ export default ({
     const box = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({ width: 0, height: 0 });
 
-    const path = page === 'server' && serverId ? `/server/${serverId}` : page === 'account' ? '/account' : '/';
+    const path =
+        page === 'server' && serverId
+            ? `/server/${serverId}`
+            : page === 'account'
+            ? '/account'
+            : page === 'login'
+            ? '/theme-preview/login'
+            : '/';
     const src = `${path}?${PREVIEW_PARAM}=1`;
 
     const send = useCallback(() => {

@@ -216,6 +216,23 @@ export default createGlobalStyle`
     [data-page-anim='slide'] section {
         animation: page-slide-in 280ms ease-out;
     }
+    @keyframes login-marquee {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+    }
+    @keyframes login-scan {
+        0% { transform: translateX(-40%); }
+        50% { transform: translateX(260%); }
+        100% { transform: translateX(-40%); }
+    }
+    @keyframes login-scan-down {
+        from { top: -2%; }
+        to { top: 102%; }
+    }
+    @keyframes login-twinkle {
+        0%, 100% { opacity: 0.04; }
+        50% { opacity: 0.4; }
+    }
     @keyframes status-pulse {
         0% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.55); }
         70% { box-shadow: 0 0 0 7px rgb(34 197 94 / 0); }

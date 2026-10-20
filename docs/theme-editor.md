@@ -55,3 +55,14 @@ The preview is the real panel (fourth round): `LivePreview.tsx` shows `/?theme-p
 The message is only taken from the parent page of the same origin. A message was used instead of a long `?preview=<data>` address so the preview
 updates live and the address stays short; the frame can be browsed like the real panel. `SetSecurityHeaders` allows framing (`SAMEORIGIN`) only for
 requests that have `theme-preview` in the query, everything else keeps `DENY`.
+
+Login page (fifth round): `login` in the config (`lib/themeConfig.ts`), edited in the section "Login page" (the preview switches to the login page).
+* **Layout** (`components/auth/LoginFormContainer.tsx`, used by every sign in, registration and password screen): *card* (the form in a card in the
+  middle), *brand shell* (one side with the logo, title, tagline and highlights over the background, the form as a card on the other side), *split*
+  (the same, the form side is a plain panel without a card), *showcase* (the background fills the page, the form floats on one side, the title sits
+  at the bottom). The side of the form can be left or right. On phones only the form is shown.
+* **Background** (`components/auth/AuthBackground.tsx`): none, a quiet gradient (light and dark version), your own image (blur and dim), *scanning
+  light* (grid with a band of light and a line sweeping across), *squares* (generated, always the same ones, some fade in and out), *egg banners*
+  (rows of the server software banners sliding past each other). Variables: `--login-gradient`, `--login-image`, `--login-blur`, `--login-dim`.
+* The editor previews it with the real login screen at `/theme-preview/login` (the real `/auth/login` sends signed in people away); it is inert.
+* Public pages get the settings through `SiteConfiguration.theme` and the printed CSS like all other pages.

@@ -5,6 +5,7 @@ import {
     BASE_NEUTRAL,
     buildThemeCss,
     DEFAULT_CONFIG,
+    DEFAULT_LOGIN,
     DEFAULT_MOTION,
     themeAttributes,
     glassOf,
@@ -140,6 +141,30 @@ describe('themeConfig', () => {
         expect(css).toContain('--sidebar-width: 14rem;');
         expect(css).toContain('--heading-weight: 800;');
         expect(css).toContain('--tracking: -0.02em;');
+    });
+
+    it('writes the background of the login pages', () => {
+        const gradient = buildThemeCss(
+            withDefaults({ login: { ...DEFAULT_LOGIN, background: 'gradient', gradient: 'sage' } })
+        );
+        const [light, dark] = gradient.split('html.dark');
+        expect(light).toContain('--login-gradient: linear-gradient(150deg, #f5f8f5');
+        expect(dark).toContain('--login-gradient: linear-gradient(150deg, #0b110e');
+
+        const image = buildThemeCss(
+            withDefaults({
+                login: { ...DEFAULT_LOGIN, background: 'image', image: '/branding/a.jpg', blur: 6, dim: 40 },
+            })
+        );
+        expect(image).toContain('--login-image: url("/branding/a.jpg");');
+        expect(image).toContain('--login-blur: 6px;');
+        expect(image).toContain('--login-dim: 0.4;');
+
+        // Nothing for the layouts and the animated backgrounds that draw themselves, apart from the dimming.
+        expect(
+            buildThemeCss(withDefaults({ login: { ...DEFAULT_LOGIN, layout: 'split', background: 'squares', dim: 0 } }))
+        ).toBe('');
+        expect(buildThemeCss(withDefaults({}))).toBe('');
     });
 
     it('only ever writes custom properties inside the two page blocks', () => {

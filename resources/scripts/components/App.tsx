@@ -20,6 +20,7 @@ import Spinner from '@/components/elements/Spinner';
 const DashboardRouter = lazy(() => import(/* webpackChunkName: "dashboard" */ '@/routers/DashboardRouter'));
 const ServerRouter = lazy(() => import(/* webpackChunkName: "server" */ '@/routers/ServerRouter'));
 const ThemeEditor = lazy(() => import(/* webpackChunkName: "theme-editor" */ '@/components/admin/ThemeEditor'));
+const LoginPreview = lazy(() => import(/* webpackChunkName: "login-preview" */ '@/components/auth/LoginPreview'));
 const AuthenticationRouter = lazy(() => import(/* webpackChunkName: "auth" */ '@/routers/AuthenticationRouter'));
 
 interface ExtendedWindow extends Window {
@@ -87,6 +88,11 @@ const App = () => {
                                     <ServerContext.Provider>
                                         <ServerRouter />
                                     </ServerContext.Provider>
+                                </Spinner.Suspense>
+                            </AuthenticatedRoute>
+                            <AuthenticatedRoute path={'/theme-preview/login'}>
+                                <Spinner.Suspense>
+                                    <LoginPreview />
                                 </Spinner.Suspense>
                             </AuthenticatedRoute>
                             <AuthenticatedRoute path={'/theme-editor'}>

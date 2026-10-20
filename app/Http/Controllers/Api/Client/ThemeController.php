@@ -85,6 +85,17 @@ class ThemeController extends ClientApiController
             'config.row.status' => ['required', Rule::in(['bar', 'dot', 'none'])],
             'config.headingWeight' => ['required', Rule::in([500, 600, 700, 800])],
             'config.tracking' => ['required', Rule::in(['tight', 'normal', 'wide'])],
+            'config.login.layout' => ['required', Rule::in(['card', 'brand', 'split', 'showcase'])],
+            'config.login.side' => ['required', Rule::in(['left', 'right'])],
+            'config.login.background' => ['required', Rule::in(['none', 'gradient', 'image', 'scan', 'squares', 'eggs'])],
+            'config.login.gradient' => ['required', 'string', 'regex:/^[a-z]{1,20}$/'],
+            'config.login.image' => 'nullable|string|max:500',
+            'config.login.blur' => 'required|integer|between:0,40',
+            'config.login.dim' => 'required|integer|between:0,90',
+            'config.login.title' => 'nullable|string|max:60',
+            'config.login.tagline' => 'nullable|string|max:160',
+            'config.login.features' => 'present|array|max:4',
+            'config.login.features.*' => 'string|max:50',
             'config.buttonStyle' => ['required', Rule::in(['solid', 'soft', 'outline', 'gradient'])],
             'config.borders' => ['required', Rule::in(['subtle', 'none', 'strong'])],
             'config.pageWidth' => ['required', Rule::in(['narrow', 'normal', 'wide', 'full'])],
@@ -98,7 +109,7 @@ class ThemeController extends ClientApiController
             'config.motion.pulse' => 'required|boolean',
         ]);
 
-        if (!ThemeService::imageAllowed($data['config']['background']['image'] ?? null)) {
+        if (!ThemeService::imageAllowed($data['config']['background']['image'] ?? null) || !ThemeService::imageAllowed($data['config']['login']['image'] ?? null)) {
             throw new DisplayException('That background picture address is not allowed, use an upload or an https address.');
         }
 

@@ -8,6 +8,7 @@ import {
     ColorSwatchIcon,
     CursorClickIcon,
     LightningBoltIcon,
+    LockClosedIcon,
     MenuAlt2Icon,
     PhotographIcon,
     RefreshIcon,
@@ -92,6 +93,12 @@ const SECTIONS: {
     },
     { id: 'sidebar', label: 'Server sidebar', description: 'Reorder, hide or add links, width', icon: ServerIcon },
     { id: 'console', label: 'Console', description: 'Colours, brightness and size of the text', icon: TerminalIcon },
+    {
+        id: 'login',
+        label: 'Login page',
+        description: 'Layout, background and message of the sign in pages',
+        icon: LockClosedIcon,
+    },
     { id: 'background', label: 'Background', description: 'Quiet gradients or your own picture', icon: PhotographIcon },
 ];
 
@@ -139,9 +146,10 @@ export default () => {
     const [page, setPage] = useState<PreviewPage>('dashboard');
     const [phone, setPhone] = useState(false);
     const [serverId, setServerId] = useState<string | null>(null);
-    const [section, setSection] = useState('presets');
+    const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
     const file = useRef<HTMLInputElement>(null);
+    const loginFile = useRef<HTMLInputElement>(null);
 
     // A server of the admin's own for the preview of the server pages.
     useEffect(() => {
@@ -176,6 +184,12 @@ export default () => {
     if (!config || !saved)
         return error ? <p className={'p-10 text-center text-red-600'}>{error}</p> : <Spinner size={'large'} centered />;
 
+    // The login section shows the login page in the preview, the others bring the dashboard back.
+    const setSection = (id: string) => {
+        setSectionState(id);
+        if (id === 'login') setPage('login');
+        else if (page === 'login') setPage('dashboard');
+    };
     const set = (changes: Partial<ThemeConfig>) => setConfig({ ...config, ...changes, preset: null });
     const setBackground = (changes: Partial<ThemeConfig['background']>) =>
         setConfig({ ...config, background: { ...config.background, ...changes }, preset: null });
@@ -196,20 +210,27 @@ export default () => {
 
     const save = () =>
         run('save', () =>
-            http.put('/api/client/theme', { config, css: buildThemeCss(config), attributes: themeAttributes(config) })
+            http.put('/api/client/theme', {
+                config: {
+                    ...config,
+                    login: { ...config.login, features: config.login.features.filter((f) => f.trim() !== '') },
+                },
+                css: buildThemeCss(config),
+                attributes: themeAttributes(config),
+            })
         );
     const reset = () => {
         if (window.confirm('Go back to the default look? Your uploaded pictures stay on the server.'))
             run('reset', () => http.delete('/api/client/theme'));
     };
 
-    const upload = (picture: File) => {
+    const upload = (picture: File, done: (url: string) => void = (url) => setBackground({ image: url })) => {
         setWorking('upload');
         setError(null);
         const form = new FormData();
         form.append('image', picture);
         http.post('/api/client/theme/background', form)
-            .then(({ data }) => setBackground({ image: data.url }))
+            .then(({ data }) => done(data.url))
             .catch((e) => setError(httpErrorToHuman(e)))
             .then(() => setWorking(null));
     };
@@ -232,6 +253,8 @@ export default () => {
             },
         });
 
+    const login = config.login;
+    const setLogin = (changes: Partial<ThemeConfig['login']>) => set({ login: { ...login, ...changes } });
     const image = config.background.image;
     const kind = !image ? 'none' : image.startsWith('gradient:') ? 'gradient' : 'image';
 
@@ -854,6 +877,194 @@ export default () => {
                                 />
                             </Row>
                         </Group>
+                        <Group id={'login'}>
+                            <Row label={'Layout'}>
+                                <Segmented
+                                    value={login.layout}
+                                    onChange={(layout) => setLogin({ layout })}
+                                    options={[
+                                        { value: 'card', label: 'Card' },
+                                        { value: 'brand', label: 'Brand shell' },
+                                        { value: 'split', label: 'Split' },
+                                        { value: 'showcase', label: 'Showcase' },
+                                    ]}
+                                />
+                            </Row>
+                            <p className={'text-xs text-neutral-400'}>
+                                {
+                                    {
+                                        card: 'The form in a card in the middle of the page.',
+                                        brand: 'One side says who you are, the form is a card on the other.',
+                                        split: 'The same, but the form is a plain panel, not a card.',
+                                        showcase: 'The background fills the page, the form floats on one side.',
+                                    }[login.layout]
+                                }
+                            </p>
+                            {login.layout !== 'card' && (
+                                <Row label={'Form on the'}>
+                                    <Segmented
+                                        value={login.side}
+                                        onChange={(side) => setLogin({ side })}
+                                        options={[
+                                            { value: 'left', label: 'Left' },
+                                            { value: 'right', label: 'Right' },
+                                        ]}
+                                    />
+                                </Row>
+                            )}
+                            <Row label={'Background'}>
+                                <Segmented
+                                    value={login.background}
+                                    onChange={(background) => setLogin({ background })}
+                                    options={[
+                                        { value: 'none', label: 'None' },
+                                        { value: 'gradient', label: 'Gradient' },
+                                        { value: 'image', label: 'Image' },
+                                        { value: 'scan', label: 'Scanning light' },
+                                        { value: 'squares', label: 'Squares' },
+                                        { value: 'eggs', label: 'Egg banners' },
+                                    ]}
+                                />
+                            </Row>
+                            {login.background === 'gradient' && (
+                                <div className={'grid grid-cols-3 gap-2'}>
+                                    {Object.entries(GRADIENTS).map(([id, gradient]) => (
+                                        <button
+                                            key={id}
+                                            type={'button'}
+                                            onClick={() => setLogin({ gradient: id })}
+                                            className={classNames(
+                                                'h-12 rounded-lg border-2 text-xs font-medium text-neutral-100',
+                                                login.gradient === id ? 'border-primary-600' : 'border-neutral-500'
+                                            )}
+                                            style={{ background: dark ? gradient.dark : gradient.light }}
+                                        >
+                                            {gradient.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {login.background === 'image' && (
+                                <div className={'space-y-2'}>
+                                    <input
+                                        ref={loginFile}
+                                        type={'file'}
+                                        accept={'image/png,image/jpeg,image/webp,image/gif'}
+                                        className={'hidden'}
+                                        onChange={(e) => {
+                                            const picture = e.currentTarget.files?.[0];
+                                            e.currentTarget.value = '';
+                                            if (picture) upload(picture, (url) => setLogin({ image: url }));
+                                        }}
+                                    />
+                                    <Button.Text
+                                        type={'button'}
+                                        onClick={() => loginFile.current?.click()}
+                                        disabled={working !== null}
+                                    >
+                                        <UploadIcon className={'mr-1.5 h-4 w-4'} />
+                                        {working === 'upload' ? 'Uploading...' : 'Upload a picture'}
+                                    </Button.Text>
+                                    <input
+                                        type={'text'}
+                                        value={login.image ?? ''}
+                                        placeholder={'Or an https:// address'}
+                                        onChange={(e) => setLogin({ image: e.currentTarget.value.trim() || null })}
+                                        className={
+                                            'w-full rounded-lg border border-neutral-500 bg-white px-3 py-1.5 text-sm text-neutral-100'
+                                        }
+                                    />
+                                    <Row label={'Blur the picture'}>
+                                        <Slider
+                                            value={login.blur}
+                                            min={0}
+                                            max={40}
+                                            unit={'px'}
+                                            onChange={(blur) => setLogin({ blur })}
+                                        />
+                                    </Row>
+                                </div>
+                            )}
+                            {['image', 'scan', 'squares', 'eggs'].includes(login.background) && (
+                                <Row label={'Dim it with the page colour'}>
+                                    <Slider
+                                        value={login.dim}
+                                        min={0}
+                                        max={90}
+                                        unit={'%'}
+                                        onChange={(dim) => setLogin({ dim })}
+                                    />
+                                </Row>
+                            )}
+                            {login.layout !== 'card' && (
+                                <>
+                                    <Row label={'Title (the name of the panel when empty)'}>
+                                        <input
+                                            type={'text'}
+                                            value={login.title ?? ''}
+                                            maxLength={60}
+                                            onChange={(e) => setLogin({ title: e.currentTarget.value })}
+                                            className={
+                                                'w-full rounded-lg border border-neutral-500 bg-white px-3 py-1.5 text-sm text-neutral-100'
+                                            }
+                                        />
+                                    </Row>
+                                    <Row label={'Tagline'}>
+                                        <textarea
+                                            value={login.tagline ?? ''}
+                                            maxLength={160}
+                                            rows={2}
+                                            onChange={(e) => setLogin({ tagline: e.currentTarget.value })}
+                                            className={
+                                                'w-full rounded-lg border border-neutral-500 bg-white px-3 py-1.5 text-sm text-neutral-100'
+                                            }
+                                        />
+                                    </Row>
+                                    <Row label={'Highlights (up to 4)'}>
+                                        <div className={'space-y-2'}>
+                                            {login.features.map((feature, i) => (
+                                                <div key={i} className={'flex gap-2'}>
+                                                    <input
+                                                        type={'text'}
+                                                        value={feature}
+                                                        maxLength={50}
+                                                        onChange={(e) =>
+                                                            setLogin({
+                                                                features: login.features.map((f, at) =>
+                                                                    at === i ? e.currentTarget.value : f
+                                                                ),
+                                                            })
+                                                        }
+                                                        className={
+                                                            'flex-1 rounded-lg border border-neutral-500 bg-white px-3 py-1.5 text-sm text-neutral-100'
+                                                        }
+                                                    />
+                                                    <button
+                                                        type={'button'}
+                                                        className={'text-xs text-primary-600'}
+                                                        onClick={() =>
+                                                            setLogin({
+                                                                features: login.features.filter((_, at) => at !== i),
+                                                            })
+                                                        }
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {login.features.length < 4 && (
+                                                <Button.Text
+                                                    type={'button'}
+                                                    onClick={() => setLogin({ features: [...login.features, ''] })}
+                                                >
+                                                    Add a highlight
+                                                </Button.Text>
+                                            )}
+                                        </div>
+                                    </Row>
+                                </>
+                            )}
+                        </Group>
                         <Group id={'background'}>
                             <Row label={'Background'}>
                                 <Segmented
@@ -954,6 +1165,7 @@ export default () => {
                                 { value: 'dashboard', label: 'Dashboard' },
                                 ...(serverId ? [{ value: 'server' as const, label: 'Server page' }] : []),
                                 { value: 'account', label: 'Account' },
+                                { value: 'login', label: 'Login page' },
                             ]}
                         />
                         <div className={'flex gap-2'}>

@@ -57,6 +57,42 @@ export const DEFAULT_MOTION: MotionOptions = {
     pulse: false,
 };
 
+export type LoginLayout = 'card' | 'brand' | 'split' | 'showcase';
+export type LoginBackground = 'none' | 'gradient' | 'image' | 'scan' | 'squares' | 'eggs';
+
+/** The sign in, registration and password pages. */
+export interface LoginOptions {
+    // card: the form in a card in the middle. brand: one side shows who you are, the form is a card on the other. split: the same without
+    // the card, the form side is a plain panel. showcase: the background fills the page, the form floats on one side of it.
+    layout: LoginLayout;
+    // The side the form is on (not for the card layout).
+    side: 'left' | 'right';
+    background: LoginBackground;
+    // The id of one of GRADIENTS, for the gradient background.
+    gradient: string;
+    // A path of this panel or an https address, for the image background.
+    image: string | null;
+    blur: number;
+    dim: number;
+    // What the brand and showcase layouts say, empty keeps the name of the panel and says nothing more.
+    title: string;
+    tagline: string;
+    features: string[];
+}
+
+export const DEFAULT_LOGIN: LoginOptions = {
+    layout: 'card',
+    side: 'right',
+    background: 'none',
+    gradient: 'mist',
+    image: null,
+    blur: 0,
+    dim: 35,
+    title: '',
+    tagline: '',
+    features: [],
+};
+
 export interface SidebarExtra {
     id: string;
     label: string;
@@ -114,6 +150,7 @@ export interface ThemeConfig {
     // The server sidebar without its own card.
     sidebarFlat: boolean;
     motion: MotionOptions;
+    login: LoginOptions;
     // The navigation of a server: which items there are, in what order, and links of your own.
     sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
     // The servers of the dashboard as a list or as cards side by side.
@@ -169,6 +206,7 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     sidebarWidth: 'normal',
     sidebarFlat: false,
     motion: DEFAULT_MOTION,
+    login: DEFAULT_LOGIN,
     sidebar: { order: [], hidden: [], extra: [] },
     layout: 'list',
     columns: 2,
@@ -284,6 +322,7 @@ export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): T
         },
         console: { ...DEFAULT_CONSOLE, ...(given.console ?? {}) },
         motion: { ...DEFAULT_MOTION, ...(given.motion ?? {}) },
+        login: { ...DEFAULT_LOGIN, ...(given.login ?? {}) },
         row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
         sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
     };
@@ -617,6 +656,19 @@ export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE):
         if (config.background.blur > 0) common['--bg-blur'] = `${config.background.blur}px`;
         if (config.background.dim > 0) common['--bg-dim'] = String(config.background.dim / 100);
     }
+
+    // The background of the sign in pages: a gradient for each theme, or a picture, with how much it is blurred and dimmed.
+    const login = config.login;
+    if (login.background === 'gradient' && GRADIENTS[login.gradient]) {
+        light['--login-gradient'] = GRADIENTS[login.gradient].light;
+        dark['--login-gradient'] = GRADIENTS[login.gradient].dark;
+    }
+    if (login.background === 'image' && login.image) {
+        common['--login-image'] = `url("${login.image}")`;
+        if (login.blur > 0) common['--login-blur'] = `${login.blur}px`;
+    }
+    if (login.dim > 0 && ['image', 'scan', 'squares', 'eggs'].includes(login.background))
+        common['--login-dim'] = String(login.dim / 100);
 
     const glass = glassOf(config);
     if (glass.glass > 0) {

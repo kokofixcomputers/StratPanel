@@ -24,6 +24,10 @@ class ThemeTest extends RoleTestCase
             'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
             'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
             'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
+            'login' => [
+                'layout' => 'brand', 'side' => 'left', 'background' => 'eggs', 'gradient' => 'mist', 'image' => null, 'blur' => 0, 'dim' => 30,
+                'title' => 'Welcome to Koko Hosting', 'tagline' => 'Minecraft servers in a minute.', 'features' => ['Instant setup', 'Daily backups'],
+            ],
             'motion' => ['buttonHover' => 'lift', 'buttonPress' => 'squish', 'cardHover' => 'glow', 'speed' => 'fast', 'page' => 'slide', 'pulse' => true],
             'sidebar' => [
                 'order' => ['/files', 'extra:abcd1234'], 'hidden' => ['/import'],
@@ -122,6 +126,11 @@ class ThemeTest extends RoleTestCase
             ['status' => ['success' => 'green']],
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
+            ['login' => ['layout' => 'wizard']],
+            ['login' => ['background' => 'fireworks']],
+            ['login' => ['features' => ['a', 'b', 'c', 'd', 'e']]],
+            ['login' => ['title' => str_repeat('x', 80)]],
+            ['login' => ['gradient' => 'Bad Gradient!']],
             ['motion' => ['buttonHover' => 'explode']],
             ['row' => ['size' => 'gigantic']],
             ['pageWidth' => 'huge'],
@@ -129,6 +138,7 @@ class ThemeTest extends RoleTestCase
             $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);
         }
 
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['login' => ['image' => 'http://x.example/a.png']]), 'css' => ''])->assertStatus(400);
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => ''])->assertOk();
     }
 
