@@ -17,6 +17,21 @@
 <form action="{{ route('admin.servers.new') }}" method="POST">
     <div class="row">
         <div class="col-xs-12">
+            <div class="box box-info" id="importBox">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Import a Server</h3>
+                </div>
+                <div class="box-body">
+                    <p class="text-muted" style="margin-bottom:10px;">Moving a server from another panel? Choose the file made by <em>Export Server</em> on its Manage page. The form below is filled in with its settings, egg, variables and schedules; pick the owner, node and allocation, and create it. Its files are pulled over afterwards with the importer in the server's Jobs tab.</p>
+                    <input type="file" id="importFile" accept=".json,application/json" />
+                    <p id="importResult" class="small" style="margin-top:10px;margin-bottom:0;"></p>
+                    <input type="hidden" name="import_document" id="importDocument" value="" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12">
             <div class="box">
                 <div class="box-header with-border">
                     <h3 class="box-title">Core Details</h3>
@@ -390,6 +405,96 @@
                 // END Persist 'Egg' select2
             @endif
             // END Persist 'Nest' select2
+        });
+    </script>
+    <script type="application/javascript">
+        // Fill the form from the file made by "Export Server" (here or on another panel).
+        $(document).ready(function () {
+            const say = function (text, ok) {
+                $('#importResult').text(text).css('color', ok ? '#00a65a' : '#dd4b39');
+            };
+
+            $('#importFile').on('change', function () {
+                const file = this.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function () {
+                    let doc;
+                    try {
+                        doc = JSON.parse(reader.result);
+                    } catch (e) {
+                        return say('That is not an export file.', false);
+                    }
+                    if (!doc || doc.format !== 'stratosphere-server' || !doc.server) {
+                        return say('That is not an export file from Stratosphere.', false);
+                    }
+
+                    const server = doc.server, limits = server.limits || {}, features = server.feature_limits || {};
+                    const notes = [];
+                    const set = function (id, value) {
+                        if (value !== null && value !== undefined) $(id).val(value);
+                    };
+
+                    set('#pName', server.name);
+                    set('#pDescription', server.description);
+                    set('#pMemory', limits.memory);
+                    set('#pSwap', limits.swap);
+                    set('#pDisk', limits.disk);
+                    set('#pIO', limits.io);
+                    set('#pCPU', limits.cpu);
+                    set('#pThreads', limits.threads);
+                    set('#pDatabaseLimit', features.databases);
+                    set('#pAllocationLimit', features.allocations);
+                    set('#pBackupLimit', features.backups);
+                    $('#pOomDisabled').prop('checked', !server.oom_disabled);
+                    $('#pSkipScripting').prop('checked', !!server.skip_scripts);
+
+                    // The egg: by its uuid, else by its name.
+                    let found = null;
+                    const egg = doc.egg || {};
+                    $.each(Pterodactyl.nests, function (nestId, nest) {
+                        $.each(nest.eggs, function (eggId, item) {
+                            if (egg.uuid && item.uuid === egg.uuid) found = { nest: nest.id, egg: item.id };
+                            else if (!found && egg.name && item.name === egg.name) found = { nest: nest.id, egg: item.id };
+                        });
+                    });
+
+                    if (found) {
+                        $('#pNestId').val(found.nest).change();
+                        $('#pEggId').val(found.egg).change();
+                        $.each(doc.environment || {}, function (key, value) {
+                            $('input[name="environment[' + key + ']"]').val(value);
+                        });
+                        if (server.startup) $('#pStartup').val(server.startup);
+                        if (server.image) {
+                            const known = $('#pDefaultContainer option').filter(function () { return this.value === server.image; });
+                            if (known.length) $('#pDefaultContainer').val(server.image);
+                            else $('#pDefaultContainerCustom').val(server.image);
+                        }
+                    } else {
+                        notes.push('The egg "' + (egg.name || 'unknown') + '" is not on this panel, so pick an egg yourself (import it first under Nests).');
+                    }
+
+                    $('#importDocument').val(reader.result);
+
+                    const finish = function () {
+                        say('Filled in from "' + (server.name || 'the file') + '". ' + notes.join(' ') + ' Pick the owner, node and allocation, then create it.', notes.length === 0);
+                    };
+
+                    if (server.owner_email) {
+                        $.ajax({ url: '/admin/users/accounts.json', dataType: 'json', data: { filter: { email: server.owner_email } } }).then(function (users) {
+                            const user = (users || []).filter(function (u) { return u.email.toLowerCase() === server.owner_email.toLowerCase(); })[0];
+                            if (user) initUserIdSelect([user]);
+                            else notes.push('There is no user with the email ' + server.owner_email + ' here, so pick the owner yourself.');
+                            finish();
+                        }, finish);
+                    } else {
+                        finish();
+                    }
+                };
+                reader.readAsText(file);
+            });
         });
     </script>
 @endsection

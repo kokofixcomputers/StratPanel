@@ -177,6 +177,7 @@ Route::group(['prefix' => 'servers'], function () {
         Route::get('/view/{server:id}/domains', [Admin\Servers\ServerDomainsController::class, 'index'])->name('admin.servers.view.domains')->middleware('admin.can:servers.view');
     });
 
+    Route::get('/view/{server:id}/export', Admin\Servers\ServerExportController::class)->name('admin.servers.view.export')->middleware('admin.can:servers.view');
     Route::get('/view/{server:id}/manage', [Admin\Servers\ServerViewController::class, 'manage'])->name('admin.servers.view.manage')->middleware('admin.can:servers.view');
     Route::get('/view/{server:id}/delete', [Admin\Servers\ServerViewController::class, 'delete'])->name('admin.servers.view.delete')->middleware('admin.can:servers.delete');
 

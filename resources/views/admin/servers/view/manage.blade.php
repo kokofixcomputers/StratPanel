@@ -95,6 +95,19 @@
             </div>
         @endif
 
+        <div class="col-sm-4">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Export Server</h3>
+                </div>
+                <div class="box-body">
+                    <p>Download this server as a file: its settings, egg, variables and schedules. Choose it on the <em>Create Server</em> page of another panel to make the same server there, then pull the files over with the importer in the Jobs tab.</p>
+                </div>
+                <div class="box-footer">
+                    <a href="{{ route('admin.servers.view.export', $server->id) }}" class="btn btn-primary">Export Server</a>
+                </div>
+            </div>
+        </div>
         @if(is_null($server->transfer))
             <div class="col-sm-4">
                 <div class="box box-success">

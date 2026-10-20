@@ -11,6 +11,7 @@ use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Repositories\Eloquent\NestRepository;
 use Pterodactyl\Repositories\Eloquent\NodeRepository;
+use Pterodactyl\Services\Servers\ServerImportService;
 use Pterodactyl\Http\Requests\Admin\ServerFormRequest;
 use Pterodactyl\Services\Servers\ServerCreationService;
 
@@ -24,6 +25,7 @@ class CreateServerController extends Controller
         private NestRepository $nestRepository,
         private NodeRepository $nodeRepository,
         private ServerCreationService $creationService,
+        private ServerImportService $importService,
     ) {
     }
 
@@ -69,7 +71,7 @@ class CreateServerController extends Controller
      */
     public function store(ServerFormRequest $request): RedirectResponse
     {
-        $data = $request->except(['_token']);
+        $data = $request->except(['_token', 'import_document']);
         if (!empty($data['custom_image'])) {
             $data['image'] = $data['custom_image'];
             unset($data['custom_image']);
@@ -77,7 +79,12 @@ class CreateServerController extends Controller
 
         $server = $this->creationService->handle($data);
 
+        $schedules = $this->importService->restoreSchedules($server, $request->input('import_document'));
+
         $this->alert->success(trans('admin/server.alerts.server_created'))->flash();
+        if ($schedules > 0) {
+            $this->alert->info($schedules . ' schedule(s) from the export file were added to the server.')->flash();
+        }
 
         return new RedirectResponse('/admin/servers/view/' . $server->id);
     }
