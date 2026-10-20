@@ -55,7 +55,7 @@ export default () => {
     };
 
     return (
-        <div className={'w-full bg-white border-b border-neutral-500'}>
+        <div className={'app-nav w-full bg-white border-b border-neutral-500'}>
             <SpinnerOverlay visible={isLoggingOut} fixed />
             <div className={'mx-auto w-full flex items-center h-14 max-w-[1280px] px-4'}>
                 <div id={'logo'} className={'flex-1'}>
@@ -87,7 +87,7 @@ export default () => {
                     </div>
                 )}
                 <CommandPalette />
-                <RightNavigation>
+                <RightNavigation className={'nav-right'}>
                     <Tooltip placement={'bottom'} content={'Dashboard'}>
                         <NavLink to={'/'} exact>
                             <ViewGridIcon />

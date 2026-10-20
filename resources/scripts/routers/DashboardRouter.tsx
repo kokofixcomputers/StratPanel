@@ -19,7 +19,7 @@ export default () => {
         <>
             <NavigationBar />
             {isAccount && (
-                <SubNavigation className={'lg:hidden'}>
+                <SubNavigation className={'app-subnav lg:hidden'}>
                     <div>
                         {routes.account
                             .filter((route) => !!route.name)

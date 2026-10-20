@@ -25,6 +25,15 @@ class ThemeController extends ClientApiController
     public function update(Request $request): JsonResponse
     {
         $hex = ['regex:/^#[0-9a-fA-F]{6}$/'];
+        $nullableHex = ['nullable', 'string', ...$hex];
+        $surface = [];
+        foreach (['light', 'dark'] as $mode) {
+            foreach (['page', 'card', 'border', 'text', 'muted'] as $part) {
+                $surface["config.surface.$mode.$part"] = $nullableHex;
+            }
+        }
+        $url = ['required', 'string', 'max:300', 'regex:#^(/(?!/)|https?://)[^\s<>"\']*$#'];
+
         $data = $request->validate([
             'config' => 'required|array',
             'config.accent' => ['required', 'string', ...$hex],
@@ -44,6 +53,32 @@ class ThemeController extends ClientApiController
             'config.background.blur' => 'required|integer|between:0,40',
             'config.background.dim' => 'required|integer|between:0,90',
             'config.preset' => 'nullable|string|max:40',
+            'config.chrome' => ['required', Rule::in(['attached', 'floating'])],
+            'config.nav' => ['required', Rule::in(['tint', 'solid', 'line'])],
+            'config.material' => ['required', Rule::in(['frosted', 'subtle', 'custom', 'off'])],
+            'config.status.success' => $nullableHex,
+            'config.status.danger' => $nullableHex,
+            'config.status.warning' => $nullableHex,
+            ...$surface,
+            'config.radiusCustom' => 'nullable|integer|between:0,40',
+            'config.fontScale' => 'required|integer|between:85,125',
+            'config.console.style' => ['required', Rule::in(['match', 'dark'])],
+            'config.console.brightness' => 'required|integer|between:30,100',
+            'config.console.fontSize' => 'required|integer|between:10,20',
+            'config.row.metrics' => 'present|array|max:6',
+            'config.row.metrics.*' => ['distinct', Rule::in(['players', 'cpu', 'memory', 'disk', 'uptime', 'network'])],
+            'config.row.address' => 'required|boolean',
+            'config.row.description' => 'required|boolean',
+            'config.sidebar.order' => 'present|array|max:80',
+            'config.sidebar.order.*' => ['string', 'max:60', 'regex:#^[A-Za-z0-9/:_-]+$#'],
+            'config.sidebar.hidden' => 'present|array|max:80',
+            'config.sidebar.hidden.*' => ['string', 'max:60', 'regex:#^[A-Za-z0-9/_-]+$#'],
+            'config.sidebar.extra' => 'present|array|max:20',
+            'config.sidebar.extra.*.id' => ['required', 'string', 'regex:/^[a-z0-9]{4,20}$/'],
+            'config.sidebar.extra.*.label' => 'required|string|min:1|max:40',
+            'config.sidebar.extra.*.url' => $url,
+            'config.sidebar.extra.*.newTab' => 'required|boolean',
+            'config.sidebar.extra.*.group' => ['required', Rule::in(['Server', 'Minecraft', 'Manage', 'Configuration', 'More'])],
             'css' => 'present|nullable|string|max:30000',
         ]);
 

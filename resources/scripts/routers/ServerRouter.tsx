@@ -126,7 +126,7 @@ export default () => {
             ) : (
                 <>
                     <CSSTransition timeout={150} classNames={'fade'} appear in>
-                        <SubNavigation className={'lg:hidden'}>
+                        <SubNavigation className={'app-subnav lg:hidden'}>
                             <div>
                                 {serverRoutes
                                     .filter((route) => !!route.name)

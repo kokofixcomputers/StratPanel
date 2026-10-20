@@ -1,344 +1,69 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { ArrowLeftIcon, RefreshIcon, UploadIcon } from '@heroicons/react/solid';
+import { ArrowDownIcon, ArrowLeftIcon, ArrowUpIcon, RefreshIcon, UploadIcon } from '@heroicons/react/solid';
 import http, { httpErrorToHuman } from '@/api/http';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
 import { Options } from '@/components/elements/button/types';
+import { ColorField, Group, OptionalColor, Row, Segmented, Slider, Toggle } from '@/components/admin/theme/controls';
+import SidebarEditor from '@/components/admin/theme/SidebarEditor';
+import ThemePreview from '@/components/admin/theme/ThemePreview';
 import {
-    ButtonStyle,
+    BASE_NEUTRAL,
     buildThemeCss,
     FONTS,
     FontChoice,
     GRADIENTS,
     PRESETS,
     presetConfig,
-    RadiusStyle,
-    ShadowStyle,
+    ROW_METRICS,
+    RowMetric,
+    SurfaceColors,
     ThemeConfig,
     withDefaults,
 } from '@/lib/themeConfig';
 
-const PREVIEW_SCOPE = { common: '.tp', light: '.tp.theme-light', dark: '.tp.dark' };
-const SWATCHES = ['#1447e6', '#0891b2', '#16a34a', '#ca8a04', '#ea580c', '#e11d48', '#c026d3', '#7c3aed', '#111827'];
-
-// ---- small controls ---------------------------------------------------------------------------------------------------------------
-
-const Group = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
-    <section className={'border-b border-neutral-500 px-5 py-4 last:border-b-0'}>
-        <h3 className={'text-sm font-semibold text-neutral-50'}>{title}</h3>
-        {hint && <p className={'mt-0.5 text-xs text-neutral-400'}>{hint}</p>}
-        <div className={'mt-3 space-y-3'}>{children}</div>
-    </section>
-);
-
-const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div>
-        <p className={'mb-1.5 text-xs font-medium uppercase tracking-wide text-neutral-400'}>{label}</p>
-        {children}
-    </div>
-);
-
-function Segmented<T extends string | number>({
-    value,
-    options,
-    onChange,
-}: {
-    value: T;
-    options: { value: T; label: string }[];
-    onChange: (value: T) => void;
-}) {
-    return (
-        <div className={'flex flex-wrap gap-1.5'}>
-            {options.map((option) => (
-                <button
-                    key={String(option.value)}
-                    type={'button'}
-                    onClick={() => onChange(option.value)}
-                    className={classNames(
-                        'rounded-lg border px-3 py-1.5 text-sm transition-colors',
-                        option.value === value
-                            ? 'border-primary-600 bg-primary-50 font-medium text-primary-700'
-                            : 'border-neutral-500 text-neutral-300 hover:bg-neutral-600'
-                    )}
-                >
-                    {option.label}
-                </button>
-            ))}
-        </div>
-    );
-}
-
-const ColorField = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
-    const [text, setText] = useState(value);
-    useEffect(() => setText(value), [value]);
-
-    return (
-        <div className={'flex items-center gap-2'}>
-            <input
-                type={'color'}
-                value={value}
-                onChange={(e) => onChange(e.currentTarget.value)}
-                className={'h-9 w-12 cursor-pointer rounded-lg border border-neutral-500 bg-transparent p-0.5'}
-                aria-label={'Pick a colour'}
-            />
-            <input
-                type={'text'}
-                value={text}
-                maxLength={7}
-                spellCheck={false}
-                onChange={(e) => {
-                    setText(e.currentTarget.value);
-                    if (/^#[0-9a-fA-F]{6}$/.test(e.currentTarget.value)) onChange(e.currentTarget.value.toLowerCase());
-                }}
-                className={
-                    'w-28 rounded-lg border border-neutral-500 bg-white px-3 py-1.5 font-mono text-sm text-neutral-100'
-                }
-            />
-        </div>
-    );
-};
-
-const Slider = ({
-    value,
-    min,
-    max,
-    unit,
-    onChange,
-}: {
-    value: number;
-    min: number;
-    max: number;
-    unit: string;
-    onChange: (value: number) => void;
-}) => (
-    <div className={'flex items-center gap-3'}>
-        <input
-            type={'range'}
-            min={min}
-            max={max}
-            value={value}
-            onChange={(e) => onChange(Number(e.currentTarget.value))}
-            className={'h-1.5 flex-1 cursor-pointer accent-primary-600'}
-        />
-        <span className={'w-14 text-right font-mono text-xs text-neutral-300'}>
-            {value}
-            {unit}
-        </span>
-    </div>
-);
-
-// ---- the preview ------------------------------------------------------------------------------------------------------------------
-
-const Meter = ({ label, value, ratio, card }: { label: string; value: string; ratio: number; card: boolean }) => (
-    <div className={card ? 'min-w-[5rem] flex-1' : 'w-28'}>
-        <div className={'flex items-baseline justify-between'}>
-            <span className={'text-2xs uppercase tracking-wide text-neutral-400'}>{label}</span>
-            <span className={'text-xs font-semibold text-neutral-100'}>{value}</span>
-        </div>
-        <div className={'mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-600'}>
-            <div className={'h-full rounded-full bg-primary-600'} style={{ width: `${ratio}%` }} />
-        </div>
-    </div>
-);
-
-const SERVERS = [
-    { name: 'Survival SMP', address: 'play.example.com:25565', state: 'running', cpu: 34, memory: 62, players: 7 },
-    { name: 'Creative plots', address: 'play.example.com:25566', state: 'running', cpu: 12, memory: 41, players: 2 },
-    { name: 'Bedwars', address: 'play.example.com:25567', state: 'offline', cpu: 0, memory: 0, players: 0 },
-    { name: 'Lobby', address: 'play.example.com:25568', state: 'running', cpu: 5, memory: 20, players: 11 },
+const SWATCHES = ['#1447e6', '#0891b2', '#16a34a', '#ca8a04', '#ea580c', '#e11d48', '#c026d3', '#7c3aed', '#374151'];
+const SURFACE_PARTS: { key: keyof SurfaceColors; label: string; base: (mode: 'light' | 'dark') => string }[] = [
+    { key: 'page', label: 'Page background', base: (m) => BASE_NEUTRAL[m][800] },
+    { key: 'card', label: 'Cards and bars', base: (m) => BASE_NEUTRAL[m][700] },
+    { key: 'border', label: 'Borders', base: (m) => BASE_NEUTRAL[m][500] },
+    { key: 'text', label: 'Text', base: (m) => BASE_NEUTRAL[m][50] },
+    { key: 'muted', label: 'Muted text', base: (m) => BASE_NEUTRAL[m][400] },
+];
+const STATUS_PARTS: { key: 'success' | 'danger' | 'warning'; label: string; base: string }[] = [
+    { key: 'success', label: 'Success', base: '#16a34a' },
+    { key: 'danger', label: 'Danger', base: '#dc2626' },
+    { key: 'warning', label: 'Warning', base: '#ca8a04' },
 ];
 
-const PreviewServer = ({
-    server,
-    card,
-    compact,
-}: {
-    server: typeof SERVERS[number];
-    card: boolean;
-    compact: boolean;
-}) => (
-    <div
-        className={classNames(
-            'relative flex items-center overflow-hidden rounded-xl border border-neutral-500 bg-white shadow',
-            compact ? 'p-3' : 'p-4'
-        )}
-    >
-        <div className={classNames('flex w-full items-center gap-4', card && 'flex-wrap')}>
-            <div className={'flex min-w-0 flex-1 items-center'} style={{ flexBasis: card ? '100%' : undefined }}>
-                <div
-                    className={
-                        'mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600'
-                    }
-                >
-                    <span className={'text-sm font-bold'}>{server.name[0]}</span>
-                </div>
-                <div className={'min-w-0'}>
-                    <p className={'truncate text-base font-semibold text-neutral-50'}>{server.name}</p>
-                    <p className={'truncate font-mono text-xs text-neutral-400'}>{server.address}</p>
-                </div>
-            </div>
-            {server.state === 'running' ? (
-                <div className={classNames('flex items-center gap-4', card ? 'w-full' : 'justify-end')}>
-                    <Meter label={'Players'} value={String(server.players)} ratio={server.players * 8} card={card} />
-                    <Meter label={'CPU'} value={`${server.cpu}%`} ratio={server.cpu} card={card} />
-                    <Meter label={'Memory'} value={`${server.memory}%`} ratio={server.memory} card={card} />
-                </div>
-            ) : (
-                <span className={'rounded-full border border-neutral-500 bg-neutral-600 px-3 py-1 text-xs'}>
-                    Offline
-                </span>
-            )}
-            <span
-                className={classNames(
-                    'absolute right-0 top-2 h-[calc(100%-1rem)] w-1.5 rounded-full',
-                    server.state === 'running' ? 'bg-green-500' : 'bg-red-500'
-                )}
-            />
-        </div>
-    </div>
-);
+/** The saved theme is not drawn on this page, the preview shows the draft alone: otherwise the saved one would leak into it. */
+const useBareTheme = () => {
+    useEffect(() => {
+        const style = document.getElementById('stratosphere-custom-theme');
+        const css = style?.textContent ?? '';
+        const root = document.documentElement;
+        const attributes = ['data-chrome', 'data-nav'].map((name) => [name, root.getAttribute(name)] as const);
+        if (style) style.textContent = '';
+        attributes.forEach(([name]) => root.removeAttribute(name));
 
-const Preview = ({ config, dark }: { config: ThemeConfig; dark: boolean }) => {
-    const css = useMemo(() => buildThemeCss(config, PREVIEW_SCOPE), [config]);
-    const grid = config.layout === 'grid';
-
-    return (
-        <div
-            className={classNames(
-                'tp relative overflow-hidden rounded-2xl border border-neutral-500',
-                dark ? 'dark' : 'theme-light'
-            )}
-            style={{
-                background: 'rgb(var(--c-neutral-800))',
-                color: 'rgb(var(--c-neutral-200))',
-                fontFamily: 'var(--font-sans, inherit)',
-            }}
-        >
-            <style>{css}</style>
-            <div
-                aria-hidden
-                className={'pointer-events-none absolute inset-0'}
-                style={{
-                    background: 'var(--bg-image, none) center / cover no-repeat',
-                    filter: 'blur(var(--bg-blur, 0px))',
-                    transform: 'scale(1.05)',
-                }}
-            />
-            <div
-                aria-hidden
-                className={'pointer-events-none absolute inset-0'}
-                style={{ background: 'rgb(var(--c-neutral-800) / var(--bg-dim, 0))' }}
-            />
-            <div className={'relative'}>
-                <div
-                    className={
-                        'flex items-center justify-between border-b border-neutral-500 bg-white px-5 py-3 shadow'
-                    }
-                >
-                    <div className={'flex items-center gap-3'}>
-                        <span className={'h-7 w-7 rounded-lg bg-primary-600'} />
-                        <span className={'font-semibold text-neutral-50'}>Stratosphere</span>
-                    </div>
-                    <div className={'flex items-center gap-3'}>
-                        <span className={'rounded-full border border-neutral-500 px-4 py-1 text-xs text-neutral-400'}>
-                            Search...
-                        </span>
-                        <span className={'h-7 w-7 rounded-full bg-primary-100'} />
-                    </div>
-                </div>
-                <div className={'p-5'}>
-                    <div className={'mb-4 flex flex-wrap items-end justify-between gap-3'}>
-                        <div>
-                            <h2 className={'text-2xl font-bold tracking-tight text-neutral-50'}>Your servers</h2>
-                            <p className={'text-sm text-neutral-400'}>4 servers on your account</p>
-                        </div>
-                        <div className={'flex gap-2'}>
-                            <Button type={'button'}>Create new</Button>
-                            <Button.Text type={'button'}>Folders</Button.Text>
-                        </div>
-                    </div>
-                    <div
-                        className={'server-list'}
-                        style={{ gridTemplateColumns: `repeat(var(--server-columns, 1), minmax(0, 1fr))` }}
-                    >
-                        {SERVERS.map((server) => (
-                            <PreviewServer
-                                key={server.name}
-                                server={server}
-                                card={grid}
-                                compact={config.density === 'compact'}
-                            />
-                        ))}
-                    </div>
-                    <div className={'mt-5 grid gap-4 sm:grid-cols-2'}>
-                        <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
-                            <p className={'mb-3 text-sm font-semibold text-neutral-50'}>Controls</p>
-                            <input
-                                readOnly
-                                value={'Server name'}
-                                className={
-                                    'mb-3 w-full border border-neutral-500 bg-white px-4 py-2 text-sm text-neutral-100'
-                                }
-                                style={{ borderRadius: 'var(--input-radius, var(--r-lg, 0.75rem))' }}
-                            />
-                            <div className={'flex flex-wrap gap-2'}>
-                                <Button type={'button'}>Save</Button>
-                                <Button variant={Options.Variant.Secondary} type={'button'} className={'!bg-white'}>
-                                    Cancel
-                                </Button>
-                                <Button.Danger type={'button'}>Delete</Button.Danger>
-                            </div>
-                        </div>
-                        <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-lg'}>
-                            <p className={'mb-3 text-sm font-semibold text-neutral-50'}>Status</p>
-                            <div className={'flex flex-wrap gap-2 text-xs'}>
-                                <span
-                                    className={
-                                        'rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700'
-                                    }
-                                >
-                                    Online
-                                </span>
-                                <span
-                                    className={
-                                        'rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-yellow-700'
-                                    }
-                                >
-                                    Installing
-                                </span>
-                                <span className={'rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700'}>
-                                    Suspended
-                                </span>
-                                <span
-                                    className={
-                                        'rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-primary-700'
-                                    }
-                                >
-                                    Accent
-                                </span>
-                            </div>
-                            <p className={'mt-3 text-sm text-neutral-300'}>
-                                Text, links and <span className={'text-primary-600'}>highlights</span> follow the
-                                accent.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+        return () => {
+            if (style) style.textContent = css;
+            attributes.forEach(([name, value]) => value !== null && root.setAttribute(name, value));
+        };
+    }, []);
 };
 
-// ---- the page ---------------------------------------------------------------------------------------------------------------------
-
 export default () => {
+    useBareTheme();
     const [config, setConfig] = useState<ThemeConfig | null>(null);
     const [saved, setSaved] = useState<ThemeConfig | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [forbidden, setForbidden] = useState(false);
     const [working, setWorking] = useState<null | 'save' | 'reset' | 'upload'>(null);
     const [dark, setDark] = useState(false);
+    const [page, setPage] = useState<'dashboard' | 'server'>('dashboard');
+    const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
     const file = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -370,6 +95,8 @@ export default () => {
     const set = (changes: Partial<ThemeConfig>) => setConfig({ ...config, ...changes, preset: null });
     const setBackground = (changes: Partial<ThemeConfig['background']>) =>
         setConfig({ ...config, background: { ...config.background, ...changes }, preset: null });
+    const setSurface = (mode: 'light' | 'dark', changes: Partial<SurfaceColors>) =>
+        set({ surface: { ...config.surface, [mode]: { ...config.surface[mode], ...changes } } });
     const dirty = JSON.stringify(config) !== JSON.stringify(saved);
 
     const run = (kind: 'save' | 'reset', work: () => Promise<unknown>) => {
@@ -399,6 +126,24 @@ export default () => {
             .catch((e) => setError(httpErrorToHuman(e)))
             .then(() => setWorking(null));
     };
+
+    const moveMetric = (id: RowMetric, by: number) => {
+        const list = [...config.row.metrics];
+        const at = list.indexOf(id);
+        const to = at + by;
+        if (at < 0 || to < 0 || to >= list.length) return;
+        list.splice(to, 0, list.splice(at, 1)[0]);
+        set({ row: { ...config.row, metrics: list } });
+    };
+    const toggleMetric = (id: RowMetric, on: boolean) =>
+        set({
+            row: {
+                ...config.row,
+                metrics: on
+                    ? ROW_METRICS.map((m) => m.id).filter((m) => m === id || config.row.metrics.includes(m))
+                    : config.row.metrics.filter((m) => m !== id),
+            },
+        });
 
     const image = config.background.image;
     const kind = !image ? 'none' : image.startsWith('gradient:') ? 'gradient' : 'image';
@@ -440,13 +185,13 @@ export default () => {
                 </div>
             </header>
             {error && <p className={'mx-5 mt-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700'}>{error}</p>}
-            <div className={'grid gap-5 p-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]'}>
+            <div className={'grid gap-5 p-5 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)]'}>
                 <aside
                     className={
                         'overflow-hidden rounded-2xl border border-neutral-500 bg-white shadow-md lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto'
                     }
                 >
-                    <Group title={'Presets'} hint={'A starting point, change anything after.'}>
+                    <Group title={'Presets'} hint={'A starting point, change anything after.'} open>
                         <div className={'grid grid-cols-2 gap-2'}>
                             {PRESETS.map((preset) => {
                                 const c = presetConfig(preset.id);
@@ -473,7 +218,7 @@ export default () => {
                             })}
                         </div>
                     </Group>
-                    <Group title={'Colours'}>
+                    <Group title={'Colours'} hint={'Accent, secondary and the colours of statuses.'} open>
                         <Row label={'Accent'}>
                             <ColorField value={config.accent} onChange={(accent) => set({ accent })} />
                             <div className={'mt-2 flex flex-wrap gap-1.5'}>
@@ -509,6 +254,19 @@ export default () => {
                                 )}
                             </div>
                         </Row>
+                        <Row label={'Status colours'}>
+                            <div className={'space-y-2'}>
+                                {STATUS_PARTS.map((part) => (
+                                    <OptionalColor
+                                        key={part.key}
+                                        label={part.label}
+                                        value={config.status[part.key]}
+                                        fallback={part.base}
+                                        onChange={(value) => set({ status: { ...config.status, [part.key]: value } })}
+                                    />
+                                ))}
+                            </div>
+                        </Row>
                         <Row label={'Default mode for new visitors'}>
                             <Segmented
                                 value={config.mode}
@@ -521,11 +279,35 @@ export default () => {
                             />
                         </Row>
                     </Group>
-                    <Group title={'Shape'}>
+                    <Group title={'Surfaces'} hint={'Page, cards, borders and text, for each mode.'}>
+                        <Segmented
+                            value={surfaceMode}
+                            onChange={(mode) => {
+                                setSurfaceMode(mode);
+                                setDark(mode === 'dark');
+                            }}
+                            options={[
+                                { value: 'light', label: 'Light mode' },
+                                { value: 'dark', label: 'Dark mode' },
+                            ]}
+                        />
+                        <div className={'space-y-2'}>
+                            {SURFACE_PARTS.map((part) => (
+                                <OptionalColor
+                                    key={part.key}
+                                    label={part.label}
+                                    value={config.surface[surfaceMode][part.key]}
+                                    fallback={part.base(surfaceMode)}
+                                    onChange={(value) => setSurface(surfaceMode, { [part.key]: value })}
+                                />
+                            ))}
+                        </div>
+                    </Group>
+                    <Group title={'Shape and type'}>
                         <Row label={'Corners'}>
-                            <Segmented<RadiusStyle>
+                            <Segmented
                                 value={config.radius}
-                                onChange={(radius) => set({ radius })}
+                                onChange={(radius) => set({ radius, radiusCustom: null })}
                                 options={[
                                     { value: 'sharp', label: 'Sharp' },
                                     { value: 'soft', label: 'Soft' },
@@ -534,8 +316,30 @@ export default () => {
                                 ]}
                             />
                         </Row>
+                        <Row label={'Exact corner radius'}>
+                            <div className={'flex items-center gap-3'}>
+                                <div className={'flex-1'}>
+                                    <Slider
+                                        value={config.radiusCustom ?? 12}
+                                        min={0}
+                                        max={32}
+                                        unit={'px'}
+                                        onChange={(radiusCustom) => set({ radiusCustom })}
+                                    />
+                                </div>
+                                {config.radiusCustom !== null && (
+                                    <button
+                                        type={'button'}
+                                        className={'text-xs text-primary-600'}
+                                        onClick={() => set({ radiusCustom: null })}
+                                    >
+                                        Use corners
+                                    </button>
+                                )}
+                            </div>
+                        </Row>
                         <Row label={'Buttons and fields'}>
-                            <Segmented<ButtonStyle>
+                            <Segmented
                                 value={config.buttons}
                                 onChange={(buttons) => set({ buttons })}
                                 options={[
@@ -546,7 +350,7 @@ export default () => {
                             />
                         </Row>
                         <Row label={'Shadows'}>
-                            <Segmented<ShadowStyle>
+                            <Segmented
                                 value={config.shadow}
                                 onChange={(shadow) => set({ shadow })}
                                 options={[
@@ -566,8 +370,79 @@ export default () => {
                                 }))}
                             />
                         </Row>
+                        <Row label={'Text size'}>
+                            <Slider
+                                value={config.fontScale}
+                                min={85}
+                                max={125}
+                                unit={'%'}
+                                onChange={(fontScale) => set({ fontScale })}
+                            />
+                        </Row>
                     </Group>
-                    <Group title={'Layout'} hint={'How the servers of the dashboard are shown.'}>
+                    <Group title={'Bars, menus and material'}>
+                        <Row label={'Top bars'}>
+                            <Segmented
+                                value={config.chrome}
+                                onChange={(chrome) => set({ chrome })}
+                                options={[
+                                    { value: 'attached', label: 'Attached' },
+                                    { value: 'floating', label: 'Floating' },
+                                ]}
+                            />
+                        </Row>
+                        <Row label={'Current page in menus'}>
+                            <Segmented
+                                value={config.nav}
+                                onChange={(nav) => set({ nav })}
+                                options={[
+                                    { value: 'tint', label: 'Tint' },
+                                    { value: 'solid', label: 'Solid' },
+                                    { value: 'line', label: 'Line' },
+                                ]}
+                            />
+                        </Row>
+                        <Row label={'Surface material'}>
+                            <Segmented
+                                value={config.material}
+                                onChange={(material) => set({ material })}
+                                options={[
+                                    { value: 'off', label: 'Off' },
+                                    { value: 'subtle', label: 'Subtle' },
+                                    { value: 'frosted', label: 'Frosted' },
+                                    { value: 'custom', label: 'Custom' },
+                                ]}
+                            />
+                        </Row>
+                        {config.material === 'custom' && (
+                            <>
+                                <Row label={'Cards see-through'}>
+                                    <Slider
+                                        value={config.glass}
+                                        min={0}
+                                        max={70}
+                                        unit={'%'}
+                                        onChange={(glass) => set({ glass })}
+                                    />
+                                </Row>
+                                <Row label={'Blur behind the cards'}>
+                                    <Slider
+                                        value={config.glassBlur}
+                                        min={0}
+                                        max={30}
+                                        unit={'px'}
+                                        onChange={(glassBlur) => set({ glassBlur })}
+                                    />
+                                </Row>
+                            </>
+                        )}
+                        {config.material !== 'off' && !image && (
+                            <p className={'text-xs text-neutral-400'}>
+                                See-through cards show a background, pick one below.
+                            </p>
+                        )}
+                    </Group>
+                    <Group title={'Dashboard'} hint={'How the servers are listed and what a row shows.'}>
                         <Row label={'Servers'}>
                             <Segmented
                                 value={config.layout}
@@ -600,17 +475,118 @@ export default () => {
                                 ]}
                             />
                         </Row>
+                        <Row label={'Shown on a server (in this order)'}>
+                            <ul className={'rounded-lg border border-neutral-500'}>
+                                {[
+                                    ...config.row.metrics.map((id) => ROW_METRICS.find((m) => m.id === id)!),
+                                    ...ROW_METRICS.filter((m) => !config.row.metrics.includes(m.id)),
+                                ].map((metric) => {
+                                    const on = config.row.metrics.includes(metric.id);
+                                    const at = config.row.metrics.indexOf(metric.id);
+
+                                    return (
+                                        <li
+                                            key={metric.id}
+                                            className={
+                                                'flex items-center gap-2 border-b border-neutral-500 px-3 py-1.5 last:border-b-0'
+                                            }
+                                        >
+                                            <input
+                                                type={'checkbox'}
+                                                checked={on}
+                                                onChange={(e) => toggleMetric(metric.id, e.currentTarget.checked)}
+                                                className={'h-4 w-4 accent-primary-600'}
+                                            />
+                                            <span
+                                                className={classNames(
+                                                    'flex-1 text-sm',
+                                                    on ? 'text-neutral-100' : 'text-neutral-400'
+                                                )}
+                                            >
+                                                {metric.label}
+                                            </span>
+                                            {on && (
+                                                <>
+                                                    <button
+                                                        type={'button'}
+                                                        disabled={at === 0}
+                                                        onClick={() => moveMetric(metric.id, -1)}
+                                                        className={
+                                                            'rounded-md p-1 text-neutral-400 hover:bg-neutral-600 disabled:opacity-30'
+                                                        }
+                                                        aria-label={'Move up'}
+                                                    >
+                                                        <ArrowUpIcon className={'h-4 w-4'} />
+                                                    </button>
+                                                    <button
+                                                        type={'button'}
+                                                        disabled={at === config.row.metrics.length - 1}
+                                                        onClick={() => moveMetric(metric.id, 1)}
+                                                        className={
+                                                            'rounded-md p-1 text-neutral-400 hover:bg-neutral-600 disabled:opacity-30'
+                                                        }
+                                                        aria-label={'Move down'}
+                                                    >
+                                                        <ArrowDownIcon className={'h-4 w-4'} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </Row>
+                        <Toggle
+                            label={'Show the address'}
+                            checked={config.row.address}
+                            onChange={(address) => set({ row: { ...config.row, address } })}
+                        />
+                        <Toggle
+                            label={'Show the description'}
+                            checked={config.row.description}
+                            onChange={(description) => set({ row: { ...config.row, description } })}
+                        />
                     </Group>
-                    <Group
-                        title={'Background'}
-                        hint={'A picture behind the panel. Make the cards see-through to let it show.'}
-                    >
-                        <Row label={'Picture'}>
+                    <Group title={'Server sidebar'} hint={'Reorder, hide, or add your own links.'}>
+                        <SidebarEditor sidebar={config.sidebar} onChange={(sidebar) => set({ sidebar })} />
+                    </Group>
+                    <Group title={'Console'} hint={'The text of the server console.'}>
+                        <Row label={'Console colours'}>
+                            <Segmented
+                                value={config.console.style}
+                                onChange={(style) => set({ console: { ...config.console, style } })}
+                                options={[
+                                    { value: 'match', label: 'Follow the theme' },
+                                    { value: 'dark', label: 'Always dark' },
+                                ]}
+                            />
+                        </Row>
+                        <Row label={'Text brightness'}>
+                            <Slider
+                                value={config.console.brightness}
+                                min={30}
+                                max={100}
+                                unit={'%'}
+                                onChange={(brightness) => set({ console: { ...config.console, brightness } })}
+                            />
+                        </Row>
+                        <Row label={'Text size'}>
+                            <Slider
+                                value={config.console.fontSize}
+                                min={10}
+                                max={20}
+                                unit={'px'}
+                                onChange={(fontSize) => set({ console: { ...config.console, fontSize } })}
+                            />
+                        </Row>
+                    </Group>
+                    <Group title={'Background'} hint={'A quiet gradient or a picture behind the panel.'}>
+                        <Row label={'Background'}>
                             <Segmented
                                 value={kind}
                                 onChange={(next) => {
                                     if (next === 'none') setBackground({ image: null });
-                                    else if (next === 'gradient') setBackground({ image: 'gradient:aurora' });
+                                    else if (next === 'gradient') setBackground({ image: 'gradient:mist' });
                                     else setBackground({ image: kind === 'image' ? image : '' });
                                 }}
                                 options={[
@@ -628,10 +604,10 @@ export default () => {
                                         type={'button'}
                                         onClick={() => setBackground({ image: `gradient:${id}` })}
                                         className={classNames(
-                                            'h-12 rounded-lg border-2 text-xs font-medium text-snow',
-                                            image === `gradient:${id}` ? 'border-primary-600' : 'border-transparent'
+                                            'h-12 rounded-lg border-2 text-xs font-medium text-neutral-100',
+                                            image === `gradient:${id}` ? 'border-primary-600' : 'border-neutral-500'
                                         )}
-                                        style={{ background: gradient.css, textShadow: '0 1px 2px rgba(0,0,0,.5)' }}
+                                        style={{ background: dark ? gradient.dark : gradient.light }}
                                     >
                                         {gradient.label}
                                     </button>
@@ -692,43 +668,29 @@ export default () => {
                                 </Row>
                             </>
                         )}
-                        <Row label={'Cards see-through'}>
-                            <Slider
-                                value={config.glass}
-                                min={0}
-                                max={70}
-                                unit={'%'}
-                                onChange={(glass) => set({ glass })}
-                            />
-                        </Row>
-                        {config.glass > 0 && (
-                            <Row label={'Blur behind the cards'}>
-                                <Slider
-                                    value={config.glassBlur}
-                                    min={0}
-                                    max={30}
-                                    unit={'px'}
-                                    onChange={(glassBlur) => set({ glassBlur })}
-                                />
-                            </Row>
-                        )}
                     </Group>
                 </aside>
                 <main className={'min-w-0 lg:sticky lg:top-20 lg:self-start'}>
-                    <div className={'mb-3 flex items-center justify-between'}>
-                        <p className={'text-sm text-neutral-400'}>Preview, nothing changes until you save.</p>
-                        <div className={'flex gap-1.5'}>
-                            <Segmented
-                                value={dark ? 'dark' : 'light'}
-                                onChange={(next) => setDark(next === 'dark')}
-                                options={[
-                                    { value: 'light', label: 'Light' },
-                                    { value: 'dark', label: 'Dark' },
-                                ]}
-                            />
-                        </div>
+                    <div className={'mb-3 flex flex-wrap items-center justify-between gap-2'}>
+                        <Segmented
+                            value={page}
+                            onChange={setPage}
+                            options={[
+                                { value: 'dashboard', label: 'Dashboard' },
+                                { value: 'server', label: 'Server page' },
+                            ]}
+                        />
+                        <Segmented
+                            value={dark ? 'dark' : 'light'}
+                            onChange={(next) => setDark(next === 'dark')}
+                            options={[
+                                { value: 'light', label: 'Light' },
+                                { value: 'dark', label: 'Dark' },
+                            ]}
+                        />
                     </div>
-                    <Preview config={config} dark={dark} />
+                    <ThemePreview config={config} dark={dark} page={page} />
+                    <p className={'mt-3 text-sm text-neutral-400'}>Preview, nothing changes until you save.</p>
                 </main>
             </div>
         </div>

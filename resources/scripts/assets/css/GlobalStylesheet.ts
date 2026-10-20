@@ -15,6 +15,8 @@ export default createGlobalStyle`
 
     html {
         -webkit-font-smoothing: antialiased;
+        /* Everything is in rem, so this scales the whole panel (--font-scale of the theme editor, in percent). */
+        font-size: calc(var(--font-scale, 100) * 1%);
     }
 
     body {
@@ -47,6 +49,52 @@ export default createGlobalStyle`
     /* What opens over the page (dialogs, menus) stays solid, text behind it would show through otherwise. */
     #modal-portal, [role='dialog'], [role='menu'], [role='listbox'] {
         --card-alpha: 1;
+    }
+
+    /* The bars at the top, attached to the edge (the default) or floating above the page, from the theme editor (data-chrome). */
+    [data-chrome='floating'] .app-nav,
+    [data-chrome='floating'] .app-subnav {
+        width: auto;
+        margin: 0.75rem 0.75rem 0;
+        border: 1px solid rgb(var(--c-neutral-500));
+        border-radius: var(--r-xl, 1rem);
+        box-shadow: var(--shadow-md, 0 2px 6px -1px rgb(15 23 42 / 0.06));
+    }
+
+    /* How the page you are on is marked in the menus (data-nav): tint is the default look, solid fills it, line draws a line. */
+    [data-nav='solid'] .nav-item.is-active,
+    [data-nav='solid'] .nav-right a.active {
+        background: rgb(var(--c-primary-600));
+        color: #fff;
+    }
+    [data-nav='solid'] .app-subnav > div > a.active {
+        background: rgb(var(--c-primary-600));
+        color: #fff;
+        box-shadow: none;
+        border-radius: var(--r-lg, 0.75rem);
+        margin: 0.4rem 0.1rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+    [data-nav='line'] .nav-item.is-active {
+        background: transparent;
+        color: rgb(var(--c-primary-700));
+        border-radius: 0;
+        box-shadow: inset 3px 0 rgb(var(--c-primary-600));
+    }
+    [data-nav='line'] .nav-right a.active {
+        background: transparent;
+        border-radius: 0;
+        box-shadow: inset 0 -2px rgb(var(--c-primary-600));
+    }
+    [data-nav='tint'] .app-subnav > div > a.active {
+        background: rgb(var(--c-primary-50));
+        color: rgb(var(--c-primary-700));
+        box-shadow: none;
+        border-radius: var(--r-lg, 0.75rem);
+        margin: 0.4rem 0.1rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
     }
 
     /* The servers of the dashboard: one under the other, or side by side. */

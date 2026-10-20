@@ -5,6 +5,7 @@ import {
     BASE_NEUTRAL,
     buildThemeCss,
     DEFAULT_CONFIG,
+    glassOf,
     luminance,
     presetConfig,
     PRESETS,
@@ -55,9 +56,10 @@ describe('themeConfig', () => {
                 columns: 3,
                 radius: 'pill',
                 buttons: 'pill',
+                material: 'custom',
                 glass: 40,
                 glassBlur: 12,
-                background: { image: 'gradient:aurora', blur: 8, dim: 20 },
+                background: { image: 'gradient:paper', blur: 8, dim: 20 },
             })
         );
         expect(css).toContain('--server-columns: 3;');
@@ -67,6 +69,49 @@ describe('themeConfig', () => {
         expect(css).toContain('--bg-blur: 8px;');
         expect(css).toContain('--bg-dim: 0.2;');
         expect(css).toContain('linear-gradient(');
+    });
+
+    it('writes status and surface colours for the right theme', () => {
+        const css = buildThemeCss(
+            withDefaults({
+                status: { success: '#0d9488', danger: '#be123c', warning: null },
+                surface: {
+                    light: { page: '#fdf6e3', card: null, border: null, text: null, muted: null },
+                    dark: { page: null, card: '#1a1d29', border: null, text: '#eeeeee', muted: null },
+                },
+            })
+        );
+        const [light, dark] = css.split('html.dark');
+        expect(light).toContain('--c-green-600:');
+        expect(light).toContain('--c-red-600:');
+        expect(light).not.toContain('--c-yellow-600:');
+        expect(light).toContain('--c-neutral-800: 253 246 227;');
+        expect(dark).toContain('--c-neutral-700: 26 29 41;');
+        expect(dark).toContain('--c-neutral-50: 238 238 238;');
+        expect(dark).not.toContain('--c-neutral-800');
+    });
+
+    it('gives a gradient to each theme and a picture to both', () => {
+        const css = buildThemeCss(withDefaults({ background: { image: 'gradient:paper', blur: 0, dim: 0 } }));
+        const [light, dark] = css.split('html.dark');
+        expect(light).toContain('--bg-image: linear-gradient(135deg, #f6f7f9');
+        expect(dark).toContain('--bg-image: linear-gradient(135deg, #0c1017');
+        expect(buildThemeCss(withDefaults({ background: { image: '/branding/a.png', blur: 0, dim: 0 } }))).toContain(
+            '--bg-image: url("/branding/a.png");'
+        );
+    });
+
+    it('takes the see-through amount from the material', () => {
+        expect(glassOf(withDefaults({ material: 'off', glass: 50 }))).toEqual({ glass: 0, blur: 0 });
+        expect(glassOf(withDefaults({ material: 'frosted' })).glass).toBeGreaterThan(30);
+        expect(glassOf(withDefaults({ material: 'custom', glass: 25, glassBlur: 7 }))).toEqual({ glass: 25, blur: 7 });
+        expect(buildThemeCss(withDefaults({ material: 'subtle' }))).toContain('--card-alpha: 0.92;');
+    });
+
+    it('sets an exact radius and the text size', () => {
+        const css = buildThemeCss(withDefaults({ radiusCustom: 10, fontScale: 110 }));
+        expect(css).toContain('--r-lg: 10px;');
+        expect(css).toContain('--font-scale: 110;');
     });
 
     it('only ever writes custom properties inside the two page blocks', () => {

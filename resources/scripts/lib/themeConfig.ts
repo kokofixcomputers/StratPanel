@@ -6,11 +6,41 @@
  * from window.SiteConfiguration.theme by useThemeConfig.
  */
 import { useEffect, useState } from 'react';
+import { ConsoleOptions, DEFAULT_CONSOLE } from '@/lib/consoleTheme';
 
 export type RadiusStyle = 'sharp' | 'soft' | 'round' | 'pill';
 export type ButtonStyle = 'default' | 'pill' | 'square';
 export type ShadowStyle = 'none' | 'soft' | 'strong';
 export type FontChoice = 'inter' | 'system' | 'serif' | 'mono';
+
+export type RowMetric = 'players' | 'cpu' | 'memory' | 'disk' | 'uptime' | 'network';
+export const ROW_METRICS: { id: RowMetric; label: string }[] = [
+    { id: 'players', label: 'Players' },
+    { id: 'cpu', label: 'CPU' },
+    { id: 'memory', label: 'Memory' },
+    { id: 'disk', label: 'Disk' },
+    { id: 'uptime', label: 'Uptime' },
+    { id: 'network', label: 'Network' },
+];
+
+/** Colours of the surfaces for one theme. Null keeps the default. */
+export interface SurfaceColors {
+    page: string | null;
+    card: string | null;
+    border: string | null;
+    text: string | null;
+    muted: string | null;
+}
+
+export interface SidebarExtra {
+    id: string;
+    label: string;
+    // A path of the panel or an http(s) address.
+    url: string;
+    newTab: boolean;
+    // The title of the group of the sidebar it is shown in.
+    group: string;
+}
 
 export interface ThemeConfig {
     // The colour of buttons, links and highlights.
@@ -24,6 +54,24 @@ export interface ThemeConfig {
     shadow: ShadowStyle;
     density: 'comfortable' | 'compact';
     font: FontChoice;
+    // The bars at the top: fixed to the edge of the page, or floating above it as a rounded block.
+    chrome: 'attached' | 'floating';
+    // How the page you are on is marked in menus: a tint, a solid fill or a line.
+    nav: 'tint' | 'solid' | 'line';
+    // What the cards and bars are made of: frosted glass, subtle, off (solid), or custom (the two sliders below).
+    material: 'frosted' | 'subtle' | 'custom' | 'off';
+    // The colours of success, danger and warning, null keeps the defaults.
+    status: { success: string | null; danger: string | null; warning: string | null };
+    surface: { light: SurfaceColors; dark: SurfaceColors };
+    // A corner radius in pixels instead of the preset's, null follows the preset.
+    radiusCustom: number | null;
+    // Size of all text and spacing in percent.
+    fontScale: number;
+    console: ConsoleOptions;
+    // What a server of the dashboard shows.
+    row: { metrics: RowMetric[]; address: boolean; description: boolean };
+    // The navigation of a server: which items there are, in what order, and links of your own.
+    sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
     // The servers of the dashboard as a list or as cards side by side.
     layout: 'list' | 'grid';
     columns: 2 | 3;
@@ -51,6 +99,19 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     shadow: 'soft',
     density: 'comfortable',
     font: 'inter',
+    chrome: 'attached',
+    nav: 'tint',
+    material: 'off',
+    status: { success: null, danger: null, warning: null },
+    surface: {
+        light: { page: null, card: null, border: null, text: null, muted: null },
+        dark: { page: null, card: null, border: null, text: null, muted: null },
+    },
+    radiusCustom: null,
+    fontScale: 100,
+    console: DEFAULT_CONSOLE,
+    row: { metrics: ['players', 'cpu', 'memory', 'disk'], address: true, description: true },
+    sidebar: { order: [], hidden: [], extra: [] },
     layout: 'list',
     columns: 2,
     glass: 0,
@@ -59,13 +120,38 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     preset: 'default',
 };
 
-export const GRADIENTS: Record<string, { label: string; css: string }> = {
-    aurora: { label: 'Aurora', css: 'linear-gradient(135deg, #0f2027 0%, #1d4e89 45%, #7b2ff7 100%)' },
-    sunset: { label: 'Sunset', css: 'linear-gradient(135deg, #3a1c71 0%, #d76d77 55%, #ffaf7b 100%)' },
-    ocean: { label: 'Ocean', css: 'linear-gradient(160deg, #0b132b 0%, #1c7c9c 60%, #6fe7dd 100%)' },
-    forest: { label: 'Forest', css: 'linear-gradient(150deg, #0b2b1a 0%, #1f7a4d 60%, #b8e986 100%)' },
-    dusk: { label: 'Dusk', css: 'linear-gradient(135deg, #232526 0%, #414345 100%)' },
-    paper: { label: 'Paper', css: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' },
+/** Quiet backgrounds, one for each theme so they look right in light and in dark. */
+export const GRADIENTS: Record<string, { label: string; light: string; dark: string }> = {
+    mist: {
+        label: 'Mist',
+        light: 'linear-gradient(160deg, #f7f9fc 0%, #e6ecf4 100%)',
+        dark: 'linear-gradient(160deg, #0c1017 0%, #131b28 100%)',
+    },
+    paper: {
+        label: 'Paper',
+        light: 'linear-gradient(135deg, #f6f7f9 0%, #e5e9ef 100%)',
+        dark: 'linear-gradient(135deg, #0c1017 0%, #171d28 100%)',
+    },
+    sage: {
+        label: 'Sage',
+        light: 'linear-gradient(150deg, #f5f8f5 0%, #e2ebe3 100%)',
+        dark: 'linear-gradient(150deg, #0b110e 0%, #121d16 100%)',
+    },
+    sand: {
+        label: 'Sand',
+        light: 'linear-gradient(150deg, #f9f7f3 0%, #ece6db 100%)',
+        dark: 'linear-gradient(150deg, #12100c 0%, #1d1a13 100%)',
+    },
+    slate: {
+        label: 'Slate',
+        light: 'linear-gradient(180deg, #f4f5f7 0%, #e3e6ea 100%)',
+        dark: 'linear-gradient(180deg, #0b0d12 0%, #161a23 100%)',
+    },
+    rose: {
+        label: 'Rose',
+        light: 'linear-gradient(135deg, #fbf6f6 0%, #f0e2e5 100%)',
+        dark: 'linear-gradient(135deg, #130e10 0%, #1f1519 100%)',
+    },
 };
 
 export const PRESETS: { id: string; name: string; config: Partial<ThemeConfig> }[] = [
@@ -78,21 +164,46 @@ export const PRESETS: { id: string; name: string; config: Partial<ThemeConfig> }
     { id: 'midnight', name: 'Midnight', config: { accent: '#6366f1', secondary: '#312e81', mode: 'dark' } },
     {
         id: 'glass',
-        name: 'Glass aurora',
+        name: 'Frosted',
         config: {
-            accent: '#60a5fa',
-            mode: 'dark',
+            accent: '#4f7cff',
             radius: 'round',
             shadow: 'strong',
-            glass: 45,
-            glassBlur: 14,
-            background: { image: 'gradient:aurora', blur: 0, dim: 15 },
+            material: 'frosted',
+            chrome: 'floating',
+            background: { image: 'gradient:mist', blur: 0, dim: 0 },
         },
     },
     {
         id: 'paper',
         name: 'Paper',
-        config: { accent: '#111827', radius: 'sharp', buttons: 'square', shadow: 'none', font: 'mono', mode: 'light' },
+        config: {
+            accent: '#374151',
+            radius: 'soft',
+            shadow: 'soft',
+            nav: 'line',
+            background: { image: 'gradient:paper', blur: 0, dim: 0 },
+        },
+    },
+    {
+        id: 'sage',
+        name: 'Sage',
+        config: {
+            accent: '#4d7c5f',
+            secondary: '#5b7a66',
+            nav: 'tint',
+            background: { image: 'gradient:sage', blur: 0, dim: 0 },
+        },
+    },
+    {
+        id: 'floating',
+        name: 'Floating',
+        config: { chrome: 'floating', radius: 'round', nav: 'solid', shadow: 'strong' },
+    },
+    {
+        id: 'mono',
+        name: 'Mono',
+        config: { accent: '#111827', radius: 'sharp', buttons: 'square', shadow: 'none', font: 'mono', nav: 'line' },
     },
     {
         id: 'cards',
@@ -101,11 +212,37 @@ export const PRESETS: { id: string; name: string; config: Partial<ThemeConfig> }
     },
 ];
 
-export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): ThemeConfig => ({
-    ...DEFAULT_CONFIG,
-    ...(config ?? {}),
-    background: { ...DEFAULT_CONFIG.background, ...(config?.background ?? {}) },
-});
+export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): ThemeConfig => {
+    const given = config ?? {};
+
+    return {
+        ...DEFAULT_CONFIG,
+        ...given,
+        background: { ...DEFAULT_CONFIG.background, ...(given.background ?? {}) },
+        status: { ...DEFAULT_CONFIG.status, ...(given.status ?? {}) },
+        surface: {
+            light: { ...DEFAULT_CONFIG.surface.light, ...(given.surface?.light ?? {}) },
+            dark: { ...DEFAULT_CONFIG.surface.dark, ...(given.surface?.dark ?? {}) },
+        },
+        console: { ...DEFAULT_CONSOLE, ...(given.console ?? {}) },
+        row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
+        sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
+    };
+};
+
+/** How see-through the cards are and how much is blurred behind them, from the material. */
+export const glassOf = (config: ThemeConfig): { glass: number; blur: number } => {
+    switch (config.material) {
+        case 'frosted':
+            return { glass: 42, blur: 16 };
+        case 'subtle':
+            return { glass: 8, blur: 4 };
+        case 'custom':
+            return { glass: config.glass, blur: config.glassBlur };
+        default:
+            return { glass: 0, blur: 0 };
+    }
+};
 
 export const presetConfig = (id: string): ThemeConfig => {
     const preset = PRESETS.find((p) => p.id === id) ?? PRESETS[0];
@@ -115,34 +252,8 @@ export const presetConfig = (id: string): ThemeConfig => {
 
 // ---- colours ----------------------------------------------------------------------------------------------------------------------
 
-type RGB = [number, number, number];
-
-export const hexToRgb = (hex: string): RGB => {
-    const n = parseInt(hex.replace('#', ''), 16);
-
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-const toHex = (rgb: RGB): string => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
-const triplet = (hex: string): string => hexToRgb(hex).join(' ');
-
-/** `amount` of a, the rest of b. */
-const mix = (a: string, b: string, amount: number): string => {
-    const x = hexToRgb(a);
-    const y = hexToRgb(b);
-
-    return toHex(x.map((v, i) => v * amount + y[i] * (1 - amount)) as RGB);
-};
-
-export const luminance = (hex: string): number => {
-    const [r, g, b] = hexToRgb(hex).map((v) => {
-        const c = v / 255;
-
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-    });
-
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
+export { hexToRgb, luminance, mix } from '@/lib/colorMath';
+import { luminance, mix, triplet } from '@/lib/colorMath';
 
 const GROUND = '#0c1017';
 const WHITE = '#ffffff';
@@ -298,10 +409,10 @@ export const FONTS: Record<FontChoice, { label: string; stack: string | null }> 
     mono: { label: 'Mono', stack: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
 };
 
-/** The CSS value for the background of a config, null for none. */
-export const backgroundValue = (image: string | null): string | null => {
+/** The CSS value for the background of a config in a theme, null for none. */
+export const backgroundValue = (image: string | null, mode: 'light' | 'dark'): string | null => {
     if (!image) return null;
-    if (image.startsWith('gradient:')) return GRADIENTS[image.slice(9)]?.css ?? null;
+    if (image.startsWith('gradient:')) return GRADIENTS[image.slice(9)]?.[mode] ?? null;
 
     return `url("${image}")`;
 };
@@ -326,6 +437,46 @@ const block = (selector: string, vars: Record<string, string>): string =>
 const scaleVars = (name: string, scale: Record<number, string>): Record<string, string> =>
     Object.fromEntries(SHADES.map((shade) => [`--c-${name}-${shade}`, triplet(scale[shade])]));
 
+const isHex = (value: string | null | undefined): value is string => !!value && /^#[0-9a-fA-F]{6}$/.test(value);
+
+/** The surface colours of one theme as variables, on top of the neutral scale that is there already. */
+const surfaceVars = (colors: SurfaceColors, mode: 'light' | 'dark'): Record<string, string> => {
+    const base = BASE_NEUTRAL[mode];
+    const page = isHex(colors.page) ? colors.page : null;
+    const card = isHex(colors.card) ? colors.card : null;
+    const border = isHex(colors.border) ? colors.border : null;
+    const text = isHex(colors.text) ? colors.text : null;
+    const muted = isHex(colors.muted) ? colors.muted : null;
+    const vars: Record<string, string> = {};
+    const cardColor = card ?? base[700];
+    const pageColor = page ?? base[800];
+
+    if (card) {
+        vars['--c-neutral-700'] = triplet(card);
+        vars['--c-white'] = triplet(card);
+        vars['--c-neutral-600'] = triplet(mix(text ?? base[50], card, 0.06));
+    }
+    if (page) {
+        vars['--c-neutral-800'] = triplet(page);
+        vars['--c-neutral-900'] =
+            luminance(cardColor) > luminance(pageColor)
+                ? triplet(mix(cardColor, page, 0.5))
+                : triplet(mix(BLACK, page, 0.4));
+    }
+    if (border) vars['--c-neutral-500'] = triplet(border);
+    if (text) {
+        vars['--c-neutral-50'] = triplet(text);
+        vars['--c-neutral-100'] = triplet(mix(text, cardColor, 0.92));
+        vars['--c-neutral-200'] = triplet(mix(text, cardColor, 0.8));
+    }
+    if (muted) {
+        vars['--c-neutral-400'] = triplet(muted);
+        vars['--c-neutral-300'] = triplet(mix(muted, text ?? base[50], 0.72));
+    }
+
+    return vars;
+};
+
 /** The CSS of a config, an empty string for the default look. Only custom properties, see ThemeService on the server. */
 export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE): string => {
     const config = withDefaults(input);
@@ -347,31 +498,77 @@ export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE):
         dark['--c-white'] = triplet(tinted.dark[700]);
     }
 
+    // The colours of success, danger and warning replace the whole scales that the panel uses for them.
+    const status: [string | null, string[]][] = [
+        [config.status.success, ['green']],
+        [config.status.danger, ['red']],
+        [config.status.warning, ['yellow', 'amber']],
+    ];
+    for (const [color, names] of status) {
+        if (!isHex(color)) continue;
+        const scales = accentScales(color);
+        for (const name of names) {
+            light = { ...light, ...scaleVars(name, scales.light) };
+            dark = { ...dark, ...scaleVars(name, scales.dark) };
+        }
+    }
+
+    light = { ...light, ...surfaceVars(config.surface.light, 'light') };
+    dark = { ...dark, ...surfaceVars(config.surface.dark, 'dark') };
+
+    if (config.radiusCustom !== null && config.radiusCustom !== undefined) {
+        const r = config.radiusCustom;
+        const px = (factor: number) => `${Math.round(r * factor * 10) / 10}px`;
+        Object.assign(common, {
+            '--r-sm': px(0.4),
+            '--r': px(0.75),
+            '--r-md': px(0.85),
+            '--r-lg': px(1),
+            '--r-xl': px(1.4),
+            '--r-2xl': px(1.8),
+        });
+    }
     const button = BUTTON_RADIUS[config.buttons];
     if (button) {
         common['--btn-radius'] = button;
         common['--input-radius'] = button === '9999px' ? '9999px' : '0px';
     }
     if (config.font !== 'inter') common['--font-sans'] = FONTS[config.font].stack!;
+    if (config.fontScale !== 100) common['--font-scale'] = String(config.fontScale);
 
     if (config.layout === 'grid') common['--server-columns'] = String(config.columns);
     if (config.density === 'compact') common['--server-gap'] = '0.5rem';
 
-    const picture = backgroundValue(config.background.image);
-    if (picture) {
-        common['--bg-image'] = picture;
+    const image = config.background.image;
+    if (image && image.startsWith('gradient:')) {
+        const lightValue = backgroundValue(image, 'light');
+        const darkValue = backgroundValue(image, 'dark');
+        if (lightValue) light['--bg-image'] = lightValue;
+        if (darkValue) dark['--bg-image'] = darkValue;
+    } else if (image) {
+        common['--bg-image'] = backgroundValue(image, 'light')!;
+    }
+    if (image && backgroundValue(image, 'light')) {
         if (config.background.blur > 0) common['--bg-blur'] = `${config.background.blur}px`;
         if (config.background.dim > 0) common['--bg-dim'] = String(config.background.dim / 100);
     }
-    if (config.glass > 0) {
-        common['--card-alpha'] = String(1 - config.glass / 100);
-        if (config.glassBlur > 0) common['--card-blur'] = `${config.glassBlur}px`;
+
+    const glass = glassOf(config);
+    if (glass.glass > 0) {
+        common['--card-alpha'] = String(Math.round((1 - glass.glass / 100) * 100) / 100);
+        if (glass.blur > 0) common['--card-blur'] = `${glass.blur}px`;
     }
 
     return [block(scope.common, common), block(scope.light, light), block(scope.dark, dark)]
         .filter((part) => part !== '')
         .join('\n');
 };
+
+/** The settings that are marks on the page rather than variables (the page's data attributes, read by the stylesheet). */
+export const themeAttributes = (config: ThemeConfig): Record<string, string> => ({
+    'data-chrome': config.chrome,
+    'data-nav': config.nav,
+});
 
 // ---- the settings of the page ---------------------------------------------------------------------------------------------------------
 

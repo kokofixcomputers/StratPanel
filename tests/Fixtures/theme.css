@@ -9,32 +9,32 @@ html:root {
     --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.18), 0 2px 4px -2px rgb(15 23 42 / 0.12);
     --shadow-lg: 0 16px 32px -8px rgb(15 23 42 / 0.28), 0 6px 12px -6px rgb(15 23 42 / 0.16);
     --shadow-xl: 0 32px 64px -12px rgb(15 23 42 / 0.4);
-    --bg-image: linear-gradient(135deg, #0f2027 0%, #1d4e89 45%, #7b2ff7 100%);
-    --bg-dim: 0.15;
-    --card-alpha: 0.55;
-    --card-blur: 14px;
+    --card-alpha: 0.58;
+    --card-blur: 16px;
 }
 html:root {
-    --c-primary-50: 241 246 252;
-    --c-primary-100: 228 237 249;
-    --c-primary-200: 207 224 245;
-    --c-primary-300: 173 202 238;
-    --c-primary-400: 132 176 230;
-    --c-primary-500: 105 158 224;
-    --c-primary-600: 84 145 220;
-    --c-primary-700: 70 120 183;
-    --c-primary-800: 55 94 143;
-    --c-primary-900: 42 73 110;
+    --c-primary-50: 241 245 255;
+    --c-primary-100: 227 234 255;
+    --c-primary-200: 206 218 255;
+    --c-primary-300: 171 192 255;
+    --c-primary-400: 128 161 255;
+    --c-primary-500: 100 140 255;
+    --c-primary-600: 79 124 255;
+    --c-primary-700: 66 103 212;
+    --c-primary-800: 51 81 166;
+    --c-primary-900: 40 62 128;
+    --bg-image: linear-gradient(160deg, #f7f9fc 0%, #e6ecf4 100%);
 }
 html.dark {
-    --c-primary-50: 24 37 55;
-    --c-primary-100: 30 49 73;
-    --c-primary-200: 41 67 100;
-    --c-primary-300: 56 93 141;
-    --c-primary-400: 134 187 251;
-    --c-primary-500: 123 180 251;
-    --c-primary-600: 112 174 251;
-    --c-primary-700: 199 224 253;
-    --c-primary-800: 86 149 225;
-    --c-primary-900: 223 237 254;
+    --c-primary-50: 21 31 55;
+    --c-primary-100: 27 40 74;
+    --c-primary-200: 35 53 102;
+    --c-primary-300: 47 72 144;
+    --c-primary-400: 121 155 255;
+    --c-primary-500: 109 146 255;
+    --c-primary-600: 97 137 255;
+    --c-primary-700: 193 209 255;
+    --c-primary-800: 71 112 230;
+    --c-primary-900: 220 229 255;
+    --bg-image: linear-gradient(160deg, #0c1017 0%, #131b28 100%);
 }

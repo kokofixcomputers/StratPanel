@@ -12,7 +12,20 @@ class ThemeTest extends RoleTestCase
         return array_replace_recursive([
             'accent' => '#0891b2', 'secondary' => null, 'mode' => 'dark', 'radius' => 'round', 'buttons' => 'pill', 'shadow' => 'soft',
             'density' => 'compact', 'font' => 'system', 'layout' => 'grid', 'columns' => 2, 'glass' => 30, 'glassBlur' => 10,
-            'background' => ['image' => 'gradient:aurora', 'blur' => 4, 'dim' => 10], 'preset' => null,
+            'background' => ['image' => 'gradient:mist', 'blur' => 4, 'dim' => 10], 'preset' => null,
+            'chrome' => 'floating', 'nav' => 'solid', 'material' => 'frosted',
+            'status' => ['success' => '#0d9488', 'danger' => null, 'warning' => null],
+            'surface' => [
+                'light' => ['page' => '#fdf6e3', 'card' => null, 'border' => null, 'text' => null, 'muted' => null],
+                'dark' => ['page' => null, 'card' => null, 'border' => null, 'text' => null, 'muted' => null],
+            ],
+            'radiusCustom' => 10, 'fontScale' => 105,
+            'console' => ['style' => 'dark', 'brightness' => 80, 'fontSize' => 12],
+            'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false],
+            'sidebar' => [
+                'order' => ['/files', 'extra:abcd1234'], 'hidden' => ['/import'],
+                'extra' => [['id' => 'abcd1234', 'label' => 'Wiki', 'url' => 'https://wiki.example.com/{id}', 'newTab' => true, 'group' => 'Manage']],
+            ],
         ], $changes);
     }
 
@@ -79,8 +92,9 @@ class ThemeTest extends RoleTestCase
         // The head of the React pages, with what the composer of the views adds.
         $html = view('partials.theme')->render();
         $this->assertStringContainsString('<style id="stratosphere-custom-theme">', $html);
-        $this->assertStringContainsString('--card-alpha: 0.55;', $html);
+        $this->assertStringContainsString('--card-alpha: 0.58;', $html);
         $this->assertStringContainsString("'dark'", str_replace('"', "'", $html));
+        $this->assertStringContainsString("setAttribute('data-chrome', \"floating\")", $html);
     }
 
     public function testBadSettingsAreRefused(): void
@@ -90,6 +104,26 @@ class ThemeTest extends RoleTestCase
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['accent' => 'red']), 'css' => ''])->assertStatus(422);
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['background' => ['image' => 'http://x.example/a.png']]), 'css' => ''])->assertStatus(400);
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => 'body { color: red; }'])->assertStatus(400);
+    }
+
+    public function testTheLayoutSettingsAreChecked(): void
+    {
+        $admin = $this->rootAdmin();
+
+        foreach ([
+            ['sidebar' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => 'javascript:alert(1)', 'newTab' => true, 'group' => 'Manage']]]],
+            ['sidebar' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => '//evil.example', 'newTab' => true, 'group' => 'Manage']]]],
+            ['row' => ['metrics' => ['cpu', 'cpu']]],
+            ['row' => ['metrics' => ['cpu', 'bitcoin']]],
+            ['nav' => 'neon'],
+            ['status' => ['success' => 'green']],
+            ['console' => ['brightness' => 5]],
+            ['fontScale' => 400],
+        ] as $changes) {
+            $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);
+        }
+
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => ''])->assertOk();
     }
 
     public function testResetGoesBackToTheDefaultLook(): void

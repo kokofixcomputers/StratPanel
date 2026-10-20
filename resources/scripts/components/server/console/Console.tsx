@@ -43,60 +43,12 @@ import {
 } from '@/lib/consoleLog';
 
 import WorldClockPill from '@/components/server/console/WorldClockPill';
-import { currentTheme, Theme, useTheme } from '@/lib/theme';
+import { currentTheme, useTheme } from '@/lib/theme';
+import { consoleTheme, lightConsole } from '@/lib/consoleTheme';
+import { pageThemeConfig, useThemeConfig } from '@/lib/themeConfig';
 import { censorText, privacyOn, usePrivacy } from '@/lib/privacy';
 import 'xterm/css/xterm.css';
 import styles from './style.module.css';
-
-const lightTheme = {
-    background: '#ffffff',
-    foreground: '#1f2937',
-    cursor: 'transparent',
-    black: '#1f2937',
-    red: '#dc2626',
-    green: '#16a34a',
-    yellow: '#d97706',
-    blue: '#1447e6',
-    magenta: '#9333ea',
-    cyan: '#0891b2',
-    white: '#6b7280',
-    brightBlack: '#9ca3af',
-    brightRed: '#ef4444',
-    brightGreen: '#22c55e',
-    brightYellow: '#f59e0b',
-    brightBlue: '#3b82f6',
-    brightMagenta: '#a855f7',
-    brightCyan: '#06b6d4',
-    brightWhite: '#111827',
-    selection: 'rgba(20, 71, 230, 0.2)',
-};
-
-// The same colours for a dark surface (the background is the one of the cards): black text is light, the others are lighter so they can be
-// read on it.
-const darkTheme = {
-    background: '#141a23',
-    foreground: '#e2e8f0',
-    cursor: 'transparent',
-    black: '#94a3b8',
-    red: '#f87171',
-    green: '#4ade80',
-    yellow: '#fbbf24',
-    blue: '#7aa2ff',
-    magenta: '#c084fc',
-    cyan: '#22d3ee',
-    white: '#cbd5e1',
-    brightBlack: '#64748b',
-    brightRed: '#fca5a5',
-    brightGreen: '#86efac',
-    brightYellow: '#fcd34d',
-    brightBlue: '#9db8ff',
-    brightMagenta: '#d8b4fe',
-    brightCyan: '#67e8f9',
-    brightWhite: '#f8fafc',
-    selection: 'rgba(91, 134, 247, 0.35)',
-};
-
-const terminalTheme = (mode: Theme) => (mode === 'dark' ? darkTheme : lightTheme);
 
 const terminalProps: ITerminalOptions = {
     disableStdin: true,
@@ -107,7 +59,7 @@ const terminalProps: ITerminalOptions = {
     rows: 30,
     // The console keeps more than the default thousand lines, a filter writes them again from the log of the server.
     scrollback: 3000,
-    theme: lightTheme,
+    theme: lightConsole,
 };
 
 interface Chunk {
@@ -121,11 +73,21 @@ export default () => {
     const TERMINAL_PRELUDE = '\u001b[1m\u001b[33mcontainer@pterodactyl~ \u001b[0m';
     const ref = useRef<HTMLDivElement>(null);
     const { theme: mode } = useTheme();
-    const terminal = useMemo(() => new Terminal({ ...terminalProps, theme: terminalTheme(currentTheme()) }), []);
-    // The colours of the console follow the theme of the panel when it changes.
+    const look = useThemeConfig().console;
+    const terminal = useMemo(
+        () =>
+            new Terminal({
+                ...terminalProps,
+                fontSize: pageThemeConfig().console.fontSize,
+                theme: consoleTheme(currentTheme(), pageThemeConfig().console),
+            }),
+        []
+    );
+    const colors = consoleTheme(mode, look);
+    // The colours of the console follow the theme of the panel when it changes, and what the admin set in the theme editor.
     useEffect(() => {
-        terminal.setOption('theme', terminalTheme(mode));
-    }, [terminal, mode]);
+        terminal.setOption('theme', colors);
+    }, [terminal, colors.background, colors.foreground, look.style, look.brightness]);
     const fitAddon = new FitAddon();
     // The addon that is actually attached to the terminal, a new one is created on every render.
     const activeFit = useRef<FitAddon>();
@@ -550,12 +512,12 @@ export default () => {
     }, [expanded]);
 
     useEffect(() => {
-        terminal.options.fontSize = expanded ? 15 : 12;
+        terminal.options.fontSize = expanded ? look.fontSize + 3 : look.fontSize;
         // Wait for the layout to change before measuring.
         const timer = setTimeout(() => terminal.element && activeFit.current?.fit(), 50);
 
         return () => clearTimeout(timer);
-    }, [expanded, terminal]);
+    }, [expanded, terminal, look.fontSize]);
 
     return (
         <div className={classNames(styles.terminal, 'relative', { [styles.expanded]: expanded })}>
@@ -681,7 +643,10 @@ export default () => {
                     );
                 })}
             </div>
-            <div className={styles.container}>
+            <div
+                className={styles.container}
+                style={look.style === 'dark' ? { background: colors.background } : undefined}
+            >
                 <div
                     className={'h-full relative'}
                     ref={overlay}

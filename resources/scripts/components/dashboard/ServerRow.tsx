@@ -51,15 +51,33 @@ const Metric = ({ label, value, limit, alarm, ratio, card }: Record<string, any>
             <span css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
             <span css={[tw`text-xs font-semibold`, alarm ? tw`text-red-600` : tw`text-neutral-100`]}>{value}</span>
         </div>
-        <div css={tw`mt-1.5 h-1.5 rounded-full bg-neutral-600 overflow-hidden`}>
-            <div
-                css={[tw`h-full rounded-full transition-all duration-500`, alarm ? tw`bg-red-500` : tw`bg-primary-600`]}
-                style={{ width: `${ratio}%` }}
-            />
-        </div>
-        <p css={tw`mt-1 text-2xs text-neutral-400`}>of {limit}</p>
+        {ratio !== undefined && (
+            <div css={tw`mt-1.5 h-1.5 rounded-full bg-neutral-600 overflow-hidden`}>
+                <div
+                    css={[
+                        tw`h-full rounded-full transition-all duration-500`,
+                        alarm ? tw`bg-red-500` : tw`bg-primary-600`,
+                    ]}
+                    style={{ width: `${ratio}%` }}
+                />
+            </div>
+        )}
+        <p css={tw`mt-1 text-2xs text-neutral-400`}>{ratio === undefined ? limit : `of ${limit}`}</p>
     </div>
 );
+
+/** "3d 4h", "2h 5m", "40s". */
+export const uptimeText = (milliseconds: number): string => {
+    const total = Math.floor(milliseconds / 1000);
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+
+    return `${total}s`;
+};
 
 type Timer = ReturnType<typeof setInterval>;
 
@@ -205,7 +223,9 @@ export default ({
     organizer?: RowOrganizer;
     className?: string;
 }) => {
-    const card = useThemeConfig().layout === 'grid';
+    const theme = useThemeConfig();
+    const card = theme.layout === 'grid';
+    const show = theme.row;
     const [busy, setBusy] = useState<PowerSignal | null>(null);
     const [powerError, setPowerError] = useState<string | null>(null);
     const watching = useRef<Timer | null>(null);
@@ -349,12 +369,12 @@ export default ({
                             </>
                         )}
                     </div>
-                    {address && (
+                    {address && show.address && (
                         <p css={tw`text-xs font-mono text-neutral-400 truncate mt-0.5`}>
                             <Sensitive>{address}</Sensitive>
                         </p>
                     )}
-                    {!!server.description && (
+                    {!!server.description && show.description && (
                         <p css={tw`text-sm text-neutral-400 truncate mt-0.5`}>{server.description}</p>
                     )}
                 </div>
@@ -390,41 +410,87 @@ export default ({
                     )
                 ) : (
                     <>
-                        {!players && !card && <div css={tw`w-32 hidden lg:block`} aria-hidden />}
-                        {players && (
-                            <Metric
-                                card={card}
-                                label={'Players'}
-                                value={`${players.online}/${players.max || '?'}`}
-                                limit={players.online === 1 ? '1 player online' : `${players.online} online`}
-                                alarm={players.max > 0 && players.online >= players.max}
-                                ratio={percent(players.online, players.max)}
-                            />
+                        {show.metrics.includes('players') && !players && !card && (
+                            <div css={tw`w-32 hidden lg:block`} aria-hidden />
                         )}
-                        <Metric
-                            card={card}
-                            label={'CPU'}
-                            value={`${stats.cpuUsagePercent.toFixed(1)}%`}
-                            limit={cpuLimit}
-                            alarm={alarms.cpu}
-                            ratio={percent(stats.cpuUsagePercent, server.limits.cpu)}
-                        />
-                        <Metric
-                            card={card}
-                            label={'Memory'}
-                            value={bytesToString(stats.memoryUsageInBytes)}
-                            limit={memoryLimit}
-                            alarm={alarms.memory}
-                            ratio={percent(stats.memoryUsageInBytes, mbToBytes(server.limits.memory))}
-                        />
-                        <Metric
-                            card={card}
-                            label={'Disk'}
-                            value={bytesToString(stats.diskUsageInBytes)}
-                            limit={diskLimit}
-                            alarm={alarms.disk}
-                            ratio={percent(stats.diskUsageInBytes, mbToBytes(server.limits.disk))}
-                        />
+                        {show.metrics.map((id) => {
+                            switch (id) {
+                                case 'players':
+                                    return players ? (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'Players'}
+                                            value={`${players.online}/${players.max || '?'}`}
+                                            limit={
+                                                players.online === 1 ? '1 player online' : `${players.online} online`
+                                            }
+                                            alarm={players.max > 0 && players.online >= players.max}
+                                            ratio={percent(players.online, players.max)}
+                                        />
+                                    ) : null;
+                                case 'cpu':
+                                    return (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'CPU'}
+                                            value={`${stats.cpuUsagePercent.toFixed(1)}%`}
+                                            limit={cpuLimit}
+                                            alarm={alarms.cpu}
+                                            ratio={percent(stats.cpuUsagePercent, server.limits.cpu)}
+                                        />
+                                    );
+                                case 'memory':
+                                    return (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'Memory'}
+                                            value={bytesToString(stats.memoryUsageInBytes)}
+                                            limit={memoryLimit}
+                                            alarm={alarms.memory}
+                                            ratio={percent(stats.memoryUsageInBytes, mbToBytes(server.limits.memory))}
+                                        />
+                                    );
+                                case 'disk':
+                                    return (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'Disk'}
+                                            value={bytesToString(stats.diskUsageInBytes)}
+                                            limit={diskLimit}
+                                            alarm={alarms.disk}
+                                            ratio={percent(stats.diskUsageInBytes, mbToBytes(server.limits.disk))}
+                                        />
+                                    );
+                                case 'uptime':
+                                    return (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'Uptime'}
+                                            value={stats.uptime > 0 ? uptimeText(stats.uptime) : '-'}
+                                            limit={stats.uptime > 0 ? 'since the last start' : 'not running'}
+                                        />
+                                    );
+                                case 'network':
+                                    return (
+                                        <Metric
+                                            key={id}
+                                            card={card}
+                                            label={'Network'}
+                                            value={bytesToString(stats.networkRxInBytes + stats.networkTxInBytes)}
+                                            limit={`in ${bytesToString(stats.networkRxInBytes)} / out ${bytesToString(
+                                                stats.networkTxInBytes
+                                            )}`}
+                                        />
+                                    );
+                                default:
+                                    return null;
+                            }
+                        })}
                     </>
                 )}
                 {!card && powerActions}

@@ -35,6 +35,8 @@ import { parseProperties, readOptionalFile } from '@/lib/minecraft';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
+import { useThemeConfig } from '@/lib/themeConfig';
+import { arrange, extraKey, fillUrl, safeUrl, SIDEBAR_GROUPS as GROUPS } from '@/lib/sidebarLayout';
 
 export interface SidebarItem {
     path: string;
@@ -65,16 +67,10 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     '/activity': ViewListIcon,
 };
 
-const GROUPS: { title: string; paths: string[] }[] = [
-    { title: 'Server', paths: ['/', '/players'] },
-    { title: 'Minecraft', paths: ['/versions', '/properties', '/mods', '/worlds', '/tools'] },
-    { title: 'Manage', paths: ['/files', '/import', '/databases', '/schedules', '/backups', '/users'] },
-    { title: 'Configuration', paths: ['/network', '/domains', '/startup', '/settings', '/activity'] },
-];
-
 const link = (active: boolean) =>
     classNames(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150',
+        'nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150',
+        { 'is-active': active },
         active ? 'bg-primary-50 text-primary-700' : 'text-neutral-300 hover:bg-neutral-600 hover:text-neutral-50'
     );
 
@@ -115,6 +111,8 @@ export default ({
     const customLinks = linksAt(useBranding().links, 'sidebar');
     const known = new Set(GROUPS.flatMap((g) => g.paths));
     const groups = [...GROUPS, { title: 'More', paths: items.map((i) => i.path).filter((path) => !known.has(path)) }];
+    const layout = useThemeConfig().sidebar;
+    const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
 
     const renderItem = (item: SidebarItem) => {
         const Icon = ICONS[item.path] || (item.path.startsWith('/ext/') ? PuzzleIcon : CubeIcon);
@@ -188,9 +186,19 @@ export default ({
                     </Can>
                 </div>
                 {groups.map((group) => {
-                    const entries = group.paths
-                        .map((path) => items.find((item) => item.path === path))
-                        .filter((item): item is SidebarItem => !!item);
+                    // The items of the group, then the links of your own that were put in it, in the order the admin chose.
+                    const entries = arrange(
+                        [
+                            ...group.paths
+                                .map((path) => items.find((item) => item.path === path))
+                                .filter((item): item is SidebarItem => !!item && !layout.hidden.includes(item.path))
+                                .map((item) => ({ key: item.path, item })),
+                            ...layout.extra
+                                .filter((extra) => extra.group === group.title && safeUrl(extra.url))
+                                .map((extra) => ({ key: extraKey(extra.id), extra })),
+                        ],
+                        layout.order
+                    );
                     if (!entries.length) return null;
 
                     return (
@@ -202,7 +210,22 @@ export default ({
                             >
                                 {group.title}
                             </p>
-                            {entries.map(renderItem)}
+                            {entries.map((entry) =>
+                                'item' in entry ? (
+                                    renderItem(entry.item)
+                                ) : (
+                                    <a
+                                        key={entry.key}
+                                        href={fillUrl(entry.extra.url, { id: serverId, uuid })}
+                                        target={entry.extra.newTab ? '_blank' : undefined}
+                                        rel={'noopener noreferrer'}
+                                        className={link(false)}
+                                    >
+                                        <ExternalLinkIcon className={'h-5 w-5 flex-shrink-0'} />
+                                        <span className={'truncate'}>{entry.extra.label}</span>
+                                    </a>
+                                )
+                            )}
                         </div>
                     );
                 })}
