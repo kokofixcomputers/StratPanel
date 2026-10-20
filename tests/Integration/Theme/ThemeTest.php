@@ -22,6 +22,7 @@ class ThemeTest extends RoleTestCase
             'radiusCustom' => 10, 'fontScale' => 105,
             'console' => ['style' => 'dark', 'brightness' => 80, 'fontSize' => 12],
             'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
+            'customGradient' => ['angle' => 120, 'light' => ['#fdf6e3', '#f0e0c0'], 'dark' => ['#101010', '#202030', '#303040']],
             'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
             'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
             'login' => [
@@ -126,6 +127,9 @@ class ThemeTest extends RoleTestCase
             ['status' => ['success' => 'green']],
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
+            ['customGradient' => ['light' => ['#ffffff', 'nope']]],
+            ['customGradient' => ['dark' => ['#000000', 'red']]],
+            ['customGradient' => ['angle' => 900]],
             ['login' => ['layout' => 'wizard']],
             ['login' => ['background' => 'fireworks']],
             ['login' => ['features' => ['a', 'b', 'c', 'd', 'e']]],
@@ -138,6 +142,9 @@ class ThemeTest extends RoleTestCase
             $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);
         }
 
+        $tooFew = $this->config();
+        $tooFew['customGradient']['light'] = ['#ffffff'];
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $tooFew, 'css' => ''])->assertStatus(422);
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['login' => ['image' => 'http://x.example/a.png']]), 'css' => ''])->assertStatus(400);
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => ''])->assertOk();
     }

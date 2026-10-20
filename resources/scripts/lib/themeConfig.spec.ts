@@ -167,6 +167,22 @@ describe('themeConfig', () => {
         expect(buildThemeCss(withDefaults({}))).toBe('');
     });
 
+    it('makes gradients of your own for both themes, for the page and for the login pages', () => {
+        const custom = { angle: 120, light: ['#ffffff', '#cccccc'], dark: ['#000000', '#222222', '#444444'] };
+        const css = buildThemeCss(
+            withDefaults({
+                customGradient: custom,
+                background: { image: 'gradient:custom', blur: 0, dim: 0 },
+                login: { ...DEFAULT_LOGIN, background: 'gradient', gradient: 'custom' },
+            })
+        );
+        const [light, dark] = css.split('html.dark');
+        expect(light).toContain('--bg-image: linear-gradient(120deg, #ffffff 0%, #cccccc 100%);');
+        expect(light).toContain('--login-gradient: linear-gradient(120deg, #ffffff 0%, #cccccc 100%);');
+        expect(dark).toContain('--bg-image: linear-gradient(120deg, #000000 0%, #222222 50%, #444444 100%);');
+        expect(dark).toContain('--login-gradient: linear-gradient(120deg, #000000 0%, #222222 50%, #444444 100%);');
+    });
+
     it('only ever writes custom properties inside the two page blocks', () => {
         for (const preset of PRESETS) {
             const css = buildThemeCss(presetConfig(preset.id));

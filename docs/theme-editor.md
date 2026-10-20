@@ -66,3 +66,7 @@ Login page (fifth round): `login` in the config (`lib/themeConfig.ts`), edited i
   (rows of the server software banners sliding past each other). Variables: `--login-gradient`, `--login-image`, `--login-blur`, `--login-dim`.
 * The editor previews it with the real login screen at `/theme-preview/login` (the real `/auth/login` sends signed in people away); it is inert.
 * Public pages get the settings through `SiteConfiguration.theme` and the printed CSS like all other pages.
+
+Gradients of your own: pick "Your own" next to the ready made gradients, in the Background section and in the Login page section (both use the
+same one, `customGradient` in the config). It has an angle, 2 or 3 colours, and a separate set of colours for the light and for the dark theme;
+`customGradientCss` writes it, `components/admin/theme/GradientPicker.tsx` edits it.

@@ -33,6 +33,7 @@ import {
     Slider,
     Toggle,
 } from '@/components/admin/theme/controls';
+import GradientPicker from '@/components/admin/theme/GradientPicker';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
 import LivePreview, { PreviewPage } from '@/components/admin/theme/LivePreview';
 import {
@@ -927,22 +928,13 @@ export default () => {
                                 />
                             </Row>
                             {login.background === 'gradient' && (
-                                <div className={'grid grid-cols-3 gap-2'}>
-                                    {Object.entries(GRADIENTS).map(([id, gradient]) => (
-                                        <button
-                                            key={id}
-                                            type={'button'}
-                                            onClick={() => setLogin({ gradient: id })}
-                                            className={classNames(
-                                                'h-12 rounded-lg border-2 text-xs font-medium text-neutral-100',
-                                                login.gradient === id ? 'border-primary-600' : 'border-neutral-500'
-                                            )}
-                                            style={{ background: dark ? gradient.dark : gradient.light }}
-                                        >
-                                            {gradient.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                <GradientPicker
+                                    value={login.gradient}
+                                    onChange={(gradient) => setLogin({ gradient })}
+                                    custom={config.customGradient}
+                                    onCustomChange={(customGradient) => set({ customGradient })}
+                                    dark={dark}
+                                />
                             )}
                             {login.background === 'image' && (
                                 <div className={'space-y-2'}>
@@ -1082,22 +1074,13 @@ export default () => {
                                 />
                             </Row>
                             {kind === 'gradient' && (
-                                <div className={'grid grid-cols-3 gap-2'}>
-                                    {Object.entries(GRADIENTS).map(([id, gradient]) => (
-                                        <button
-                                            key={id}
-                                            type={'button'}
-                                            onClick={() => setBackground({ image: `gradient:${id}` })}
-                                            className={classNames(
-                                                'h-12 rounded-lg border-2 text-xs font-medium text-neutral-100',
-                                                image === `gradient:${id}` ? 'border-primary-600' : 'border-neutral-500'
-                                            )}
-                                            style={{ background: dark ? gradient.dark : gradient.light }}
-                                        >
-                                            {gradient.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                <GradientPicker
+                                    value={(image ?? '').replace('gradient:', '')}
+                                    onChange={(id) => setBackground({ image: `gradient:${id}` })}
+                                    custom={config.customGradient}
+                                    onCustomChange={(customGradient) => set({ customGradient })}
+                                    dark={dark}
+                                />
                             )}
                             {kind === 'image' && (
                                 <div className={'space-y-2'}>

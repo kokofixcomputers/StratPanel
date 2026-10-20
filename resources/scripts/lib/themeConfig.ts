@@ -57,6 +57,27 @@ export const DEFAULT_MOTION: MotionOptions = {
     pulse: false,
 };
 
+/** A gradient of your own: an angle and 2 or 3 colours for the light theme and for the dark one. Chosen as "custom" wherever a gradient is. */
+export interface CustomGradient {
+    angle: number;
+    light: string[];
+    dark: string[];
+}
+
+export const DEFAULT_CUSTOM_GRADIENT: CustomGradient = {
+    angle: 160,
+    light: ['#f7f9fc', '#e6ecf4'],
+    dark: ['#0c1017', '#131b28'],
+};
+
+/** The CSS of a gradient of your own for a theme. */
+export const customGradientCss = (gradient: CustomGradient, mode: 'light' | 'dark'): string => {
+    const colors = gradient[mode];
+    const stops = colors.map((color, i) => `${color} ${Math.round((i / (colors.length - 1)) * 100)}%`);
+
+    return `linear-gradient(${Math.round(gradient.angle)}deg, ${stops.join(', ')})`;
+};
+
 export type LoginLayout = 'card' | 'brand' | 'split' | 'showcase';
 export type LoginBackground = 'none' | 'gradient' | 'image' | 'scan' | 'squares' | 'eggs';
 
@@ -151,6 +172,7 @@ export interface ThemeConfig {
     sidebarFlat: boolean;
     motion: MotionOptions;
     login: LoginOptions;
+    customGradient: CustomGradient;
     // The navigation of a server: which items there are, in what order, and links of your own.
     sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
     // The servers of the dashboard as a list or as cards side by side.
@@ -207,6 +229,7 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     sidebarFlat: false,
     motion: DEFAULT_MOTION,
     login: DEFAULT_LOGIN,
+    customGradient: DEFAULT_CUSTOM_GRADIENT,
     sidebar: { order: [], hidden: [], extra: [] },
     layout: 'list',
     columns: 2,
@@ -323,6 +346,7 @@ export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): T
         console: { ...DEFAULT_CONSOLE, ...(given.console ?? {}) },
         motion: { ...DEFAULT_MOTION, ...(given.motion ?? {}) },
         login: { ...DEFAULT_LOGIN, ...(given.login ?? {}) },
+        customGradient: { ...DEFAULT_CUSTOM_GRADIENT, ...(given.customGradient ?? {}) },
         row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
         sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
     };
@@ -508,8 +532,13 @@ export const FONTS: Record<FontChoice, { label: string; stack: string | null }> 
 };
 
 /** The CSS value for the background of a config in a theme, null for none. */
-export const backgroundValue = (image: string | null, mode: 'light' | 'dark'): string | null => {
+export const backgroundValue = (
+    image: string | null,
+    mode: 'light' | 'dark',
+    custom: CustomGradient = DEFAULT_CUSTOM_GRADIENT
+): string | null => {
     if (!image) return null;
+    if (image === 'gradient:custom') return customGradientCss(custom, mode);
     if (image.startsWith('gradient:')) return GRADIENTS[image.slice(9)]?.[mode] ?? null;
 
     return `url("${image}")`;
@@ -645,23 +674,28 @@ export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE):
 
     const image = config.background.image;
     if (image && image.startsWith('gradient:')) {
-        const lightValue = backgroundValue(image, 'light');
-        const darkValue = backgroundValue(image, 'dark');
+        const lightValue = backgroundValue(image, 'light', config.customGradient);
+        const darkValue = backgroundValue(image, 'dark', config.customGradient);
         if (lightValue) light['--bg-image'] = lightValue;
         if (darkValue) dark['--bg-image'] = darkValue;
     } else if (image) {
-        common['--bg-image'] = backgroundValue(image, 'light')!;
+        common['--bg-image'] = backgroundValue(image, 'light', config.customGradient)!;
     }
-    if (image && backgroundValue(image, 'light')) {
+    if (image && backgroundValue(image, 'light', config.customGradient)) {
         if (config.background.blur > 0) common['--bg-blur'] = `${config.background.blur}px`;
         if (config.background.dim > 0) common['--bg-dim'] = String(config.background.dim / 100);
     }
 
     // The background of the sign in pages: a gradient for each theme, or a picture, with how much it is blurred and dimmed.
     const login = config.login;
-    if (login.background === 'gradient' && GRADIENTS[login.gradient]) {
-        light['--login-gradient'] = GRADIENTS[login.gradient].light;
-        dark['--login-gradient'] = GRADIENTS[login.gradient].dark;
+    if (login.background === 'gradient') {
+        const id = `gradient:${login.gradient}`;
+        const lightValue = backgroundValue(id, 'light', config.customGradient);
+        const darkValue = backgroundValue(id, 'dark', config.customGradient);
+        if (lightValue && darkValue) {
+            light['--login-gradient'] = lightValue;
+            dark['--login-gradient'] = darkValue;
+        }
     }
     if (login.background === 'image' && login.image) {
         common['--login-image'] = `url("${login.image}")`;
