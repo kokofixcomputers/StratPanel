@@ -307,7 +307,13 @@ export default ({
                     }}
                 />
             )}
-            <div css={[tw`flex items-center col-span-12 min-w-0`, !card && tw`sm:col-span-6 lg:col-span-5`]}>
+            <div
+                css={
+                    card
+                        ? tw`flex items-center col-span-12 min-w-0`
+                        : tw`flex items-center col-span-12 sm:col-span-6 lg:col-span-5 min-w-0`
+                }
+            >
                 <div className={'icon mr-4 !w-12 !h-12 flex-shrink-0'}>
                     <FontAwesomeIcon icon={faServer} />
                 </div>
@@ -354,12 +360,11 @@ export default ({
                 </div>
             </div>
             <div
-                css={[
-                    tw`hidden col-span-12`,
+                css={
                     card
-                        ? tw`grid grid-cols-2 gap-x-4 gap-y-3 pr-4`
-                        : tw`sm:col-span-6 lg:col-span-7 justify-end gap-6 pr-4`,
-                ]}
+                        ? tw`hidden sm:grid col-span-12 grid-cols-2 gap-x-4 gap-y-3 pr-4`
+                        : tw`hidden sm:flex col-span-12 sm:col-span-6 lg:col-span-7 items-center justify-end gap-6 pr-4`
+                }
             >
                 {!stats || isSuspended || server.isNodeUnderMaintenance ? (
                     isSuspended ? (
@@ -425,7 +430,11 @@ export default ({
                 {!card && powerActions}
             </div>
             {powerActions && (
-                <div css={[tw`col-span-12 flex justify-end pr-4`, !card && tw`sm:hidden`]}>{powerActions}</div>
+                <div
+                    css={card ? tw`col-span-12 flex justify-end pr-4` : tw`sm:hidden col-span-12 flex justify-end pr-4`}
+                >
+                    {powerActions}
+                </div>
             )}
             <div className={'status-bar'} />
         </StatusIndicatorBox>
