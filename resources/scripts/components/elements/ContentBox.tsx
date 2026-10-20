@@ -19,6 +19,7 @@ const ContentBox = ({ title, borderColor, showFlashes, showLoadingOverlay, child
             <FlashMessageRender byKey={typeof showFlashes === 'string' ? showFlashes : undefined} css={tw`mb-4`} />
         )}
         <div
+            className={'glass'}
             css={[
                 tw`bg-white p-5 rounded-xl border border-neutral-500 shadow-md relative`,
                 !!borderColor && tw`border-t-4`,

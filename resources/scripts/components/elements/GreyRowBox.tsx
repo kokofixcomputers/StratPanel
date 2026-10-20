@@ -3,6 +3,7 @@ import tw from 'twin.macro';
 
 export default styled.div<{ $hoverable?: boolean }>`
     ${tw`flex rounded-xl no-underline text-neutral-200 items-center bg-white p-4 border border-neutral-500 transition-all duration-150 overflow-hidden shadow`};
+    backdrop-filter: blur(var(--card-blur, 0px));
 
     ${(props) => props.$hoverable !== false && tw`hover:border-neutral-400 hover:shadow-md`};
 

@@ -39,10 +39,14 @@ export default createGlobalStyle`
         background: rgb(var(--c-neutral-800) / var(--bg-dim, 0));
     }
 
-    /* See-through cards (--card-alpha), with what is behind them blurred. */
-    html .bg-white, html .bg-neutral-700 {
-        --tw-bg-opacity: var(--card-alpha, 1);
+    /* The blur behind see-through cards (--card-blur). The see-through part is in tailwind.config.js (--card-alpha). */
+    html .bg-white, html .bg-neutral-700, .glass {
         backdrop-filter: blur(var(--card-blur, 0px));
+    }
+
+    /* What opens over the page (dialogs, menus) stays solid, text behind it would show through otherwise. */
+    #modal-portal, [role='dialog'], [role='menu'], [role='listbox'] {
+        --card-alpha: 1;
     }
 
     /* The servers of the dashboard: one under the other, or side by side. */

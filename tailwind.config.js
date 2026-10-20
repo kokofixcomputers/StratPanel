@@ -15,7 +15,15 @@ const variable =
 const scale = (name) =>
     Object.fromEntries(Object.keys(scales[name].light).map((shade) => [shade, variable(`--c-${name}-${shade}`)]));
 
+// Cards are white (the light theme) or neutral-700 (the dark one) and the theme editor can make them see-through: --card-alpha is
+// multiplied into these two colours, wherever they are used (utility classes and the css of styled components alike).
+const surface =
+    (name) =>
+    ({ opacityValue, opacityVariable }) =>
+        `rgb(var(${name}) / calc(${opacityValue ?? (opacityVariable ? `var(${opacityVariable}, 1)` : '1')} * var(--card-alpha, 1)))`;
+
 const palette = Object.fromEntries(Object.keys(scales).map((name) => [name, scale(name)]));
+palette.neutral = { ...palette.neutral, 700: surface('--c-neutral-700') };
 const gray = palette.neutral;
 const blue = palette.primary;
 
@@ -32,7 +40,7 @@ module.exports = {
                 ...palette,
                 black: variable('--c-black'),
                 // Cards: white in the light theme, a dark surface in the dark one.
-                white: variable('--c-white'),
+                white: surface('--c-white'),
                 // White that stays white, for the text on a coloured button or over a picture.
                 snow: '#ffffff',
                 primary: blue,
