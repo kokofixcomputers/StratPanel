@@ -12,7 +12,7 @@ const Chip = ({ active, onClick, children }: { active: boolean; onClick: () => v
         aria-pressed={active}
         onClick={onClick}
         className={classNames(
-            'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30',
+            'fx inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:ring-[3px] focus-visible:ring-primary-600/30',
             active
                 ? 'border-primary-600 bg-primary-50 text-primary-700'
                 : 'border-neutral-500 bg-white text-neutral-300 hover:border-neutral-400 hover:text-neutral-50'

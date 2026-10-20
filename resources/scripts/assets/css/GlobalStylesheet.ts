@@ -142,27 +142,27 @@ export default createGlobalStyle`
     }
 
     /* Movement (data-btn-hover, data-btn-press, data-card-hover, data-speed, data-page-anim, data-pulse). */
-    .btn, .hover-card {
+    .btn, .fx, .nav-right a, .nav-right button, .hover-card {
         transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease, color 150ms ease;
     }
-    [data-btn-hover='lift'] .btn:hover:not(:disabled) {
+    [data-btn-hover='lift'] :is(.btn, .fx, .nav-right a, .nav-right button):hover:not(:disabled) {
         transform: translateY(-2px);
         box-shadow: var(--shadow-lg, 0 10px 24px -6px rgb(15 23 42 / 0.2));
     }
-    [data-btn-hover='scale'] .btn:hover:not(:disabled) {
+    [data-btn-hover='scale'] :is(.btn, .fx, .nav-right a, .nav-right button):hover:not(:disabled) {
         transform: scale(1.05);
     }
-    [data-btn-hover='glow'] .btn:hover:not(:disabled) {
+    [data-btn-hover='glow'] :is(.btn, .fx, .nav-right a, .nav-right button):hover:not(:disabled) {
         box-shadow: 0 0 0 3px rgb(var(--c-neutral-400) / 0.25);
     }
     [data-btn-hover='glow'] .btn-primary:not(.btn-flat):hover:not(:disabled) {
         box-shadow: 0 0 0 3px rgb(var(--c-primary-600) / 0.25), 0 6px 22px rgb(var(--c-primary-600) / 0.5);
     }
-    [data-btn-hover='shine'] .btn {
+    [data-btn-hover='shine'] :is(.btn, .fx, .nav-right a, .nav-right button) {
         position: relative;
         overflow: hidden;
     }
-    [data-btn-hover='shine'] .btn::after {
+    [data-btn-hover='shine'] :is(.btn, .fx, .nav-right a, .nav-right button)::after {
         content: '';
         position: absolute;
         inset: 0;
@@ -171,13 +171,13 @@ export default createGlobalStyle`
         transition: transform 600ms ease;
         pointer-events: none;
     }
-    [data-btn-hover='shine'] .btn:hover:not(:disabled)::after {
+    [data-btn-hover='shine'] :is(.btn, .fx, .nav-right a, .nav-right button):hover:not(:disabled)::after {
         transform: translateX(120%);
     }
-    [data-btn-press='squish'] .btn:active:not(:disabled) {
+    [data-btn-press='squish'] :is(.btn, .fx, .nav-right a, .nav-right button):active:not(:disabled) {
         transform: scale(0.94);
     }
-    [data-btn-press='sink'] .btn:active:not(:disabled) {
+    [data-btn-press='sink'] :is(.btn, .fx, .nav-right a, .nav-right button):active:not(:disabled) {
         transform: translateY(2px);
         box-shadow: none;
     }

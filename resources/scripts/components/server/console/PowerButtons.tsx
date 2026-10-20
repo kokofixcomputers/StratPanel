@@ -14,7 +14,7 @@ interface PowerButtonProps {
 
 const baseFor = (compact: boolean) =>
     classNames(
-        'inline-flex items-center justify-center rounded-lg text-sm font-semibold text-snow shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed',
+        'fx inline-flex items-center justify-center rounded-lg text-sm font-semibold text-snow shadow transition-all duration-150 focus-visible:ring-[3px] disabled:cursor-not-allowed',
         compact ? 'flex-1 px-2 py-2' : 'px-5 py-2.5'
     );
 
