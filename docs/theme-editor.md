@@ -35,12 +35,11 @@ More settings (second round):
   the server), see `lib/sidebarLayout.ts`.
 * **Console:** follows the theme or is always dark, text brightness (colours move toward the background) and font size (`lib/consoleTheme.ts`).
   The default brightness is 85%, a little dimmer than before.
-* The editor page removes the saved theme from itself while it is open, so the preview shows the draft alone.
+* The editor page removes the saved theme from itself while it is open, so it stays readable whatever the theme is.
 
 Third round:
 * **Editor layout:** a slim rail of icons on the left (the sections), it opens on hover to show the name and description of each section; one
-  section at a time is shown next to it (`SECTIONS` in `ThemeEditor.tsx`). The preview draws the real `ServerRow` (`preview` prop, made up data,
-  `ThemeConfigContext` gives it the draft config) so sizes match the panel.
+  section at a time is shown next to it (`SECTIONS` in `ThemeEditor.tsx`). The preview is the real panel in a frame (see below).
 * **Floating bars** stay put while scrolling (`position: sticky` on `.app-nav`).
 * **Server row size** small / medium (the new default) / large, and the state mark as bar / dot / hidden (`data-row-size`, `data-row-status`).
 * **Buttons:** style solid / soft / outline / gradient, hover lift / glow / grow / shine, press squish / sink (classes `btn`, `btn-primary`, `btn-flat`).
@@ -49,3 +48,10 @@ Third round:
 * **More:** lines around cards (subtle / none / strong), page width, sidebar width and a sidebar without its own card, heading weight, letter spacing.
 * The marks on `<html>` (`data-*`) are made by `themeAttributes(config)`, sent with the CSS, stored (`settings::theme:attributes`) and printed by
   `partials/theme.blade.php`; `ThemeService` lets only the names in `ATTRIBUTE_NAMES` and short lowercase values through.
+
+The preview is the real panel (fourth round): `LivePreview.tsx` shows `/?theme-preview=1` (or `/server/<id>?...`, `/account?...`) in an iframe drawn at
+1280px (or 390px for a phone) and scaled to fit. The editor sends the draft with `postMessage` on every change; inside such a frame `lib/themePreview.ts`
+(started from `index.tsx`) replaces the theme style and the `data-*` marks, switches light or dark, and updates `useThemeConfig`, nothing is saved.
+The message is only taken from the parent page of the same origin. A message was used instead of a long `?preview=<data>` address so the preview
+updates live and the address stays short; the frame can be browsed like the real panel. `SetSecurityHeaders` allows framing (`SAMEORIGIN`) only for
+requests that have `theme-preview` in the query, everything else keeps `DENY`.

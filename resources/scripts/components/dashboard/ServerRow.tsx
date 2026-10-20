@@ -215,7 +215,6 @@ export default ({
     organizer,
     players,
     className,
-    preview,
 }: {
     server: Server;
     stats: ServerStats | undefined;
@@ -225,8 +224,6 @@ export default ({
     onRefresh: () => Promise<unknown>;
     organizer?: RowOrganizer;
     className?: string;
-    // The theme editor draws the real row with made up data: no requests, no navigation.
-    preview?: boolean;
 }) => {
     const theme = useThemeConfig();
     const card = theme.layout === 'grid';
@@ -257,7 +254,6 @@ export default ({
     );
 
     const power = (signal: PowerSignal) => {
-        if (preview) return;
         setPowerError(null);
         setBusy(signal);
 
@@ -274,10 +270,7 @@ export default ({
     };
 
     // A faint logo of the software behind the card, only for servers that can be reached.
-    const software = useServerSoftware(
-        server.uuid,
-        !preview && !isSuspended && !server.isNodeUnderMaintenance && !server.status
-    );
+    const software = useServerSoftware(server.uuid, !isSuspended && !server.isNodeUnderMaintenance && !server.status);
     const [logoFailed, setLogoFailed] = useState(false);
     const logo = software && software !== 'VANILLA' && !logoFailed ? iconFor(software as SoftwareType) : null;
 
@@ -311,7 +304,8 @@ export default ({
 
     return (
         <StatusIndicatorBox
-            {...(preview ? {} : ({ as: Link, to: `/server/${server.id}` } as any))}
+            as={Link}
+            to={`/server/${server.id}`}
             draggable={false}
             className={classNames('group server-row hover-card', className)}
             $status={stats?.status}

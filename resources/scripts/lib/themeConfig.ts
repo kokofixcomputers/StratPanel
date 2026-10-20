@@ -5,7 +5,7 @@
  * the CSS into every page (Services/Theme/ThemeService.php checks it first, it only lets variables through), the layout settings are read
  * from window.SiteConfiguration.theme by useThemeConfig.
  */
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ConsoleOptions, DEFAULT_CONSOLE } from '@/lib/consoleTheme';
 
 export type RadiusStyle = 'sharp' | 'soft' | 'round' | 'pill';
@@ -676,11 +676,7 @@ export const setPageThemeConfig = (config: ThemeConfig): void => {
     window.dispatchEvent(new CustomEvent(EVENT));
 };
 
-/** The theme editor draws parts of the panel with the config it is editing instead of the saved one. */
-export const ThemeConfigContext = createContext<ThemeConfig | null>(null);
-
 export const useThemeConfig = (): ThemeConfig => {
-    const draft = useContext(ThemeConfigContext);
     const [config, setConfig] = useState(pageThemeConfig);
 
     useEffect(() => {
@@ -690,5 +686,5 @@ export const useThemeConfig = (): ThemeConfig => {
         return () => window.removeEventListener(EVENT, update);
     }, []);
 
-    return draft ?? config;
+    return config;
 };

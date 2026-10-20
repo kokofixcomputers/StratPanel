@@ -164,4 +164,10 @@ class ThemeTest extends RoleTestCase
         $this->actingAs($user)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => ''])->assertForbidden();
         $this->actingAs($this->userWith(['settings.branding.update']))->getJson('/api/client/theme')->assertOk();
     }
+
+    public function testOnlyThePreviewRequestMayBeFramed(): void
+    {
+        $this->get('/auth/login?theme-preview=1')->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->get('/auth/login')->assertHeader('X-Frame-Options', 'DENY');
+    }
 }

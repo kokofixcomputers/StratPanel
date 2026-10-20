@@ -33,7 +33,7 @@ import {
     Toggle,
 } from '@/components/admin/theme/controls';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
-import ThemePreview from '@/components/admin/theme/ThemePreview';
+import LivePreview, { PreviewPage } from '@/components/admin/theme/LivePreview';
 import {
     BASE_NEUTRAL,
     buildThemeCss,
@@ -136,10 +136,19 @@ export default () => {
     const [forbidden, setForbidden] = useState(false);
     const [working, setWorking] = useState<null | 'save' | 'reset' | 'upload'>(null);
     const [dark, setDark] = useState(false);
-    const [page, setPage] = useState<'dashboard' | 'server'>('dashboard');
+    const [page, setPage] = useState<PreviewPage>('dashboard');
+    const [phone, setPhone] = useState(false);
+    const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSection] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
     const file = useRef<HTMLInputElement>(null);
+
+    // A server of the admin's own for the preview of the server pages.
+    useEffect(() => {
+        http.get('/api/client')
+            .then(({ data }) => setServerId(data.data?.[0]?.attributes?.identifier ?? null))
+            .catch(() => setServerId(null));
+    }, []);
 
     useEffect(() => {
         http.get('/api/client/theme')
@@ -943,20 +952,33 @@ export default () => {
                             onChange={setPage}
                             options={[
                                 { value: 'dashboard', label: 'Dashboard' },
-                                { value: 'server', label: 'Server page' },
+                                ...(serverId ? [{ value: 'server' as const, label: 'Server page' }] : []),
+                                { value: 'account', label: 'Account' },
                             ]}
                         />
-                        <Segmented
-                            value={dark ? 'dark' : 'light'}
-                            onChange={(next) => setDark(next === 'dark')}
-                            options={[
-                                { value: 'light', label: 'Light' },
-                                { value: 'dark', label: 'Dark' },
-                            ]}
-                        />
+                        <div className={'flex gap-2'}>
+                            <Segmented
+                                value={phone ? 'phone' : 'desktop'}
+                                onChange={(next) => setPhone(next === 'phone')}
+                                options={[
+                                    { value: 'desktop', label: 'Desktop' },
+                                    { value: 'phone', label: 'Phone' },
+                                ]}
+                            />
+                            <Segmented
+                                value={dark ? 'dark' : 'light'}
+                                onChange={(next) => setDark(next === 'dark')}
+                                options={[
+                                    { value: 'light', label: 'Light' },
+                                    { value: 'dark', label: 'Dark' },
+                                ]}
+                            />
+                        </div>
                     </div>
-                    <ThemePreview config={config} dark={dark} page={page} />
-                    <p className={'mt-3 text-sm text-neutral-400'}>Preview, nothing changes until you save.</p>
+                    <LivePreview config={config} dark={dark} page={page} serverId={serverId} phone={phone} />
+                    <p className={'mt-3 text-sm text-neutral-400'}>
+                        This is the real panel with your draft, nothing changes for anybody until you save.
+                    </p>
                 </main>
             </div>
         </div>

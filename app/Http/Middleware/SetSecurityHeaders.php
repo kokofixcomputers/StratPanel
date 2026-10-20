@@ -32,6 +32,11 @@ class SetSecurityHeaders
     {
         $response = $next($request);
 
+        // The theme editor shows the panel in a frame of its own page (?theme-preview=1), nobody else may frame it.
+        if ($request->query->has('theme-preview') && !$response->headers->has('X-Frame-Options')) {
+            $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        }
+
         foreach (static::$headers as $key => $value) {
             if (! $response->headers->has($key)) {
                 $response->headers->set($key, $value);
