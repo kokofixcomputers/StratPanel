@@ -80,6 +80,22 @@ class ThemeController extends ClientApiController
             'config.sidebar.extra.*.newTab' => 'required|boolean',
             'config.sidebar.extra.*.group' => ['required', Rule::in(['Server', 'Minecraft', 'Manage', 'Configuration', 'More'])],
             'css' => 'present|nullable|string|max:30000',
+            'attributes' => 'sometimes|array|max:30',
+            'config.row.size' => ['required', Rule::in(['small', 'medium', 'large'])],
+            'config.row.status' => ['required', Rule::in(['bar', 'dot', 'none'])],
+            'config.headingWeight' => ['required', Rule::in([500, 600, 700, 800])],
+            'config.tracking' => ['required', Rule::in(['tight', 'normal', 'wide'])],
+            'config.buttonStyle' => ['required', Rule::in(['solid', 'soft', 'outline', 'gradient'])],
+            'config.borders' => ['required', Rule::in(['subtle', 'none', 'strong'])],
+            'config.pageWidth' => ['required', Rule::in(['narrow', 'normal', 'wide', 'full'])],
+            'config.sidebarWidth' => ['required', Rule::in(['narrow', 'normal', 'wide'])],
+            'config.sidebarFlat' => 'required|boolean',
+            'config.motion.buttonHover' => ['required', Rule::in(['none', 'lift', 'glow', 'scale', 'shine'])],
+            'config.motion.buttonPress' => ['required', Rule::in(['none', 'squish', 'sink'])],
+            'config.motion.cardHover' => ['required', Rule::in(['none', 'lift', 'glow', 'border'])],
+            'config.motion.speed' => ['required', Rule::in(['off', 'fast', 'normal', 'slow'])],
+            'config.motion.page' => ['required', Rule::in(['fade', 'slide', 'none'])],
+            'config.motion.pulse' => 'required|boolean',
         ]);
 
         if (!ThemeService::imageAllowed($data['config']['background']['image'] ?? null)) {
@@ -87,7 +103,7 @@ class ThemeController extends ClientApiController
         }
 
         try {
-            $this->theme->save($data['config'], (string) ($data['css'] ?? ''));
+            $this->theme->save($data['config'], (string) ($data['css'] ?? ''), (array) ($data['attributes'] ?? []));
         } catch (\InvalidArgumentException $exception) {
             throw new DisplayException($exception->getMessage());
         }

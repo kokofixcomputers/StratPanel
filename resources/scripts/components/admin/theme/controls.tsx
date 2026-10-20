@@ -1,28 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import classNames from 'classnames';
 
-export const Group = ({
-    title,
-    hint,
-    children,
-    open = false,
-}: {
-    title: string;
-    hint?: string;
-    children: React.ReactNode;
-    open?: boolean;
-}) => (
-    <details open={open} className={'group border-b border-neutral-500 last:border-b-0'}>
-        <summary className={'flex cursor-pointer select-none list-none items-center justify-between px-5 py-3.5'}>
-            <span>
-                <span className={'block text-sm font-semibold text-neutral-50'}>{title}</span>
-                {hint && <span className={'block text-xs text-neutral-400'}>{hint}</span>}
-            </span>
-            <span className={'text-neutral-400 transition-transform group-open:rotate-90'}>&rsaquo;</span>
-        </summary>
-        <div className={'space-y-4 px-5 pb-5'}>{children}</div>
-    </details>
-);
+/** Which section of the editor is open (the rail on the left chooses). */
+export const SectionContext = React.createContext<string>('');
+
+/** The content of one section, only drawn while the rail has it open. */
+export const Group = ({ id, children }: { id: string; children: React.ReactNode }) => {
+    const active = React.useContext(SectionContext);
+
+    return active === id ? <div className={'space-y-4 px-5 pb-6 pt-1'}>{children}</div> : null;
+};
 
 export const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div>

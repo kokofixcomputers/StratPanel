@@ -1,161 +1,63 @@
 import React, { useMemo } from 'react';
 import classNames from 'classnames';
+import { MemoryRouter } from 'react-router-dom';
 import { Button } from '@/components/elements/button/index';
+import ServerRow from '@/components/dashboard/ServerRow';
+import { Server } from '@/api/server/getServer';
+import { ServerStats } from '@/api/server/getServerResourceUsage';
 import { consoleTheme } from '@/lib/consoleTheme';
 import { arrange, extraKey, safeUrl, SIDEBAR_GROUPS, SIDEBAR_LABELS } from '@/lib/sidebarLayout';
-import { buildThemeCss, themeAttributes, ThemeConfig } from '@/lib/themeConfig';
+import { buildThemeCss, ThemeConfig, ThemeConfigContext, themeAttributes } from '@/lib/themeConfig';
 
 const PREVIEW_SCOPE = { common: '.tp', light: '.tp.theme-light', dark: '.tp.dark' };
 
-const Meter = ({ label, value, ratio, note }: { label: string; value: string; ratio?: number; note?: string }) => (
-    <div className={'min-w-0 flex-1'} style={{ minWidth: '5rem' }}>
-        <div className={'flex items-baseline justify-between'}>
-            <span className={'text-2xs uppercase tracking-wide text-neutral-400'}>{label}</span>
-            <span className={'text-xs font-semibold text-neutral-100'}>{value}</span>
-        </div>
-        {ratio !== undefined && (
-            <div className={'mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-600'}>
-                <div className={'h-full rounded-full bg-primary-600'} style={{ width: `${ratio}%` }} />
-            </div>
-        )}
-        {note && <p className={'mt-1 text-2xs text-neutral-400'}>{note}</p>}
-    </div>
-);
+const server = (id: number, name: string, description: string, port: number, memory: number): Server =>
+    ({
+        id: `preview${id}`,
+        identifier: `preview${id}`,
+        internalId: id,
+        uuid: `00000000-0000-0000-0000-00000000000${id}`,
+        name,
+        node: 'Frankfurt-1',
+        isNodeUnderMaintenance: false,
+        isOwner: true,
+        canControl: { start: true, stop: true, restart: true },
+        status: null,
+        description,
+        limits: { memory, swap: 0, disk: 10240, io: 500, cpu: 200, threads: '' },
+        isTransferring: false,
+        allocations: [{ id, ip: '10.0.0.4', alias: 'play.example.com', port, notes: null, isDefault: true }],
+    } as unknown as Server);
 
-const SERVERS = [
+const stats = (status: ServerStats['status'], cpu: number, memory: number): ServerStats => ({
+    status,
+    isSuspended: false,
+    cpuUsagePercent: cpu,
+    memoryUsageInBytes: memory * 1024 * 1024,
+    diskUsageInBytes: 2100 * 1024 * 1024,
+    networkRxInBytes: 1.1 * 1024 ** 3,
+    networkTxInBytes: 0.3 * 1024 ** 3,
+    uptime: status === 'running' ? 3 * 86400000 + 4 * 3600000 : 0,
+});
+
+const SERVERS: { server: Server; stats: ServerStats; players?: { online: number; max: number } }[] = [
     {
-        name: 'Survival SMP',
-        address: 'play.example.com:25565',
-        note: 'Vanilla survival',
-        state: 'running',
-        cpu: 34,
-        memory: 62,
-        players: 7,
+        server: server(1, 'Survival SMP', 'Vanilla survival', 25565, 4096),
+        stats: stats('running', 68, 2540),
+        players: { online: 7, max: 20 },
     },
     {
-        name: 'Creative plots',
-        address: 'play.example.com:25566',
-        note: 'Build in peace',
-        state: 'running',
-        cpu: 12,
-        memory: 41,
-        players: 2,
+        server: server(2, 'Creative plots', 'Build in peace', 25566, 2048),
+        stats: stats('running', 24, 840),
+        players: { online: 2, max: 20 },
     },
+    { server: server(3, 'Bedwars', 'Minigames', 25567, 2048), stats: stats('offline', 0, 0) },
     {
-        name: 'Bedwars',
-        address: 'play.example.com:25567',
-        note: 'Minigames',
-        state: 'offline',
-        cpu: 0,
-        memory: 0,
-        players: 0,
-    },
-    {
-        name: 'Lobby',
-        address: 'play.example.com:25568',
-        note: 'Hub',
-        state: 'running',
-        cpu: 5,
-        memory: 20,
-        players: 11,
+        server: server(4, 'Lobby', 'Hub', 25568, 1024),
+        stats: stats('running', 10, 410),
+        players: { online: 11, max: 40 },
     },
 ];
-
-const PreviewServer = ({ server, config }: { server: typeof SERVERS[number]; config: ThemeConfig }) => {
-    const card = config.layout === 'grid';
-    const running = server.state === 'running';
-
-    return (
-        <div
-            className={classNames(
-                'relative overflow-hidden rounded-xl border border-neutral-500 bg-white shadow',
-                config.density === 'compact' ? 'p-3' : 'p-4'
-            )}
-        >
-            <div className={classNames('flex w-full items-center gap-4', card && 'flex-wrap')}>
-                <div className={'flex min-w-0 flex-1 items-center'} style={{ flexBasis: card ? '100%' : undefined }}>
-                    <div
-                        className={
-                            'mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600'
-                        }
-                    >
-                        <span className={'text-sm font-bold'}>{server.name[0]}</span>
-                    </div>
-                    <div className={'min-w-0'}>
-                        <p className={'truncate text-base font-semibold text-neutral-50'}>{server.name}</p>
-                        {config.row.address && (
-                            <p className={'truncate font-mono text-xs text-neutral-400'}>{server.address}</p>
-                        )}
-                        {config.row.description && <p className={'truncate text-sm text-neutral-400'}>{server.note}</p>}
-                    </div>
-                </div>
-                {running ? (
-                    <div
-                        className={classNames('flex items-center gap-4', card && 'w-full')}
-                        style={card ? { display: 'grid', gridTemplateColumns: '1fr 1fr' } : undefined}
-                    >
-                        {config.row.metrics.map((id) => {
-                            switch (id) {
-                                case 'players':
-                                    return (
-                                        <Meter
-                                            key={id}
-                                            label={'Players'}
-                                            value={`${server.players}/20`}
-                                            ratio={server.players * 5}
-                                        />
-                                    );
-                                case 'cpu':
-                                    return <Meter key={id} label={'CPU'} value={`${server.cpu}%`} ratio={server.cpu} />;
-                                case 'memory':
-                                    return (
-                                        <Meter
-                                            key={id}
-                                            label={'Memory'}
-                                            value={`${server.memory}%`}
-                                            ratio={server.memory}
-                                        />
-                                    );
-                                case 'disk':
-                                    return <Meter key={id} label={'Disk'} value={'2.1 GiB'} ratio={21} />;
-                                case 'uptime':
-                                    return (
-                                        <Meter
-                                            key={id}
-                                            label={'Uptime'}
-                                            value={'3d 4h'}
-                                            note={'since the last start'}
-                                        />
-                                    );
-                                case 'network':
-                                    return (
-                                        <Meter
-                                            key={id}
-                                            label={'Network'}
-                                            value={'1.4 GiB'}
-                                            note={'in 1.1 GiB / out 0.3 GiB'}
-                                        />
-                                    );
-                                default:
-                                    return null;
-                            }
-                        })}
-                    </div>
-                ) : (
-                    <span className={'rounded-full border border-neutral-500 bg-neutral-600 px-3 py-1 text-xs'}>
-                        Offline
-                    </span>
-                )}
-            </div>
-            <span
-                className={classNames(
-                    'absolute right-0 top-2 h-[calc(100%-1rem)] w-1.5 rounded-full',
-                    running ? 'bg-green-500' : 'bg-red-500'
-                )}
-            />
-        </div>
-    );
-};
 
 const TopBar = ({ active }: { active: 'dashboard' | 'server' }) => (
     <div className={'app-nav flex items-center justify-between border-b border-neutral-500 bg-white px-5 py-3 shadow'}>
@@ -302,6 +204,10 @@ const Status = () => (
                 Accent
             </span>
         </div>
+        <div className={'mt-3 flex flex-wrap gap-2'}>
+            <Button type={'button'}>Save</Button>
+            <Button.Text type={'button'}>Cancel</Button.Text>
+        </div>
         <p className={'mt-3 text-sm text-neutral-300'}>
             Text, <span className={'text-primary-600'}>links</span> and{' '}
             <span className={'text-neutral-400'}>muted text</span>.
@@ -342,55 +248,68 @@ export default ({ config, dark, page }: { config: ThemeConfig; dark: boolean; pa
                 className={'pointer-events-none absolute inset-0'}
                 style={{ background: 'rgb(var(--c-neutral-800) / var(--bg-dim, 0))' }}
             />
-            <div className={'relative'}>
-                <TopBar active={page} />
-                {page === 'dashboard' ? (
-                    <div className={'p-5'}>
-                        <div className={'mb-4 flex flex-wrap items-end justify-between gap-3'}>
-                            <div>
-                                <h2 className={'text-2xl font-bold tracking-tight text-neutral-50'}>Your servers</h2>
-                                <p className={'text-sm text-neutral-400'}>4 servers on your account</p>
-                            </div>
-                            <div className={'flex gap-2'}>
-                                <Button type={'button'}>Create new</Button>
-                                <Button.Text type={'button'}>Folders</Button.Text>
-                            </div>
-                        </div>
-                        <div className={'server-list'}>
-                            {SERVERS.map((server) => (
-                                <PreviewServer key={server.name} server={server} config={config} />
-                            ))}
-                        </div>
-                        <div className={'mt-5 grid gap-4 sm:grid-cols-2'}>
-                            <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
-                                <p className={'mb-3 text-sm font-semibold text-neutral-50'}>Controls</p>
-                                <input
-                                    readOnly
-                                    value={'Server name'}
-                                    className={
-                                        'mb-3 w-full border border-neutral-500 bg-white px-4 py-2 text-sm text-neutral-100'
-                                    }
-                                    style={{ borderRadius: 'var(--input-radius, var(--r-lg, 0.75rem))' }}
-                                />
-                                <div className={'flex flex-wrap gap-2'}>
-                                    <Button type={'button'}>Save</Button>
-                                    <Button.Text type={'button'}>Cancel</Button.Text>
-                                    <Button.Danger type={'button'}>Delete</Button.Danger>
+            <ThemeConfigContext.Provider value={config}>
+                <div className={'relative'}>
+                    <TopBar active={page} />
+                    {page === 'dashboard' ? (
+                        <div className={'p-5'}>
+                            <div className={'mb-4 flex flex-wrap items-end justify-between gap-3'}>
+                                <div>
+                                    <h2 className={'text-2xl font-bold tracking-tight text-neutral-50'}>
+                                        Your servers
+                                    </h2>
+                                    <p className={'text-sm text-neutral-400'}>4 servers on your account</p>
+                                </div>
+                                <div className={'flex gap-2'}>
+                                    <Button type={'button'}>Create new</Button>
+                                    <Button.Text type={'button'}>Folders</Button.Text>
                                 </div>
                             </div>
-                            <Status />
+                            <MemoryRouter>
+                                <div className={'server-list'}>
+                                    {SERVERS.map(({ server, stats, players }) => (
+                                        <ServerRow
+                                            key={server.uuid}
+                                            preview
+                                            server={server}
+                                            stats={stats}
+                                            players={players}
+                                            onRefresh={() => Promise.resolve()}
+                                        />
+                                    ))}
+                                </div>
+                            </MemoryRouter>
+                            <div className={'mt-5 grid gap-4 sm:grid-cols-2'}>
+                                <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
+                                    <p className={'mb-3 text-sm font-semibold text-neutral-50'}>Controls</p>
+                                    <input
+                                        readOnly
+                                        value={'Server name'}
+                                        className={
+                                            'mb-3 w-full border border-neutral-500 bg-white px-4 py-2 text-sm text-neutral-100'
+                                        }
+                                        style={{ borderRadius: 'var(--input-radius, var(--r-lg, 0.75rem))' }}
+                                    />
+                                    <div className={'flex flex-wrap gap-2'}>
+                                        <Button type={'button'}>Save</Button>
+                                        <Button.Text type={'button'}>Cancel</Button.Text>
+                                        <Button.Danger type={'button'}>Delete</Button.Danger>
+                                    </div>
+                                </div>
+                                <Status />
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className={'flex gap-4 p-5'}>
-                        <PreviewSidebar config={config} />
-                        <div className={'min-w-0 flex-1 space-y-4'}>
-                            <PreviewConsole config={config} dark={dark} />
-                            <Status />
+                    ) : (
+                        <div className={'flex gap-4 p-5'}>
+                            <PreviewSidebar config={config} />
+                            <div className={'min-w-0 flex-1 space-y-4'}>
+                                <PreviewConsole config={config} dark={dark} />
+                                <Status />
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            </ThemeConfigContext.Provider>
         </div>
     );
 };

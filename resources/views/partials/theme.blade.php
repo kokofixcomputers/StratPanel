@@ -6,8 +6,9 @@
             var choice = localStorage.getItem('stratosphere:theme') || @json($themeConfig['mode'] ?? 'system');
             var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
             var root = document.documentElement;
-            root.setAttribute('data-chrome', @json($themeConfig['chrome'] ?? 'attached'));
-            root.setAttribute('data-nav', @json($themeConfig['nav'] ?? 'tint'));
+            // The marks the theme editor set (names and values are checked by Services/Theme/ThemeService.php).
+            var marks = @json((object) ($themeAttributes ?? []));
+            for (var name in marks) root.setAttribute(name, marks[name]);
             root.classList.toggle('dark', dark);
             root.setAttribute('data-theme', dark ? 'dark' : 'light');
             var bar = document.querySelector('meta[name="theme-color"]');

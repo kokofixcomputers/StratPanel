@@ -5,6 +5,8 @@ import {
     BASE_NEUTRAL,
     buildThemeCss,
     DEFAULT_CONFIG,
+    DEFAULT_MOTION,
+    themeAttributes,
     glassOf,
     luminance,
     presetConfig,
@@ -112,6 +114,32 @@ describe('themeConfig', () => {
         const css = buildThemeCss(withDefaults({ radiusCustom: 10, fontScale: 110 }));
         expect(css).toContain('--r-lg: 10px;');
         expect(css).toContain('--font-scale: 110;');
+    });
+
+    it('turns the settings that are marks on the page into attributes', () => {
+        const attributes = themeAttributes(
+            withDefaults({
+                chrome: 'floating',
+                buttonStyle: 'outline',
+                motion: { ...DEFAULT_MOTION, buttonHover: 'glow', pulse: true },
+            })
+        );
+        expect(attributes['data-chrome']).toBe('floating');
+        expect(attributes['data-btn-style']).toBe('outline');
+        expect(attributes['data-btn-hover']).toBe('glow');
+        expect(attributes['data-pulse']).toBe('true');
+        expect(attributes['data-row-size']).toBe('medium');
+        for (const value of Object.values(attributes)) expect(value).toMatch(/^[a-z0-9-]{1,20}$/);
+    });
+
+    it('writes width, sidebar and type variables', () => {
+        const css = buildThemeCss(
+            withDefaults({ pageWidth: 'wide', sidebarWidth: 'narrow', headingWeight: 800, tracking: 'tight' })
+        );
+        expect(css).toContain('--page-max: 1536px;');
+        expect(css).toContain('--sidebar-width: 14rem;');
+        expect(css).toContain('--heading-weight: 800;');
+        expect(css).toContain('--tracking: -0.02em;');
     });
 
     it('only ever writes custom properties inside the two page blocks', () => {

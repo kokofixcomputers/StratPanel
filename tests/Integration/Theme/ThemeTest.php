@@ -21,7 +21,10 @@ class ThemeTest extends RoleTestCase
             ],
             'radiusCustom' => 10, 'fontScale' => 105,
             'console' => ['style' => 'dark', 'brightness' => 80, 'fontSize' => 12],
-            'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false],
+            'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
+            'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
+            'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
+            'motion' => ['buttonHover' => 'lift', 'buttonPress' => 'squish', 'cardHover' => 'glow', 'speed' => 'fast', 'page' => 'slide', 'pulse' => true],
             'sidebar' => [
                 'order' => ['/files', 'extra:abcd1234'], 'hidden' => ['/import'],
                 'extra' => [['id' => 'abcd1234', 'label' => 'Wiki', 'url' => 'https://wiki.example.com/{id}', 'newTab' => true, 'group' => 'Manage']],
@@ -87,14 +90,14 @@ class ThemeTest extends RoleTestCase
 
     public function testWhatIsSavedIsPrintedIntoThePages(): void
     {
-        $this->actingAs($this->rootAdmin())->putJson('/api/client/theme', ['config' => $this->config(), 'css' => $this->sample()])->assertOk();
+        $this->actingAs($this->rootAdmin())->putJson('/api/client/theme', ['config' => $this->config(), 'css' => $this->sample(), 'attributes' => ['data-chrome' => 'floating']])->assertOk();
 
         // The head of the React pages, with what the composer of the views adds.
         $html = view('partials.theme')->render();
         $this->assertStringContainsString('<style id="stratosphere-custom-theme">', $html);
         $this->assertStringContainsString('--card-alpha: 0.58;', $html);
         $this->assertStringContainsString("'dark'", str_replace('"', "'", $html));
-        $this->assertStringContainsString("setAttribute('data-chrome', \"floating\")", $html);
+        $this->assertStringContainsString('"data-chrome":"floating"', $html);
     }
 
     public function testBadSettingsAreRefused(): void
@@ -119,11 +122,28 @@ class ThemeTest extends RoleTestCase
             ['status' => ['success' => 'green']],
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
+            ['motion' => ['buttonHover' => 'explode']],
+            ['row' => ['size' => 'gigantic']],
+            ['pageWidth' => 'huge'],
         ] as $changes) {
             $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);
         }
 
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => ''])->assertOk();
+    }
+
+    public function testTheMarksOnThePageAreFilteredAndPrinted(): void
+    {
+        $admin = $this->rootAdmin();
+        $attributes = ['data-chrome' => 'floating', 'data-btn-hover' => 'lift', 'onclick' => 'alert(1)', 'data-nav' => '"><script>', 'data-speed' => 'fast'];
+
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => '', 'attributes' => $attributes])->assertOk();
+
+        $this->assertSame(['data-chrome' => 'floating', 'data-btn-hover' => 'lift', 'data-speed' => 'fast'], app(ThemeService::class)->attributes());
+        $html = view('partials.theme')->render();
+        $this->assertStringContainsString('"data-btn-hover":"lift"', $html);
+        $this->assertStringNotContainsString('onclick', $html);
+        $this->assertStringNotContainsString('<script>alert', $html);
     }
 
     public function testResetGoesBackToTheDefaultLook(): void

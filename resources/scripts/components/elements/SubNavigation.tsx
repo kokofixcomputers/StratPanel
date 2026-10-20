@@ -11,7 +11,7 @@ const SubNavigation = styled.div`
 
     & > div {
         ${tw`flex items-center text-sm font-medium mx-auto px-2`};
-        max-width: 1280px;
+        max-width: var(--page-max, 1280px);
 
         & > a,
         & > div {

@@ -16,6 +16,13 @@ class ThemeService
 {
     public const CONFIG = 'settings::theme:config';
     public const CSS = 'settings::theme:css';
+    public const ATTRIBUTES = 'settings::theme:attributes';
+
+    /** The marks on <html> the editor may set (the stylesheet has rules for them). */
+    public const ATTRIBUTE_NAMES = [
+        'data-chrome', 'data-nav', 'data-btn-style', 'data-btn-hover', 'data-btn-press', 'data-card-hover', 'data-speed', 'data-page-anim',
+        'data-pulse', 'data-borders', 'data-row-size', 'data-row-status', 'data-side-flat',
+    ];
 
     /** The folder, inside public, a background picture is put in (the favicon of the branding lives next to it). */
     private const DIRECTORY = 'branding';
@@ -46,8 +53,37 @@ class ThemeService
         return $this->sanitize($css) ?? '';
     }
 
-    /** @param array<string, mixed> $config */
-    public function save(array $config, string $css): void
+    /** The attributes for <html>, names and values checked again. @return array<string, string> */
+    public function attributes(): array
+    {
+        $json = (string) $this->settings->get(self::ATTRIBUTES, '');
+        $stored = $json === '' ? [] : json_decode($json, true);
+
+        return $this->cleanAttributes(is_array($stored) ? $stored : []);
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     *
+     * @return array<string, string>
+     */
+    public function cleanAttributes(array $attributes): array
+    {
+        $clean = [];
+        foreach ($attributes as $name => $value) {
+            if (in_array($name, self::ATTRIBUTE_NAMES, true) && is_string($value) && preg_match('/^[a-z0-9-]{1,20}$/', $value)) {
+                $clean[$name] = $value;
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $attributes
+     */
+    public function save(array $config, string $css, array $attributes = []): void
     {
         $clean = $this->sanitize($css);
         if ($clean === null) {
@@ -56,6 +92,7 @@ class ThemeService
 
         $this->settings->set(self::CONFIG, json_encode($config, JSON_THROW_ON_ERROR));
         $this->settings->set(self::CSS, $clean);
+        $this->settings->set(self::ATTRIBUTES, json_encode($this->cleanAttributes($attributes), JSON_THROW_ON_ERROR));
     }
 
     /** Back to the default look. The uploaded background picture stays, it may be used again. */
@@ -63,6 +100,7 @@ class ThemeService
     {
         $this->settings->forget(self::CONFIG);
         $this->settings->forget(self::CSS);
+        $this->settings->forget(self::ATTRIBUTES);
     }
 
     /** Stores an uploaded picture and returns its address. */

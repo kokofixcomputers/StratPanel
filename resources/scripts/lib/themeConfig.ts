@@ -5,7 +5,7 @@
  * the CSS into every page (Services/Theme/ThemeService.php checks it first, it only lets variables through), the layout settings are read
  * from window.SiteConfiguration.theme by useThemeConfig.
  */
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { ConsoleOptions, DEFAULT_CONSOLE } from '@/lib/consoleTheme';
 
 export type RadiusStyle = 'sharp' | 'soft' | 'round' | 'pill';
@@ -31,6 +31,31 @@ export interface SurfaceColors {
     text: string | null;
     muted: string | null;
 }
+
+export type ButtonHover = 'none' | 'lift' | 'glow' | 'scale' | 'shine';
+export type ButtonPress = 'none' | 'squish' | 'sink';
+export type CardHover = 'none' | 'lift' | 'glow' | 'border';
+
+/** How things move: hovering a button or a card, how fast, and between pages. */
+export interface MotionOptions {
+    buttonHover: ButtonHover;
+    buttonPress: ButtonPress;
+    cardHover: CardHover;
+    // "off" removes all transitions (also what people who ask their device for less motion get).
+    speed: 'off' | 'fast' | 'normal' | 'slow';
+    page: 'fade' | 'slide' | 'none';
+    // The status mark of running servers pulses.
+    pulse: boolean;
+}
+
+export const DEFAULT_MOTION: MotionOptions = {
+    buttonHover: 'none',
+    buttonPress: 'none',
+    cardHover: 'none',
+    speed: 'normal',
+    page: 'fade',
+    pulse: false,
+};
 
 export interface SidebarExtra {
     id: string;
@@ -68,8 +93,27 @@ export interface ThemeConfig {
     // Size of all text and spacing in percent.
     fontScale: number;
     console: ConsoleOptions;
-    // What a server of the dashboard shows.
-    row: { metrics: RowMetric[]; address: boolean; description: boolean };
+    // What a server of the dashboard shows, how big it is and how its state is marked.
+    row: {
+        metrics: RowMetric[];
+        address: boolean;
+        description: boolean;
+        size: 'small' | 'medium' | 'large';
+        status: 'bar' | 'dot' | 'none';
+    };
+    // The weight of headings (500 to 800) and the spacing of letters.
+    headingWeight: 500 | 600 | 700 | 800;
+    tracking: 'tight' | 'normal' | 'wide';
+    // Main buttons: filled, soft, outlined or with a gradient.
+    buttonStyle: 'solid' | 'soft' | 'outline' | 'gradient';
+    // Lines around cards: the usual ones, none, or stronger.
+    borders: 'subtle' | 'none' | 'strong';
+    // How wide the content of a page can get.
+    pageWidth: 'narrow' | 'normal' | 'wide' | 'full';
+    sidebarWidth: 'narrow' | 'normal' | 'wide';
+    // The server sidebar without its own card.
+    sidebarFlat: boolean;
+    motion: MotionOptions;
     // The navigation of a server: which items there are, in what order, and links of your own.
     sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
     // The servers of the dashboard as a list or as cards side by side.
@@ -110,7 +154,21 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     radiusCustom: null,
     fontScale: 100,
     console: DEFAULT_CONSOLE,
-    row: { metrics: ['players', 'cpu', 'memory', 'disk'], address: true, description: true },
+    row: {
+        metrics: ['players', 'cpu', 'memory', 'disk'],
+        address: true,
+        description: true,
+        size: 'medium',
+        status: 'bar',
+    },
+    headingWeight: 600,
+    tracking: 'normal',
+    buttonStyle: 'solid',
+    borders: 'subtle',
+    pageWidth: 'normal',
+    sidebarWidth: 'normal',
+    sidebarFlat: false,
+    motion: DEFAULT_MOTION,
     sidebar: { order: [], hidden: [], extra: [] },
     layout: 'list',
     columns: 2,
@@ -225,6 +283,7 @@ export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): T
             dark: { ...DEFAULT_CONFIG.surface.dark, ...(given.surface?.dark ?? {}) },
         },
         console: { ...DEFAULT_CONSOLE, ...(given.console ?? {}) },
+        motion: { ...DEFAULT_MOTION, ...(given.motion ?? {}) },
         row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
         sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
     };
@@ -535,6 +594,12 @@ export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE):
     }
     if (config.font !== 'inter') common['--font-sans'] = FONTS[config.font].stack!;
     if (config.fontScale !== 100) common['--font-scale'] = String(config.fontScale);
+    if (config.headingWeight !== 600) common['--heading-weight'] = String(config.headingWeight);
+    if (config.tracking !== 'normal') common['--tracking'] = config.tracking === 'tight' ? '-0.02em' : '0.02em';
+    if (config.pageWidth !== 'normal')
+        common['--page-max'] = { narrow: '1024px', wide: '1536px', full: '100%', normal: '1280px' }[config.pageWidth];
+    if (config.sidebarWidth !== 'normal')
+        common['--sidebar-width'] = config.sidebarWidth === 'narrow' ? '14rem' : '18rem';
 
     if (config.layout === 'grid') common['--server-columns'] = String(config.columns);
     if (config.density === 'compact') common['--server-gap'] = '0.5rem';
@@ -564,11 +629,31 @@ export const buildThemeCss = (input: ThemeConfig, scope: CssScope = PAGE_SCOPE):
         .join('\n');
 };
 
-/** The settings that are marks on the page rather than variables (the page's data attributes, read by the stylesheet). */
-export const themeAttributes = (config: ThemeConfig): Record<string, string> => ({
-    'data-chrome': config.chrome,
-    'data-nav': config.nav,
-});
+/**
+ * The settings that are marks on the page rather than variables: attributes on <html> that the global stylesheet has rules for. They are
+ * stored next to the CSS (Services/Theme/ThemeService.php only lets these names and short lowercase values through) and set before the
+ * page is drawn.
+ */
+export const themeAttributes = (input: ThemeConfig): Record<string, string> => {
+    const config = withDefaults(input);
+    const attributes: Record<string, string> = {
+        'data-chrome': config.chrome,
+        'data-nav': config.nav,
+        'data-btn-style': config.buttonStyle,
+        'data-btn-hover': config.motion.buttonHover,
+        'data-btn-press': config.motion.buttonPress,
+        'data-card-hover': config.motion.cardHover,
+        'data-speed': config.motion.speed,
+        'data-page-anim': config.motion.page,
+        'data-pulse': String(config.motion.pulse),
+        'data-borders': config.borders,
+        'data-row-size': config.row.size,
+        'data-row-status': config.row.status,
+        'data-side-flat': String(config.sidebarFlat),
+    };
+
+    return attributes;
+};
 
 // ---- the settings of the page ---------------------------------------------------------------------------------------------------------
 
@@ -591,7 +676,11 @@ export const setPageThemeConfig = (config: ThemeConfig): void => {
     window.dispatchEvent(new CustomEvent(EVENT));
 };
 
+/** The theme editor draws parts of the panel with the config it is editing instead of the saved one. */
+export const ThemeConfigContext = createContext<ThemeConfig | null>(null);
+
 export const useThemeConfig = (): ThemeConfig => {
+    const draft = useContext(ThemeConfigContext);
     const [config, setConfig] = useState(pageThemeConfig);
 
     useEffect(() => {
@@ -601,5 +690,5 @@ export const useThemeConfig = (): ThemeConfig => {
         return () => window.removeEventListener(EVENT, update);
     }, []);
 
-    return config;
+    return draft ?? config;
 };

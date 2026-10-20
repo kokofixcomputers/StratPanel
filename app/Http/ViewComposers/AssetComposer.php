@@ -36,6 +36,7 @@ class AssetComposer
         $view->with('favicon', $this->branding->favicon());
         $view->with('themeCss', $this->theme->css());
         $view->with('themeConfig', $this->theme->config());
+        $view->with('themeAttributes', $this->theme->attributes());
         $view->with('siteConfiguration', Hooks::filter('site.configuration', [
             'branding' => $this->branding->toArray(Auth::check()),
             'name' => config('app.name') ?? 'Pterodactyl',

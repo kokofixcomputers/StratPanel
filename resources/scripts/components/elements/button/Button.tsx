@@ -11,6 +11,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className={classNames(
                     styles.button,
                     styles.primary,
+                    'btn',
+                    { 'btn-primary': variant !== Options.Variant.Secondary },
                     {
                         [styles.secondary]: variant === Options.Variant.Secondary,
                         [styles.square]: shape === Options.Shape.IconSquare,
@@ -29,12 +31,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 const TextButton = forwardRef<HTMLButtonElement, ButtonProps>(({ className, ...props }, ref) => (
     // @ts-expect-error not sure how to get this correct
-    <Button ref={ref} className={classNames(styles.text, className)} {...props} />
+    <Button ref={ref} className={classNames(styles.text, 'btn-flat', className)} {...props} />
 ));
 
 const DangerButton = forwardRef<HTMLButtonElement, ButtonProps>(({ className, ...props }, ref) => (
     // @ts-expect-error not sure how to get this correct
-    <Button ref={ref} className={classNames(styles.danger, className)} {...props} />
+    <Button ref={ref} className={classNames(styles.danger, 'btn-flat', className)} {...props} />
 ));
 
 const _Button = Object.assign(Button, {

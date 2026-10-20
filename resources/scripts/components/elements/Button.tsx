@@ -85,7 +85,12 @@ const ButtonStyle = styled.button<Omit<Props, 'isLoading'>>`
 type ComponentProps = Omit<JSX.IntrinsicElements['button'], 'ref' | keyof Props> & Props;
 
 const Button: React.FC<ComponentProps> = ({ children, isLoading, ...props }) => (
-    <ButtonStyle {...props}>
+    <ButtonStyle
+        {...props}
+        className={`btn ${
+            (!props.isSecondary && !props.color) || props.color === 'primary' ? 'btn-primary' : 'btn-flat'
+        } ${(props as any).className ?? ''}`}
+    >
         {isLoading && (
             <div css={tw`flex absolute justify-center items-center w-full h-full left-0 top-0`}>
                 <Spinner size={'small'} />

@@ -4,6 +4,7 @@ import { SwitchTransition } from 'react-transition-group';
 import Fade from '@/components/elements/Fade';
 import styled from 'styled-components/macro';
 import tw from 'twin.macro';
+import { useThemeConfig } from '@/lib/themeConfig';
 
 const StyledSwitchTransition = styled(SwitchTransition)`
     ${tw`relative`};
@@ -14,11 +15,19 @@ const StyledSwitchTransition = styled(SwitchTransition)`
 `;
 
 const TransitionRouter: React.FC = ({ children }) => {
+    const page = useThemeConfig().motion.page;
+
     return (
         <Route
             render={({ location }) => (
                 <StyledSwitchTransition>
-                    <Fade timeout={150} key={location.pathname + location.search} in appear unmountOnExit>
+                    <Fade
+                        timeout={page === 'fade' ? 150 : 0}
+                        key={location.pathname + location.search}
+                        in
+                        appear
+                        unmountOnExit
+                    >
                         <section>{children}</section>
                     </Fade>
                 </StyledSwitchTransition>

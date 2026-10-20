@@ -62,7 +62,9 @@ const Metric = ({ label, value, limit, alarm, ratio, card }: Record<string, any>
                 />
             </div>
         )}
-        <p css={tw`mt-1 text-2xs text-neutral-400`}>{ratio === undefined ? limit : `of ${limit}`}</p>
+        <p className={'metric-note'} css={tw`mt-1 text-2xs text-neutral-400`}>
+            {ratio === undefined ? limit : `of ${limit}`}
+        </p>
     </div>
 );
 
@@ -213,6 +215,7 @@ export default ({
     organizer,
     players,
     className,
+    preview,
 }: {
     server: Server;
     stats: ServerStats | undefined;
@@ -222,6 +225,8 @@ export default ({
     onRefresh: () => Promise<unknown>;
     organizer?: RowOrganizer;
     className?: string;
+    // The theme editor draws the real row with made up data: no requests, no navigation.
+    preview?: boolean;
 }) => {
     const theme = useThemeConfig();
     const card = theme.layout === 'grid';
@@ -252,6 +257,7 @@ export default ({
     );
 
     const power = (signal: PowerSignal) => {
+        if (preview) return;
         setPowerError(null);
         setBusy(signal);
 
@@ -268,7 +274,10 @@ export default ({
     };
 
     // A faint logo of the software behind the card, only for servers that can be reached.
-    const software = useServerSoftware(server.uuid, !isSuspended && !server.isNodeUnderMaintenance && !server.status);
+    const software = useServerSoftware(
+        server.uuid,
+        !preview && !isSuspended && !server.isNodeUnderMaintenance && !server.status
+    );
     const [logoFailed, setLogoFailed] = useState(false);
     const logo = software && software !== 'VANILLA' && !logoFailed ? iconFor(software as SoftwareType) : null;
 
@@ -302,10 +311,9 @@ export default ({
 
     return (
         <StatusIndicatorBox
-            as={Link}
-            to={`/server/${server.id}`}
+            {...(preview ? {} : ({ as: Link, to: `/server/${server.id}` } as any))}
             draggable={false}
-            className={classNames('group', className)}
+            className={classNames('group server-row hover-card', className)}
             $status={stats?.status}
             style={{ isolation: 'isolate', overflow: 'hidden' }}
         >
@@ -334,7 +342,7 @@ export default ({
                         : tw`flex items-center col-span-12 sm:col-span-6 lg:col-span-5 min-w-0`
                 }
             >
-                <div className={'icon mr-4 !w-12 !h-12 flex-shrink-0'}>
+                <div className={'row-icon icon mr-4 !w-12 !h-12 flex-shrink-0'}>
                     <FontAwesomeIcon icon={faServer} />
                 </div>
                 <div css={tw`min-w-0`}>
@@ -375,11 +383,14 @@ export default ({
                         </p>
                     )}
                     {!!server.description && show.description && (
-                        <p css={tw`text-sm text-neutral-400 truncate mt-0.5`}>{server.description}</p>
+                        <p className={'row-desc'} css={tw`text-sm text-neutral-400 truncate mt-0.5`}>
+                            {server.description}
+                        </p>
                     )}
                 </div>
             </div>
             <div
+                className={'row-metrics'}
                 css={
                     card
                         ? tw`hidden sm:grid col-span-12 grid-cols-2 gap-x-4 gap-y-3 pr-4`
@@ -502,7 +513,7 @@ export default ({
                     {powerActions}
                 </div>
             )}
-            <div className={'status-bar'} />
+            <div className={classNames('status-bar', { running: stats?.status === 'running' })} />
         </StatusIndicatorBox>
     );
 };

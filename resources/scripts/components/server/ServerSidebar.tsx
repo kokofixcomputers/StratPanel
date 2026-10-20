@@ -137,10 +137,10 @@ export default ({
     };
 
     return (
-        <aside className={'hidden w-64 flex-shrink-0 pl-4 pt-6 lg:block'}>
+        <aside className={'hidden flex-shrink-0 pl-4 pt-6 lg:block'} style={{ width: 'var(--sidebar-width, 16rem)' }}>
             <nav
                 className={
-                    'sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-neutral-500 bg-white p-2 shadow-md'
+                    'server-sidebar sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-neutral-500 bg-white p-2 shadow-md'
                 }
             >
                 <div className={'mb-2 border-b border-neutral-500 px-2 pb-3 pt-2'}>
