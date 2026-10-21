@@ -23,12 +23,31 @@ export interface CustomLink {
     newTab: boolean;
 }
 
+export type CardStyle = 'list' | 'cards' | 'grid';
+
+export interface LinkCardLink {
+    label: string;
+    url: string;
+    icon: string;
+    newTab: boolean;
+}
+
+/** A card of links on the dashboard, "Need a hand?" with a link to Discord and one to support. */
+export interface LinkCard {
+    id: string;
+    title: string;
+    position: 'top' | 'bottom';
+    style: CardStyle;
+    links: LinkCardLink[];
+}
+
 export interface Branding {
     favicon: string | null;
     // The start of the panel's own lines in a server console.
     consolePrompt: string;
     announcements: Announcement[];
     links: CustomLink[];
+    linkCards: LinkCard[];
 }
 
 /** The icon of the panel when an admin has not uploaded another one: the same picture as the default favicon. */
@@ -44,6 +63,7 @@ export const EMPTY_BRANDING: Branding = {
     consolePrompt: DEFAULT_CONSOLE_PROMPT,
     announcements: [],
     links: [],
+    linkCards: [],
 };
 
 /** The server sends snake_case, the panel works with camelCase. Anything missing falls back to nothing. */
@@ -68,6 +88,23 @@ export const parseBranding = (raw: any): Branding => {
                 linkLabel: String(a.link_label || ''),
                 linkUrl: String(a.link_url || ''),
             })),
+        linkCards: (Array.isArray(raw.link_cards) ? raw.link_cards : [])
+            .filter((c: any) => c && c.enabled !== false)
+            .map((c: any) => ({
+                id: String(c.id || ''),
+                title: String(c.title || ''),
+                position: c.position === 'top' ? 'top' : 'bottom',
+                style: ['list', 'cards', 'grid'].includes(c.style) ? c.style : 'cards',
+                links: (Array.isArray(c.links) ? c.links : [])
+                    .filter((l: any) => l && l.label && l.url && isSafeUrl(String(l.url)))
+                    .map((l: any) => ({
+                        label: String(l.label),
+                        url: String(l.url),
+                        icon: String(l.icon || 'link'),
+                        newTab: l.newTab !== undefined ? !!l.newTab : l.new_tab !== false,
+                    })),
+            }))
+            .filter((c: LinkCard) => c.links.length > 0),
         links: (Array.isArray(raw.links) ? raw.links : [])
             .filter((l: any) => l && l.label && l.url)
             .map((l: any) => ({

@@ -130,3 +130,9 @@ button replaces it with the current look, and there are rename and delete. They 
 Background in dark mode: the root element has a colour of its own in dark mode (set by `partials/theme.blade.php` before the page is drawn, so it does not flash white) and the body has the page colour, and a
 body with a colour is painted over the picture that sits behind the page. When there is a picture or gradient, `<html data-bg-image="true">` (made by `ThemeService::attributes()` from the CSS, so
 themes saved earlier get it too) puts the page colour on the root and makes the body transparent (`GlobalStylesheet.ts`). The preview server prints the same dark root colour so this shows there.
+
+Link cards on the dashboard (`link_cards` in `BrandingService`, section "Link cards", `components/dashboard/LinkCards.tsx`, icons in `lib/linkIcons.tsx`): as many cards as wanted (up to 8, 12 links each), like
+"NEED A HAND?" with Discord and Support. Each card goes on top of the servers (above the search) or at the bottom, and is drawn as a *list* (links in one box), as *cards* (a tall card per link with its
+address) or as a *grid* (the same, but low tiles that take little height). A link has an icon from a set of about 45 (Discord, GitHub, GitLab, Google, Microsoft marks and plain ones such as support, docs,
+store, status), a name and an address (a path of the panel or http(s), checked like the custom links), and opens in a new tab or not. Cards that are off or have no link are not sent to the page. They are
+branding like the announcements: saved by their own button, shown live in the preview as typed.

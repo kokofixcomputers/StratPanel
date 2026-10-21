@@ -20,6 +20,14 @@ class BrandingService
 
     public const SEO = 'settings::branding:seo';
 
+    public const LINK_CARDS = 'settings::branding:link_cards';
+
+    /** Where a card of links can be on the dashboard. */
+    public const CARD_POSITIONS = ['top', 'bottom'];
+
+    /** How the links of a card are drawn: one under the other, as tall cards, or as a compact grid of tiles. */
+    public const CARD_STYLES = ['list', 'cards', 'grid'];
+
     public const CONSOLE_PROMPT = 'settings::branding:console_prompt';
 
     /** What the panel's own lines in a server console start with ("Server marked as offline..."). */
@@ -175,6 +183,47 @@ class BrandingService
         ], $this->list(self::ANNOUNCEMENTS));
     }
 
+    /**
+     * The cards of links on the dashboard ("Need a hand?" with Discord and Support): a title, where it goes, and links with an icon each.
+     *
+     * @return array<int, array{id: string, title: string, position: string, style: string, enabled: bool, links: array<int, array{label: string, url: string, icon: string, new_tab: bool}>}>
+     */
+    public function linkCards(): array
+    {
+        return array_map(fn (array $card) => [
+            'id' => (string) ($card['id'] ?? ''),
+            'title' => (string) ($card['title'] ?? ''),
+            'position' => in_array($card['position'] ?? '', self::CARD_POSITIONS, true) ? $card['position'] : 'bottom',
+            'style' => in_array($card['style'] ?? '', self::CARD_STYLES, true) ? $card['style'] : 'cards',
+            'enabled' => (bool) ($card['enabled'] ?? true),
+            'links' => array_values(array_map(fn ($link) => [
+                'label' => (string) ($link['label'] ?? ''),
+                'url' => (string) ($link['url'] ?? ''),
+                'icon' => (string) ($link['icon'] ?? 'link'),
+                'new_tab' => (bool) ($link['new_tab'] ?? true),
+            ], array_filter((array) ($card['links'] ?? []), 'is_array'))),
+        ], $this->list(self::LINK_CARDS));
+    }
+
+    /** @param array<int, array<string, mixed>> $cards */
+    public function saveLinkCards(array $cards): void
+    {
+        $this->store(self::LINK_CARDS, array_map(fn (array $card) => [
+            // An id that stays, for the editor and for keys; new cards get theirs here.
+            'id' => preg_match('/^[a-z0-9]{6,32}$/', (string) ($card['id'] ?? '')) ? $card['id'] : Str::lower(Str::random(10)),
+            'title' => trim((string) ($card['title'] ?? '')),
+            'position' => $card['position'],
+            'style' => $card['style'],
+            'enabled' => !empty($card['enabled']),
+            'links' => array_values(array_map(fn (array $link) => [
+                'label' => trim((string) $link['label']),
+                'url' => trim((string) $link['url']),
+                'icon' => (string) ($link['icon'] ?? 'link'),
+                'new_tab' => !empty($link['new_tab']),
+            ], (array) ($card['links'] ?? []))),
+        ], $cards));
+    }
+
     /** @return array<int, array{label: string, url: string, location: string, new_tab: bool}> */
     public function links(): array
     {
@@ -229,7 +278,7 @@ class BrandingService
     /** @return array<string, mixed> */
     private function build(bool $authenticated): array
     {
-        $data = ['favicon' => $this->favicon(), 'announcements' => [], 'links' => [], 'console_prompt' => $this->consolePrompt()];
+        $data = ['favicon' => $this->favicon(), 'announcements' => [], 'links' => [], 'link_cards' => [], 'console_prompt' => $this->consolePrompt()];
         if (!$authenticated) {
             return $data;
         }
@@ -239,6 +288,11 @@ class BrandingService
             array_filter($this->announcements(), fn (array $a) => $a['enabled'] && $a['message'] !== '')
         ));
         $data['links'] = array_values(array_filter($this->links(), fn (array $l) => $l['label'] !== '' && $l['url'] !== ''));
+        $data['link_cards'] = array_values(array_filter(array_map(function (array $card) {
+            $card['links'] = array_values(array_filter($card['links'], fn (array $l) => $l['label'] !== '' && $l['url'] !== ''));
+
+            return $card;
+        }, $this->linkCards()), fn (array $card) => $card['enabled'] && count($card['links']) > 0));
 
         return $data;
     }

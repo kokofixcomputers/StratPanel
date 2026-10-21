@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import {
     AdjustmentsIcon,
     BadgeCheckIcon,
+    ExternalLinkIcon,
     SearchCircleIcon,
     SpeakerphoneIcon,
     ArrowDownIcon,
@@ -47,6 +48,7 @@ import {
     SeoPanel,
 } from '@/components/admin/theme/BrandingPanels';
 import BannersEditor, { EggInfo } from '@/components/admin/theme/BannersEditor';
+import LinkCardsPanel, { LinkCardEdit } from '@/components/admin/theme/LinkCardsPanel';
 import MyPresets from '@/components/admin/theme/MyPresets';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
 import { SIDEBAR_DEFAULTS, SidebarId } from '@/lib/sidebarLayout';
@@ -112,6 +114,12 @@ const SECTIONS: {
         label: 'Search and sharing',
         description: 'Title, description, share image, installed app name',
         icon: SearchCircleIcon,
+    },
+    {
+        id: 'linkcards',
+        label: 'Link cards',
+        description: 'Cards of links on the dashboard, like Need a hand?',
+        icon: ExternalLinkIcon,
     },
     {
         id: 'announcements',
@@ -191,7 +199,11 @@ export default () => {
     // Counts up when the branding was saved, the preview is loaded again to show it.
     const [refresh, setRefresh] = useState(0);
     // The announcements and links being edited, shown in the preview before they are saved.
-    const [draftBranding, setDraftBranding] = useState<{ announcements?: Announcement[]; links?: BrandLink[] }>({});
+    const [draftBranding, setDraftBranding] = useState<{
+        announcements?: Announcement[];
+        links?: BrandLink[];
+        linkCards?: LinkCardEdit[];
+    }>({});
     const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
@@ -254,7 +266,7 @@ export default () => {
         setSectionState(id);
         if (id === 'login') setPage('login');
         else if (id === 'sidebar') setPage(pageForSidebar(sidebarTab));
-        else if (id === 'announcements') setPage('dashboard');
+        else if (id === 'announcements' || id === 'linkcards') setPage('dashboard');
         else if (page === 'login') setPage('dashboard');
     };
     const changeSidebarTab = (tab: SidebarId) => {
@@ -981,6 +993,20 @@ export default () => {
                                     busy={working !== null}
                                     upload={upload}
                                     onSaved={loadBranding}
+                                />
+                            ) : (
+                                <Spinner size={'base'} centered />
+                            )}
+                        </Group>
+                        <Group id={'linkcards'}>
+                            {branding ? (
+                                <LinkCardsPanel
+                                    cards={branding.link_cards}
+                                    onDraft={(linkCards) => setDraftBranding((d) => ({ ...d, linkCards }))}
+                                    onSaved={() => {
+                                        loadBranding();
+                                        setRefresh((n) => n + 1);
+                                    }}
                                 />
                             ) : (
                                 <Spinner size={'base'} centered />

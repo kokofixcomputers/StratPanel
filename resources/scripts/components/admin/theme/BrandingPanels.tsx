@@ -35,6 +35,7 @@ export interface Seo {
 
 export interface BrandingData {
     favicon: string | null;
+    link_cards: import('@/components/admin/theme/LinkCardsPanel').LinkCardEdit[];
     console_prompt: string;
     seo: Seo;
     announcements: Announcement[];

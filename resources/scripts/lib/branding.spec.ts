@@ -1,5 +1,38 @@
 import { DEFAULT_LOGO, isSafeUrl, linksAt, logoUrl, parseBranding, visibleAnnouncements } from '@/lib/branding';
 
+describe('link cards', () => {
+    const card = (extra: object = {}) => ({
+        id: 'abc123',
+        title: 'Need a hand?',
+        position: 'top',
+        style: 'grid',
+        enabled: true,
+        links: [
+            { label: 'Discord', url: 'https://discord.gg/x', icon: 'discord', new_tab: true },
+            { label: 'Support', url: '/support', icon: 'support', new_tab: false },
+            { label: 'Bad', url: 'javascript:alert(1)', icon: 'link', new_tab: true },
+            { label: '', url: 'https://x.example', icon: 'link', new_tab: true },
+        ],
+        ...extra,
+    });
+
+    it('keeps the safe links with name and address, and the style, place and icons', () => {
+        const [parsed] = parseBranding({ link_cards: [card()] }).linkCards;
+        expect(parsed).toMatchObject({ title: 'Need a hand?', position: 'top', style: 'grid' });
+        expect(parsed.links.map((l) => l.label)).toEqual(['Discord', 'Support']);
+        expect(parsed.links[0]).toMatchObject({ icon: 'discord', newTab: true });
+        expect(parsed.links[1].newTab).toBe(false);
+    });
+
+    it('falls back for an unknown style or position and leaves out cards that are off or empty', () => {
+        const [parsed] = parseBranding({ link_cards: [card({ style: 'wild', position: 'middle' })] }).linkCards;
+        expect(parsed).toMatchObject({ style: 'cards', position: 'bottom' });
+        expect(parseBranding({ link_cards: [card({ enabled: false })] }).linkCards).toEqual([]);
+        expect(parseBranding({ link_cards: [card({ links: [] })] }).linkCards).toEqual([]);
+        expect(parseBranding({}).linkCards).toEqual([]);
+    });
+});
+
 describe('console prompt', () => {
     it('is the default when none is set', () => {
         expect(parseBranding({}).consolePrompt).toBe('container@stratosphere~');
@@ -18,6 +51,7 @@ describe('parseBranding', () => {
             consolePrompt: 'container@stratosphere~',
             announcements: [],
             links: [],
+            linkCards: [],
         });
         expect(parseBranding('x').links).toEqual([]);
     });

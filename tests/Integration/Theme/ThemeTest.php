@@ -16,6 +16,7 @@ class ThemeTest extends RoleTestCase
         app(ThemeService::class)->reset();
         app(BrandingService::class)->saveSeo([]);
         app(BrandingService::class)->setConsolePrompt(null);
+        app(BrandingService::class)->saveLinkCards([]);
         app(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->forget(ThemeService::PRESETS);
     }
 
@@ -412,5 +413,56 @@ class ThemeTest extends RoleTestCase
 
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['background' => ['image' => null]]), 'css' => 'html:root { --r: 1rem; }', 'attributes' => []])->assertOk();
         $this->assertSame('false', app(ThemeService::class)->attributes()['data-bg-image']);
+    }
+
+    public function testLinkCardsOfTheDashboardCanBeSavedAndAreHandedToTheSignedInPage(): void
+    {
+        $admin = $this->rootAdmin();
+        $cards = [
+            [
+                'id' => '', 'title' => 'Need a hand?', 'position' => 'top', 'style' => 'grid', 'enabled' => true,
+                'links' => [
+                    ['label' => 'Discord', 'url' => 'https://discord.gg/example', 'icon' => 'discord', 'new_tab' => true],
+                    ['label' => 'Support', 'url' => '/support', 'icon' => 'support', 'new_tab' => false],
+                ],
+            ],
+            ['id' => '', 'title' => 'Hidden', 'position' => 'bottom', 'style' => 'list', 'enabled' => false, 'links' => [['label' => 'x', 'url' => '/x', 'icon' => 'link']]],
+            ['id' => '', 'title' => 'Empty', 'position' => 'bottom', 'style' => 'cards', 'enabled' => true, 'links' => []],
+        ];
+
+        $saved = $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => $cards])->assertOk()->json('link_cards');
+        $this->assertCount(3, $saved);
+        $this->assertMatchesRegularExpression('/^[a-z0-9]{10}$/', $saved[0]['id']);
+        $this->assertSame('grid', $saved[0]['style']);
+
+        // The page gets only the cards that are on and have a link, and nothing before a person signs in.
+        $branding = app(BrandingService::class);
+        $this->assertSame(['Need a hand?'], array_column($branding->toArray(true)['link_cards'], 'title'));
+        $this->assertSame([], $branding->toArray(false)['link_cards']);
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => []])->assertOk()->assertJsonCount(0, 'link_cards');
+    }
+
+    public function testBadLinkCardsAreRefused(): void
+    {
+        $admin = $this->rootAdmin();
+        $card = fn (array $changes = [], array $link = []) => array_replace_recursive([
+            'title' => 'T', 'position' => 'top', 'style' => 'cards', 'enabled' => true,
+            'links' => [array_merge(['label' => 'A', 'url' => 'https://a.example', 'icon' => 'link', 'new_tab' => true], $link)],
+        ], $changes);
+
+        foreach ([
+            $card(['style' => 'masonry']),
+            $card(['position' => 'left']),
+            $card([], ['url' => 'javascript:alert(1)']),
+            $card([], ['url' => '//evil.example']),
+            $card([], ['icon' => 'Bad Icon!']),
+            $card([], ['label' => '']),
+        ] as $bad) {
+            $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => [$bad]])->assertStatus(422);
+        }
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => array_fill(0, 9, $card())])->assertStatus(422);
+        $this->actingAs($this->makeUser())->putJson('/api/client/theme/branding', ['link_cards' => []])->assertForbidden();
     }
 }

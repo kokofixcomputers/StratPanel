@@ -248,6 +248,9 @@ class ThemeController extends ClientApiController
             'links' => $this->branding->links(),
             'seo' => $this->branding->seo(),
             'console_prompt' => $this->branding->consolePrompt(),
+            'link_cards' => $this->branding->linkCards(),
+            'card_positions' => BrandingService::CARD_POSITIONS,
+            'card_styles' => BrandingService::CARD_STYLES,
             'locations' => BrandingService::LOCATIONS,
             'types' => BrandingService::TYPES,
         ]);
@@ -273,6 +276,17 @@ class ThemeController extends ClientApiController
             'links.*.location' => ['required', Rule::in(array_keys(BrandingService::LOCATIONS))],
             'links.*.new_tab' => 'nullable|boolean',
             'console_prompt' => ['sometimes', 'nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9@._~:\\- ]+$/'],
+            'link_cards' => 'sometimes|array|max:8',
+            'link_cards.*.id' => 'nullable|string|max:32',
+            'link_cards.*.title' => 'nullable|string|max:40',
+            'link_cards.*.position' => ['required', Rule::in(BrandingService::CARD_POSITIONS)],
+            'link_cards.*.style' => ['required', Rule::in(BrandingService::CARD_STYLES)],
+            'link_cards.*.enabled' => 'nullable|boolean',
+            'link_cards.*.links' => 'present|array|max:12',
+            'link_cards.*.links.*.label' => 'required|string|max:50',
+            'link_cards.*.links.*.url' => ['required', ...array_slice($link, 1)],
+            'link_cards.*.links.*.icon' => ['required', 'string', 'regex:/^[a-z0-9-]{1,30}$/'],
+            'link_cards.*.links.*.new_tab' => 'nullable|boolean',
             'seo' => 'sometimes|array',
             'seo.title' => 'nullable|string|max:70',
             'seo.description' => 'nullable|string|max:200',
@@ -296,6 +310,9 @@ class ThemeController extends ClientApiController
 
         if ($request->has('announcements')) {
             $this->branding->saveAnnouncements((array) $request->input('announcements'));
+        }
+        if ($request->has('link_cards')) {
+            $this->branding->saveLinkCards((array) $request->input('link_cards'));
         }
         if ($request->has('links')) {
             $this->branding->saveLinks((array) $request->input('links'));

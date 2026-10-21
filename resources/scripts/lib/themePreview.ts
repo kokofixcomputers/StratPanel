@@ -20,7 +20,7 @@ const inPreviewFrame = (): boolean => {
 };
 
 /** The announcements and links the editor is working on, in place of the saved ones (they are printed into the page when it loads). */
-const applyBranding = (draft: { announcements?: any[]; links?: any[] } | undefined) => {
+const applyBranding = (draft: { announcements?: any[]; links?: any[]; linkCards?: any[] } | undefined) => {
     const settings = store.getState().settings.data;
     if (!draft || !settings) return;
 
@@ -41,6 +41,7 @@ const applyBranding = (draft: { announcements?: any[]; links?: any[] } | undefin
                   }
                 : {}),
             ...(draft.links ? { links: draft.links.filter((l) => l.label?.trim() && l.url?.trim()) } : {}),
+            ...(draft.linkCards ? { link_cards: draft.linkCards } : {}),
         },
     });
 };

@@ -16,6 +16,7 @@ import { PlusIcon } from '@heroicons/react/solid';
 import Button from '@/components/elements/Button';
 import { getSelfService, SelfService } from '@/api/selfService';
 import Announcements from '@/components/dashboard/Announcements';
+import LinkCards from '@/components/dashboard/LinkCards';
 import ExtensionSlot from '@/components/elements/ExtensionSlot';
 import DashboardToolbar from '@/components/dashboard/DashboardToolbar';
 import FolderSection from '@/components/dashboard/FolderSection';
@@ -388,6 +389,7 @@ export default () => {
                     )}
                 </div>
             </div>
+            <LinkCards position={'top'} className={'mb-6'} />
             {servers && (servers.length > 0 || filtering) && (
                 <DashboardToolbar
                     filters={filters}
@@ -471,6 +473,8 @@ export default () => {
                         })}
                 </>
             )}
+
+            <LinkCards position={'bottom'} className={'mt-8'} />
 
             <FolderNameModal
                 visible={naming !== null}
