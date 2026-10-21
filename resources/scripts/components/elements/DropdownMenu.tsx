@@ -7,6 +7,8 @@ import Portal from '@/components/elements/Portal';
 interface Props {
     children: React.ReactNode;
     renderToggle: (onClick: (e: React.MouseEvent<any, MouseEvent>) => void) => React.ReactChild;
+    // How wide the menu is, 12rem unless a menu has long things in it (an address next to its copy button).
+    width?: string;
 }
 
 export const DropdownButtonRow = styled.button<{ danger?: boolean }>`
@@ -126,7 +128,13 @@ class DropdownMenu extends React.PureComponent<Props, State> {
                                 e.stopPropagation();
                                 this.setState({ visible: false });
                             }}
-                            style={{ width: '12rem', position: 'fixed', left: 0, top: 0 }}
+                            style={{
+                                width: this.props.width ?? '12rem',
+                                maxWidth: 'calc(100vw - 1rem)',
+                                position: 'fixed',
+                                left: 0,
+                                top: 0,
+                            }}
                             css={tw`bg-white p-1.5 rounded-xl border border-neutral-500 shadow-lg text-neutral-300 z-50`}
                         >
                             {this.props.children}

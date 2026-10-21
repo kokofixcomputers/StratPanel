@@ -67,6 +67,7 @@ export default ({ addresses, className }: { addresses: ConnectionAddress[]; clas
 
     return (
         <DropdownMenu
+            width={'24rem'}
             renderToggle={(onClick) => (
                 <button
                     type={'button'}
@@ -86,7 +87,7 @@ export default ({ addresses, className }: { addresses: ConnectionAddress[]; clas
                 </button>
             )}
         >
-            <div className={'w-80 p-1.5'}>
+            <div className={'w-full'}>
                 {domains.length > 0 && (
                     <>
                         <p
