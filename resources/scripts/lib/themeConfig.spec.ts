@@ -134,6 +134,22 @@ describe('themeConfig', () => {
         for (const value of Object.values(attributes)) expect(value).toMatch(/^[a-z0-9-]{1,20}$/);
     });
 
+    it('marks the page when a picture or gradient is behind it', () => {
+        expect(themeAttributes(withDefaults({}))['data-bg-image']).toBe('false');
+        expect(
+            themeAttributes(withDefaults({ background: { image: 'gradient:paper', blur: 0, dim: 0 } }))['data-bg-image']
+        ).toBe('true');
+        expect(
+            themeAttributes(withDefaults({ background: { image: '/branding/a.png', blur: 0, dim: 0 } }))[
+                'data-bg-image'
+            ]
+        ).toBe('true');
+        // A gradient that does not exist is no background.
+        expect(
+            themeAttributes(withDefaults({ background: { image: 'gradient:nope', blur: 0, dim: 0 } }))['data-bg-image']
+        ).toBe('false');
+    });
+
     it('writes width, sidebar and type variables', () => {
         const css = buildThemeCss(
             withDefaults({ pageWidth: 'wide', sidebarWidth: 'narrow', headingWeight: 800, tracking: 'tight' })

@@ -779,6 +779,8 @@ export const themeAttributes = (input: ThemeConfig): Record<string, string> => {
         'data-row-size': config.row.size,
         'data-row-status': config.row.status,
         'data-side-flat': String(config.sidebarFlat),
+        // A picture or gradient is behind the page: the page colour must not cover it (see GlobalStylesheet).
+        'data-bg-image': String(backgroundValue(config.background.image, 'light', config.customGradient) !== null),
     };
 
     return attributes;

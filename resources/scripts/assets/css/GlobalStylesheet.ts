@@ -24,6 +24,16 @@ export default createGlobalStyle`
         letter-spacing: var(--tracking, -0.005em);
     }
 
+    /* With a picture or gradient behind the page the colour of the page goes on the root, which is drawn first, and the body lets the picture through:
+       a body with its own colour would be painted over it (in dark mode the root has a colour of its own to avoid a white flash). */
+    html[data-bg-image='true'],
+    html[data-bg-image='true'].dark {
+        background-color: rgb(var(--c-neutral-800));
+    }
+    html[data-bg-image='true'] body {
+        background-color: transparent !important;
+    }
+
     /* The picture behind the panel from the theme editor (--bg-image), blurred and dimmed with the colour of the page. */
     body::before, body::after {
         content: '';

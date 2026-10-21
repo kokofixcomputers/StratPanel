@@ -193,7 +193,7 @@ class ThemeTest extends RoleTestCase
 
         $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => '', 'attributes' => $attributes])->assertOk();
 
-        $this->assertSame(['data-chrome' => 'floating', 'data-btn-hover' => 'lift', 'data-speed' => 'fast'], app(ThemeService::class)->attributes());
+        $this->assertSame(['data-chrome' => 'floating', 'data-btn-hover' => 'lift', 'data-speed' => 'fast', 'data-bg-image' => 'false'], app(ThemeService::class)->attributes());
         $html = view('partials.theme')->render();
         $this->assertStringContainsString('"data-btn-hover":"lift"', $html);
         $this->assertStringNotContainsString('onclick', $html);
@@ -397,5 +397,20 @@ class ThemeTest extends RoleTestCase
         }
 
         $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => 'One too many', 'config' => $this->config()])->assertStatus(400);
+    }
+
+    public function testThePageKnowsWhenAPictureIsBehindIt(): void
+    {
+        $admin = $this->rootAdmin();
+
+        $this->assertSame('false', app(ThemeService::class)->attributes()['data-bg-image']);
+
+        // The mark comes from the CSS, whatever the editor sent along.
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(), 'css' => $this->sample(), 'attributes' => ['data-bg-image' => 'false']])->assertOk();
+        $this->assertSame('true', app(ThemeService::class)->attributes()['data-bg-image']);
+        $this->assertStringContainsString('"data-bg-image":"true"', view('partials.theme')->render());
+
+        $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config(['background' => ['image' => null]]), 'css' => 'html:root { --r: 1rem; }', 'attributes' => []])->assertOk();
+        $this->assertSame('false', app(ThemeService::class)->attributes()['data-bg-image']);
     }
 }

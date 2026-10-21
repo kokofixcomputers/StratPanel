@@ -25,7 +25,7 @@ class ThemeService
     /** The marks on <html> the editor may set (the stylesheet has rules for them). */
     public const ATTRIBUTE_NAMES = [
         'data-chrome', 'data-nav', 'data-btn-style', 'data-btn-hover', 'data-btn-press', 'data-card-hover', 'data-speed', 'data-page-anim',
-        'data-pulse', 'data-borders', 'data-row-size', 'data-row-status', 'data-side-flat',
+        'data-pulse', 'data-borders', 'data-row-size', 'data-row-status', 'data-side-flat', 'data-bg-image',
     ];
 
     /** The folder, inside public, a background picture is put in (the favicon of the branding lives next to it). */
@@ -63,7 +63,11 @@ class ThemeService
         $json = (string) $this->settings->get(self::ATTRIBUTES, '');
         $stored = $json === '' ? [] : json_decode($json, true);
 
-        return $this->cleanAttributes(is_array($stored) ? $stored : []);
+        $attributes = $this->cleanAttributes(is_array($stored) ? $stored : []);
+        // Whether there is a picture or gradient behind the page is known from the CSS itself, so themes saved before the mark existed get it too.
+        $attributes['data-bg-image'] = str_contains($this->css(), '--bg-image:') ? 'true' : 'false';
+
+        return $attributes;
     }
 
     /**

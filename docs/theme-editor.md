@@ -126,3 +126,7 @@ Your own presets (section Presets, `components/admin/theme/MyPresets.tsx`): *Sav
 button replaces it with the current look, and there are rename and delete. They are kept on the server (`settings::theme:presets`, up to 30, shared by the admins, not touched by
 *Reset to default*) and only change what the panel shows once one is applied and the theme is saved, so styles can be tried freely and the one you like stays safe.
 `GET/POST /api/client/theme/presets`, `PUT/DELETE /api/client/theme/presets/{id}`; a preset is checked with the same rules as a theme (`ThemeController::validateConfig`).
+
+Background in dark mode: the root element has a colour of its own in dark mode (set by `partials/theme.blade.php` before the page is drawn, so it does not flash white) and the body has the page colour, and a
+body with a colour is painted over the picture that sits behind the page. When there is a picture or gradient, `<html data-bg-image="true">` (made by `ThemeService::attributes()` from the CSS, so
+themes saved earlier get it too) puts the page colour on the root and makes the body transparent (`GlobalStylesheet.ts`). The preview server prints the same dark root colour so this shows there.
