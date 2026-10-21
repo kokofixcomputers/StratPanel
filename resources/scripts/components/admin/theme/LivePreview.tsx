@@ -15,6 +15,7 @@ export default ({
     serverId,
     phone,
     refresh = 0,
+    branding,
 }: {
     config: ThemeConfig;
     dark: boolean;
@@ -23,6 +24,8 @@ export default ({
     phone: boolean;
     // Changes when the frame has to be loaded again, for what the draft does not carry (the branding).
     refresh?: number;
+    // The announcements and links as they are being edited, shown before they are saved.
+    branding?: { announcements?: unknown[]; links?: unknown[] };
 }) => {
     const frame = useRef<HTMLIFrameElement>(null);
     const box = useRef<HTMLDivElement>(null);
@@ -39,8 +42,11 @@ export default ({
     const src = `${path}?${PREVIEW_PARAM}=1`;
 
     const send = useCallback(() => {
-        frame.current?.contentWindow?.postMessage({ type: DRAFT_MESSAGE, config, dark }, window.location.origin);
-    }, [config, dark]);
+        frame.current?.contentWindow?.postMessage(
+            { type: DRAFT_MESSAGE, config, dark, branding },
+            window.location.origin
+        );
+    }, [config, dark, branding]);
 
     // Whenever the draft changes, and when the panel in the frame says it is ready (it was just loaded or reloaded).
     useEffect(send, [send]);

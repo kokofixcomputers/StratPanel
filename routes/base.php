@@ -9,6 +9,10 @@ Route::get('/account', [Base\IndexController::class, 'index'])
     ->withoutMiddleware(RequireTwoFactorAuthentication::class)
     ->name('account');
 
+Route::get('/manifest.webmanifest', Base\ManifestController::class)
+    ->withoutMiddleware(['auth', RequireTwoFactorAuthentication::class])
+    ->name('manifest');
+
 Route::get('/locales/locale.json', Base\LocaleController::class)
     ->withoutMiddleware(['auth', RequireTwoFactorAuthentication::class])
     ->where('namespace', '.*');

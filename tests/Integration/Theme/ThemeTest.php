@@ -3,10 +3,20 @@
 namespace Pterodactyl\Tests\Integration\Theme;
 
 use Pterodactyl\Services\Theme\ThemeService;
+use Pterodactyl\Services\Branding\BrandingService;
 use Pterodactyl\Tests\Integration\Roles\RoleTestCase;
 
 class ThemeTest extends RoleTestCase
 {
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        // The settings are kept between tests, every test starts from the default look and the default search and sharing settings.
+        app(ThemeService::class)->reset();
+        app(BrandingService::class)->saveSeo([]);
+    }
+
     private function config(array $changes = []): array
     {
         return array_replace_recursive([
@@ -259,5 +269,53 @@ class ThemeTest extends RoleTestCase
         $this->actingAs($this->makeUser())->getJson('/api/client/theme/branding')->assertForbidden();
 
         $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [], 'links' => []])->assertOk();
+    }
+
+    public function testSearchAndSharingSettingsAreSavedAndPrinted(): void
+    {
+        $admin = $this->rootAdmin();
+        $seo = [
+            'title' => 'Koko Hosting', 'description' => 'Minecraft servers in a minute.', 'share_image' => '/branding/background-abcdef123456.jpg',
+            'theme_color' => '#1447e6', 'app_name' => 'Koko Hosting Panel', 'app_short_name' => 'Koko', 'index' => true,
+        ];
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['seo' => $seo])->assertOk()->assertJsonPath('seo.title', 'Koko Hosting');
+
+        $html = view('partials.seo')->render();
+        $this->assertStringContainsString('<meta name="description" content="Minecraft servers in a minute.">', $html);
+        $this->assertStringContainsString('<meta property="og:title" content="Koko Hosting">', $html);
+        $this->assertStringContainsString('<meta property="og:image" content="' . url('/branding/background-abcdef123456.jpg') . '">', $html);
+        $this->assertStringContainsString('content="summary_large_image"', $html);
+        $this->assertStringContainsString('content="index, follow"', $html);
+        $this->assertStringContainsString('<link rel="manifest" href="/manifest.webmanifest">', $html);
+        $this->assertStringContainsString('content="Koko"', $html);
+
+    }
+
+    public function testTheManifestIsPublic(): void
+    {
+        app(BrandingService::class)->saveSeo(['app_name' => 'Koko Hosting Panel', 'app_short_name' => 'Koko', 'theme_color' => '#1447e6']);
+
+        // Nobody is signed in, a browser asks for it by itself.
+        $this->get('/manifest.webmanifest')->assertOk()->assertHeader('Content-Type', 'application/manifest+json')
+            ->assertJsonPath('name', 'Koko Hosting Panel')->assertJsonPath('short_name', 'Koko')->assertJsonPath('theme_color', '#1447e6')
+            ->assertJsonPath('display', 'standalone');
+    }
+
+    public function testBadSearchAndSharingSettingsAreRefused(): void
+    {
+        $admin = $this->rootAdmin();
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['seo' => ['theme_color' => 'blue']])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['seo' => ['title' => str_repeat('x', 90)]])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['seo' => ['share_image' => 'http://x.example/a.png']])->assertStatus(400);
+    }
+
+    public function testTheDefaultPagesStayHiddenFromSearchEngines(): void
+    {
+        $html = view('partials.seo')->render();
+
+        $this->assertStringContainsString('content="noindex"', $html);
+        $this->assertStringNotContainsString('name="description"', $html);
     }
 }

@@ -18,6 +18,20 @@ class BrandingService
 
     public const LINKS = 'settings::branding:links';
 
+    public const SEO = 'settings::branding:seo';
+
+    /** What search and sharing say about the panel, an empty value keeps the default (the name of the panel). */
+    public const SEO_DEFAULTS = [
+        'title' => '',
+        'description' => '',
+        'share_image' => '',
+        'theme_color' => '',
+        'app_name' => '',
+        'app_short_name' => '',
+        // Whether search engines may list the pages that are public (the sign in page).
+        'index' => false,
+    ];
+
     /** Where links can be shown, and what an admin sees for each. */
     public const LOCATIONS = [
         'sidebar' => 'Server sidebar',
@@ -88,6 +102,36 @@ class BrandingService
         }
         $this->settings->forget(self::FAVICON);
         $this->payload = [];
+    }
+
+    /**
+     * The settings for search engines and for what a shared link and an installed app show.
+     *
+     * @return array{title: string, description: string, share_image: string, theme_color: string, app_name: string, app_short_name: string, index: bool}
+     */
+    public function seo(): array
+    {
+        $stored = json_decode((string) $this->settings->get(self::SEO, '{}'), true);
+        $stored = is_array($stored) ? $stored : [];
+        $seo = [];
+        foreach (self::SEO_DEFAULTS as $key => $default) {
+            $value = $stored[$key] ?? $default;
+            $seo[$key] = is_bool($default) ? (bool) $value : (is_string($value) ? trim($value) : $default);
+        }
+
+        return $seo;
+    }
+
+    /** @param array<string, mixed> $seo */
+    public function saveSeo(array $seo): void
+    {
+        $clean = [];
+        foreach (self::SEO_DEFAULTS as $key => $default) {
+            $value = $seo[$key] ?? $default;
+            $clean[$key] = is_bool($default) ? (bool) $value : trim((string) $value);
+        }
+        $this->payload = [];
+        $this->settings->set(self::SEO, json_encode($clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     /** @return array<int, array{id: string, title: string, message: string, type: string, enabled: bool, dismissible: bool, link_label: string, link_url: string}> */

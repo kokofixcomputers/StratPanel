@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>{{ config('app.name', 'Stratosphere') }}</title>
+        <title>{{ ($seo['title'] ?? '') !== '' ? $seo['title'] : config('app.name', 'Stratosphere') }}</title>
 
         @section('meta')
             <meta charset="utf-8">
             <meta http-equiv="X-UA-Compatible" content="IE=edge">
             <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
             <meta name="csrf-token" content="{{ csrf_token() }}">
-            <meta name="robots" content="noindex">
             @include('partials.favicon')
-            <meta name="theme-color" content="#ffffff">
+            {{-- An admin's own colour is kept, otherwise the script of the theme colours the bar of the browser for light and dark. --}}
+            <meta name="theme-color" content="{{ ($seo['theme_color'] ?? '') !== '' ? $seo['theme_color'] : '#ffffff' }}" @if(($seo['theme_color'] ?? '') !== '') data-fixed @endif>
+            @include('partials.seo')
         @show
         @include('partials.theme')
 

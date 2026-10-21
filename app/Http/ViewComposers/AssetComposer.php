@@ -34,6 +34,7 @@ class AssetComposer
     {
         $view->with('asset', $this->assetHashService);
         $view->with('favicon', $this->branding->favicon());
+        $view->with('seo', $this->branding->seo());
         $view->with('themeCss', $this->theme->css());
         $view->with('themeConfig', $this->theme->config());
         $view->with('themeAttributes', $this->theme->attributes());

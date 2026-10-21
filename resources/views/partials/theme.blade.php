@@ -12,7 +12,7 @@
             root.classList.toggle('dark', dark);
             root.setAttribute('data-theme', dark ? 'dark' : 'light');
             var bar = document.querySelector('meta[name="theme-color"]');
-            if (bar) bar.setAttribute('content', dark ? '#141a23' : '#ffffff');
+            if (bar && !bar.hasAttribute('data-fixed')) bar.setAttribute('content', dark ? '#141a23' : '#ffffff');
         } catch (e) {}
     })();
 </script>

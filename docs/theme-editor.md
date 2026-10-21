@@ -107,3 +107,12 @@ The rail of sections scrolls when the window is not tall enough for all of them.
 Power dock (`powerDock`, section Buttons): the power buttons (start, stop, restart, and kill after a stop) floating at the bottom of every server page, as a dock of
 icons or a dock with labels (`components/server/PowerDock.tsx`, it reuses `PowerButtons` so the permissions and the kill confirmation are the same). The page gets
 room at the bottom (`body.has-power-dock`). Off by default, the buttons in the header and the sidebar stay either way.
+
+Live announcements and links: the Announcements and Branding panels send what is being typed to the preview frame as it changes (`branding` in the draft message, applied by
+`lib/themePreview.ts` over the saved branding in the frame's store), so a note shows in the real dashboard before it is saved; the buttons still save.
+
+Search and sharing (`seo` in `BrandingService`, section "Search and sharing", saved with `PUT /api/client/theme/branding`): page title, meta description, share image
+(Open Graph and Twitter card tags, `resources/views/partials/seo.blade.php`), whether search engines may list the sign in page (`robots`: noindex by default), the colour
+of the browser bar (`theme-color`, kept as it is instead of following light and dark when set) and the name and short name of the installed app. The web app manifest is
+public at `/manifest.webmanifest` (`Base/ManifestController.php`, name, short name, colours, the logo as the icon); the page links it and sets the Apple app title.
+An empty field means the name of the panel.

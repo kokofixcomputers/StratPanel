@@ -190,6 +190,7 @@ class ThemeController extends ClientApiController
             'favicon' => $this->branding->favicon(),
             'announcements' => $this->branding->announcements(),
             'links' => $this->branding->links(),
+            'seo' => $this->branding->seo(),
             'locations' => BrandingService::LOCATIONS,
             'types' => BrandingService::TYPES,
         ]);
@@ -214,7 +215,22 @@ class ThemeController extends ClientApiController
             'links.*.url' => ['required', ...array_slice($link, 1)],
             'links.*.location' => ['required', Rule::in(array_keys(BrandingService::LOCATIONS))],
             'links.*.new_tab' => 'nullable|boolean',
+            'seo' => 'sometimes|array',
+            'seo.title' => 'nullable|string|max:70',
+            'seo.description' => 'nullable|string|max:200',
+            'seo.share_image' => 'nullable|string|max:500',
+            'seo.theme_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'seo.app_name' => 'nullable|string|max:45',
+            'seo.app_short_name' => 'nullable|string|max:12',
+            'seo.index' => 'nullable|boolean',
         ]);
+
+        if ($request->has('seo')) {
+            if (!ThemeService::imageAllowed($request->input('seo.share_image'))) {
+                throw new DisplayException('The share image has to be an upload or an https address.');
+            }
+            $this->branding->saveSeo((array) $request->input('seo'));
+        }
 
         if ($request->has('announcements')) {
             $this->branding->saveAnnouncements((array) $request->input('announcements'));

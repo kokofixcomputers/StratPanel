@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import {
     AdjustmentsIcon,
     BadgeCheckIcon,
+    SearchCircleIcon,
     SpeakerphoneIcon,
     ArrowDownIcon,
     ArrowLeftIcon,
@@ -37,7 +38,14 @@ import {
     Toggle,
 } from '@/components/admin/theme/controls';
 import GradientPicker from '@/components/admin/theme/GradientPicker';
-import { AnnouncementsPanel, BrandingData, BrandingPanel } from '@/components/admin/theme/BrandingPanels';
+import {
+    Announcement,
+    AnnouncementsPanel,
+    BrandLink,
+    BrandingData,
+    BrandingPanel,
+    SeoPanel,
+} from '@/components/admin/theme/BrandingPanels';
 import BannersEditor, { EggInfo } from '@/components/admin/theme/BannersEditor';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
 import { SIDEBAR_DEFAULTS, SidebarId } from '@/lib/sidebarLayout';
@@ -98,6 +106,12 @@ const SECTIONS: {
         icon: ViewGridIcon,
     },
     { id: 'branding', label: 'Branding', description: 'Logo and favicon, links in the bars', icon: BadgeCheckIcon },
+    {
+        id: 'seo',
+        label: 'Search and sharing',
+        description: 'Title, description, share image, installed app name',
+        icon: SearchCircleIcon,
+    },
     {
         id: 'announcements',
         label: 'Announcements',
@@ -175,6 +189,8 @@ export default () => {
     const [branding, setBranding] = useState<BrandingData | null>(null);
     // Counts up when the branding was saved, the preview is loaded again to show it.
     const [refresh, setRefresh] = useState(0);
+    // The announcements and links being edited, shown in the preview before they are saved.
+    const [draftBranding, setDraftBranding] = useState<{ announcements?: Announcement[]; links?: BrandLink[] }>({});
     const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
@@ -939,6 +955,7 @@ export default () => {
                             {branding ? (
                                 <BrandingPanel
                                     data={branding}
+                                    onDraft={(links) => setDraftBranding((d) => ({ ...d, links }))}
                                     onSaved={() => {
                                         loadBranding();
                                         setRefresh((n) => n + 1);
@@ -948,10 +965,24 @@ export default () => {
                                 <Spinner size={'base'} centered />
                             )}
                         </Group>
+                        <Group id={'seo'}>
+                            {branding ? (
+                                <SeoPanel
+                                    data={branding}
+                                    siteName={(window as any).SiteConfiguration?.name ?? 'Stratosphere'}
+                                    busy={working !== null}
+                                    upload={upload}
+                                    onSaved={loadBranding}
+                                />
+                            ) : (
+                                <Spinner size={'base'} centered />
+                            )}
+                        </Group>
                         <Group id={'announcements'}>
                             {branding ? (
                                 <AnnouncementsPanel
                                     data={branding}
+                                    onDraft={(announcements) => setDraftBranding((d) => ({ ...d, announcements }))}
                                     onSaved={() => {
                                         loadBranding();
                                         setRefresh((n) => n + 1);
@@ -1345,6 +1376,7 @@ export default () => {
                         serverId={serverId}
                         phone={phone}
                         refresh={refresh}
+                        branding={draftBranding}
                     />
                     <p className={'mt-3 text-sm text-neutral-400'}>
                         This is the real panel with your draft, nothing changes for anybody until you save.

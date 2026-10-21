@@ -3,6 +3,7 @@
  * exactly what the pages will look like. This is the panel's side: inside such a frame it listens for the draft and applies it without
  * saving anything. Only messages from the editor page of the same origin are taken.
  */
+import { store } from '@/state';
 import { applyTheme } from '@/lib/theme';
 import { buildThemeCss, setPageThemeConfig, themeAttributes, withDefaults } from '@/lib/themeConfig';
 
@@ -16,6 +17,32 @@ const inPreviewFrame = (): boolean => {
     } catch (e) {
         return false;
     }
+};
+
+/** The announcements and links the editor is working on, in place of the saved ones (they are printed into the page when it loads). */
+const applyBranding = (draft: { announcements?: any[]; links?: any[] } | undefined) => {
+    const settings = store.getState().settings.data;
+    if (!draft || !settings) return;
+
+    const branding = (settings.branding ?? {}) as Record<string, unknown>;
+    store.getActions().settings.setSettings({
+        ...settings,
+        branding: {
+            ...branding,
+            ...(draft.announcements
+                ? {
+                      announcements: draft.announcements
+                          .filter((a) => a.enabled && a.message?.trim())
+                          // A key that is new every time so that one dismissed in the preview comes back with the next change.
+                          .map((a, i) => ({
+                              ...a,
+                              key: `preview:${i}:${a.message.length}:${a.title?.length ?? 0}:${a.type}`,
+                          })),
+                  }
+                : {}),
+            ...(draft.links ? { links: draft.links.filter((l) => l.label?.trim() && l.url?.trim()) } : {}),
+        },
+    });
 };
 
 const apply = (draft: unknown, dark: unknown) => {
@@ -44,6 +71,7 @@ export const startThemePreview = (): void => {
         if (event.data?.type !== DRAFT_MESSAGE) return;
 
         apply(event.data.config, event.data.dark);
+        applyBranding(event.data.branding);
     });
 
     window.parent.postMessage({ type: READY_MESSAGE }, window.location.origin);

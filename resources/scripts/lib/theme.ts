@@ -49,7 +49,8 @@ export const applyTheme = (theme: Theme): void => {
     root.dataset.theme = theme;
 
     const bar = document.querySelector('meta[name="theme-color"]');
-    if (bar) bar.setAttribute('content', BAR[theme]);
+    // A colour an admin chose for the bar (Search and sharing in the theme editor) is kept.
+    if (bar && !bar.hasAttribute('data-fixed')) bar.setAttribute('content', BAR[theme]);
 };
 
 /** The theme the page is showing now. */

@@ -149,9 +149,10 @@ api.put('/theme', (req, res) => { themeSaved = { config: req.body.config, css: r
 api.delete('/theme', (req, res) => { themeSaved = { config: null, css: '', attributes: {} }; res.json(themeSaved); });
 api.get('/theme/eggs', (req, res) => res.json([{ id: 1, name: 'Minecraft: Java Edition', nest: 'Minecraft' }, { id: 2, name: 'Bungeecord', nest: 'Minecraft' }]));
 const brandingState = { favicon: null, announcements: [{ id: 'a1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.', type: 'warning', enabled: true, dismissible: true, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }] };
+brandingState.seo = { title: '', description: '', share_image: '', theme_color: '', app_name: '', app_short_name: '', index: false };
 const brandingBody = () => ({ ...brandingState, locations: { sidebar: 'Server sidebar', navbar: 'Top bar', footer: 'Footer' }, types: ['info', 'success', 'warning', 'danger'] });
 api.get('/theme/branding', (req, res) => res.json(brandingBody()));
-api.put('/theme/branding', (req, res) => { if (req.body.announcements) brandingState.announcements = req.body.announcements; if (req.body.links) brandingState.links = req.body.links; res.json(brandingBody()); });
+api.put('/theme/branding', (req, res) => { if (req.body.announcements) brandingState.announcements = req.body.announcements; if (req.body.links) brandingState.links = req.body.links; if (req.body.seo) brandingState.seo = { ...brandingState.seo, ...req.body.seo }; res.json(brandingBody()); });
 api.post('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 api.delete('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.svg' }));
