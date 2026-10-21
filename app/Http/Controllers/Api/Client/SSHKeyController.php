@@ -26,6 +26,10 @@ class SSHKeyController extends ClientApiController
      */
     public function store(StoreSSHKeyRequest $request): array
     {
+        if (!$request->user()->allowedTo('self.ssh_keys.create')) {
+            throw new \Pterodactyl\Exceptions\DisplayException('Your account is not allowed to add SSH keys.');
+        }
+
         $model = $request->user()->sshKeys()->create([
             'name' => $request->input('name'),
             'public_key' => $request->getPublicKey(),

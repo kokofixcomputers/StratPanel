@@ -162,6 +162,56 @@ final class PermissionRegistry
         ],
     ];
 
+    /**
+     * What every account may do without a role (as far as the panel allows it), and a role can take away or, where the panel has a switch
+     * for it, allow. These are not admin permissions: they never open the admin area.
+     *
+     * @var array<string, string>
+     */
+    private const USER = [
+        'self.servers.create' => 'Create a server for themselves (the self service of the dashboard; "grant" works when the panel has it switched off)',
+        'self.domains.add' => 'Add domains to their servers',
+        'self.api_keys.create' => 'Create API keys for their account',
+        'self.ssh_keys.create' => 'Add SSH keys to their account',
+    ];
+
+    /** @return array<string, string> the permissions of everybody, see USER */
+    public static function user(): array
+    {
+        return self::USER;
+    }
+
+    /** Whether this is a permission of everybody (not an admin one). */
+    public static function isUser(string $permission): bool
+    {
+        return isset(self::USER[$permission]);
+    }
+
+    /** @return list<string> the keys that can be denied or granted by a role: the admin ones and the ones of everybody */
+    public static function known(): array
+    {
+        return array_merge(self::all(), array_keys(self::USER));
+    }
+
+    /**
+     * The permissions a role denies: known ones only, in the order of the registry. Unlike a grant, a denial brings nothing else with it
+     * (denying the "view" of a group is handled where it is checked).
+     *
+     * @param  iterable<mixed>  $permissions
+     * @return list<string>
+     */
+    public static function normalizeDenied(iterable $permissions): array
+    {
+        $given = [];
+        foreach ($permissions as $permission) {
+            if (is_string($permission) && (self::exists($permission) || self::isUser($permission))) {
+                $given[$permission] = true;
+            }
+        }
+
+        return array_values(array_filter(self::known(), fn (string $key) => isset($given[$key])));
+    }
+
     /** @return array<string, array{label: string, description: string, permissions: array<string, string>}> */
     public static function groups(): array
     {
@@ -206,7 +256,7 @@ final class PermissionRegistry
     {
         $given = [];
         foreach ($permissions as $permission) {
-            if (is_string($permission) && self::exists($permission)) {
+            if (is_string($permission) && (self::exists($permission) || self::isUser($permission))) {
                 $given[$permission] = true;
             }
         }
@@ -220,7 +270,7 @@ final class PermissionRegistry
             }
         }
 
-        return array_values(array_filter(self::all(), fn (string $key) => isset($given[$key])));
+        return array_values(array_filter(self::known(), fn (string $key) => isset($given[$key])));
     }
 
     /** The "view" permission that comes with another one, null when it has none (or is one itself). */

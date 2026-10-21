@@ -37,7 +37,7 @@ class RolesController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $role = $this->roles->create($request->user(), $request->validate($this->rules()));
+        $role = $this->roles->create($request->user(), $this->input($request));
 
         $this->alert->success($role->name . ' was created.')->flash();
 
@@ -54,7 +54,7 @@ class RolesController extends Controller
      */
     public function update(Request $request, Role $role): RedirectResponse
     {
-        $this->roles->update($request->user(), $role, $request->validate($this->rules($role)));
+        $this->roles->update($request->user(), $role, $this->input($request, $role));
 
         $this->alert->success($role->name . ' was saved.')->flash();
 
@@ -118,11 +118,30 @@ class RolesController extends Controller
             'role' => $role,
             'exists' => $exists,
             'groups' => PermissionRegistry::groups(),
-            'held' => $role->permissionList(),
+            'held' => PermissionRegistry::normalize((array) $role->permissions),
+            'denied' => $role->deniedList(),
+            'user' => PermissionRegistry::user(),
             'covers' => $exists ? $this->roles->covers(request()->user(), $role) : true,
             'members' => $exists ? $role->users()->get() : collect(),
             'mine' => request()->user()->root_admin ? null : request()->user()->rolePermissions(),
         ]);
+    }
+
+    /**
+     * The form sends one choice for each permission (states[key] = grant, deny or nothing for the default); the older `permissions` list
+     * (grants only) is still understood.
+     *
+     * @return array<string, mixed>
+     */
+    private function input(Request $request, ?Role $role = null): array
+    {
+        $data = $request->validate($this->rules($role));
+        if (isset($data['states'])) {
+            $data['permissions'] = array_keys(array_filter($data['states'], fn ($state) => $state === 'grant'));
+            $data['denied'] = array_keys(array_filter($data['states'], fn ($state) => $state === 'deny'));
+        }
+
+        return $data;
     }
 
     /** @return array<string, mixed> */
@@ -134,6 +153,10 @@ class RolesController extends Controller
             'color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string',
+            'denied' => 'nullable|array',
+            'denied.*' => 'string',
+            'states' => 'nullable|array',
+            'states.*' => 'nullable|in:grant,deny,default',
         ];
     }
 }

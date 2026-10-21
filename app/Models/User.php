@@ -278,23 +278,73 @@ class User extends Model implements
         return $this->belongsToMany(Role::class, 'role_user')->withPivot('created_at')->orderBy('roles.name');
     }
 
-    /** @var list<string>|null the permissions of the roles, kept for the length of the request */
+    /** @var array{grants: list<string>, denied: list<string>}|null what the roles say, kept for the length of the request */
     private ?array $permissionCache = null;
 
+    /** @return array{grants: list<string>, denied: list<string>} everything the roles of this user grant and deny */
+    private function roleDecisions(): array
+    {
+        if ($this->permissionCache === null) {
+            $roles = $this->roles()->get();
+            $this->permissionCache = [
+                'grants' => PermissionRegistry::normalize($roles->flatMap(fn (Role $role) => (array) $role->permissions)->all()),
+                'denied' => PermissionRegistry::normalizeDenied($roles->flatMap(fn (Role $role) => (array) $role->denied)->all()),
+            ];
+        }
+
+        return $this->permissionCache;
+    }
+
+    /** Whether a role takes this away: the permission itself, or the "view" of its group that it needs. */
+    private function isDeniedByRole(string $permission): bool
+    {
+        $denied = $this->roleDecisions()['denied'];
+        $view = PermissionRegistry::viewOf($permission);
+
+        return in_array($permission, $denied, true) || ($view !== null && in_array($view, $denied, true));
+    }
+
     /**
-     * What this user may do in the admin area, from the roles they have. Root admins hold everything, they are not listed here.
+     * What this user may do in the admin area, from the roles they have: what the roles grant, less what any of them denies. Root admins
+     * hold everything, they are not listed here.
      *
      * @return list<string>
      */
     public function rolePermissions(): array
     {
-        if ($this->permissionCache === null) {
-            $this->permissionCache = PermissionRegistry::normalize(
-                $this->roles()->get()->flatMap(fn (Role $role) => (array) $role->permissions)->all()
-            );
+        return array_values(array_filter(
+            $this->roleDecisions()['grants'],
+            fn (string $key) => !PermissionRegistry::isUser($key) && !$this->isDeniedByRole($key)
+        ));
+    }
+
+    /**
+     * What the roles of this user say about a permission: "deny" (any role denies it), "grant" or null (nothing, the default).
+     * Root admins are not limited by roles.
+     */
+    public function permissionState(string $permission): ?string
+    {
+        if ($this->root_admin) {
+            return 'grant';
+        }
+        if ($this->isDeniedByRole($permission)) {
+            return 'deny';
         }
 
-        return $this->permissionCache;
+        return in_array($permission, $this->roleDecisions()['grants'], true) ? 'grant' : null;
+    }
+
+    /**
+     * Whether this user may do something that everybody may do by default (see PermissionRegistry::user()): a role that denies it takes it
+     * away, one that grants it gives it even where the default is no. `$default` is what the panel says without any role.
+     */
+    public function allowedTo(string $permission, bool $default = true): bool
+    {
+        return match ($this->permissionState($permission)) {
+            'deny' => false,
+            'grant' => true,
+            default => $default,
+        };
     }
 
     /** Forgets the permissions that were looked up, for after the roles of the user changed. */

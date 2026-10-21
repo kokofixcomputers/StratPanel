@@ -52,6 +52,10 @@ class DomainController extends ClientApiController
      */
     public function store(StoreDomainRequest $request, Server $server, ManagedDomainService $managed): JsonResponse
     {
+        if (!$request->user()->allowedTo('self.domains.add')) {
+            throw new DisplayException('Your account is not allowed to add domains.');
+        }
+
         $max = (int) config('pterodactyl.domains.max_per_server');
         if ($max > 0 && ServerDomain::query()->where('server_id', $server->id)->count() >= $max) {
             throw new DisplayException("This server can have at most $max domains.");

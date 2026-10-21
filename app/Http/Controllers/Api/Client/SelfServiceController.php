@@ -39,12 +39,14 @@ class SelfServiceController extends ClientApiController
         $config = config('pterodactyl.self_service');
         $max = $this->maxServers($request);
         $owned = Server::query()->where('owner_id', $request->user()->id)->count();
+        // The panel's switch, unless a role of this person says otherwise.
+        $enabled = $request->user()->allowedTo('self.servers.create', (bool) $config['enabled']);
 
         return [
             'object' => 'self_service',
             'attributes' => [
-                'enabled' => (bool) $config['enabled'],
-                'can_create' => (bool) $config['enabled'] && ($max === 0 || $owned < $max),
+                'enabled' => $enabled,
+                'can_create' => $enabled && ($max === 0 || $owned < $max),
                 'max_servers' => $max,
                 'owned' => $owned,
                 'limits' => [
@@ -87,11 +89,14 @@ class SelfServiceController extends ClientApiController
     public function store(CreateServerRequest $request): JsonResponse
     {
         $config = config('pterodactyl.self_service');
-        if (!$config['enabled']) {
+        $user = $request->user();
+        if ($user->permissionState('self.servers.create') === 'deny') {
+            throw new DisplayException('Your account is not allowed to create servers.');
+        }
+        if (!$user->allowedTo('self.servers.create', (bool) $config['enabled'])) {
             throw new DisplayException('Creating servers is not enabled on this panel.');
         }
 
-        $user = $request->user();
         $max = $this->maxServers($request);
         if ($max > 0 && Server::query()->where('owner_id', $user->id)->count() >= $max) {
             throw new DisplayException("You have reached the limit of $max servers for your account.");

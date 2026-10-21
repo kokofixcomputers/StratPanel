@@ -35,7 +35,7 @@ class RolesAdminTest extends RoleTestCase
 
         $html = $this->page('/admin/roles/new')->assertOk()->getContent();
         foreach (PermissionRegistry::all() as $permission) {
-            $this->assertStringContainsString('value="' . $permission . '"', $html, $permission);
+            $this->assertStringContainsString('name="states[' . $permission . ']"', $html, $permission);
         }
         foreach (PermissionRegistry::groups() as $group) {
             $this->assertStringContainsString($group['label'], $html);

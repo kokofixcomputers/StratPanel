@@ -10,7 +10,7 @@ use Pterodactyl\Exceptions\DisplayException;
 /**
  * Making, changing and giving roles, with the rules that keep roles from being a way to get more than one has:
  *
- *  - a role can only hold permissions the person making or changing it holds themselves,
+ *  - a role can only grant admin permissions the person making or changing it holds themselves (a denial needs nothing, it only takes away),
  *  - a role can only be changed, removed, given or taken away by somebody who holds all of its permissions,
  *  - the accounts of root admins, and of people who hold more than you do, can not be given roles or have them taken away.
  *
@@ -31,7 +31,7 @@ class RoleService
      */
     public function create(User $actor, array $data): Role
     {
-        $permissions = PermissionRegistry::normalize($data['permissions'] ?? []);
+        [$permissions, $denied] = $this->decisions($data);
         $this->checkGrantable($actor, $permissions);
 
         $role = Role::query()->create([
@@ -39,9 +39,10 @@ class RoleService
             'description' => $data['description'] ?? null,
             'color' => $data['color'] ?? '#3b82f6',
             'permissions' => $permissions,
+            'denied' => $denied,
         ]);
 
-        Activity::event('role:create')->actor($actor)->subject($role)->property(['name' => $role->name, 'permissions' => $permissions])->log();
+        Activity::event('role:create')->actor($actor)->subject($role)->property(['name' => $role->name, 'permissions' => $permissions, 'denied' => $denied])->log();
 
         return $role;
     }
@@ -55,15 +56,17 @@ class RoleService
     {
         $this->checkCovers($actor, $role);
 
-        $permissions = PermissionRegistry::normalize($data['permissions'] ?? []);
+        [$permissions, $denied] = $this->decisions($data);
         $this->checkGrantable($actor, $permissions);
 
-        $before = $role->permissionList();
+        $before = PermissionRegistry::normalize((array) $role->permissions);
+        $deniedBefore = $role->deniedList();
         $role->forceFill([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'color' => $data['color'] ?? $role->color,
             'permissions' => $permissions,
+            'denied' => $denied,
         ])->save();
 
         // Everybody who has the role has other permissions now.
@@ -73,6 +76,8 @@ class RoleService
             'name' => $role->name,
             'added' => array_values(array_diff($permissions, $before)),
             'removed' => array_values(array_diff($before, $permissions)),
+            'denied' => array_values(array_diff($denied, $deniedBefore)),
+            'allowed again' => array_values(array_diff($deniedBefore, $denied)),
         ])->log();
 
         return $role;
@@ -141,13 +146,31 @@ class RoleService
     }
 
     /**
+     * What a role grants and what it denies. A permission can not be both: the denial stays.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function decisions(array $data): array
+    {
+        $denied = PermissionRegistry::normalizeDenied($data['denied'] ?? []);
+        // What is denied is taken out before the "see" permissions that come with a grant are added.
+        $granted = PermissionRegistry::normalize(array_diff((array) ($data['permissions'] ?? []), $denied));
+
+        return [$granted, $denied];
+    }
+
+    /**
+     * Only admin permissions need to be held to be given: everybody may do what the others are about (or is denied it).
+     *
      * @param  list<string>  $permissions
      *
      * @throws DisplayException
      */
     private function checkGrantable(User $actor, array $permissions): void
     {
-        if (!$actor->root_admin && ($missing = array_diff($permissions, $actor->rolePermissions()))) {
+        $admin = array_filter($permissions, fn (string $key) => !PermissionRegistry::isUser($key));
+        if (!$actor->root_admin && ($missing = array_diff($admin, $actor->rolePermissions()))) {
             throw new DisplayException('You can only give a role permissions that you hold yourself. Not allowed: ' . implode(', ', $missing) . '.');
         }
     }

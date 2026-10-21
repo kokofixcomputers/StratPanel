@@ -30,6 +30,10 @@ class ApiKeyController extends ClientApiController
      */
     public function store(StoreApiKeyRequest $request): array
     {
+        if (!$request->user()->allowedTo('self.api_keys.create')) {
+            throw new DisplayException('Your account is not allowed to create API keys.');
+        }
+
         $token = DB::transaction(function () use ($request) {
             if ($request->user()->apiKeys()->lockForUpdate()->count() >= 25) {
                 throw new DisplayException('You have reached the account limit for number of API keys.');

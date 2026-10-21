@@ -45,7 +45,7 @@
                                 <tr>
                                     <td><a href="{{ route('admin.roles.view', $role->id) }}"><span class="label" style="background-color: {{ $role->color }};">{{ $role->name }}</span></a></td>
                                     <td>{{ $role->description }}</td>
-                                    <td class="text-center">{{ count($role->permissionList()) }}</td>
+                                    <td class="text-center">{{ count($role->permissionList()) + count($role->userGrantList()) }}@if(count($role->deniedList())) <span class="label label-danger" title="Permissions this role denies">{{ count($role->deniedList()) }} denied</span>@endif</td>
                                     <td class="text-center">{{ $role->users_count }}</td>
                                 </tr>
                             @endforeach
