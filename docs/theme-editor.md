@@ -150,3 +150,6 @@ while the list of servers is still loading. This is done in the browser, so it k
 as they are when it saves.
 
 The sliders and checkboxes of the editor are the theme's own: `Slider` is a track that fills with the accent colour (`input.theme-range`, `--fill`) and `Switch` is an on and off switch (`controls.tsx`).
+
+The editor page follows the saved theme like every other page (accent, corners, background picture or gradient, dark mode). It used to take the saved theme off itself so that the preview would
+not be mixed with it, which is not needed now that the preview is a frame of its own. If a theme ever makes the editor hard to read, `/theme-editor?plain` draws the editor in the default look.

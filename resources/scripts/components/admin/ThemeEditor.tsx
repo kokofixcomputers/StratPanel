@@ -164,9 +164,14 @@ const STATUS_PARTS: { key: 'success' | 'danger' | 'warning'; label: string; base
     { key: 'warning', label: 'Warning', base: '#ca8a04' },
 ];
 
-/** The saved theme is not drawn on this page, the preview shows the draft alone: otherwise the saved one would leak into it. */
+/**
+ * The editor follows the saved theme like every other page of the panel. If a theme ever makes it hard to read, opening it as /theme-editor?plain
+ * draws this page in the default look (the preview is a frame of its own and shows the draft either way).
+ */
 const useBareTheme = () => {
     useEffect(() => {
+        if (!new URLSearchParams(window.location.search).has('plain')) return undefined;
+
         const style = document.getElementById('stratosphere-custom-theme');
         const css = style?.textContent ?? '';
         const root = document.documentElement;
