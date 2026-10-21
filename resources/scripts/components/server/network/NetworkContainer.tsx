@@ -8,7 +8,7 @@ import { Button } from '@/components/elements/button/index';
 import createServerAllocation from '@/api/server/network/createServerAllocation';
 import tw from 'twin.macro';
 import { ShareIcon } from '@heroicons/react/outline';
-import { MapIcon, MicrophoneIcon, PlusIcon } from '@heroicons/react/solid';
+import { DeviceMobileIcon, MapIcon, MicrophoneIcon, PlusIcon } from '@heroicons/react/solid';
 import PageHeader, { ListHeader } from '@/components/elements/PageHeader';
 import Can from '@/components/elements/Can';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
@@ -19,8 +19,11 @@ import saveFileContents from '@/api/server/files/saveFileContents';
 import setServerAllocationNotes from '@/api/server/network/setServerAllocationNotes';
 import { detectVoiceChat, VoiceChat, withAllocation } from '@/lib/voicechat';
 import { BlueMap, detectBlueMap, withPort } from '@/lib/bluemap';
+import { applyBedrock, detectGeyser, Geyser, Transport } from '@/lib/geyser';
+import GeyserDialog from '@/components/server/network/GeyserDialog';
 import { Allocation as ServerAllocation } from '@/api/server/getServer';
 
+type DetectedGeyser = Geyser | { path: string; waiting: true } | null;
 type Detected = BlueMap | { path: string; waiting: true } | null;
 
 const NetworkContainer = () => {
@@ -34,6 +37,8 @@ const NetworkContainer = () => {
     const { addFlash } = useFlash();
     const [voiceChat, setVoiceChat] = useState<VoiceChat | null>(null);
     const [blueMap, setBlueMap] = useState<Detected>(null);
+    const [geyser, setGeyser] = useState<DetectedGeyser>(null);
+    const [geyserOpen, setGeyserOpen] = useState(false);
     const { data, error, mutate } = getServerAllocations();
 
     useEffect(() => {
@@ -70,6 +75,9 @@ const NetworkContainer = () => {
         detectBlueMap(uuid)
             .then(setBlueMap)
             .catch(() => setBlueMap(null));
+        detectGeyser(uuid)
+            .then(setGeyser)
+            .catch(() => setGeyser(null));
     }, [uuid]);
 
     /**
@@ -109,7 +117,65 @@ const NetworkContainer = () => {
         }
     };
 
-    // Voice chat needs a port of its own: take a new allocation and point its config at it.
+    // Geyser: one allocation for RakNet or NetherNet, two for both. The first is the port, the second the NetherNet port.
+    const onApplyGeyser = async (transport: Transport) => {
+        if (!geyser || 'waiting' in geyser) return;
+        setGeyserOpen(false);
+        clearFlashes();
+        setLoading(true);
+        const added: ServerAllocation[] = [];
+        try {
+            for (let i = 0; i < (transport === 'both' ? 2 : 1); i++) {
+                const allocation = await createServerAllocation(uuid);
+                added.push(allocation);
+                setServerFromState((s) => ({ ...s, allocations: s.allocations.concat(allocation) }));
+            }
+            await mutate((data || []).concat(added), false);
+
+            const ports = added.map((a) => a.port).join(' and ');
+            try {
+                const content = applyBedrock(geyser.content, transport, added[0].port, added[1]?.port ?? null);
+                await saveFileContents(uuid, geyser.path, content);
+                setGeyser({ ...geyser, content, bedrock: { ...geyser.bedrock, transport, port: added[0].port } });
+                await Promise.all(
+                    added.map((a, i) =>
+                        setServerAllocationNotes(
+                            uuid,
+                            a.id,
+                            transport === 'both' ? `Geyser (${i === 0 ? 'RakNet' : 'NetherNet'})` : 'Geyser (Bedrock)'
+                        ).catch(() => undefined)
+                    )
+                );
+                addFlash({
+                    key: 'server:network',
+                    type: 'success',
+                    message: `Geyser now listens on ${ports}. Restart the server to apply it, and open the port${
+                        added.length > 1 ? 's' : ''
+                    } for UDP${transport === 'raknet' ? '' : ' (and TCP for NetherNet)'}.`,
+                });
+                mutate();
+            } catch (e) {
+                addError(
+                    `The allocation${added.length > 1 ? 's' : ''} ${ports} ${
+                        added.length > 1 ? 'were' : 'was'
+                    } added, but ${geyser.path} could not be updated: ${
+                        e instanceof Error ? e.message : 'it could not be saved'
+                    } Set bedrock port to ${added[0].port}${
+                        added[1] ? ' and webrtc-port to ' + added[1].port : ''
+                    } by hand.`
+                );
+            }
+        } catch (e) {
+            if (added.length > 0) mutate();
+            clearAndAddHttpError(e as Error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const geyserPort = geyser && !('waiting' in geyser) ? geyser.bedrock.port : null;
+    const geyserInUse = !!geyserPort && allocations.some((a) => a.port === geyserPort);
+    const freeAllocations = data ? Math.max(0, allocationLimit - data.length) : 0;
     const onAddVoiceChatPort = () => {
         if (!voiceChat) return;
         const address = (a: ServerAllocation) => `${a.alias || a.ip}:${a.port}`;
@@ -200,6 +266,24 @@ const NetworkContainer = () => {
                         </Button.Text>
                     </Can>
                 )}
+                {geyser && (
+                    <Can action={['allocation.create', 'file.update']}>
+                        <Button.Text
+                            disabled={'waiting' in geyser || !data || freeAllocations < 1}
+                            onClick={() => setGeyserOpen(true)}
+                            title={
+                                'waiting' in geyser
+                                    ? 'Start the server once so Geyser writes its config.yml'
+                                    : geyserInUse
+                                    ? `Geyser uses port ${geyserPort}, choose again to give it new ports`
+                                    : 'Add allocations and set them as the Geyser (Bedrock) ports'
+                            }
+                        >
+                            <DeviceMobileIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
+                            {geyserInUse ? `Geyser: ${geyserPort}` : 'Add Geyser port'}
+                        </Button.Text>
+                    </Can>
+                )}
                 {allocationLimit > 0 && data && allocationLimit > data.length && (
                     <Can action={'allocation.create'}>
                         <Button onClick={onCreateAllocation}>
@@ -209,6 +293,13 @@ const NetworkContainer = () => {
                     </Can>
                 )}
             </ListHeader>
+            <GeyserDialog
+                open={geyserOpen}
+                current={geyser && !('waiting' in geyser) ? geyser.bedrock.transport : null}
+                free={freeAllocations}
+                onClose={() => setGeyserOpen(false)}
+                onApply={onApplyGeyser}
+            />
             <SpinnerOverlay visible={loading} />
             {!data ? (
                 <Spinner size={'large'} centered />
