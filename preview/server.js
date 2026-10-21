@@ -155,6 +155,16 @@ api.get('/theme/branding', (req, res) => res.json(brandingBody()));
 api.put('/theme/branding', (req, res) => { if (req.body.announcements) brandingState.announcements = req.body.announcements; if (req.body.links) brandingState.links = req.body.links; if (req.body.seo) brandingState.seo = { ...brandingState.seo, ...req.body.seo }; res.json(brandingBody()); });
 api.post('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 api.delete('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
+let themePresets = [];
+api.get('/theme/presets', (req, res) => res.json(themePresets));
+api.post('/theme/presets', (req, res) => {
+    const { id, name, config } = req.body;
+    const entry = { id: id || Math.random().toString(36).slice(2, 10).padEnd(8, 'x'), name, config: { ...config, preset: null } };
+    themePresets = id ? themePresets.map((p) => (p.id === id ? entry : p)) : [...themePresets, entry];
+    res.json(themePresets);
+});
+api.put('/theme/presets/:id', (req, res) => { themePresets = themePresets.map((p) => (p.id === req.params.id ? { ...p, name: req.body.name } : p)); res.json(themePresets); });
+api.delete('/theme/presets/:id', (req, res) => { themePresets = themePresets.filter((p) => p.id !== req.params.id); res.json(themePresets); });
 api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.svg' }));
 api.get('/palette', (req, res) => res.json({ object: 'palette', attributes: { admin: [
     { id: 'admin:0', label: 'Overview', url: '/admin', kind: 'page', words: 'admin home' },

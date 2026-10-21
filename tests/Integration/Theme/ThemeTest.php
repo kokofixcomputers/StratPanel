@@ -16,6 +16,7 @@ class ThemeTest extends RoleTestCase
         app(ThemeService::class)->reset();
         app(BrandingService::class)->saveSeo([]);
         app(BrandingService::class)->setConsolePrompt(null);
+        app(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->forget(ThemeService::PRESETS);
     }
 
     private function config(array $changes = []): array
@@ -350,5 +351,51 @@ class ThemeTest extends RoleTestCase
         $this->actingAs($admin)->get('/admin/settings/branding')->assertOk()->assertSee('Console prompt')->assertSee('container@stratosphere~');
         $this->actingAs($admin)->patch('/admin/settings/branding', ['console_prompt' => 'koko@hosting~'])->assertRedirect();
         $this->assertSame('koko@hosting~', app(BrandingService::class)->consolePrompt());
+    }
+
+    public function testAdminsCanKeepTheirOwnPresets(): void
+    {
+        $admin = $this->rootAdmin();
+
+        $this->actingAs($admin)->getJson('/api/client/theme/presets')->assertOk()->assertExactJson([]);
+
+        $saved = $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => 'My teal look', 'config' => $this->config(['accent' => '#0d9488'])])->assertOk()->json();
+        $this->assertCount(1, $saved);
+        $this->assertSame('My teal look', $saved[0]['name']);
+        $this->assertSame('#0d9488', $saved[0]['config']['accent']);
+        $this->assertNull($saved[0]['config']['preset']);
+        $id = $saved[0]['id'];
+
+        // Replacing it keeps the id, renaming only changes the name, deleting removes it.
+        $replaced = $this->actingAs($admin)->postJson('/api/client/theme/presets', ['id' => $id, 'name' => 'My teal look', 'config' => $this->config(['accent' => '#115e59'])])->assertOk()->json();
+        $this->assertCount(1, $replaced);
+        $this->assertSame('#115e59', $replaced[0]['config']['accent']);
+        $this->actingAs($admin)->putJson('/api/client/theme/presets/' . $id, ['name' => 'Teal v2'])->assertOk()->assertJsonPath('0.name', 'Teal v2')->assertJsonPath('0.config.accent', '#115e59');
+        $this->actingAs($admin)->getJson('/api/client/theme/presets')->assertJsonCount(1);
+        $this->actingAs($admin)->deleteJson('/api/client/theme/presets/' . $id)->assertOk()->assertExactJson([]);
+    }
+
+    public function testBadPresetsAreRefused(): void
+    {
+        $admin = $this->rootAdmin();
+
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => '', 'config' => $this->config()])->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => str_repeat('x', 41), 'config' => $this->config()])->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => 'x', 'config' => $this->config(['accent' => 'red'])])->assertStatus(422);
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => 'x', 'config' => $this->config(['background' => ['image' => 'http://x.example/a.png']])])->assertStatus(400);
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['id' => 'zzzzzzzz', 'name' => 'x', 'config' => $this->config()])->assertStatus(400);
+        $this->actingAs($admin)->putJson('/api/client/theme/presets/zzzzzzzz', ['name' => 'x'])->assertStatus(400);
+        $this->actingAs($this->makeUser())->getJson('/api/client/theme/presets')->assertForbidden();
+        $this->actingAs($this->makeUser())->postJson('/api/client/theme/presets', ['name' => 'x', 'config' => $this->config()])->assertForbidden();
+    }
+
+    public function testThereIsALimitToThePresets(): void
+    {
+        $admin = $this->rootAdmin();
+        for ($i = 0; $i < ThemeService::MAX_PRESETS; ++$i) {
+            app(ThemeService::class)->savePreset(null, 'Preset ' . $i, $this->config());
+        }
+
+        $this->actingAs($admin)->postJson('/api/client/theme/presets', ['name' => 'One too many', 'config' => $this->config()])->assertStatus(400);
     }
 }

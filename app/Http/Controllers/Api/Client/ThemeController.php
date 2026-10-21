@@ -24,7 +24,15 @@ class ThemeController extends ClientApiController
         return new JsonResponse(['config' => $this->theme->config(), 'css' => $this->theme->css()]);
     }
 
-    public function update(Request $request): JsonResponse
+    /**
+     * Checks the settings of a look (`config`) the way every place that keeps one needs, and returns what was sent. $extra are rules of
+     * the request around it.
+     *
+     * @param array<string, mixed> $extra
+     *
+     * @return array<string, mixed>
+     */
+    private function validateConfig(Request $request, array $extra = []): array
     {
         $hex = ['regex:/^#[0-9a-fA-F]{6}$/'];
         $nullableHex = ['nullable', 'string', ...$hex];
@@ -53,7 +61,7 @@ class ThemeController extends ClientApiController
         }
         $sidebars['config.sidebars.dashboard.enabled'] = 'required|boolean';
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge($extra, [
             'config' => 'required|array',
             'config.accent' => ['required', 'string', ...$hex],
             'config.secondary' => ['nullable', 'string', ...$hex],
@@ -89,8 +97,6 @@ class ThemeController extends ClientApiController
             'config.row.metrics.*' => ['distinct', Rule::in(['players', 'cpu', 'memory', 'disk', 'uptime', 'network'])],
             'config.row.address' => 'required|boolean',
             'config.row.description' => 'required|boolean',
-            'css' => 'present|nullable|string|max:30000',
-            'attributes' => 'sometimes|array|max:30',
             'config.row.size' => ['required', Rule::in(['small', 'medium', 'large'])],
             'config.row.metricStyle' => ['required', Rule::in(['bars', 'tiles', 'rings', 'chips'])],
             'config.row.status' => ['required', Rule::in(['bar', 'dot', 'none'])],
@@ -130,7 +136,7 @@ class ThemeController extends ClientApiController
             'config.motion.speed' => ['required', Rule::in(['off', 'fast', 'normal', 'slow'])],
             'config.motion.page' => ['required', Rule::in(['fade', 'slide', 'none'])],
             'config.motion.pulse' => 'required|boolean',
-        ]);
+        ]));
 
         if (!ThemeService::imageAllowed($data['config']['background']['image'] ?? null) || !ThemeService::imageAllowed($data['config']['login']['image'] ?? null)) {
             throw new DisplayException('That background picture address is not allowed, use an upload or an https address.');
@@ -145,6 +151,16 @@ class ThemeController extends ClientApiController
             }
         }
 
+        return $data;
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        $data = $this->validateConfig($request, [
+            'css' => 'present|nullable|string|max:30000',
+            'attributes' => 'sometimes|array|max:30',
+        ]);
+
         try {
             $this->theme->save($data['config'], (string) ($data['css'] ?? ''), (array) ($data['attributes'] ?? []));
         } catch (\InvalidArgumentException $exception) {
@@ -154,6 +170,46 @@ class ThemeController extends ClientApiController
         Activity::event('admin:theme.update')->log();
 
         return $this->show();
+    }
+
+    /** The looks saved under a name. */
+    public function presets(): JsonResponse
+    {
+        return new JsonResponse($this->theme->presets());
+    }
+
+    /** Keeps the look that is being edited as a preset, or replaces the one with the id that is sent. */
+    public function savePreset(Request $request): JsonResponse
+    {
+        $data = $this->validateConfig($request, [
+            'id' => ['nullable', 'string', 'regex:/^[a-z0-9]{8}$/'],
+            'name' => 'required|string|min:1|max:40',
+        ]);
+
+        try {
+            $list = $this->theme->savePreset($data['id'] ?? null, $data['name'], $data['config']);
+        } catch (\InvalidArgumentException $exception) {
+            throw new DisplayException($exception->getMessage());
+        }
+        Activity::event('admin:theme.preset')->property('name', $data['name'])->log();
+
+        return new JsonResponse($list);
+    }
+
+    public function renamePreset(Request $request, string $preset): JsonResponse
+    {
+        $data = $request->validate(['name' => 'required|string|min:1|max:40']);
+
+        try {
+            return new JsonResponse($this->theme->renamePreset($preset, $data['name']));
+        } catch (\InvalidArgumentException $exception) {
+            throw new DisplayException($exception->getMessage());
+        }
+    }
+
+    public function deletePreset(string $preset): JsonResponse
+    {
+        return new JsonResponse($this->theme->deletePreset($preset));
     }
 
     /** The eggs of this panel, for the editor to pick a banner for each. */

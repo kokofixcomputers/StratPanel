@@ -121,3 +121,8 @@ Console prompt (`console_prompt` in `BrandingService`, default `container@strato
 offline...", the transfer failure notice, the lines of a forced stop). It is set under Admin > Settings > Branding (Console prompt box) or in the theme editor's Branding section, only
 letters, numbers and `@ . _ ~ : -` and spaces (max 40), empty is the default. It reaches the page with the rest of the branding, `Console.tsx` reads it with `useBranding`. Lines that come
 from Wings or the game are not changed.
+
+Your own presets (section Presets, `components/admin/theme/MyPresets.tsx`): *Save as preset* keeps the look being edited under a name; the tile applies it to the draft again, the refresh
+button replaces it with the current look, and there are rename and delete. They are kept on the server (`settings::theme:presets`, up to 30, shared by the admins, not touched by
+*Reset to default*) and only change what the panel shows once one is applied and the theme is saved, so styles can be tried freely and the one you like stays safe.
+`GET/POST /api/client/theme/presets`, `PUT/DELETE /api/client/theme/presets/{id}`; a preset is checked with the same rules as a theme (`ThemeController::validateConfig`).

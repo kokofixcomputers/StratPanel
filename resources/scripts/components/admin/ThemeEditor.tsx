@@ -47,6 +47,7 @@ import {
     SeoPanel,
 } from '@/components/admin/theme/BrandingPanels';
 import BannersEditor, { EggInfo } from '@/components/admin/theme/BannersEditor';
+import MyPresets from '@/components/admin/theme/MyPresets';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
 import { SIDEBAR_DEFAULTS, SidebarId } from '@/lib/sidebarLayout';
 import LivePreview, { PreviewPage } from '@/components/admin/theme/LivePreview';
@@ -72,7 +73,7 @@ const SECTIONS: {
     description: string;
     icon: React.ComponentType<{ className?: string }>;
 }[] = [
-    { id: 'presets', label: 'Presets', description: 'Ready made looks to start from', icon: SparklesIcon },
+    { id: 'presets', label: 'Presets', description: 'Your own looks, and ready made ones', icon: SparklesIcon },
     {
         id: 'colours',
         label: 'Colours',
@@ -416,6 +417,13 @@ export default () => {
                             </p>
                         </div>
                         <Group id={'presets'}>
+                            <p className={'text-xs font-medium uppercase tracking-wide text-neutral-400'}>
+                                Your presets
+                            </p>
+                            <MyPresets config={config} onApply={setConfig} />
+                            <p className={'pt-2 text-xs font-medium uppercase tracking-wide text-neutral-400'}>
+                                Ready made
+                            </p>
                             <div className={'grid grid-cols-2 gap-2'}>
                                 {PRESETS.map((preset) => {
                                     const c = presetConfig(preset.id);

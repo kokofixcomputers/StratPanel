@@ -17,6 +17,10 @@ class ThemeService
     public const CONFIG = 'settings::theme:config';
     public const CSS = 'settings::theme:css';
     public const ATTRIBUTES = 'settings::theme:attributes';
+    public const PRESETS = 'settings::theme:presets';
+
+    /** How many looks of their own the admins of a panel can keep. */
+    public const MAX_PRESETS = 30;
 
     /** The marks on <html> the editor may set (the stylesheet has rules for them). */
     public const ATTRIBUTE_NAMES = [
@@ -93,6 +97,81 @@ class ThemeService
         $this->settings->set(self::CONFIG, json_encode($config, JSON_THROW_ON_ERROR));
         $this->settings->set(self::CSS, $clean);
         $this->settings->set(self::ATTRIBUTES, json_encode($this->cleanAttributes($attributes), JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * The looks admins saved under a name of their own, to come back to while they try other ones.
+     *
+     * @return list<array{id: string, name: string, config: array<string, mixed>}>
+     */
+    public function presets(): array
+    {
+        $list = json_decode((string) $this->settings->get(self::PRESETS, '[]'), true);
+
+        return is_array($list) ? array_values(array_filter($list, fn ($p) => is_array($p) && isset($p['id'], $p['name'], $p['config']))) : [];
+    }
+
+    /**
+     * Keeps a look: a new preset, or the one with this id replaced. Returns the list.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return list<array{id: string, name: string, config: array<string, mixed>}>
+     */
+    public function savePreset(?string $id, string $name, array $config): array
+    {
+        $name = trim($name);
+        $presets = $this->presets();
+        $at = $id === null ? null : array_search($id, array_column($presets, 'id'), true);
+
+        if ($id !== null && $at === false) {
+            throw new \InvalidArgumentException('That preset does not exist any more.');
+        }
+        if ($at === null && count($presets) >= self::MAX_PRESETS) {
+            throw new \InvalidArgumentException('There can be at most ' . self::MAX_PRESETS . ' presets, delete one first.');
+        }
+
+        // The look is kept as it is, without the name of the built in preset it started from.
+        $entry = ['id' => $id ?? Str::lower(Str::random(8)), 'name' => mb_substr($name, 0, 40), 'config' => array_merge($config, ['preset' => null])];
+        if ($at === null) {
+            $presets[] = $entry;
+        } else {
+            $presets[$at] = $entry;
+        }
+
+        return $this->storePresets($presets);
+    }
+
+    /** @return list<array{id: string, name: string, config: array<string, mixed>}> */
+    public function renamePreset(string $id, string $name): array
+    {
+        $presets = $this->presets();
+        $at = array_search($id, array_column($presets, 'id'), true);
+        if ($at === false) {
+            throw new \InvalidArgumentException('That preset does not exist any more.');
+        }
+        $presets[$at]['name'] = mb_substr(trim($name), 0, 40);
+
+        return $this->storePresets($presets);
+    }
+
+    /** @return list<array{id: string, name: string, config: array<string, mixed>}> */
+    public function deletePreset(string $id): array
+    {
+        return $this->storePresets(array_values(array_filter($this->presets(), fn ($p) => $p['id'] !== $id)));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $presets
+     *
+     * @return list<array{id: string, name: string, config: array<string, mixed>}>
+     */
+    private function storePresets(array $presets): array
+    {
+        $presets = array_values($presets);
+        $this->settings->set(self::PRESETS, json_encode($presets, JSON_THROW_ON_ERROR));
+
+        return $presets;
     }
 
     /** Back to the default look. The uploaded background picture stays, it may be used again. */

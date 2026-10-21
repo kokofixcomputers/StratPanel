@@ -25,6 +25,10 @@ Route::prefix('/theme')->middleware('admin.can:settings.branding.update')->group
     Route::delete('/', [Client\ThemeController::class, 'destroy']);
     Route::post('/background', [Client\ThemeController::class, 'background']);
     Route::get('/eggs', [Client\ThemeController::class, 'eggs']);
+    Route::get('/presets', [Client\ThemeController::class, 'presets']);
+    Route::post('/presets', [Client\ThemeController::class, 'savePreset']);
+    Route::put('/presets/{preset}', [Client\ThemeController::class, 'renamePreset'])->where('preset', '[a-z0-9]{8}');
+    Route::delete('/presets/{preset}', [Client\ThemeController::class, 'deletePreset'])->where('preset', '[a-z0-9]{8}');
     Route::get('/branding', [Client\ThemeController::class, 'branding']);
     Route::put('/branding', [Client\ThemeController::class, 'saveBranding']);
     Route::post('/branding/favicon', [Client\ThemeController::class, 'favicon']);
