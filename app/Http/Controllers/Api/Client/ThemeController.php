@@ -2,6 +2,7 @@
 
 namespace Pterodactyl\Http\Controllers\Api\Client;
 
+use Pterodactyl\Models\Egg;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,23 @@ class ThemeController extends ClientApiController
         }
         $url = ['required', 'string', 'max:300', 'regex:#^(/(?!/)|https?://)[^\s<>"\']*$#'];
 
+        $sidebars = [];
+        foreach (['server', 'dashboard', 'account'] as $bar) {
+            $sidebars["config.sidebars.$bar.categories"] = 'present|array|max:12';
+            $sidebars["config.sidebars.$bar.categories.*.id"] = ['required', 'string', 'regex:/^[a-z0-9]{3,20}$/'];
+            $sidebars["config.sidebars.$bar.categories.*.title"] = 'required|string|min:1|max:30';
+            $sidebars["config.sidebars.$bar.categories.*.items"] = 'present|array|max:40';
+            $sidebars["config.sidebars.$bar.categories.*.items.*"] = ['string', 'max:60', 'regex:#^[A-Za-z0-9/:_-]+$#'];
+            $sidebars["config.sidebars.$bar.hidden"] = 'present|array|max:80';
+            $sidebars["config.sidebars.$bar.hidden.*"] = ['string', 'max:60', 'regex:#^[A-Za-z0-9/_-]+$#'];
+            $sidebars["config.sidebars.$bar.extra"] = 'present|array|max:30';
+            $sidebars["config.sidebars.$bar.extra.*.id"] = ['required', 'string', 'regex:/^[a-z0-9]{4,20}$/'];
+            $sidebars["config.sidebars.$bar.extra.*.label"] = 'required|string|min:1|max:40';
+            $sidebars["config.sidebars.$bar.extra.*.url"] = $url;
+            $sidebars["config.sidebars.$bar.extra.*.newTab"] = 'required|boolean';
+        }
+        $sidebars['config.sidebars.dashboard.enabled'] = 'required|boolean';
+
         $data = $request->validate([
             'config' => 'required|array',
             'config.accent' => ['required', 'string', ...$hex],
@@ -60,6 +78,7 @@ class ThemeController extends ClientApiController
             'config.status.danger' => $nullableHex,
             'config.status.warning' => $nullableHex,
             ...$surface,
+            ...$sidebars,
             'config.radiusCustom' => 'nullable|integer|between:0,40',
             'config.fontScale' => 'required|integer|between:85,125',
             'config.console.style' => ['required', Rule::in(['match', 'dark'])],
@@ -69,16 +88,6 @@ class ThemeController extends ClientApiController
             'config.row.metrics.*' => ['distinct', Rule::in(['players', 'cpu', 'memory', 'disk', 'uptime', 'network'])],
             'config.row.address' => 'required|boolean',
             'config.row.description' => 'required|boolean',
-            'config.sidebar.order' => 'present|array|max:80',
-            'config.sidebar.order.*' => ['string', 'max:60', 'regex:#^[A-Za-z0-9/:_-]+$#'],
-            'config.sidebar.hidden' => 'present|array|max:80',
-            'config.sidebar.hidden.*' => ['string', 'max:60', 'regex:#^[A-Za-z0-9/_-]+$#'],
-            'config.sidebar.extra' => 'present|array|max:20',
-            'config.sidebar.extra.*.id' => ['required', 'string', 'regex:/^[a-z0-9]{4,20}$/'],
-            'config.sidebar.extra.*.label' => 'required|string|min:1|max:40',
-            'config.sidebar.extra.*.url' => $url,
-            'config.sidebar.extra.*.newTab' => 'required|boolean',
-            'config.sidebar.extra.*.group' => ['required', Rule::in(['Server', 'Minecraft', 'Manage', 'Configuration', 'More'])],
             'css' => 'present|nullable|string|max:30000',
             'attributes' => 'sometimes|array|max:30',
             'config.row.size' => ['required', Rule::in(['small', 'medium', 'large'])],
@@ -102,6 +111,11 @@ class ThemeController extends ClientApiController
             'config.customGradient.dark' => 'required|array|min:2|max:3',
             'config.customGradient.dark.*' => ['required', 'string', ...$hex],
             'config.folders.style' => ['required', Rule::in(['sections', 'chips', 'cards'])],
+            'config.banners.dim' => 'required|integer|between:0,90',
+            'config.banners.eggs' => 'present|array|max:80',
+            'config.banners.eggs.*' => 'nullable|string|max:500',
+            'config.banners.software' => 'present|array|max:20',
+            'config.banners.software.*' => 'nullable|string|max:500',
             'config.buttonStyle' => ['required', Rule::in(['solid', 'soft', 'outline', 'gradient'])],
             'config.borders' => ['required', Rule::in(['subtle', 'none', 'strong'])],
             'config.pageWidth' => ['required', Rule::in(['narrow', 'normal', 'wide', 'full'])],
@@ -119,6 +133,15 @@ class ThemeController extends ClientApiController
             throw new DisplayException('That background picture address is not allowed, use an upload or an https address.');
         }
 
+        // The banners are named by an egg (its number) or a software, and are pictures of this panel or of an https address.
+        foreach (['eggs' => '/^[0-9]{1,9}$/', 'software' => '/^[A-Z]{3,12}$/'] as $kind => $keyPattern) {
+            foreach ((array) ($data['config']['banners'][$kind] ?? []) as $key => $picture) {
+                if (!preg_match($keyPattern, (string) $key) || !ThemeService::imageAllowed($picture)) {
+                    throw new DisplayException('A banner has a name or a picture address that is not allowed.');
+                }
+            }
+        }
+
         try {
             $this->theme->save($data['config'], (string) ($data['css'] ?? ''), (array) ($data['attributes'] ?? []));
         } catch (\InvalidArgumentException $exception) {
@@ -128,6 +151,18 @@ class ThemeController extends ClientApiController
         Activity::event('admin:theme.update')->log();
 
         return $this->show();
+    }
+
+    /** The eggs of this panel, for the editor to pick a banner for each. */
+    public function eggs(): JsonResponse
+    {
+        return new JsonResponse(
+            Egg::query()->with('nest')->orderBy('name')->get()->map(fn (Egg $egg) => [
+                'id' => $egg->id,
+                'name' => $egg->name,
+                'nest' => $egg->nest?->name,
+            ])->all()
+        );
     }
 
     public function destroy(): JsonResponse

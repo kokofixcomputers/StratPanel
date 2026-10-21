@@ -24,6 +24,7 @@ Route::prefix('/theme')->middleware('admin.can:settings.branding.update')->group
     Route::put('/', [Client\ThemeController::class, 'update']);
     Route::delete('/', [Client\ThemeController::class, 'destroy']);
     Route::post('/background', [Client\ThemeController::class, 'background']);
+    Route::get('/eggs', [Client\ThemeController::class, 'eggs']);
 });
 Route::get('/palette', [Client\ClientController::class, 'palette']);
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);

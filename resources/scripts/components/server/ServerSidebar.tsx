@@ -36,7 +36,7 @@ import PowerButtons from '@/components/server/console/PowerButtons';
 import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
 import { useThemeConfig } from '@/lib/themeConfig';
-import { arrange, extraKey, fillUrl, safeUrl, SIDEBAR_GROUPS as GROUPS } from '@/lib/sidebarLayout';
+import { fillUrl, resolveSidebar, safeUrl } from '@/lib/sidebarLayout';
 
 export interface SidebarItem {
     path: string;
@@ -109,9 +109,13 @@ export default ({
         return match ? `${match.alias || ip(match.ip)}:${match.port}` : null;
     });
     const customLinks = linksAt(useBranding().links, 'sidebar');
-    const known = new Set(GROUPS.flatMap((g) => g.paths));
-    const groups = [...GROUPS, { title: 'More', paths: items.map((i) => i.path).filter((path) => !known.has(path)) }];
-    const layout = useThemeConfig().sidebar;
+    const layout = useThemeConfig().sidebars.server;
+    // The categories the admin arranged (or the default ones), with the items this person has.
+    const groups = resolveSidebar(
+        'server',
+        layout,
+        items.map((i) => i.path)
+    );
     const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
 
     const renderItem = (item: SidebarItem) => {
@@ -185,35 +189,16 @@ export default ({
                         <PowerButtons compact className={'flex gap-2'} />
                     </Can>
                 </div>
-                {groups.map((group) => {
-                    // The items of the group, then the links of your own that were put in it, in the order the admin chose.
-                    const entries = arrange(
-                        [
-                            ...group.paths
-                                .map((path) => items.find((item) => item.path === path))
-                                .filter((item): item is SidebarItem => !!item && !layout.hidden.includes(item.path))
-                                .map((item) => ({ key: item.path, item })),
-                            ...layout.extra
-                                .filter((extra) => extra.group === group.title && safeUrl(extra.url))
-                                .map((extra) => ({ key: extraKey(extra.id), extra })),
-                        ],
-                        layout.order
-                    );
-                    if (!entries.length) return null;
+                {groups.map((group) => (
+                    <div key={group.id} className={'mb-2 last:mb-0'}>
+                        <p className={'px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'}>
+                            {group.title}
+                        </p>
+                        {group.entries.map((entry) => {
+                            if (entry.extra) {
+                                if (!safeUrl(entry.extra.url)) return null;
 
-                    return (
-                        <div key={group.title} className={'mb-2 last:mb-0'}>
-                            <p
-                                className={
-                                    'px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-400'
-                                }
-                            >
-                                {group.title}
-                            </p>
-                            {entries.map((entry) =>
-                                'item' in entry ? (
-                                    renderItem(entry.item)
-                                ) : (
+                                return (
                                     <a
                                         key={entry.key}
                                         href={fillUrl(entry.extra.url, { id: serverId, uuid })}
@@ -224,11 +209,14 @@ export default ({
                                         <ExternalLinkIcon className={'h-5 w-5 flex-shrink-0'} />
                                         <span className={'truncate'}>{entry.extra.label}</span>
                                     </a>
-                                )
-                            )}
-                        </div>
-                    );
-                })}
+                                );
+                            }
+                            const item = items.find((i) => i.path === entry.key);
+
+                            return item ? renderItem(item) : null;
+                        })}
+                    </div>
+                ))}
                 {customLinks.length > 0 && (
                     <div className={'mb-2 mt-2 border-t border-neutral-500 pt-1'}>
                         {customLinks.map((custom, index) => (

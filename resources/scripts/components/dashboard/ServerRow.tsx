@@ -18,7 +18,7 @@ import { iconFor, SoftwareType } from '@/lib/mcjars';
 import sendPowerAction, { PowerSignal } from '@/api/server/sendPowerAction';
 import { httpErrorToHuman } from '@/api/http';
 import { DashboardFolder } from '@/api/dashboardLayout';
-import { useThemeConfig } from '@/lib/themeConfig';
+import { bannerFor, useThemeConfig } from '@/lib/themeConfig';
 import DropdownMenu, { DropdownButtonRow } from '@/components/elements/DropdownMenu';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
@@ -272,7 +272,9 @@ export default ({
     // A faint logo of the software behind the card, only for servers that can be reached.
     const software = useServerSoftware(server.uuid, !isSuspended && !server.isNodeUnderMaintenance && !server.status);
     const [logoFailed, setLogoFailed] = useState(false);
-    const logo = software && software !== 'VANILLA' && !logoFailed ? iconFor(software as SoftwareType) : null;
+    const banner = bannerFor(theme.banners, server.eggId, software);
+    const logo =
+        !banner && software && software !== 'VANILLA' && !logoFailed ? iconFor(software as SoftwareType) : null;
 
     const alarms = { cpu: false, memory: false, disk: false };
     if (stats) {
@@ -311,6 +313,36 @@ export default ({
             $status={stats?.status}
             style={{ isolation: 'isolate', overflow: 'hidden' }}
         >
+            {banner && (
+                <>
+                    <img
+                        src={banner}
+                        alt={''}
+                        aria-hidden
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            zIndex: -2,
+                            pointerEvents: 'none',
+                        }}
+                    />
+                    <div
+                        aria-hidden
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: -1,
+                            pointerEvents: 'none',
+                            background: `linear-gradient(90deg, rgb(var(--c-white) / ${
+                                (theme.banners.dim + 25) / 100
+                            }), rgb(var(--c-white) / ${theme.banners.dim / 100}))`,
+                        }}
+                    />
+                </>
+            )}
             {logo && (
                 <img
                     src={logo}

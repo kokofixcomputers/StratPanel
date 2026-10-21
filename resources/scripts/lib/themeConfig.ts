@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { ConsoleOptions, DEFAULT_CONSOLE } from '@/lib/consoleTheme';
+import { DEFAULT_SIDEBARS, migrateServerSidebar, SidebarsConfig } from '@/lib/sidebarLayout';
 
 export type RadiusStyle = 'sharp' | 'soft' | 'round' | 'pill';
 export type ButtonStyle = 'default' | 'pill' | 'square';
@@ -78,6 +79,26 @@ export const customGradientCss = (gradient: CustomGradient, mode: 'light' | 'dar
     return `linear-gradient(${Math.round(gradient.angle)}deg, ${stops.join(', ')})`;
 };
 
+/** Banners for the server rows: a picture for each egg and for each software, which fills the whole row. Pictures of this panel or https. */
+export interface Banners {
+    // By the id of the egg.
+    eggs: Record<string, string>;
+    // By software: VANILLA, PAPER, PURPUR, SPIGOT, FABRIC, QUILT, FORGE, NEOFORGE, VELOCITY.
+    software: Record<string, string>;
+    // How much the card colour covers the picture, so the text stays readable.
+    dim: number;
+}
+
+export const DEFAULT_BANNERS: Banners = { eggs: {}, software: {}, dim: 45 };
+
+/** The banner for a server: the one of its egg, else the one of its software, else none. */
+export const bannerFor = (
+    banners: Banners,
+    eggId: number | undefined,
+    software: string | null | undefined
+): string | null =>
+    (eggId !== undefined && banners.eggs[String(eggId)]) || (software && banners.software[software]) || null;
+
 export type FolderStyle = 'sections' | 'chips' | 'cards';
 
 export type LoginLayout = 'card' | 'brand' | 'split' | 'showcase';
@@ -115,16 +136,6 @@ export const DEFAULT_LOGIN: LoginOptions = {
     tagline: '',
     features: [],
 };
-
-export interface SidebarExtra {
-    id: string;
-    label: string;
-    // A path of the panel or an http(s) address.
-    url: string;
-    newTab: boolean;
-    // The title of the group of the sidebar it is shown in.
-    group: string;
-}
 
 export interface ThemeConfig {
     // The colour of buttons, links and highlights.
@@ -175,11 +186,12 @@ export interface ThemeConfig {
     motion: MotionOptions;
     login: LoginOptions;
     customGradient: CustomGradient;
+    banners: Banners;
     // How the folders of the dashboard are shown: sections one under the other (the way it always was), chips next to the filters, or cards
     // like servers that are opened by a click.
     folders: { style: FolderStyle };
-    // The navigation of a server: which items there are, in what order, and links of your own.
-    sidebar: { order: string[]; hidden: string[]; extra: SidebarExtra[] };
+    // The three sidebars (inside a server, outside of servers, account): categories, items in them, hidden ones and links of your own.
+    sidebars: SidebarsConfig;
     // The servers of the dashboard as a list or as cards side by side.
     layout: 'list' | 'grid';
     columns: 2 | 3;
@@ -235,8 +247,9 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     motion: DEFAULT_MOTION,
     login: DEFAULT_LOGIN,
     customGradient: DEFAULT_CUSTOM_GRADIENT,
+    banners: DEFAULT_BANNERS,
     folders: { style: 'sections' },
-    sidebar: { order: [], hidden: [], extra: [] },
+    sidebars: DEFAULT_SIDEBARS,
     layout: 'list',
     columns: 2,
     glass: 0,
@@ -337,6 +350,17 @@ export const PRESETS: { id: string; name: string; config: Partial<ThemeConfig> }
     },
 ];
 
+/** The sidebars of a config, with what is missing filled in, and settings from before there were three sidebars carried over. */
+const sidebarsOf = (given: Partial<ThemeConfig> & { sidebar?: any }): SidebarsConfig => {
+    const own = given.sidebars;
+
+    return {
+        server: own?.server ?? (given.sidebar ? migrateServerSidebar(given.sidebar) : DEFAULT_SIDEBARS.server),
+        dashboard: { ...DEFAULT_SIDEBARS.dashboard, ...(own?.dashboard ?? {}) },
+        account: own?.account ?? DEFAULT_SIDEBARS.account,
+    };
+};
+
 export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): ThemeConfig => {
     const given = config ?? {};
 
@@ -353,9 +377,15 @@ export const withDefaults = (config: Partial<ThemeConfig> | null | undefined): T
         motion: { ...DEFAULT_MOTION, ...(given.motion ?? {}) },
         login: { ...DEFAULT_LOGIN, ...(given.login ?? {}) },
         customGradient: { ...DEFAULT_CUSTOM_GRADIENT, ...(given.customGradient ?? {}) },
+        banners: {
+            ...DEFAULT_BANNERS,
+            ...(given.banners ?? {}),
+            eggs: { ...(given.banners?.eggs ?? {}) },
+            software: { ...(given.banners?.software ?? {}) },
+        },
         folders: { ...DEFAULT_CONFIG.folders, ...(given.folders ?? {}) },
         row: { ...DEFAULT_CONFIG.row, ...(given.row ?? {}) },
-        sidebar: { ...DEFAULT_CONFIG.sidebar, ...(given.sidebar ?? {}) },
+        sidebars: sidebarsOf(given),
     };
 };
 

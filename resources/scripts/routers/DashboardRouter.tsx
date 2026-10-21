@@ -10,10 +10,14 @@ import { useLocation } from 'react-router';
 import Spinner from '@/components/elements/Spinner';
 import routes from '@/routers/routes';
 import AccountSidebar from '@/components/dashboard/AccountSidebar';
+import DashboardSidebar, { useDashboardSidebarOn } from '@/components/dashboard/DashboardSidebar';
 
 export default () => {
     const location = useLocation();
     const isAccount = location.pathname.startsWith('/account');
+    // Outside of servers and of the account pages, a sidebar if the theme has one.
+    const sidebarOn = useDashboardSidebarOn();
+    const side = !isAccount && sidebarOn;
 
     return (
         <>
@@ -31,9 +35,10 @@ export default () => {
                     </div>
                 </SubNavigation>
             )}
-            <div className={isAccount ? 'lg:flex' : undefined}>
+            <div className={isAccount || side ? 'lg:flex' : undefined}>
                 {isAccount && <AccountSidebar />}
-                <div className={isAccount ? 'min-w-0 flex-1 lg:px-4' : undefined}>
+                {side && <DashboardSidebar />}
+                <div className={isAccount || side ? 'min-w-0 flex-1 lg:px-4' : undefined}>
                     <TransitionRouter>
                         <React.Suspense fallback={<Spinner centered />}>
                             <Switch location={location}>

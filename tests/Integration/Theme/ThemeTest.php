@@ -24,6 +24,7 @@ class ThemeTest extends RoleTestCase
             'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
             'customGradient' => ['angle' => 120, 'light' => ['#fdf6e3', '#f0e0c0'], 'dark' => ['#101010', '#202030', '#303040']],
             'folders' => ['style' => 'cards'],
+            'banners' => ['eggs' => ['1' => '/branding/background-abcdef123456.jpg'], 'software' => ['PAPER' => 'https://img.example.com/paper.png'], 'dim' => 50],
             'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
             'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
             'login' => [
@@ -31,9 +32,17 @@ class ThemeTest extends RoleTestCase
                 'title' => 'Welcome to Koko Hosting', 'tagline' => 'Minecraft servers in a minute.', 'features' => ['Instant setup', 'Daily backups'],
             ],
             'motion' => ['buttonHover' => 'lift', 'buttonPress' => 'squish', 'cardHover' => 'glow', 'speed' => 'fast', 'page' => 'slide', 'pulse' => true],
-            'sidebar' => [
-                'order' => ['/files', 'extra:abcd1234'], 'hidden' => ['/import'],
-                'extra' => [['id' => 'abcd1234', 'label' => 'Wiki', 'url' => 'https://wiki.example.com/{id}', 'newTab' => true, 'group' => 'Manage']],
+            'sidebars' => [
+                'server' => [
+                    'categories' => [
+                        ['id' => 'infra', 'title' => 'Infrastructure', 'items' => ['/files', 'extra:abcd1234']],
+                        ['id' => 'misc', 'title' => 'Misc', 'items' => ['/']],
+                    ],
+                    'hidden' => ['/import'],
+                    'extra' => [['id' => 'abcd1234', 'label' => 'Wiki', 'url' => 'https://wiki.example.com/{id}', 'newTab' => true]],
+                ],
+                'dashboard' => ['enabled' => true, 'categories' => [], 'hidden' => [], 'extra' => []],
+                'account' => ['categories' => [], 'hidden' => ['/ssh'], 'extra' => []],
             ],
         ], $changes);
     }
@@ -120,8 +129,9 @@ class ThemeTest extends RoleTestCase
         $admin = $this->rootAdmin();
 
         foreach ([
-            ['sidebar' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => 'javascript:alert(1)', 'newTab' => true, 'group' => 'Manage']]]],
-            ['sidebar' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => '//evil.example', 'newTab' => true, 'group' => 'Manage']]]],
+            ['sidebars' => ['server' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => 'javascript:alert(1)', 'newTab' => true]]]]],
+            ['sidebars' => ['account' => ['extra' => [['id' => 'abcd1234', 'label' => 'x', 'url' => '//evil.example', 'newTab' => true]]]]],
+            ['sidebars' => ['dashboard' => ['enabled' => 'maybe']]],
             ['row' => ['metrics' => ['cpu', 'cpu']]],
             ['row' => ['metrics' => ['cpu', 'bitcoin']]],
             ['nav' => 'neon'],
@@ -129,6 +139,7 @@ class ThemeTest extends RoleTestCase
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
             ['folders' => ['style' => 'drawers']],
+            ['banners' => ['dim' => 99]],
             ['customGradient' => ['light' => ['#ffffff', 'nope']]],
             ['customGradient' => ['dark' => ['#000000', 'red']]],
             ['customGradient' => ['angle' => 900]],
@@ -142,6 +153,15 @@ class ThemeTest extends RoleTestCase
             ['pageWidth' => 'huge'],
         ] as $changes) {
             $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);
+        }
+
+        // A banner with a name that is no egg number or software, or a picture that is not allowed, is refused by the service rather than the form.
+        foreach ([
+            ['banners' => ['eggs' => ['nope' => '/branding/a.png']]],
+            ['banners' => ['eggs' => ['1' => 'http://img.example.com/a.png']]],
+            ['banners' => ['software' => ['paper' => '/branding/a.png']]],
+        ] as $changes) {
+            $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(400);
         }
 
         $tooFew = $this->config();
@@ -209,5 +229,11 @@ class ThemeTest extends RoleTestCase
 
         $this->actingAs($admin)->post('/api/client/theme/background', ['image' => \Illuminate\Http\UploadedFile::fake()->create('evil.php', 1, 'application/x-php')], ['Accept' => 'application/json'])->assertStatus(422);
         $this->actingAs($this->makeUser())->post('/api/client/theme/background', ['image' => \Illuminate\Http\UploadedFile::fake()->image('bg.jpg')], ['Accept' => 'application/json'])->assertForbidden();
+    }
+
+    public function testTheEggsAreListedForTheBanners(): void
+    {
+        $this->actingAs($this->rootAdmin())->getJson('/api/client/theme/eggs')->assertOk()->assertJsonStructure([['id', 'name', 'nest']]);
+        $this->actingAs($this->makeUser())->getJson('/api/client/theme/eggs')->assertForbidden();
     }
 }

@@ -80,3 +80,16 @@ filter chips have their own green / red / amber dots (`components/dashboard/Fold
 
 The image background of the page needed two fixes: the editor sent the upload as JSON (the client sets that by default, so the server never got the
 picture), and choosing "Image" before a picture existed switched straight back to "None" so the upload never showed.
+
+Sidebars (three of them, `sidebars` in the config, `lib/sidebarLayout.ts`): *inside a server*, *outside of servers* (on the dashboard and the create page, new, off
+until an admin turns it on) and *account*. Each has categories (like "Manage" in the admin area) with items in them: categories can be added, renamed,
+moved and removed, items moved inside a category or to another one, built in items hidden, and links of your own put in a category (`{id}` and
+`{uuid}` in a link stand for the server in the server sidebar). An empty layout is the default one; the first change makes the default categories
+explicit. Items the layout does not place (a new page of an extension) are shown under "More". The width and the card of the sidebars are shared.
+Settings saved before there were three sidebars (`sidebar` with an order, hidden items and links per group) are carried over to the server sidebar.
+`resolveSidebar` decides what a sidebar shows, `components/admin/theme/SidebarEditor.tsx` edits one.
+
+Server banners (`banners` in the config, section "Server banners"): a picture for each egg (listed by `GET /api/client/theme/eggs`, a server tells its egg
+as `egg_id`) and for each software, also those that are no egg (Vanilla, Paper, Purpur, Spigot, Fabric, Quilt, Forge, NeoForge, Velocity). The picture
+fills the whole row of a server in place of the faint software logo, covered by the card colour (`dim`) so the text can be read. A server gets the
+banner of its egg first, else the one of its software (`bannerFor`).

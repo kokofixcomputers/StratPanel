@@ -2,11 +2,11 @@
 
 namespace Pterodactyl\Transformers\Api\Client;
 
-use Pterodactyl\Extensions\Hooks;
 use Pterodactyl\Models\Egg;
 use Pterodactyl\Models\Server;
 use Pterodactyl\Models\Subuser;
 use League\Fractal\Resource\Item;
+use Pterodactyl\Extensions\Hooks;
 use Pterodactyl\Models\Allocation;
 use Pterodactyl\Models\Permission;
 use Illuminate\Container\Container;
@@ -74,6 +74,8 @@ class ServerTransformer extends BaseClientTransformer
             ],
             'invocation' => $service->handle($server, !$user->can(Permission::ACTION_STARTUP_READ, $server)),
             'docker_image' => $server->image,
+            // Which kind of server this is, for the banner an admin can pick for it in the theme editor.
+            'egg_id' => $server->egg_id,
             'egg_features' => $server->egg->inherit_features,
             'feature_limits' => [
                 'databases' => $server->database_limit,

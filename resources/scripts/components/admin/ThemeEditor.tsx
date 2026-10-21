@@ -6,6 +6,7 @@ import {
     ArrowLeftIcon,
     ArrowUpIcon,
     ColorSwatchIcon,
+    CollectionIcon,
     CursorClickIcon,
     LightningBoltIcon,
     LockClosedIcon,
@@ -34,7 +35,9 @@ import {
     Toggle,
 } from '@/components/admin/theme/controls';
 import GradientPicker from '@/components/admin/theme/GradientPicker';
+import BannersEditor, { EggInfo } from '@/components/admin/theme/BannersEditor';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
+import { SIDEBAR_DEFAULTS, SidebarId } from '@/lib/sidebarLayout';
 import LivePreview, { PreviewPage } from '@/components/admin/theme/LivePreview';
 import {
     BASE_NEUTRAL,
@@ -91,7 +94,18 @@ const SECTIONS: {
         description: 'List or cards, row size, what a row shows',
         icon: ViewGridIcon,
     },
-    { id: 'sidebar', label: 'Server sidebar', description: 'Reorder, hide or add links, width', icon: ServerIcon },
+    {
+        id: 'banners',
+        label: 'Server banners',
+        description: 'A picture for each egg and each software on the server rows',
+        icon: CollectionIcon,
+    },
+    {
+        id: 'sidebar',
+        label: 'Sidebars',
+        description: 'Server, dashboard and account: categories, items, links, width',
+        icon: ServerIcon,
+    },
     { id: 'console', label: 'Console', description: 'Colours, brightness and size of the text', icon: TerminalIcon },
     {
         id: 'login',
@@ -146,11 +160,20 @@ export default () => {
     const [page, setPage] = useState<PreviewPage>('dashboard');
     const [phone, setPhone] = useState(false);
     const [pendingImage, setPendingImage] = useState(false);
+    const [sidebarTab, setSidebarTab] = useState<SidebarId>('server');
+    const [eggs, setEggs] = useState<EggInfo[] | null>(null);
     const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
     const file = useRef<HTMLInputElement>(null);
     const loginFile = useRef<HTMLInputElement>(null);
+
+    // The eggs of the panel, for the banners.
+    useEffect(() => {
+        http.get('/api/client/theme/eggs')
+            .then(({ data }) => setEggs(data))
+            .catch(() => setEggs([]));
+    }, []);
 
     // A server of the admin's own for the preview of the server pages.
     useEffect(() => {
@@ -185,13 +208,22 @@ export default () => {
     if (!config || !saved)
         return error ? <p className={'p-10 text-center text-red-600'}>{error}</p> : <Spinner size={'large'} centered />;
 
-    // The login section shows the login page in the preview, the others bring the dashboard back.
+    // The preview shows the page that goes with the section: the login page, or the one a sidebar is on.
+    const pageForSidebar = (tab: SidebarId): PreviewPage =>
+        tab === 'server' && serverId ? 'server' : tab === 'account' ? 'account' : 'dashboard';
     const setSection = (id: string) => {
         setSectionState(id);
         if (id === 'login') setPage('login');
+        else if (id === 'sidebar') setPage(pageForSidebar(sidebarTab));
         else if (page === 'login') setPage('dashboard');
     };
+    const changeSidebarTab = (tab: SidebarId) => {
+        setSidebarTab(tab);
+        setPage(pageForSidebar(tab));
+    };
     const set = (changes: Partial<ThemeConfig>) => setConfig({ ...config, ...changes, preset: null });
+    const setSidebar = <K extends SidebarId>(id: K, layout: ThemeConfig['sidebars'][K]) =>
+        set({ sidebars: { ...config.sidebars, [id]: layout } });
     const setBackground = (changes: Partial<ThemeConfig['background']>) =>
         setConfig({ ...config, background: { ...config.background, ...changes }, preset: null });
     const setSurface = (mode: 'light' | 'dark', changes: Partial<SurfaceColors>) =>
@@ -851,7 +883,43 @@ export default () => {
                                 onChange={(description) => set({ row: { ...config.row, description } })}
                             />
                         </Group>
+                        <Group id={'banners'}>
+                            <BannersEditor
+                                banners={config.banners}
+                                eggs={eggs}
+                                busy={working !== null}
+                                upload={upload}
+                                onChange={(banners) => set({ banners })}
+                            />
+                        </Group>
                         <Group id={'sidebar'}>
+                            <Row label={'Sidebar'}>
+                                <Segmented<SidebarId>
+                                    value={sidebarTab}
+                                    onChange={changeSidebarTab}
+                                    options={(['server', 'dashboard', 'account'] as SidebarId[]).map((value) => ({
+                                        value,
+                                        label: SIDEBAR_DEFAULTS[value].title,
+                                    }))}
+                                />
+                            </Row>
+                            {sidebarTab === 'dashboard' && (
+                                <Toggle
+                                    label={'Show a sidebar outside of servers'}
+                                    checked={config.sidebars.dashboard.enabled}
+                                    onChange={(enabled) =>
+                                        setSidebar('dashboard', { ...config.sidebars.dashboard, enabled })
+                                    }
+                                />
+                            )}
+                            <SidebarEditor
+                                id={sidebarTab}
+                                layout={config.sidebars[sidebarTab]}
+                                onChange={(layout) => setSidebar(sidebarTab, layout)}
+                            />
+                            <p className={'text-xs text-neutral-400'}>
+                                The width and the card below are the same for all three.
+                            </p>
                             <Row label={'Width'}>
                                 <Segmented
                                     value={config.sidebarWidth}
@@ -868,7 +936,6 @@ export default () => {
                                 checked={config.sidebarFlat}
                                 onChange={(sidebarFlat) => set({ sidebarFlat })}
                             />
-                            <SidebarEditor sidebar={config.sidebar} onChange={(sidebar) => set({ sidebar })} />
                         </Group>
                         <Group id={'console'}>
                             <Row label={'Console colours'}>

@@ -61,6 +61,8 @@ export interface Server {
         cpu: number;
         threads: string;
     };
+    // The egg (kind of server) it runs, for banners.
+    eggId: number;
     eggFeatures: string[];
     featureLimits: {
         databases: number;
@@ -100,6 +102,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     },
     description: data.description ? (data.description.length > 0 ? data.description : null) : null,
     limits: { ...data.limits },
+    eggId: data.egg_id,
     eggFeatures: data.egg_features || [],
     featureLimits: { ...data.feature_limits },
     isTransferring: data.is_transferring,

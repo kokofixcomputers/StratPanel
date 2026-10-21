@@ -76,7 +76,7 @@ const serverAttrs = () => ({
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
-    egg_features: ['eula', 'java_version', 'pid_limit'], feature_limits: { databases: 3, allocations: 3, backups: 5 },
+    egg_id: 1, egg_features: ['eula', 'java_version', 'pid_limit'], feature_limits: { databases: 3, allocations: 3, backups: 5 },
     is_transferring: false, skip_scripts: false,
     relationships: {
         allocations: { object: 'list', data: state.allocations.map((a) => item('allocation', a)) },
@@ -147,6 +147,7 @@ let themeSaved = { config: null, css: '', attributes: {} };
 api.get('/theme', (req, res) => res.json(themeSaved));
 api.put('/theme', (req, res) => { themeSaved = { config: req.body.config, css: req.body.css || '', attributes: req.body.attributes || {} }; res.json(themeSaved); });
 api.delete('/theme', (req, res) => { themeSaved = { config: null, css: '', attributes: {} }; res.json(themeSaved); });
+api.get('/theme/eggs', (req, res) => res.json([{ id: 1, name: 'Minecraft: Java Edition', nest: 'Minecraft' }, { id: 2, name: 'Bungeecord', nest: 'Minecraft' }]));
 api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.svg' }));
 api.get('/palette', (req, res) => res.json({ object: 'palette', attributes: { admin: [
     { id: 'admin:0', label: 'Overview', url: '/admin', kind: 'page', words: 'admin home' },

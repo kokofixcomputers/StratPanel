@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import {
     accentScales,
+    bannerFor,
     BASE_NEUTRAL,
     buildThemeCss,
     DEFAULT_CONFIG,
@@ -197,5 +198,21 @@ describe('themeConfig', () => {
     it('matches the sample the PHP tests check', () => {
         const sample = fs.readFileSync(path.join(__dirname, '../../../tests/Fixtures/theme.css'), 'utf8').trim();
         expect(buildThemeCss(presetConfig('glass'))).toBe(sample);
+    });
+});
+
+describe('bannerFor', () => {
+    const banners = { eggs: { '3': '/branding/egg.png' }, software: { PAPER: '/branding/paper.png' }, dim: 40 };
+
+    it('takes the banner of the egg first, then the one of the software, else none', () => {
+        expect(bannerFor(banners, 3, 'PAPER')).toBe('/branding/egg.png');
+        expect(bannerFor(banners, 4, 'PAPER')).toBe('/branding/paper.png');
+        expect(bannerFor(banners, 4, 'FABRIC')).toBeNull();
+        expect(bannerFor(banners, undefined, null)).toBeNull();
+    });
+
+    it('is kept by withDefaults', () => {
+        expect(withDefaults({ banners }).banners).toEqual(banners);
+        expect(withDefaults({}).banners).toEqual({ eggs: {}, software: {}, dim: 45 });
     });
 });
