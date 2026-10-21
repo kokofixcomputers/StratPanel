@@ -150,6 +150,12 @@ describe('themeConfig', () => {
         ).toBe('false');
     });
 
+    it('has a tiny size for the rows of servers', () => {
+        const attributes = themeAttributes(withDefaults({ row: { ...DEFAULT_CONFIG.row, size: 'tiny' } }));
+        expect(attributes['data-row-size']).toBe('tiny');
+        expect(attributes['data-row-size']).toMatch(/^[a-z0-9-]{1,20}$/);
+    });
+
     it('writes width, sidebar and type variables', () => {
         const css = buildThemeCss(
             withDefaults({ pageWidth: 'wide', sidebarWidth: 'narrow', headingWeight: 800, tracking: 'tight' })

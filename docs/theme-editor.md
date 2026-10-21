@@ -153,3 +153,8 @@ The sliders and checkboxes of the editor are the theme's own: `Slider` is a trac
 
 The editor page follows the saved theme like every other page (accent, corners, background picture or gradient, dark mode). It used to take the saved theme off itself so that the preview would
 not be mixed with it, which is not needed now that the preview is a frame of its own. If a theme ever makes the editor hard to read, `/theme-editor?plain` draws the editor in the default look.
+
+Tiny size of a server (`row.size: 'tiny'`, Dashboard section): the servers become low tiles side by side, as many as fit (about four on a wide screen, `repeat(auto-fill, minmax(17rem, 1fr))`, whatever the list or
+side by side setting says), the way *grid* is the compact version of *cards* for link cards. A tile has the icon, the name, the address, the players online, and small power buttons (or a few words when the server cannot
+be controlled); the numbers, the description and the banner text are left out. The star and the folder button show while the pointer is on a tile, or when they are set. Server rows are `ServerRow.tsx`, the tile
+rules are `[data-row-size='tiny']` in `GlobalStylesheet.ts`.

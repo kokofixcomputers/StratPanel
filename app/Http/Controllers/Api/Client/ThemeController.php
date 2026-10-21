@@ -98,7 +98,7 @@ class ThemeController extends ClientApiController
             'config.row.metrics.*' => ['distinct', Rule::in(['players', 'cpu', 'memory', 'disk', 'uptime', 'network'])],
             'config.row.address' => 'required|boolean',
             'config.row.description' => 'required|boolean',
-            'config.row.size' => ['required', Rule::in(['small', 'medium', 'large'])],
+            'config.row.size' => ['required', Rule::in(['tiny', 'small', 'medium', 'large'])],
             'config.row.metricStyle' => ['required', Rule::in(['bars', 'tiles', 'rings', 'chips'])],
             'config.row.status' => ['required', Rule::in(['bar', 'dot', 'none'])],
             'config.headingWeight' => ['required', Rule::in([500, 600, 700, 800])],

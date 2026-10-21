@@ -279,6 +279,48 @@ export default createGlobalStyle`
     [data-row-size='small'] .server-row .row-metrics {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
+    /* The tiny size: low tiles side by side, as many as fit, instead of rows. The game name, the address and a few words and buttons are what is left. */
+    [data-row-size='tiny'] .server-list {
+        grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+        gap: 0.5rem;
+    }
+    [data-row-size='tiny'] .server-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.65rem;
+    }
+    [data-row-size='tiny'] .server-row > div:first-of-type,
+    [data-row-size='tiny'] .server-row > div.min-w-0 {
+        flex: 1 1 0%;
+        min-width: 0;
+    }
+    [data-row-size='tiny'] .server-row .row-icon {
+        width: 1.75rem !important;
+        height: 1.75rem !important;
+        margin-right: 0.5rem !important;
+        padding: 0.35rem !important;
+    }
+    [data-row-size='tiny'] .server-row .row-desc,
+    [data-row-size='tiny'] .server-row .metric-note {
+        display: none;
+    }
+    /* Star and folder buttons only take room while the pointer is on the tile (or when they are set), the name needs it. */
+    [data-row-size='tiny'] .server-row .row-organize:not(.is-set) {
+        display: none;
+    }
+    [data-row-size='tiny'] .server-row:hover .row-organize {
+        display: inline-flex;
+    }
+    [data-row-size='tiny'] .server-row button.fx {
+        width: 1.75rem !important;
+        height: 1.75rem !important;
+        border-radius: var(--r-md, 0.5rem);
+    }
+    [data-row-size='tiny'] .server-row button.fx svg {
+        width: 1rem !important;
+        height: 1rem !important;
+    }
     [data-row-status='dot'] .status-bar {
         width: 0.6rem !important;
         height: 0.6rem !important;

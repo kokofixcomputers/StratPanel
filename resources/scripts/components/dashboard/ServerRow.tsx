@@ -280,8 +280,8 @@ const FolderMenu = ({ organizer, name }: { organizer: RowOrganizer; name: string
                 title={'Move to a folder'}
                 aria-label={`Move ${name} to a folder`}
                 className={classNames(
-                    'rounded-md p-1 text-neutral-400 transition-opacity hover:text-neutral-50 focus-visible:opacity-100',
-                    organizer.folder === null && 'opacity-0 group-hover:opacity-100'
+                    'row-organize rounded-md p-1 text-neutral-400 transition-opacity hover:text-neutral-50 focus-visible:opacity-100',
+                    organizer.folder === null ? 'opacity-0 group-hover:opacity-100' : 'is-set'
                 )}
                 onClick={(e) => {
                     e.preventDefault();
@@ -334,6 +334,8 @@ export default ({
     const theme = useThemeConfig();
     const card = theme.layout === 'grid';
     const show = theme.row;
+    // The tiny size is a low tile: the name, a few words and the power buttons.
+    const tiny = show.size === 'tiny';
     const [busy, setBusy] = useState<PowerSignal | null>(null);
     const [powerError, setPowerError] = useState<string | null>(null);
     const watching = useRef<Timer | null>(null);
@@ -488,9 +490,9 @@ export default ({
                                     aria-label={`${organizer.starred ? 'Unstar' : 'Star'} ${server.name}`}
                                     aria-pressed={organizer.starred}
                                     className={classNames(
-                                        'rounded-md p-1 transition-opacity focus-visible:opacity-100',
+                                        'row-organize rounded-md p-1 transition-opacity focus-visible:opacity-100',
                                         organizer.starred
-                                            ? 'text-amber-500'
+                                            ? 'is-set text-amber-500'
                                             : 'text-neutral-400 opacity-0 hover:text-amber-500 group-hover:opacity-100'
                                     )}
                                     onClick={(e) => {
@@ -523,6 +525,7 @@ export default ({
             </div>
             <div
                 className={'row-metrics'}
+                style={tiny ? { display: 'none' } : undefined}
                 css={
                     show.metricStyle === 'chips'
                         ? card
@@ -642,7 +645,27 @@ export default ({
                 )}
                 {!card && powerActions}
             </div>
-            {powerActions && (
+            {tiny && (
+                <div css={tw`flex flex-shrink-0 items-center gap-2 pr-3`}>
+                    {players && (
+                        <span title={'Players online'} css={tw`text-2xs font-semibold text-neutral-300`}>
+                            {players.online}/{players.max || '?'}
+                        </span>
+                    )}
+                    {powerActions ?? (
+                        <span css={tw`text-2xs text-neutral-400`}>
+                            {isSuspended
+                                ? 'Suspended'
+                                : server.isNodeUnderMaintenance
+                                ? 'Maintenance'
+                                : server.status
+                                ? 'Busy'
+                                : '...'}
+                        </span>
+                    )}
+                </div>
+            )}
+            {!tiny && powerActions && (
                 <div
                     css={card ? tw`col-span-12 flex justify-end pr-4` : tw`sm:hidden col-span-12 flex justify-end pr-4`}
                 >

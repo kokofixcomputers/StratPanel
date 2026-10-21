@@ -916,6 +916,7 @@ export default () => {
                                         value={config.row.size}
                                         onChange={(size) => set({ row: { ...config.row, size } })}
                                         options={[
+                                            { value: 'tiny', label: 'Tiny' },
                                             { value: 'small', label: 'Small' },
                                             { value: 'medium', label: 'Medium' },
                                             { value: 'large', label: 'Large' },

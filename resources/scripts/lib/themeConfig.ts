@@ -168,7 +168,7 @@ export interface ThemeConfig {
         metrics: RowMetric[];
         address: boolean;
         description: boolean;
-        size: 'small' | 'medium' | 'large';
+        size: 'tiny' | 'small' | 'medium' | 'large';
         // How the numbers are drawn: bars, tiles side by side, rings, or small chips.
         metricStyle: 'bars' | 'tiles' | 'rings' | 'chips';
         status: 'bar' | 'dot' | 'none';
