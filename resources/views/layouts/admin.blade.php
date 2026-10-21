@@ -9,6 +9,8 @@
 
         @include('partials.favicon')
         <meta name="theme-color" content="#ffffff">
+        {{-- The light or dark theme and the look from the theme editor, the same as the panel. --}}
+        @include('partials.theme')
 
         @include('layouts.scripts')
 
@@ -20,6 +22,7 @@
             {!! Theme::css('vendor/sweetalert/sweetalert.min.css?t={cache-version}') !!}
             {!! Theme::css('vendor/animate/animate.min.css?t={cache-version}') !!}
             {!! Theme::css('css/pterodactyl.css?t={cache-version}') !!}
+            <link media="all" type="text/css" rel="stylesheet" href="/themes/pterodactyl/css/panel-theme.css?v={{ filemtime(public_path('themes/pterodactyl/css/panel-theme.css')) }}">
             {{-- The file's modification time busts browser and proxy caches whenever the theme changes. --}}
             <link media="all" type="text/css" rel="stylesheet" href="/themes/pterodactyl/css/admin-modern.css?v={{ filemtime(public_path('themes/pterodactyl/css/admin-modern.css')) }}">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -118,6 +121,7 @@
                         <img src="https://www.gravatar.com/avatar/{{ md5(strtolower(Auth::user()->email)) }}?s=160" class="user-image" alt="User Image">
                         <span class="admin-user-name">{{ Auth::user()->username }}</span>
                     </a>
+                    <button type="button" id="admin-theme-toggle" class="admin-user-action" data-toggle="tooltip" data-placement="top" title="Theme: system"><i class="fa fa-adjust"></i></button>
                     <a href="{{ route('index') }}" class="admin-user-action" data-toggle="tooltip" data-placement="top" title="Exit Admin Control"><i class="fa fa-server"></i></a>
                     <a href="{{ route('auth.logout') }}" id="logoutButton" class="admin-user-action" data-toggle="tooltip" data-placement="top" title="Logout"><i class="fa fa-sign-out"></i></a>
                 </div>
@@ -183,6 +187,33 @@
             <script>
                 window.StratPalette = { admin: {!! json_encode(\Pterodactyl\Services\Palette\AdminDestinations::for(Auth::user())) !!} };
                 if (/Mac|iPhone|iPad/.test(navigator.platform)) { document.querySelector('.admin-search-kbd').textContent = '\u2318K'; }
+            </script>
+            <script>
+                // Light, dark or the device: the same choice the panel keeps (lib/theme.ts), so both follow each other.
+                (function () {
+                    var KEY = 'stratosphere:theme', ORDER = ['system', 'light', 'dark'], ICON = { system: 'fa-adjust', light: 'fa-sun-o', dark: 'fa-moon-o' };
+                    var button = document.getElementById('admin-theme-toggle');
+                    var media = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+                    function choice() { try { var v = localStorage.getItem(KEY); if (ORDER.indexOf(v) !== -1) return v; } catch (e) {} return @json($themeConfig['mode'] ?? 'system'); }
+                    function show() {
+                        var c = choice(), dark = c === 'dark' || (c === 'system' && media && media.matches), root = document.documentElement;
+                        root.classList.toggle('dark', dark);
+                        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+                        var bar = document.querySelector('meta[name="theme-color"]');
+                        if (bar && !bar.hasAttribute('data-fixed')) bar.setAttribute('content', dark ? '#141a23' : '#ffffff');
+                        button.querySelector('i').className = 'fa ' + ICON[c];
+                        button.setAttribute('data-original-title', 'Theme: ' + c);
+                        button.title = 'Theme: ' + c;
+                    }
+                    button.addEventListener('click', function () {
+                        var next = ORDER[(ORDER.indexOf(choice()) + 1) % ORDER.length];
+                        try { localStorage.setItem(KEY, next); } catch (e) {}
+                        show();
+                    });
+                    if (media && media.addEventListener) media.addEventListener('change', show);
+                    window.addEventListener('storage', show);
+                    show();
+                })();
             </script>
             <script src="/js/stratosphere-nlu.js?v={{ filemtime(public_path('js/stratosphere-nlu.js')) }}" type="application/javascript"></script>
             <script src="/js/admin-palette.js?v={{ filemtime(public_path('js/admin-palette.js')) }}" type="application/javascript"></script>

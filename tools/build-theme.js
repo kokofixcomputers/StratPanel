@@ -36,4 +36,6 @@ ${block('.theme-light', 'light', 'light')}
 `;
 
 fs.writeFileSync(path.join(__dirname, '../resources/scripts/assets/css/theme.css'), css);
+// The admin area (blade, not React) loads the same variables as a stylesheet of its own.
+fs.writeFileSync(path.join(__dirname, '../public/themes/pterodactyl/css/panel-theme.css'), css);
 console.log('theme.css written');

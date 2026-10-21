@@ -33,6 +33,17 @@ class AdminAccessTest extends RoleTestCase
         }
     }
 
+    public function testTheAdminAreaHasTheThemeOfThePanel(): void
+    {
+        $this->actingAs($this->rootAdmin());
+
+        // The same light and dark theme as the panel: its variables, the choice kept in the browser and a way to change it.
+        $this->page('/admin')->assertOk()
+            ->assertSee('themes/pterodactyl/css/panel-theme.css', false)
+            ->assertSee('stratosphere:theme', false)
+            ->assertSee('id="admin-theme-toggle"', false);
+    }
+
     public function testARoleOpensWhatItGivesAndNothingElse(): void
     {
         $this->actingAs($this->userWith(['users.view']));
