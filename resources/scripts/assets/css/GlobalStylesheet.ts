@@ -280,6 +280,10 @@ export default createGlobalStyle`
         display: none;
     }
 
+    body.has-power-dock {
+        padding-bottom: 5.5rem;
+    }
+
     /* The servers of the dashboard: one under the other, or side by side. */
     .server-list {
         display: grid;

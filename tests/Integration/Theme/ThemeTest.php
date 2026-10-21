@@ -25,6 +25,7 @@ class ThemeTest extends RoleTestCase
             'customGradient' => ['angle' => 120, 'light' => ['#fdf6e3', '#f0e0c0'], 'dark' => ['#101010', '#202030', '#303040']],
             'folders' => ['style' => 'cards'],
             'banners' => ['eggs' => ['1' => '/branding/background-abcdef123456.jpg'], 'software' => ['PAPER' => 'https://img.example.com/paper.png'], 'dim' => 50],
+            'powerDock' => 'labels',
             'headingWeight' => 700, 'tracking' => 'wide', 'buttonStyle' => 'soft', 'borders' => 'none', 'pageWidth' => 'wide',
             'sidebarWidth' => 'narrow', 'sidebarFlat' => true,
             'login' => [
@@ -138,6 +139,7 @@ class ThemeTest extends RoleTestCase
             ['status' => ['success' => 'green']],
             ['console' => ['brightness' => 5]],
             ['fontScale' => 400],
+            ['powerDock' => 'rocket'],
             ['folders' => ['style' => 'drawers']],
             ['banners' => ['dim' => 99]],
             ['customGradient' => ['light' => ['#ffffff', 'nope']]],
@@ -236,5 +238,26 @@ class ThemeTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin())->getJson('/api/client/theme/eggs')->assertOk()->assertJsonStructure([['id', 'name', 'nest']]);
         $this->actingAs($this->makeUser())->getJson('/api/client/theme/eggs')->assertForbidden();
+    }
+
+    public function testTheBrandingCanBeSavedFromTheEditor(): void
+    {
+        $admin = $this->rootAdmin();
+        $announcement = ['id' => '', 'title' => 'Hello', 'message' => 'The node restarts.', 'type' => 'warning', 'enabled' => true, 'dismissible' => false, 'link_label' => 'Status', 'link_url' => 'https://status.example.com'];
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [$announcement], 'links' => [['label' => 'Rules', 'url' => '/rules', 'location' => 'footer', 'new_tab' => false]]])
+            ->assertOk()
+            ->assertJsonPath('announcements.0.message', 'The node restarts.')
+            ->assertJsonPath('links.0.label', 'Rules');
+
+        // Sending only one of the lists leaves the other alone.
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['links' => []])->assertOk()->assertJsonCount(0, 'links')->assertJsonCount(1, 'announcements');
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['links' => [['label' => 'x', 'url' => 'javascript:alert(1)', 'location' => 'footer']]])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [['message' => 'x', 'type' => 'loud']]])->assertStatus(422);
+        $this->actingAs($this->makeUser())->putJson('/api/client/theme/branding', ['links' => []])->assertForbidden();
+        $this->actingAs($this->makeUser())->getJson('/api/client/theme/branding')->assertForbidden();
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [], 'links' => []])->assertOk();
     }
 }

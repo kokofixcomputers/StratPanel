@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import {
     AdjustmentsIcon,
+    BadgeCheckIcon,
+    SpeakerphoneIcon,
     ArrowDownIcon,
     ArrowLeftIcon,
     ArrowUpIcon,
@@ -35,6 +37,7 @@ import {
     Toggle,
 } from '@/components/admin/theme/controls';
 import GradientPicker from '@/components/admin/theme/GradientPicker';
+import { AnnouncementsPanel, BrandingData, BrandingPanel } from '@/components/admin/theme/BrandingPanels';
 import BannersEditor, { EggInfo } from '@/components/admin/theme/BannersEditor';
 import SidebarEditor from '@/components/admin/theme/SidebarEditor';
 import { SIDEBAR_DEFAULTS, SidebarId } from '@/lib/sidebarLayout';
@@ -93,6 +96,13 @@ const SECTIONS: {
         label: 'Dashboard',
         description: 'List or cards, row size, what a row shows',
         icon: ViewGridIcon,
+    },
+    { id: 'branding', label: 'Branding', description: 'Logo and favicon, links in the bars', icon: BadgeCheckIcon },
+    {
+        id: 'announcements',
+        label: 'Announcements',
+        description: 'Notes at the top of the dashboard',
+        icon: SpeakerphoneIcon,
     },
     {
         id: 'banners',
@@ -162,11 +172,23 @@ export default () => {
     const [pendingImage, setPendingImage] = useState(false);
     const [sidebarTab, setSidebarTab] = useState<SidebarId>('server');
     const [eggs, setEggs] = useState<EggInfo[] | null>(null);
+    const [branding, setBranding] = useState<BrandingData | null>(null);
+    // Counts up when the branding was saved, the preview is loaded again to show it.
+    const [refresh, setRefresh] = useState(0);
     const [serverId, setServerId] = useState<string | null>(null);
     const [section, setSectionState] = useState('presets');
     const [surfaceMode, setSurfaceMode] = useState<'light' | 'dark'>('light');
     const file = useRef<HTMLInputElement>(null);
     const loginFile = useRef<HTMLInputElement>(null);
+
+    const loadBranding = () =>
+        http
+            .get('/api/client/theme/branding')
+            .then(({ data }) => setBranding(data))
+            .catch(() => setBranding(null));
+    useEffect(() => {
+        loadBranding();
+    }, []);
 
     // The eggs of the panel, for the banners.
     useEffect(() => {
@@ -215,6 +237,7 @@ export default () => {
         setSectionState(id);
         if (id === 'login') setPage('login');
         else if (id === 'sidebar') setPage(pageForSidebar(sidebarTab));
+        else if (id === 'announcements') setPage('dashboard');
         else if (page === 'login') setPage('dashboard');
     };
     const changeSidebarTab = (tab: SidebarId) => {
@@ -334,7 +357,7 @@ export default () => {
                 <div className={'relative z-30 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)] lg:self-start'}>
                     <nav
                         className={
-                            'flex gap-1 overflow-x-auto rounded-2xl border border-neutral-500 bg-white p-1.5 shadow-md lg:absolute lg:left-0 lg:top-0 lg:z-20 lg:w-14 lg:flex-col lg:overflow-hidden lg:transition-[width] lg:duration-200 lg:hover:w-72 lg:hover:shadow-xl'
+                            'flex gap-1 overflow-x-auto rounded-2xl border border-neutral-500 bg-white p-1.5 shadow-md lg:absolute lg:left-0 lg:top-0 lg:z-20 lg:max-h-full lg:w-14 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:transition-[width] lg:duration-200 lg:hover:w-72 lg:hover:shadow-xl'
                         }
                         aria-label={'Sections'}
                     >
@@ -689,7 +712,24 @@ export default () => {
                                     ]}
                                 />
                             </Row>
-                            <p className={'text-xs text-neutral-400'}>Try them on the buttons in the preview.</p>
+                            <Row label={'Power buttons on every server page'}>
+                                <Segmented
+                                    value={config.powerDock}
+                                    onChange={(powerDock) => {
+                                        set({ powerDock });
+                                        if (powerDock !== 'off' && serverId) setPage('server');
+                                    }}
+                                    options={[
+                                        { value: 'off', label: 'Off' },
+                                        { value: 'icons', label: 'Dock' },
+                                        { value: 'labels', label: 'Dock with labels' },
+                                    ]}
+                                />
+                            </Row>
+                            <p className={'text-xs text-neutral-400'}>
+                                The dock floats at the bottom of the page, over the content. Try the effects on the
+                                buttons in the preview.
+                            </p>
                         </Group>
                         <Group id={'motion'}>
                             <Row label={'Cards and server rows on hover'}>
@@ -894,6 +934,32 @@ export default () => {
                                 checked={config.row.description}
                                 onChange={(description) => set({ row: { ...config.row, description } })}
                             />
+                        </Group>
+                        <Group id={'branding'}>
+                            {branding ? (
+                                <BrandingPanel
+                                    data={branding}
+                                    onSaved={() => {
+                                        loadBranding();
+                                        setRefresh((n) => n + 1);
+                                    }}
+                                />
+                            ) : (
+                                <Spinner size={'base'} centered />
+                            )}
+                        </Group>
+                        <Group id={'announcements'}>
+                            {branding ? (
+                                <AnnouncementsPanel
+                                    data={branding}
+                                    onSaved={() => {
+                                        loadBranding();
+                                        setRefresh((n) => n + 1);
+                                    }}
+                                />
+                            ) : (
+                                <Spinner size={'base'} centered />
+                            )}
                         </Group>
                         <Group id={'banners'}>
                             <BannersEditor
@@ -1272,7 +1338,14 @@ export default () => {
                             />
                         </div>
                     </div>
-                    <LivePreview config={config} dark={dark} page={page} serverId={serverId} phone={phone} />
+                    <LivePreview
+                        config={config}
+                        dark={dark}
+                        page={page}
+                        serverId={serverId}
+                        phone={phone}
+                        refresh={refresh}
+                    />
                     <p className={'mt-3 text-sm text-neutral-400'}>
                         This is the real panel with your draft, nothing changes for anybody until you save.
                     </p>

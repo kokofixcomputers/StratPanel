@@ -14,12 +14,15 @@ export default ({
     page,
     serverId,
     phone,
+    refresh = 0,
 }: {
     config: ThemeConfig;
     dark: boolean;
     page: PreviewPage;
     serverId: string | null;
     phone: boolean;
+    // Changes when the frame has to be loaded again, for what the draft does not carry (the branding).
+    refresh?: number;
 }) => {
     const frame = useRef<HTMLIFrameElement>(null);
     const box = useRef<HTMLDivElement>(null);
@@ -71,7 +74,7 @@ export default ({
             style={{ height: 'calc(100vh - 9.5rem)', minHeight: '24rem' }}
         >
             <iframe
-                key={src}
+                key={`${src}:${refresh}`}
                 ref={frame}
                 src={src}
                 title={'Preview'}

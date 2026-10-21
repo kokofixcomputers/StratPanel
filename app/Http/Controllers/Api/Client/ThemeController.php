@@ -9,11 +9,12 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Services\Theme\ThemeService;
+use Pterodactyl\Services\Branding\BrandingService;
 
 /** The theme editor's side of the panel. Seeing and changing the theme is the permission of the branding settings. */
 class ThemeController extends ClientApiController
 {
-    public function __construct(private ThemeService $theme)
+    public function __construct(private ThemeService $theme, private BrandingService $branding)
     {
         parent::__construct();
     }
@@ -117,6 +118,7 @@ class ThemeController extends ClientApiController
             'config.banners.eggs.*' => 'nullable|string|max:500',
             'config.banners.software' => 'present|array|max:20',
             'config.banners.software.*' => 'nullable|string|max:500',
+            'config.powerDock' => ['required', Rule::in(['off', 'icons', 'labels'])],
             'config.buttonStyle' => ['required', Rule::in(['solid', 'soft', 'outline', 'gradient'])],
             'config.borders' => ['required', Rule::in(['subtle', 'none', 'strong'])],
             'config.pageWidth' => ['required', Rule::in(['narrow', 'normal', 'wide', 'full'])],
@@ -179,5 +181,66 @@ class ThemeController extends ClientApiController
         $request->validate(['image' => 'required|file|image|mimes:jpg,jpeg,png,webp,gif|max:8192']);
 
         return new JsonResponse(['url' => $this->theme->storeBackground($request->file('image'))]);
+    }
+
+    /** The favicon (the logo of the panel), the announcements and the custom links, which are branding rather than theme but live in the editor too. */
+    public function branding(): JsonResponse
+    {
+        return new JsonResponse([
+            'favicon' => $this->branding->favicon(),
+            'announcements' => $this->branding->announcements(),
+            'links' => $this->branding->links(),
+            'locations' => BrandingService::LOCATIONS,
+            'types' => BrandingService::TYPES,
+        ]);
+    }
+
+    /** Saves the announcements, or the links, or both: the list that is sent is the whole list, a row that is missing was deleted. */
+    public function saveBranding(Request $request): JsonResponse
+    {
+        $link = ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/(?!\/))\S+$/i'];
+        $request->validate([
+            'announcements' => 'sometimes|array|max:20',
+            'announcements.*.id' => 'nullable|string|max:32',
+            'announcements.*.title' => 'nullable|string|max:100',
+            'announcements.*.message' => 'required|string|max:1000',
+            'announcements.*.type' => ['required', Rule::in(BrandingService::TYPES)],
+            'announcements.*.enabled' => 'nullable|boolean',
+            'announcements.*.dismissible' => 'nullable|boolean',
+            'announcements.*.link_label' => 'nullable|string|max:50',
+            'announcements.*.link_url' => $link,
+            'links' => 'sometimes|array|max:20',
+            'links.*.label' => 'required|string|max:50',
+            'links.*.url' => ['required', ...array_slice($link, 1)],
+            'links.*.location' => ['required', Rule::in(array_keys(BrandingService::LOCATIONS))],
+            'links.*.new_tab' => 'nullable|boolean',
+        ]);
+
+        if ($request->has('announcements')) {
+            $this->branding->saveAnnouncements((array) $request->input('announcements'));
+        }
+        if ($request->has('links')) {
+            $this->branding->saveLinks((array) $request->input('links'));
+        }
+        Activity::event('admin:branding.update')->log();
+
+        return $this->branding();
+    }
+
+    public function favicon(Request $request): JsonResponse
+    {
+        $request->validate(['favicon' => 'required|file|mimes:png,ico,gif,jpg,jpeg|max:512']);
+        $this->branding->setFavicon($request->file('favicon'));
+        Activity::event('admin:branding.update')->log();
+
+        return $this->branding();
+    }
+
+    public function removeFavicon(): JsonResponse
+    {
+        $this->branding->removeFavicon();
+        Activity::event('admin:branding.update')->log();
+
+        return $this->branding();
     }
 }

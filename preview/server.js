@@ -148,6 +148,12 @@ api.get('/theme', (req, res) => res.json(themeSaved));
 api.put('/theme', (req, res) => { themeSaved = { config: req.body.config, css: req.body.css || '', attributes: req.body.attributes || {} }; res.json(themeSaved); });
 api.delete('/theme', (req, res) => { themeSaved = { config: null, css: '', attributes: {} }; res.json(themeSaved); });
 api.get('/theme/eggs', (req, res) => res.json([{ id: 1, name: 'Minecraft: Java Edition', nest: 'Minecraft' }, { id: 2, name: 'Bungeecord', nest: 'Minecraft' }]));
+const brandingState = { favicon: null, announcements: [{ id: 'a1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.', type: 'warning', enabled: true, dismissible: true, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }] };
+const brandingBody = () => ({ ...brandingState, locations: { sidebar: 'Server sidebar', navbar: 'Top bar', footer: 'Footer' }, types: ['info', 'success', 'warning', 'danger'] });
+api.get('/theme/branding', (req, res) => res.json(brandingBody()));
+api.put('/theme/branding', (req, res) => { if (req.body.announcements) brandingState.announcements = req.body.announcements; if (req.body.links) brandingState.links = req.body.links; res.json(brandingBody()); });
+api.post('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
+api.delete('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 api.post('/theme/background', (req, res) => res.json({ url: '/branding/background-demo.svg' }));
 api.get('/palette', (req, res) => res.json({ object: 'palette', attributes: { admin: [
     { id: 'admin:0', label: 'Overview', url: '/admin', kind: 'page', words: 'admin home' },

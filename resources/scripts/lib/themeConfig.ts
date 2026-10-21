@@ -186,6 +186,8 @@ export interface ThemeConfig {
     // The server sidebar without its own card.
     sidebarFlat: boolean;
     motion: MotionOptions;
+    // The power buttons floating at the bottom of every server page: off, a dock of icons, or a dock with labels.
+    powerDock: 'off' | 'icons' | 'labels';
     login: LoginOptions;
     customGradient: CustomGradient;
     banners: Banners;
@@ -248,6 +250,7 @@ export const DEFAULT_CONFIG: ThemeConfig = {
     sidebarWidth: 'normal',
     sidebarFlat: false,
     motion: DEFAULT_MOTION,
+    powerDock: 'off',
     login: DEFAULT_LOGIN,
     customGradient: DEFAULT_CUSTOM_GRADIENT,
     banners: DEFAULT_BANNERS,

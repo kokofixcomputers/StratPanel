@@ -25,6 +25,10 @@ Route::prefix('/theme')->middleware('admin.can:settings.branding.update')->group
     Route::delete('/', [Client\ThemeController::class, 'destroy']);
     Route::post('/background', [Client\ThemeController::class, 'background']);
     Route::get('/eggs', [Client\ThemeController::class, 'eggs']);
+    Route::get('/branding', [Client\ThemeController::class, 'branding']);
+    Route::put('/branding', [Client\ThemeController::class, 'saveBranding']);
+    Route::post('/branding/favicon', [Client\ThemeController::class, 'favicon']);
+    Route::delete('/branding/favicon', [Client\ThemeController::class, 'removeFavicon']);
 });
 Route::get('/palette', [Client\ClientController::class, 'palette']);
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);

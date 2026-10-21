@@ -4,6 +4,7 @@ import { NavLink, Route, Switch, useRouteMatch } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import TransitionRouter from '@/TransitionRouter';
 import JobsDock from '@/components/server/jobs/JobsDock';
+import PowerDock from '@/components/server/PowerDock';
 import WebsocketHandler from '@/components/server/WebsocketHandler';
 import { ServerContext } from '@/state/server';
 import { CSSTransition } from 'react-transition-group';
@@ -163,6 +164,7 @@ export default () => {
                     <WebsocketHandler />
                     <PlayerTracker />
                     <JobsDock />
+                    <PowerDock />
                     <div className={'lg:flex'}>
                         {inContent ? (
                             <ContentSidebar backUrl={to('/', true)} />

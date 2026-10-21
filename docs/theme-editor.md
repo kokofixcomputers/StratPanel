@@ -98,3 +98,12 @@ Numbers on a server row (`row.metricStyle`, Dashboard section, drawn by `Metric`
 "of the limit", the way it was), *tiles* (each number in a small card, side by side), *rings* (a circular gauge with the value next to it) and *chips*
 (small pills with a dot that is green, amber from 70% and red from 90% load, which take the least room). Numbers that have no limit (uptime, network)
 show without a bar or ring.
+
+Branding and announcements in the editor (own sections in the rail, `components/admin/theme/BrandingPanels.tsx`): the logo and favicon (one picture), the custom links in the
+bars, and the announcements of the dashboard. They are branding, not theme, so they are saved by their own buttons (`/api/client/theme/branding`, the same
+`BrandingService` as Admin > Settings > Branding, same limits) and the preview frame is loaded again after a save because the panel prints them at load.
+The rail of sections scrolls when the window is not tall enough for all of them.
+
+Power dock (`powerDock`, section Buttons): the power buttons (start, stop, restart, and kill after a stop) floating at the bottom of every server page, as a dock of
+icons or a dock with labels (`components/server/PowerDock.tsx`, it reuses `PowerButtons` so the permissions and the kill confirmation are the same). The page gets
+room at the bottom (`body.has-power-dock`). Off by default, the buttons in the header and the sidebar stay either way.
