@@ -465,4 +465,71 @@ class ThemeTest extends RoleTestCase
         $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => array_fill(0, 9, $card())])->assertStatus(422);
         $this->actingAs($this->makeUser())->putJson('/api/client/theme/branding', ['link_cards' => []])->assertForbidden();
     }
+
+    public function testAnnouncementsKeepWhereTheyAreShownAndWhoTheyAreFor(): void
+    {
+        $admin = $this->rootAdmin();
+        $first = ['id' => '', 'title' => 'Paper news', 'message' => 'Update Paper.', 'type' => 'success', 'enabled' => true, 'dismissible' => true, 'where' => ['server', 'account'], 'eggs' => [3, 3, 5], 'software' => ['PAPER', 'VANILLA'], 'nodes' => ['Dallas']];
+        $second = ['id' => '', 'title' => 'Plain', 'message' => 'Hello.', 'type' => 'info', 'enabled' => true, 'dismissible' => true];
+
+        $saved = $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [$first, $second]])->assertOk()->json('announcements');
+        $this->assertSame(['server', 'account'], $saved[0]['where']);
+        $this->assertSame([3, 5], $saved[0]['eggs']);
+        $this->assertSame(['PAPER', 'VANILLA'], $saved[0]['software']);
+        $this->assertSame(['Dallas'], $saved[0]['nodes']);
+        // Without any of it an announcement is for the dashboard and for everybody.
+        $this->assertSame(['dashboard'], $saved[1]['where']);
+        $this->assertSame([], $saved[1]['eggs']);
+
+        // The order that was sent is the order that is kept, and the settings reach the page.
+        $reordered = $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [$saved[1], $saved[0]]])->assertOk()->json('announcements');
+        $this->assertSame(['Plain', 'Paper news'], array_column($reordered, 'title'));
+        $this->assertSame(['server', 'account'], app(BrandingService::class)->toArray(true)['announcements'][1]['where']);
+
+        // A form that knows nothing of these (the old page of the admin area) leaves them as they are.
+        $old = array_map(fn ($a) => array_diff_key($a, array_flip(['where', 'eggs', 'software', 'nodes'])), $reordered);
+        app(BrandingService::class)->saveAnnouncements($old);
+        $this->assertSame(['server', 'account'], app(BrandingService::class)->announcements()[1]['where']);
+        $this->assertSame([3, 5], app(BrandingService::class)->announcements()[1]['eggs']);
+
+        app(BrandingService::class)->saveAnnouncements([]);
+    }
+
+    public function testBadAnnouncementAudiencesAreRefused(): void
+    {
+        $admin = $this->rootAdmin();
+        $base = ['message' => 'x', 'type' => 'info', 'enabled' => true, 'dismissible' => true];
+
+        foreach ([
+            ['where' => ['moon']],
+            ['where' => []],
+            ['eggs' => ['abc']],
+            ['software' => ['paper']],
+            ['nodes' => [str_repeat('n', 101)]],
+        ] as $bad) {
+            $this->actingAs($admin)->putJson('/api/client/theme/branding', ['announcements' => [array_merge($base, $bad)]])->assertStatus(422);
+        }
+    }
+
+    public function testTheNodesAreListedForTheAnnouncements(): void
+    {
+        \Pterodactyl\Models\Node::factory()->create([
+            'name' => 'Theme test node',
+            'fqdn' => 'theme-' . bin2hex(random_bytes(3)) . '.example.com',
+            'location_id' => \Pterodactyl\Models\Location::query()->first()?->id ?? \Pterodactyl\Models\Location::factory()->create()->id,
+        ]);
+
+        $this->actingAs($this->rootAdmin())->getJson('/api/client/theme/nodes')->assertOk()->assertJsonStructure([['id', 'name']]);
+        $this->actingAs($this->makeUser())->getJson('/api/client/theme/nodes')->assertForbidden();
+    }
+
+    public function testLinkCardsAreForPlacesToo(): void
+    {
+        $admin = $this->rootAdmin();
+        $card = ['title' => 'Help', 'position' => 'top', 'style' => 'grid', 'enabled' => true, 'where' => ['dashboard', 'server'], 'links' => [['label' => 'Discord', 'url' => 'https://discord.gg/x', 'icon' => 'discord']]];
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => [$card]])->assertOk()->assertJsonPath('link_cards.0.where', ['dashboard', 'server']);
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['link_cards' => [array_merge($card, ['where' => ['moon']])]])->assertStatus(422);
+        app(BrandingService::class)->saveLinkCards([]);
+    }
 }

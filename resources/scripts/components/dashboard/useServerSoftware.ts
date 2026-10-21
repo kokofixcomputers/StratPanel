@@ -16,6 +16,9 @@ const readStore = (): Record<string, Entry> => {
     }
 };
 
+/** The software of a server as far as it was found out before (for conditions that cannot wait for a lookup), null when it was not. */
+export const readCachedSoftware = (uuid: string): string | null => readStore()[uuid]?.type ?? null;
+
 const writeStore = (uuid: string, entry: Entry) => {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readStore(), [uuid]: entry }));

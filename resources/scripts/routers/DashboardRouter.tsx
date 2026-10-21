@@ -10,6 +10,8 @@ import { useLocation } from 'react-router';
 import Spinner from '@/components/elements/Spinner';
 import routes from '@/routers/routes';
 import AccountSidebar from '@/components/dashboard/AccountSidebar';
+import Announcements from '@/components/dashboard/Announcements';
+import LinkCards from '@/components/dashboard/LinkCards';
 import DashboardSidebar, { useDashboardSidebarOn } from '@/components/dashboard/DashboardSidebar';
 
 export default () => {
@@ -39,6 +41,12 @@ export default () => {
                 {isAccount && <AccountSidebar />}
                 {side && <DashboardSidebar />}
                 <div className={isAccount || side ? 'min-w-0 flex-1 lg:px-4' : undefined}>
+                    {isAccount && (
+                        <div className={'mx-auto mt-6 w-full max-w-[var(--page-max,1280px)] px-4 empty:hidden sm:px-6'}>
+                            <Announcements place={'account'} className={'mb-6'} />
+                            <LinkCards place={'account'} position={'top'} className={'mb-6'} />
+                        </div>
+                    )}
                     <TransitionRouter>
                         <React.Suspense fallback={<Spinner centered />}>
                             <Switch location={location}>
@@ -59,6 +67,11 @@ export default () => {
                             </Switch>
                         </React.Suspense>
                     </TransitionRouter>
+                    {isAccount && (
+                        <div className={'mx-auto mb-6 w-full max-w-[var(--page-max,1280px)] px-4 empty:hidden sm:px-6'}>
+                            <LinkCards place={'account'} position={'bottom'} />
+                        </div>
+                    )}
                 </div>
             </div>
         </>

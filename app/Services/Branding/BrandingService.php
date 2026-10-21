@@ -25,6 +25,9 @@ class BrandingService
     /** Where a card of links can be on the dashboard. */
     public const CARD_POSITIONS = ['top', 'bottom'];
 
+    /** The parts of the panel an announcement or a card of links can be shown in. */
+    public const PLACES = ['dashboard', 'server', 'account'];
+
     /** How the links of a card are drawn: one under the other, as tall cards, or as a compact grid of tiles. */
     public const CARD_STYLES = ['list', 'cards', 'grid'];
 
@@ -180,13 +183,18 @@ class BrandingService
             'dismissible' => (bool) ($item['dismissible'] ?? true),
             'link_label' => (string) ($item['link_label'] ?? ''),
             'link_url' => (string) ($item['link_url'] ?? ''),
+            // Where it is shown, and what a person must have to see it. An empty list asks for nothing.
+            'where' => $this->places($item['where'] ?? null),
+            'eggs' => array_values(array_unique(array_map('intval', array_filter((array) ($item['eggs'] ?? []), 'is_numeric')))),
+            'software' => $this->words($item['software'] ?? [], '/^[A-Z]{3,12}$/'),
+            'nodes' => $this->words($item['nodes'] ?? [], '/^.{1,100}$/u'),
         ], $this->list(self::ANNOUNCEMENTS));
     }
 
     /**
      * The cards of links on the dashboard ("Need a hand?" with Discord and Support): a title, where it goes, and links with an icon each.
      *
-     * @return array<int, array{id: string, title: string, position: string, style: string, enabled: bool, links: array<int, array{label: string, url: string, icon: string, new_tab: bool}>}>
+     * @return array<int, array{id: string, title: string, position: string, style: string, where: list<string>, enabled: bool, links: array<int, array{label: string, url: string, icon: string, new_tab: bool}>}>
      */
     public function linkCards(): array
     {
@@ -195,6 +203,7 @@ class BrandingService
             'title' => (string) ($card['title'] ?? ''),
             'position' => in_array($card['position'] ?? '', self::CARD_POSITIONS, true) ? $card['position'] : 'bottom',
             'style' => in_array($card['style'] ?? '', self::CARD_STYLES, true) ? $card['style'] : 'cards',
+            'where' => $this->places($card['where'] ?? null),
             'enabled' => (bool) ($card['enabled'] ?? true),
             'links' => array_values(array_map(fn ($link) => [
                 'label' => (string) ($link['label'] ?? ''),
@@ -214,6 +223,7 @@ class BrandingService
             'title' => trim((string) ($card['title'] ?? '')),
             'position' => $card['position'],
             'style' => $card['style'],
+            'where' => $this->places($card['where'] ?? null),
             'enabled' => !empty($card['enabled']),
             'links' => array_values(array_map(fn (array $link) => [
                 'label' => trim((string) $link['label']),
@@ -238,18 +248,47 @@ class BrandingService
     /** @param array<int, array<string, mixed>> $items */
     public function saveAnnouncements(array $items): void
     {
-        $this->store(self::ANNOUNCEMENTS, array_map(fn (array $item) => [
+        $known = [];
+        foreach ($this->announcements() as $existing) {
+            $known[$existing['id']] = $existing;
+        }
+
+        $this->store(self::ANNOUNCEMENTS, array_map(function (array $item) use ($known) {
             // An id that stays the same, so an announcement somebody dismissed does not come back after an edit of the
             // list. New rows get theirs here.
-            'id' => preg_match('/^[a-z0-9]{6,32}$/', (string) ($item['id'] ?? '')) ? $item['id'] : Str::lower(Str::random(12)),
-            'title' => trim((string) ($item['title'] ?? '')),
-            'message' => trim((string) $item['message']),
-            'type' => $item['type'],
-            'enabled' => !empty($item['enabled']),
-            'dismissible' => !empty($item['dismissible']),
-            'link_label' => trim((string) ($item['link_label'] ?? '')),
-            'link_url' => trim((string) ($item['link_url'] ?? '')),
-        ], $items));
+            $id = preg_match('/^[a-z0-9]{6,32}$/', (string) ($item['id'] ?? '')) ? $item['id'] : Str::lower(Str::random(12));
+            $before = $known[$id] ?? ['where' => ['dashboard'], 'eggs' => [], 'software' => [], 'nodes' => []];
+
+            return [
+                'id' => $id,
+                'title' => trim((string) ($item['title'] ?? '')),
+                'message' => trim((string) $item['message']),
+                'type' => $item['type'],
+                'enabled' => !empty($item['enabled']),
+                'dismissible' => !empty($item['dismissible']),
+                'link_label' => trim((string) ($item['link_label'] ?? '')),
+                'link_url' => trim((string) ($item['link_url'] ?? '')),
+                // A form that does not know these (the old page of the admin area) leaves them as they were.
+                'where' => array_key_exists('where', $item) ? $this->places($item['where']) : $before['where'],
+                'eggs' => array_key_exists('eggs', $item) ? array_values(array_unique(array_map('intval', array_filter((array) $item['eggs'], 'is_numeric')))) : $before['eggs'],
+                'software' => array_key_exists('software', $item) ? $this->words($item['software'], '/^[A-Z]{3,12}$/') : $before['software'],
+                'nodes' => array_key_exists('nodes', $item) ? $this->words($item['nodes'], '/^.{1,100}$/u') : $before['nodes'],
+            ];
+        }, $items));
+    }
+
+    /** The places of the panel that exist, the dashboard when none is given. @return list<string> */
+    private function places(mixed $value): array
+    {
+        $places = array_values(array_unique(array_filter((array) $value, fn ($p) => in_array($p, self::PLACES, true))));
+
+        return $value === null || $places === [] ? ['dashboard'] : $places;
+    }
+
+    /** @return list<string> */
+    private function words(mixed $value, string $pattern): array
+    {
+        return array_values(array_unique(array_filter(array_map('strval', (array) $value), fn ($w) => preg_match($pattern, $w) === 1)));
     }
 
     /** @param array<int, array<string, mixed>> $items */

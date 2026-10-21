@@ -140,3 +140,13 @@ branding like the announcements: saved by their own button, shown live in the pr
 Size of the link cards: the links of a card in the *cards* and *grid* styles share the whole width, side by side (`.link-grid`, `--c-sm` and `--c-lg` are how many go in a row on a tablet and on a
 wide screen), and the more there are the smaller each gets: 1 or 2 links are big cards (large icon, large name, address), 3 or 4 are medium, 5 or more small. More links than fit one row are spread
 over equal rows (`columnsFor` in `lib/linkCards.ts`: 6 links are 3 and 3). One column on a phone.
+
+Announcements as a page (`components/admin/theme/AnnouncementsPage.tsx`): the section has the whole editor page, with no preview next to it. Every announcement is a card in the order it is shown (drag a card by its
+handle, or use the arrows that appear on hover), switched on and off with a switch on the card; opening a card shows all of it (title, message, kind, link, shown, dismissible, where, who it is for) with a back
+button, and one *Save announcements* button saves the list. **Where**: the dashboard, inside servers, account settings (`where`, the dashboard when none; `Announcements place=...` in `DashboardContainer`,
+`ServerRouter`, `DashboardRouter`). **Who it is for**: `eggs`, `software` and `nodes`, any one of a list and all of the lists (`appliesTo` in `lib/branding.ts`): a person needs a server of one of the eggs, one
+running one of the software (found out from the files of a server and remembered by the panel, so it counts once a server was looked at: `readCachedSoftware`) and one on one of the nodes. Nothing is shown
+while the list of servers is still loading. This is done in the browser, so it keeps a note short, it is not a secret. The cards of links have `where` too. The old branding page of the admin area keeps these settings
+as they are when it saves.
+
+The sliders and checkboxes of the editor are the theme's own: `Slider` is a track that fills with the accent colour (`input.theme-range`, `--fill`) and `Switch` is an on and off switch (`controls.tsx`).

@@ -111,6 +111,7 @@ export const OptionalColor = ({
     </div>
 );
 
+/** A slider in the colours of the theme: a track that fills with the accent colour up to the handle. */
 export const Slider = ({
     value,
     min,
@@ -131,13 +132,48 @@ export const Slider = ({
             max={max}
             value={value}
             onChange={(e) => onChange(Number(e.currentTarget.value))}
-            className={'h-1.5 flex-1 cursor-pointer accent-primary-600'}
+            className={'theme-range flex-1'}
+            style={{ '--fill': `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
         />
         <span className={'w-14 text-right font-mono text-xs text-neutral-300'}>
             {value}
             {unit}
         </span>
     </div>
+);
+
+/** An on and off switch in the colours of the theme, for what used to be a checkbox. */
+export const Switch = ({
+    checked,
+    onChange,
+    label,
+    className,
+}: {
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    label: string;
+    className?: string;
+}) => (
+    <button
+        type={'button'}
+        role={'switch'}
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={classNames(
+            'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-150 focus-visible:ring-[3px] focus-visible:ring-primary-600/30',
+            checked ? 'border-primary-600 bg-primary-600' : 'border-neutral-400 bg-neutral-500',
+            className
+        )}
+    >
+        <span
+            className={classNames(
+                'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-150',
+                checked ? 'translate-x-[1.125rem]' : 'translate-x-0.5'
+            )}
+            style={{ background: '#fff' }}
+        />
+    </button>
 );
 
 export const Toggle = ({
@@ -149,13 +185,10 @@ export const Toggle = ({
     checked: boolean;
     onChange: (checked: boolean) => void;
 }) => (
-    <label className={'flex cursor-pointer items-center justify-between gap-3 text-sm text-neutral-200'}>
-        {label}
-        <input
-            type={'checkbox'}
-            checked={checked}
-            onChange={(e) => onChange(e.currentTarget.checked)}
-            className={'h-4 w-4 cursor-pointer accent-primary-600'}
-        />
-    </label>
+    <div className={'flex items-center justify-between gap-3 text-sm text-neutral-200'}>
+        <span onClick={() => onChange(!checked)} className={'cursor-pointer select-none'}>
+            {label}
+        </span>
+        <Switch checked={checked} onChange={onChange} label={label} />
+    </div>
 );

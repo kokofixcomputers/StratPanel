@@ -8,7 +8,8 @@ import {
     XIcon,
 } from '@heroicons/react/solid';
 import useBranding from '@/plugins/useBranding';
-import { AnnouncementType, isSafeUrl, visibleAnnouncements } from '@/lib/branding';
+import { AnnouncementType, appliesTo, isSafeUrl, Place, visibleAnnouncements } from '@/lib/branding';
+import useHoldings from '@/components/dashboard/useHoldings';
 
 const STORAGE = 'stratosphere:dismissed_announcements';
 
@@ -33,8 +34,10 @@ const STYLES: Record<
 };
 
 /** The announcements of the admin, above the servers. A dismissed one stays away until it is edited. */
-export default ({ className }: { className?: string }) => {
+export default ({ className, place = 'dashboard' }: { className?: string; place?: Place }) => {
     const { announcements } = useBranding();
+    const needsServers = announcements.some((a) => a.eggs.length + a.software.length + a.nodes.length > 0);
+    const holdings = useHoldings(needsServers);
     const [dismissed, setDismissed] = useState<string[]>(readDismissed);
 
     const dismiss = (key: string) => {
@@ -47,7 +50,11 @@ export default ({ className }: { className?: string }) => {
         }
     };
 
-    const shown = visibleAnnouncements(announcements, dismissed);
+    // Only the ones for this part of the panel and for what this person has, and not the ones they dismissed.
+    const shown = visibleAnnouncements(
+        announcements.filter((a) => appliesTo(a, place, holdings)),
+        dismissed
+    );
     if (!shown.length) return null;
 
     return (

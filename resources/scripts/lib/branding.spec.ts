@@ -1,4 +1,12 @@
-import { DEFAULT_LOGO, isSafeUrl, linksAt, logoUrl, parseBranding, visibleAnnouncements } from '@/lib/branding';
+import {
+    appliesTo,
+    DEFAULT_LOGO,
+    isSafeUrl,
+    linksAt,
+    logoUrl,
+    parseBranding,
+    visibleAnnouncements,
+} from '@/lib/branding';
 
 describe('link cards', () => {
     const card = (extra: object = {}) => ({
@@ -112,7 +120,18 @@ describe('links', () => {
 });
 
 describe('visibleAnnouncements', () => {
-    const base = { id: 'a', title: '', message: 'm', type: 'info' as const, linkLabel: '', linkUrl: '' };
+    const base = {
+        id: 'a',
+        title: '',
+        message: 'm',
+        type: 'info' as const,
+        linkLabel: '',
+        linkUrl: '',
+        where: ['dashboard' as const],
+        eggs: [],
+        software: [],
+        nodes: [],
+    };
 
     it('hides dismissed announcements, but an edited one (new key) returns', () => {
         const list = [
@@ -123,6 +142,57 @@ describe('visibleAnnouncements', () => {
 
         expect(visibleAnnouncements(list, ['a:1', 'c:1']).map((a) => a.key)).toEqual(['b:1', 'c:1']);
         expect(visibleAnnouncements(list, ['a:old']).map((a) => a.key)).toEqual(['a:1', 'b:1', 'c:1']);
+    });
+});
+
+describe('who sees an announcement', () => {
+    const holdings = (
+        servers: { uuid: string; eggId: number; node: string }[] | null,
+        software: Record<string, string> = {}
+    ) => ({
+        servers,
+        software: (uuid: string) => software[uuid] ?? null,
+    });
+    const audience = (extra: object = {}) => ({
+        where: ['dashboard' as const],
+        eggs: [],
+        software: [],
+        nodes: [],
+        ...extra,
+    });
+    const mine = [
+        { uuid: 'a', eggId: 3, node: 'Frankfurt' },
+        { uuid: 'b', eggId: 5, node: 'Dallas' },
+    ];
+
+    it('is for the places it was made for, the dashboard when none is said', () => {
+        expect(parseBranding({ announcements: [{ message: 'x' }] }).announcements[0].where).toEqual(['dashboard']);
+        expect(
+            parseBranding({ announcements: [{ message: 'x', where: ['server', 'moon', 'account'] }] }).announcements[0]
+                .where
+        ).toEqual(['server', 'account']);
+        expect(appliesTo(audience({ where: ['server'] }), 'dashboard', holdings(mine))).toBe(false);
+        expect(appliesTo(audience({ where: ['server', 'account'] }), 'account', holdings(null))).toBe(true);
+    });
+
+    it('asks for a server of an egg, a software or a node, any one of the list', () => {
+        expect(appliesTo(audience({ eggs: [5, 9] }), 'dashboard', holdings(mine))).toBe(true);
+        expect(appliesTo(audience({ eggs: [9] }), 'dashboard', holdings(mine))).toBe(false);
+        expect(appliesTo(audience({ nodes: ['Dallas'] }), 'dashboard', holdings(mine))).toBe(true);
+        expect(appliesTo(audience({ nodes: ['Singapore'] }), 'dashboard', holdings(mine))).toBe(false);
+        expect(appliesTo(audience({ software: ['PAPER'] }), 'dashboard', holdings(mine, { b: 'PAPER' }))).toBe(true);
+        expect(appliesTo(audience({ software: ['PAPER'] }), 'dashboard', holdings(mine, { b: 'FABRIC' }))).toBe(false);
+    });
+
+    it('needs all the conditions, on servers that are found', () => {
+        expect(appliesTo(audience({ eggs: [3], nodes: ['Dallas'] }), 'dashboard', holdings(mine))).toBe(true);
+        expect(appliesTo(audience({ eggs: [3], nodes: ['Singapore'] }), 'dashboard', holdings(mine))).toBe(false);
+    });
+
+    it('waits for the servers when it asks for one, and does not when it asks for none', () => {
+        expect(appliesTo(audience({ nodes: ['Dallas'] }), 'dashboard', holdings(null))).toBe(false);
+        expect(appliesTo(audience(), 'dashboard', holdings(null))).toBe(true);
+        expect(appliesTo(audience({ eggs: [3] }), 'dashboard', holdings([]))).toBe(false);
     });
 });
 

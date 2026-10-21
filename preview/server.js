@@ -148,7 +148,7 @@ api.get('/theme', (req, res) => res.json(themeSaved));
 api.put('/theme', (req, res) => { themeSaved = { config: req.body.config, css: req.body.css || '', attributes: req.body.attributes || {} }; res.json(themeSaved); });
 api.delete('/theme', (req, res) => { themeSaved = { config: null, css: '', attributes: {} }; res.json(themeSaved); });
 api.get('/theme/eggs', (req, res) => res.json([{ id: 1, name: 'Minecraft: Java Edition', nest: 'Minecraft' }, { id: 2, name: 'Bungeecord', nest: 'Minecraft' }]));
-const brandingState = { favicon: null, announcements: [{ id: 'a1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.', type: 'warning', enabled: true, dismissible: true, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }] };
+const brandingState = { favicon: null, announcements: [{ id: 'a1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.', type: 'warning', enabled: true, dismissible: true, link_label: '', link_url: '', where: ['dashboard'], eggs: [], software: [], nodes: ['Frankfurt-1'] }, { id: 'a2', title: '', message: 'Welcome to Stratosphere, read the rules before you start.', type: 'info', enabled: true, dismissible: false, link_label: '', link_url: '', where: ['dashboard', 'server'], eggs: [], software: [], nodes: [] }, { id: 'a3', title: 'New: Paper 1.21', message: 'Update your Paper servers to the newest build.', type: 'success', enabled: false, dismissible: true, link_label: 'Versions', link_url: '/', where: ['server'], eggs: [1], software: ['PAPER'], nodes: [] }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }] };
 brandingState.link_cards = [];
 brandingState.seo = { title: '', description: '', share_image: '', theme_color: '', app_name: '', app_short_name: '', index: false };
 const brandingBody = () => ({ ...brandingState, locations: { sidebar: 'Server sidebar', navbar: 'Top bar', footer: 'Footer' }, types: ['info', 'success', 'warning', 'danger'] });
@@ -157,6 +157,7 @@ api.put('/theme/branding', (req, res) => { if (req.body.announcements) brandingS
 api.post('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 api.delete('/theme/branding/favicon', (req, res) => res.json(brandingBody()));
 let themePresets = [];
+api.get('/theme/nodes', (req, res) => res.json([{ id: 1, name: 'Frankfurt-1' }, { id: 2, name: 'Singapore-1' }, { id: 3, name: 'Dallas-1' }]));
 api.get('/theme/presets', (req, res) => res.json(themePresets));
 api.post('/theme/presets', (req, res) => {
     const { id, name, config } = req.body;

@@ -2,7 +2,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { ArrowRightIcon } from '@heroicons/react/solid';
 import useBranding from '@/plugins/useBranding';
-import { LinkCard } from '@/lib/branding';
+import { appliesTo, LinkCard, Place } from '@/lib/branding';
 import { iconFor } from '@/lib/linkIcons';
 import { columnsFor } from '@/lib/linkCards';
 
@@ -128,8 +128,20 @@ const Card = ({ card }: { card: LinkCard }) => {
 };
 
 /** The cards of links of the dashboard that go on top of the list of servers, or at the bottom. */
-export default ({ position, className }: { position: 'top' | 'bottom'; className?: string }) => {
-    const cards = useBranding().linkCards.filter((card) => card.position === position);
+export default ({
+    position,
+    place = 'dashboard',
+    className,
+}: {
+    position: 'top' | 'bottom';
+    place?: Place;
+    className?: string;
+}) => {
+    const cards = useBranding().linkCards.filter(
+        (card) =>
+            card.position === position &&
+            appliesTo({ ...card, eggs: [], software: [], nodes: [] }, place, { servers: [], software: () => null })
+    );
     if (cards.length === 0) return null;
 
     return (

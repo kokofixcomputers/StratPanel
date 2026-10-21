@@ -294,6 +294,48 @@ export default createGlobalStyle`
         padding-bottom: 5.5rem;
     }
 
+    /* The sliders of the theme editor: a rounded track that fills with the accent colour (--fill) and a round handle. */
+    input[type='range'].theme-range {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 0.375rem;
+        border-radius: 9999px;
+        outline: none;
+        cursor: pointer;
+        background: linear-gradient(
+            to right,
+            rgb(var(--c-primary-600)) 0%,
+            rgb(var(--c-primary-600)) var(--fill, 0%),
+            rgb(var(--c-neutral-500)) var(--fill, 0%),
+            rgb(var(--c-neutral-500)) 100%
+        );
+    }
+    input[type='range'].theme-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 1.125rem;
+        width: 1.125rem;
+        border-radius: 9999px;
+        background: #fff;
+        border: 2px solid rgb(var(--c-primary-600));
+        box-shadow: 0 1px 3px rgb(15 23 42 / 0.25);
+        transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    input[type='range'].theme-range::-moz-range-thumb {
+        height: 1rem;
+        width: 1rem;
+        border-radius: 9999px;
+        background: #fff;
+        border: 2px solid rgb(var(--c-primary-600));
+        box-shadow: 0 1px 3px rgb(15 23 42 / 0.25);
+    }
+    input[type='range'].theme-range:hover::-webkit-slider-thumb {
+        transform: scale(1.1);
+    }
+    input[type='range'].theme-range:focus-visible::-webkit-slider-thumb {
+        box-shadow: 0 0 0 4px rgb(var(--c-primary-600) / 0.25);
+    }
+
     /* The links of a link card (dashboard) share the whole width: --c-sm and --c-lg are how many go side by side on a tablet and on a wide screen. */
     .link-grid {
         display: grid;

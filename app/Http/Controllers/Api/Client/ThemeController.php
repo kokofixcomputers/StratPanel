@@ -4,6 +4,7 @@ namespace Pterodactyl\Http\Controllers\Api\Client;
 
 use Pterodactyl\Models\Egg;
 use Illuminate\Http\Request;
+use Pterodactyl\Models\Node;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
@@ -172,6 +173,12 @@ class ThemeController extends ClientApiController
         return $this->show();
     }
 
+    /** The nodes of this panel, for an announcement that is only for people with a server on one of them. */
+    public function nodes(): JsonResponse
+    {
+        return new JsonResponse(Node::query()->orderBy('name')->get(['id', 'name'])->map(fn (Node $n) => ['id' => $n->id, 'name' => $n->name])->all());
+    }
+
     /** The looks saved under a name. */
     public function presets(): JsonResponse
     {
@@ -251,6 +258,7 @@ class ThemeController extends ClientApiController
             'link_cards' => $this->branding->linkCards(),
             'card_positions' => BrandingService::CARD_POSITIONS,
             'card_styles' => BrandingService::CARD_STYLES,
+            'places' => BrandingService::PLACES,
             'locations' => BrandingService::LOCATIONS,
             'types' => BrandingService::TYPES,
         ]);
@@ -270,6 +278,14 @@ class ThemeController extends ClientApiController
             'announcements.*.dismissible' => 'nullable|boolean',
             'announcements.*.link_label' => 'nullable|string|max:50',
             'announcements.*.link_url' => $link,
+            'announcements.*.where' => 'sometimes|array|min:1|max:3',
+            'announcements.*.where.*' => ['string', Rule::in(BrandingService::PLACES)],
+            'announcements.*.eggs' => 'sometimes|array|max:100',
+            'announcements.*.eggs.*' => 'integer|min:1',
+            'announcements.*.software' => 'sometimes|array|max:20',
+            'announcements.*.software.*' => ['string', 'regex:/^[A-Z]{3,12}$/'],
+            'announcements.*.nodes' => 'sometimes|array|max:50',
+            'announcements.*.nodes.*' => 'string|max:100',
             'links' => 'sometimes|array|max:20',
             'links.*.label' => 'required|string|max:50',
             'links.*.url' => ['required', ...array_slice($link, 1)],
@@ -281,6 +297,8 @@ class ThemeController extends ClientApiController
             'link_cards.*.title' => 'nullable|string|max:40',
             'link_cards.*.position' => ['required', Rule::in(BrandingService::CARD_POSITIONS)],
             'link_cards.*.style' => ['required', Rule::in(BrandingService::CARD_STYLES)],
+            'link_cards.*.where' => 'sometimes|array|min:1|max:3',
+            'link_cards.*.where.*' => ['string', Rule::in(BrandingService::PLACES)],
             'link_cards.*.enabled' => 'nullable|boolean',
             'link_cards.*.links' => 'present|array|max:12',
             'link_cards.*.links.*.label' => 'required|string|max:50',

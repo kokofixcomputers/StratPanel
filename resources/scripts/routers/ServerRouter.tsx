@@ -5,6 +5,8 @@ import NavigationBar from '@/components/NavigationBar';
 import TransitionRouter from '@/TransitionRouter';
 import JobsDock from '@/components/server/jobs/JobsDock';
 import PowerDock from '@/components/server/PowerDock';
+import Announcements from '@/components/dashboard/Announcements';
+import LinkCards from '@/components/dashboard/LinkCards';
 import WebsocketHandler from '@/components/server/WebsocketHandler';
 import { ServerContext } from '@/state/server';
 import { CSSTransition } from 'react-transition-group';
@@ -189,6 +191,14 @@ export default () => {
                             />
                         )}
                         <div className={'min-w-0 flex-1 lg:px-4'}>
+                            <div
+                                className={
+                                    'mx-auto mt-6 w-full max-w-[var(--page-max,1280px)] px-4 empty:hidden sm:px-6'
+                                }
+                            >
+                                <Announcements place={'server'} className={'mb-6'} />
+                                <LinkCards place={'server'} position={'top'} className={'mb-6'} />
+                            </div>
                             {inConflictState &&
                             (!rootAdmin || (rootAdmin && !location.pathname.endsWith(`/server/${id}`))) ? (
                                 <ConflictStateRenderer />
@@ -213,6 +223,13 @@ export default () => {
                                     </TransitionRouter>
                                 </ErrorBoundary>
                             )}
+                            <div
+                                className={
+                                    'mx-auto mb-6 w-full max-w-[var(--page-max,1280px)] px-4 empty:hidden sm:px-6'
+                                }
+                            >
+                                <LinkCards place={'server'} position={'bottom'} />
+                            </div>
                         </div>
                     </div>
                 </>

@@ -4,7 +4,23 @@
 export type AnnouncementType = 'info' | 'success' | 'warning' | 'danger';
 export type LinkLocation = 'sidebar' | 'navbar' | 'footer';
 
-export interface Announcement {
+export type Place = 'dashboard' | 'server' | 'account';
+export const PLACES: { id: Place; label: string }[] = [
+    { id: 'dashboard', label: 'The dashboard' },
+    { id: 'server', label: 'Inside a server' },
+    { id: 'account', label: 'Account settings' },
+];
+
+/** What decides whether somebody sees an announcement or a card of links: where they are, and what servers they have. */
+export interface Audience {
+    where: Place[];
+    // They need a server of one of these eggs, of one of these software (VANILLA, PAPER...), on one of these nodes. Empty asks for nothing.
+    eggs: number[];
+    software: string[];
+    nodes: string[];
+}
+
+export interface Announcement extends Audience {
     id: string;
     // Changes whenever the announcement is edited, which is what brings back one that somebody dismissed.
     key: string;
@@ -34,6 +50,7 @@ export interface LinkCardLink {
 
 /** A card of links on the dashboard, "Need a hand?" with a link to Discord and one to support. */
 export interface LinkCard {
+    where: Place[];
     id: string;
     title: string;
     position: 'top' | 'bottom';
@@ -66,6 +83,21 @@ export const EMPTY_BRANDING: Branding = {
     linkCards: [],
 };
 
+const parseAudience = (raw: any): Audience => {
+    const where = (Array.isArray(raw?.where) ? raw.where : []).filter((p: any) =>
+        PLACES.some((place) => place.id === p)
+    );
+
+    return {
+        where: where.length > 0 ? where : ['dashboard'],
+        eggs: (Array.isArray(raw?.eggs) ? raw.eggs : [])
+            .map(Number)
+            .filter((n: number) => Number.isInteger(n) && n > 0),
+        software: (Array.isArray(raw?.software) ? raw.software : []).map(String),
+        nodes: (Array.isArray(raw?.nodes) ? raw.nodes : []).map(String),
+    };
+};
+
 /** The server sends snake_case, the panel works with camelCase. Anything missing falls back to nothing. */
 export const parseBranding = (raw: any): Branding => {
     if (!raw || typeof raw !== 'object') return EMPTY_BRANDING;
@@ -87,6 +119,7 @@ export const parseBranding = (raw: any): Branding => {
                 dismissible: a.dismissible !== false,
                 linkLabel: String(a.link_label || ''),
                 linkUrl: String(a.link_url || ''),
+                ...parseAudience(a),
             })),
         linkCards: (Array.isArray(raw.link_cards) ? raw.link_cards : [])
             .filter((c: any) => c && c.enabled !== false)
@@ -94,6 +127,7 @@ export const parseBranding = (raw: any): Branding => {
                 id: String(c.id || ''),
                 title: String(c.title || ''),
                 position: c.position === 'top' ? 'top' : 'bottom',
+                where: parseAudience(c).where,
                 style: ['list', 'cards', 'grid'].includes(c.style) ? c.style : 'cards',
                 links: (Array.isArray(c.links) ? c.links : [])
                     .filter((l: any) => l && l.label && l.url && isSafeUrl(String(l.url)))
@@ -121,6 +155,30 @@ export const isSafeUrl = (url: string): boolean => /^(https?:\/\/|\/(?!\/))\S+$/
 
 export const linksAt = (links: CustomLink[], location: LinkLocation): CustomLink[] =>
     links.filter((link) => link.location === location && isSafeUrl(link.url));
+
+/** The servers a person has, as far as the conditions need to know. `null` while they are not known yet. */
+export interface Holdings {
+    servers: { uuid: string; eggId: number; node: string }[] | null;
+    // The software of a server (VANILLA, PAPER...) when it was found out, null when not.
+    software: (uuid: string) => string | null;
+}
+
+/** Whether something with this audience is for somebody who is in this place and has these servers. All the conditions have to hold, any one of a list is enough. */
+export const appliesTo = (audience: Audience, place: Place, holdings: Holdings): boolean => {
+    if (!audience.where.includes(place)) return false;
+    const needsServers = audience.eggs.length > 0 || audience.software.length > 0 || audience.nodes.length > 0;
+    if (!needsServers) return true;
+    // Before the servers are known nothing that asks for one is shown, it would flash on and off.
+    if (!holdings.servers) return false;
+
+    const has = (test: (s: { uuid: string; eggId: number; node: string }) => boolean) => holdings.servers!.some(test);
+
+    return (
+        (audience.eggs.length === 0 || has((s) => audience.eggs.includes(s.eggId))) &&
+        (audience.nodes.length === 0 || has((s) => audience.nodes.includes(s.node))) &&
+        (audience.software.length === 0 || has((s) => audience.software.includes(holdings.software(s.uuid) ?? '')))
+    );
+};
 
 export const visibleAnnouncements = (list: Announcement[], dismissed: string[]): Announcement[] =>
     list.filter((a) => !(a.dismissible && dismissed.includes(a.key)));

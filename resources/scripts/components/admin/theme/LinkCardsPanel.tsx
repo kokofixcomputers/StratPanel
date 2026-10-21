@@ -3,8 +3,9 @@ import classNames from 'classnames';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from '@heroicons/react/solid';
 import http, { httpErrorToHuman } from '@/api/http';
 import { Button } from '@/components/elements/button/index';
-import { Row, Segmented, Toggle } from '@/components/admin/theme/controls';
+import { Row, Segmented, Switch, Toggle } from '@/components/admin/theme/controls';
 import { iconFor, LINK_ICONS } from '@/lib/linkIcons';
+import { PLACES } from '@/lib/branding';
 
 export interface LinkCardLinkEdit {
     label: string;
@@ -18,6 +19,7 @@ export interface LinkCardEdit {
     title: string;
     position: 'top' | 'bottom';
     style: 'list' | 'cards' | 'grid';
+    where: ('dashboard' | 'server' | 'account')[];
     enabled: boolean;
     links: LinkCardLinkEdit[];
 }
@@ -180,6 +182,24 @@ export default ({
                         </p>
                     </Row>
                     <Toggle label={'Shown'} checked={card.enabled} onChange={(enabled) => changeCard(i, { enabled })} />
+                    <Row label={'Shown in'}>
+                        <div className={'space-y-2'}>
+                            {PLACES.map((place) => (
+                                <Toggle
+                                    key={place.id}
+                                    label={place.label}
+                                    checked={card.where.includes(place.id)}
+                                    onChange={(on) => {
+                                        const where = on
+                                            ? [...card.where, place.id]
+                                            : card.where.filter((p) => p !== place.id);
+                                        // It has to be shown somewhere.
+                                        if (where.length > 0) changeCard(i, { where });
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </Row>
                     <div className={'space-y-2'}>
                         {card.links.map((link, j) => {
                             const key = `${i}:${j}`;
@@ -252,19 +272,18 @@ export default ({
                                             onChange={(e) => changeLink(i, j, { url: e.currentTarget.value })}
                                             className={`${field} font-mono text-xs`}
                                         />
-                                        <label
+                                        <span
                                             className={
                                                 'flex flex-shrink-0 items-center gap-1.5 text-xs text-neutral-300'
                                             }
                                         >
-                                            <input
-                                                type={'checkbox'}
+                                            <Switch
                                                 checked={link.new_tab}
-                                                onChange={(e) => changeLink(i, j, { new_tab: e.currentTarget.checked })}
-                                                className={'accent-primary-600'}
+                                                onChange={(new_tab) => changeLink(i, j, { new_tab })}
+                                                label={'Open in a new tab'}
                                             />
                                             New tab
-                                        </label>
+                                        </span>
                                     </div>
                                 </div>
                             );
@@ -292,6 +311,7 @@ export default ({
                                 title: 'Need a hand?',
                                 position: 'bottom',
                                 style: 'cards',
+                                where: ['dashboard'],
                                 enabled: true,
                                 links: [
                                     { ...BLANK_LINK, icon: 'discord' },
