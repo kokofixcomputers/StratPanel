@@ -294,6 +294,23 @@ export default createGlobalStyle`
         padding-bottom: 5.5rem;
     }
 
+    /* The links of a link card (dashboard) share the whole width: --c-sm and --c-lg are how many go side by side on a tablet and on a wide screen. */
+    .link-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+    @media (min-width: 640px) {
+        .link-grid {
+            grid-template-columns: repeat(var(--c-sm, 1), minmax(0, 1fr));
+        }
+    }
+    @media (min-width: 1024px) {
+        .link-grid {
+            grid-template-columns: repeat(var(--c-lg, 1), minmax(0, 1fr));
+        }
+    }
+
     /* The servers of the dashboard: one under the other, or side by side. */
     .server-list {
         display: grid;

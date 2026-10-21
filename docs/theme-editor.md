@@ -136,3 +136,7 @@ Link cards on the dashboard (`link_cards` in `BrandingService`, section "Link ca
 address) or as a *grid* (the same, but low tiles that take little height). A link has an icon from a set of about 45 (Discord, GitHub, GitLab, Google, Microsoft marks and plain ones such as support, docs,
 store, status), a name and an address (a path of the panel or http(s), checked like the custom links), and opens in a new tab or not. Cards that are off or have no link are not sent to the page. They are
 branding like the announcements: saved by their own button, shown live in the preview as typed.
+
+Size of the link cards: the links of a card in the *cards* and *grid* styles share the whole width, side by side (`.link-grid`, `--c-sm` and `--c-lg` are how many go in a row on a tablet and on a
+wide screen), and the more there are the smaller each gets: 1 or 2 links are big cards (large icon, large name, address), 3 or 4 are medium, 5 or more small. More links than fit one row are spread
+over equal rows (`columnsFor` in `lib/linkCards.ts`: 6 links are 3 and 3). One column on a phone.
