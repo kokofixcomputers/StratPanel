@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import tw from 'twin.macro';
 import classNames from 'classnames';
+import { ExclamationIcon } from '@heroicons/react/solid';
 import Spinner from '@/components/elements/Spinner';
 import Select from '@/components/elements/Select';
 import Label from '@/components/elements/Label';
@@ -41,19 +42,47 @@ export const SoftwareTile = ({
             css={tw`w-11 h-11 rounded-lg bg-neutral-600 object-contain p-1 flex-shrink-0`}
         />
         <div css={tw`ml-3 min-w-0`}>
-            <p css={tw`text-sm font-semibold text-neutral-50`}>{software.name}</p>
+            <p css={tw`text-sm font-semibold text-neutral-50 flex items-center gap-1.5`}>
+                {software.name}
+                {software.experimental && (
+                    <span
+                        css={tw`rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 px-1.5 text-2xs font-medium`}
+                    >
+                        Experimental
+                    </span>
+                )}
+            </p>
             <p css={tw`text-xs text-neutral-400 line-clamp-2`}>{software.description}</p>
         </div>
     </button>
 );
 
-export const SoftwareGrid = ({ type, onChange }: { type: SoftwareType; onChange: (type: SoftwareType) => void }) => (
-    <div css={tw`grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}>
-        {SOFTWARE.map((s) => (
-            <SoftwareTile key={s.type} software={s} active={s.type === type} onClick={() => onChange(s.type)} />
-        ))}
-    </div>
-);
+export const SoftwareGrid = ({ type, onChange }: { type: SoftwareType; onChange: (type: SoftwareType) => void }) => {
+    const chosen = SOFTWARE.find((s) => s.type === type);
+
+    return (
+        <>
+            <div css={tw`grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}>
+                {SOFTWARE.map((s) => (
+                    <SoftwareTile key={s.type} software={s} active={s.type === type} onClick={() => onChange(s.type)} />
+                ))}
+            </div>
+            {chosen?.experimental && (
+                <div
+                    role={'alert'}
+                    css={tw`mt-4 flex items-start rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900`}
+                >
+                    <ExclamationIcon css={tw`mr-3 mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-500`} />
+                    <p css={tw`text-yellow-900`}>
+                        <strong>{chosen.name} is experimental.</strong> It can break between versions, lag behind new
+                        Minecraft releases, and many mods and plugins are not tested on it. Make a backup first and do
+                        not use it for a server people depend on.
+                    </p>
+                </div>
+            )}
+        </>
+    );
+};
 
 /**
  * Loads the versions and builds of a software from MCJars and keeps the "newest stable build" preselected.

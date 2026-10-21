@@ -28,6 +28,8 @@ import { ProjectKind } from '@/lib/minecraft';
 const PAGE_SIZE = 20;
 
 const MOD_LOADERS = ['FABRIC', 'QUILT', 'FORGE', 'NEOFORGE'];
+// Servers that load mods and plugins: the mods are the ones of the loader they are built on. Arclight has several, it keeps what was chosen.
+const HYBRID_LOADERS: Record<string, string> = { MOHIST: 'forge', YOUER: 'neoforge' };
 // The platforms of proxies are what their plugins are filed under on Modrinth.
 const PROXY_LOADERS: Record<string, string> = {
     VELOCITY: 'velocity',
@@ -84,6 +86,7 @@ export default () => {
                 if (params.has('t') || params.has('l')) return;
 
                 if (MOD_LOADERS.includes(current.type)) update({ kind: 'mod', loader: current.type.toLowerCase() });
+                else if (HYBRID_LOADERS[current.type]) update({ kind: 'mod', loader: HYBRID_LOADERS[current.type] });
                 else if (PROXY_LOADERS[current.type]) update({ loader: PROXY_LOADERS[current.type] });
             })
             .catch(() => undefined);

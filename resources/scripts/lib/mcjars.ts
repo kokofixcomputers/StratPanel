@@ -4,12 +4,25 @@
  */
 const API = 'https://mcjars.app/api/v2';
 
-export type SoftwareType = 'PAPER' | 'FABRIC' | 'NEOFORGE' | 'FORGE' | 'QUILT' | 'PURPUR' | 'SPIGOT' | 'VELOCITY';
+export type SoftwareType =
+    | 'PAPER'
+    | 'FABRIC'
+    | 'NEOFORGE'
+    | 'FORGE'
+    | 'QUILT'
+    | 'PURPUR'
+    | 'SPIGOT'
+    | 'VELOCITY'
+    | 'MOHIST'
+    | 'YOUER'
+    | 'ARCLIGHT';
 
 export interface Software {
     type: SoftwareType;
     name: string;
     description: string;
+    // MCJars calls it experimental: it works, but it may break or lag behind, and the panel says so where it is chosen.
+    experimental?: boolean;
 }
 
 export const SOFTWARE: Software[] = [
@@ -17,10 +30,21 @@ export const SOFTWARE: Software[] = [
     { type: 'PURPUR', name: 'Purpur', description: 'Paper fork with extra gameplay configuration.' },
     { type: 'SPIGOT', name: 'Spigot', description: 'The classic plugin server built on CraftBukkit.' },
     { type: 'FABRIC', name: 'Fabric', description: 'Lightweight, fast-updating modding toolchain.' },
-    { type: 'QUILT', name: 'Quilt', description: 'Community-driven fork of the Fabric loader.' },
+    { type: 'QUILT', name: 'Quilt', description: 'Community-driven fork of the Fabric loader.', experimental: true },
     { type: 'FORGE', name: 'Forge', description: 'The original Minecraft modding platform.' },
     { type: 'NEOFORGE', name: 'NeoForge', description: 'Modern community-led continuation of Forge.' },
     { type: 'VELOCITY', name: 'Velocity', description: 'Modern, high performance proxy for networks.' },
+    {
+        type: 'MOHIST',
+        name: 'Mohist',
+        description: 'Forge or NeoForge that also loads Spigot plugins next to the mods.',
+    },
+    { type: 'YOUER', name: 'Youer', description: 'NeoForge that also loads Spigot plugins next to the mods.' },
+    {
+        type: 'ARCLIGHT',
+        name: 'Arclight',
+        description: 'A Bukkit server built with Mixins, for mods and plugins on Fabric, Forge or NeoForge.',
+    },
 ];
 
 export const iconFor = (type: SoftwareType) => `https://s3.mcjars.app/icons/${type.toLowerCase()}.png`;

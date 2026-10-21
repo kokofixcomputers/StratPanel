@@ -79,6 +79,12 @@ const detectCurrent = async (uuid: string, variableVersion: string | null): Prom
 
     if (has('velocity.toml')) {
         type = 'VELOCITY';
+    } else if (has('mohist-config')) {
+        type = 'MOHIST';
+    } else if (has('youer-config')) {
+        type = 'YOUER';
+    } else if (has('arclight.conf')) {
+        type = 'ARCLIGHT';
     } else if (has('purpur.yml')) {
         type = 'PURPUR';
     } else if (
