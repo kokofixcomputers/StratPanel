@@ -83,6 +83,9 @@ export const EMPTY_BRANDING: Branding = {
     linkCards: [],
 };
 
+/** Only a link to another site or to a page of the panel is followed, never javascript: or data:. */
+export const isSafeUrl = (url: string): boolean => /^(https?:\/\/|\/(?!\/))\S+$/i.test(url.trim());
+
 const parseAudience = (raw: any): Audience => {
     const where = (Array.isArray(raw?.where) ? raw.where : []).filter((p: any) =>
         PLACES.some((place) => place.id === p)
@@ -149,9 +152,6 @@ export const parseBranding = (raw: any): Branding => {
             })),
     };
 };
-
-/** Only a link to another site or to a page of the panel is followed, never javascript: or data:. */
-export const isSafeUrl = (url: string): boolean => /^(https?:\/\/|\/(?!\/))\S+$/i.test(url.trim());
 
 export const linksAt = (links: CustomLink[], location: LinkLocation): CustomLink[] =>
     links.filter((link) => link.location === location && isSafeUrl(link.url));

@@ -71,8 +71,8 @@ const Card = ({ card }: { card: LinkCard }) => {
                     // The links share the whole width: two links are two big cards side by side, and the more there are the smaller each gets.
                     style={
                         {
-                            '--c-sm': Math.min(count, 2),
-                            '--c-lg': Math.min(count, card.style === 'grid' ? 6 : 5),
+                            '--c-sm': columnsFor(count, 2),
+                            '--c-lg': columnsFor(count, card.style === 'grid' ? 6 : 5),
                         } as React.CSSProperties
                     }
                 >

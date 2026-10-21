@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
+import { bytesToString, mbToBytes } from '@/lib/formatters';
 import { ServerContext } from '@/state/server';
 import { SocketEvent, SocketRequest } from '@/components/server/events';
+import AddressMenu from '@/components/server/AddressMenu';
+import { connectionAddresses } from '@/lib/connection';
 import StatBlock from '@/components/server/console/StatBlock';
 import Sensitive from '@/components/elements/Sensitive';
 import Sparkline from '@/components/server/console/Sparkline';
@@ -69,11 +71,11 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
         [limits]
     );
 
-    const allocation = ServerContext.useStoreState((state) => {
-        const match = state.server.data!.allocations.find((allocation) => allocation.isDefault);
-
-        return !match ? 'n/a' : `${match.alias || ip(match.ip)}:${match.port}`;
-    });
+    const domains = ServerContext.useStoreState((state) => state.server.data!.domains);
+    const allocations = ServerContext.useStoreState((state) => state.server.data!.allocations);
+    // A domain when the server has one, the IP address when not, and a list of all of them behind the arrow.
+    const addresses = useMemo(() => connectionAddresses({ domains, allocations }), [domains, allocations]);
+    const allocation = addresses[0]?.address ?? 'n/a';
 
     useEffect(() => {
         if (!connected || !instance) {
@@ -147,7 +149,13 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
     return (
         <div className={className}>
             <div className={'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'}>
-                <StatBlock title={'Server IP'} copyOnClick={allocation} subtitle={'Connection address'} mono>
+                <StatBlock
+                    title={'Server address'}
+                    adornment={<AddressMenu addresses={addresses} />}
+                    copyOnClick={allocation}
+                    subtitle={addresses[0]?.kind === 'domain' ? 'Domain, click to copy' : 'Connection address'}
+                    mono
+                >
                     <Sensitive>{allocation}</Sensitive>
                 </StatBlock>
                 <StatBlock

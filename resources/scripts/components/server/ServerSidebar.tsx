@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, matchPath, useLocation } from 'react-router-dom';
 import classNames from 'classnames';
 import {
@@ -24,8 +24,10 @@ import {
     ViewListIcon,
 } from '@heroicons/react/solid';
 import CopyOnClick from '@/components/elements/CopyOnClick';
+import AddressMenu from '@/components/server/AddressMenu';
+import { connectionAddresses } from '@/lib/connection';
 import Sensitive from '@/components/elements/Sensitive';
-import { ip } from '@/lib/formatters';
+
 import Can from '@/components/elements/Can';
 import { ServerContext } from '@/state/server';
 import { usePermissions } from '@/plugins/usePermissions';
@@ -103,11 +105,11 @@ export default ({
             if (!isNaN(parsed)) setMaxPlayers(parsed);
         });
     }, [uuid, status, playersUrl]);
-    const address = ServerContext.useStoreState((state) => {
-        const match = state.server.data!.allocations.find((allocation) => allocation.isDefault);
-
-        return match ? `${match.alias || ip(match.ip)}:${match.port}` : null;
-    });
+    const domains = ServerContext.useStoreState((state) => state.server.data!.domains);
+    const allocations = ServerContext.useStoreState((state) => state.server.data!.allocations);
+    const addresses = useMemo(() => connectionAddresses({ domains, allocations }), [domains, allocations]);
+    // A domain when the server has one, else the default allocation.
+    const address = addresses[0]?.address ?? null;
     const customLinks = linksAt(useBranding().links, 'sidebar');
     const layout = useThemeConfig().sidebars.server;
     // The categories the admin arranged (or the default ones), with the items this person has.
@@ -153,19 +155,24 @@ export default ({
                         <StatusBadge />
                     </div>
                     {address && (
-                        <CopyOnClick text={address}>
-                            <button
-                                type={'button'}
-                                title={'Copy connection address'}
-                                className={
-                                    'mb-3 flex w-full items-center justify-center rounded-lg border border-neutral-500 bg-neutral-700/40 px-3 py-2 text-left hover:bg-neutral-600'
-                                }
-                            >
-                                <span className={'break-all text-center font-mono text-xs text-neutral-100'}>
-                                    <Sensitive>{address}</Sensitive>
-                                </span>
-                            </button>
-                        </CopyOnClick>
+                        <div
+                            className={
+                                'mb-3 flex w-full items-center gap-1 rounded-lg border border-neutral-500 bg-neutral-700/40 pr-1 hover:bg-neutral-600'
+                            }
+                        >
+                            <CopyOnClick text={address}>
+                                <button
+                                    type={'button'}
+                                    title={'Copy connection address'}
+                                    className={'min-w-0 flex-1 px-3 py-2 text-left'}
+                                >
+                                    <span className={'block break-all text-center font-mono text-xs text-neutral-100'}>
+                                        <Sensitive>{address}</Sensitive>
+                                    </span>
+                                </button>
+                            </CopyOnClick>
+                            <AddressMenu addresses={addresses} />
+                        </div>
                     )}
                     {playersUrl && (
                         <Link

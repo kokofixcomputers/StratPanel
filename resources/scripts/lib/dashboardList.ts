@@ -28,10 +28,10 @@ export const statusGroup = (server: Server, stats: ServerStats | undefined): Sta
 };
 
 export const addressOf = (server: Server): string =>
-    server.allocations
-        .filter((a) => a.isDefault)
-        .map((a) => `${a.alias || a.ip}:${a.port}`)
-        .join(' ');
+    [
+        ...(server.domains ?? []),
+        ...server.allocations.filter((a) => a.isDefault).map((a) => `${a.alias || a.ip}:${a.port}`),
+    ].join(' ');
 
 /** Every word of the search has to be in the name, description, address or node of the server. */
 export const matchesQuery = (server: Server, query: string): boolean => {

@@ -63,6 +63,8 @@ export interface Server {
     };
     // The egg (kind of server) it runs, for banners.
     eggId: number;
+    // The domains that lead to it (names players can connect with), see lib/connection.ts.
+    domains: string[];
     eggFeatures: string[];
     featureLimits: {
         databases: number;
@@ -103,6 +105,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     description: data.description ? (data.description.length > 0 ? data.description : null) : null,
     limits: { ...data.limits },
     eggId: data.egg_id,
+    domains: Array.isArray(data.domains) ? data.domains.map(String) : [],
     eggFeatures: data.egg_features || [],
     featureLimits: { ...data.feature_limits },
     isTransferring: data.is_transferring,

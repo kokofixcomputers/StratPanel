@@ -74,6 +74,8 @@ class ServerTransformer extends BaseClientTransformer
             ],
             'invocation' => $service->handle($server, !$user->can(Permission::ACTION_STARTUP_READ, $server)),
             'docker_image' => $server->image,
+            // The names players can use to connect (without a check of their DNS, that is for the Domains page), they are shown before the IP address.
+            'domains' => $server->domains->pluck('domain')->values()->all(),
             // Which kind of server this is, for the banner an admin can pick for it in the theme editor.
             'egg_id' => $server->egg_id,
             'egg_features' => $server->egg->inherit_features,

@@ -7,7 +7,7 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import { Server } from '@/api/server/getServer';
 import { ServerPowerState, ServerStats } from '@/api/server/getServerResourceUsage';
-import { bytesToString, ip, mbToBytes } from '@/lib/formatters';
+import { bytesToString, mbToBytes } from '@/lib/formatters';
 import tw, { TwStyle } from 'twin.macro';
 import GreyRowBox from '@/components/elements/GreyRowBox';
 import Spinner from '@/components/elements/Spinner';
@@ -19,6 +19,7 @@ import sendPowerAction, { PowerSignal } from '@/api/server/sendPowerAction';
 import { httpErrorToHuman } from '@/api/http';
 import { DashboardFolder } from '@/api/dashboardLayout';
 import { bannerFor, useThemeConfig } from '@/lib/themeConfig';
+import { primaryAddress } from '@/lib/connection';
 import DropdownMenu, { DropdownButtonRow } from '@/components/elements/DropdownMenu';
 
 // Determines if the current value is in an alarm threshold so we can show it in red rather
@@ -396,10 +397,8 @@ export default ({
     const cpuLimit = server.limits.cpu !== 0 ? server.limits.cpu + ' %' : 'Unlimited';
 
     const percent = (value: number, limit: number) => (limit > 0 ? Math.min(100, (value / limit) * 100) : 0);
-    const address = server.allocations
-        .filter((alloc) => alloc.isDefault)
-        .map((allocation) => `${allocation.alias || ip(allocation.ip)}:${allocation.port}`)
-        .join(', ');
+    // A domain when the server has one, else the default allocation.
+    const address = primaryAddress(server) ?? '';
 
     // Buttons only for a server that can be reached: not suspended, not on a node in maintenance, not installing or transferring.
     const controllable =

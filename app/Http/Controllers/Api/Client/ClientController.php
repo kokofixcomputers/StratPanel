@@ -4,10 +4,10 @@ namespace Pterodactyl\Http\Controllers\Api\Client;
 
 use Illuminate\Http\Request;
 use Pterodactyl\Models\Server;
-use Pterodactyl\Services\Palette\AdminDestinations;
 use Pterodactyl\Models\Permission;
 use Spatie\QueryBuilder\QueryBuilder;
 use Spatie\QueryBuilder\AllowedFilter;
+use Pterodactyl\Services\Palette\AdminDestinations;
 use Pterodactyl\Models\Filters\MultiFieldServerFilter;
 use Pterodactyl\Transformers\Api\Client\ServerTransformer;
 use Pterodactyl\Http\Requests\Api\Client\GetServersRequest;
@@ -33,7 +33,7 @@ class ClientController extends ClientApiController
 
         // Start the query builder and ensure we eager load any requested relationships from the request.
         $builder = QueryBuilder::for(
-            Server::query()->with($this->getIncludesForTransformer($transformer, ['node', 'autoSleep']))
+            Server::query()->with($this->getIncludesForTransformer($transformer, ['node', 'autoSleep', 'domains']))
         )->allowedFilters([
             'uuid',
             'name',

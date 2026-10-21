@@ -76,7 +76,7 @@ const serverAttrs = () => ({
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
-    egg_id: 1, egg_features: ['eula', 'java_version', 'pid_limit'], feature_limits: { databases: 3, allocations: 3, backups: 5 },
+    domains: ['play.stratos.example.com', 'survival.example.org'], egg_id: 1, egg_features: ['eula', 'java_version', 'pid_limit'], feature_limits: { databases: 3, allocations: 3, backups: 5 },
     is_transferring: false, skip_scripts: false,
     relationships: {
         allocations: { object: 'list', data: state.allocations.map((a) => item('allocation', a)) },

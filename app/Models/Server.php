@@ -334,6 +334,16 @@ class Server extends Model implements Identifiable
     }
 
     /**
+     * The domains that lead to this server (the Minecraft router sends them to an allocation).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\ServerDomain, $this>
+     */
+    public function domains(): HasMany
+    {
+        return $this->hasMany(ServerDomain::class)->orderBy('id');
+    }
+
+    /**
      * Gets information for the node associated with this server.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Node, $this>
