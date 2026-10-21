@@ -15,7 +15,8 @@ export type SoftwareType =
     | 'VELOCITY'
     | 'MOHIST'
     | 'YOUER'
-    | 'ARCLIGHT';
+    | 'ARCLIGHT'
+    | 'MAGMA';
 
 export interface Software {
     type: SoftwareType;
@@ -40,6 +41,7 @@ export const SOFTWARE: Software[] = [
         description: 'Forge or NeoForge that also loads Spigot plugins next to the mods.',
     },
     { type: 'YOUER', name: 'Youer', description: 'NeoForge that also loads Spigot plugins next to the mods.' },
+    { type: 'MAGMA', name: 'Magma', description: 'NeoForge that also loads Spigot plugins next to the mods.' },
     {
         type: 'ARCLIGHT',
         name: 'Arclight',

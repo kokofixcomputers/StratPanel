@@ -83,6 +83,8 @@ const detectCurrent = async (uuid: string, variableVersion: string | null): Prom
         type = 'MOHIST';
     } else if (has('youer-config')) {
         type = 'YOUER';
+    } else if (has('magma.yml', 'magma-config')) {
+        type = 'MAGMA';
     } else if (has('arclight.conf')) {
         type = 'ARCLIGHT';
     } else if (has('purpur.yml')) {

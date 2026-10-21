@@ -3,7 +3,7 @@ import { iconFor, SOFTWARE } from '@/lib/mcjars';
 describe('SOFTWARE', () => {
     it('has the hybrid servers, one of each', () => {
         const types = SOFTWARE.map((s) => s.type);
-        for (const type of ['MOHIST', 'YOUER', 'ARCLIGHT'] as const)
+        for (const type of ['MOHIST', 'YOUER', 'MAGMA', 'ARCLIGHT'] as const)
             expect(types.filter((t) => t === type)).toHaveLength(1);
         expect(iconFor('MOHIST')).toBe('https://s3.mcjars.app/icons/mohist.png');
     });

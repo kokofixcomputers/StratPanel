@@ -83,7 +83,7 @@ export const customGradientCss = (gradient: CustomGradient, mode: 'light' | 'dar
 export interface Banners {
     // By the id of the egg.
     eggs: Record<string, string>;
-    // By software: VANILLA, PAPER, PURPUR, SPIGOT, FABRIC, QUILT, FORGE, NEOFORGE, VELOCITY, MOHIST, YOUER, ARCLIGHT.
+    // By software: VANILLA, PAPER, PURPUR, SPIGOT, FABRIC, QUILT, FORGE, NEOFORGE, VELOCITY, MOHIST, YOUER, MAGMA, ARCLIGHT.
     software: Record<string, string>;
     // How much the card colour covers the picture, so the text stays readable.
     dim: number;
