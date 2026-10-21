@@ -789,6 +789,18 @@ export default () => {
                                     }[config.folders.style]
                                 }
                             </p>
+                            <Row label={'Numbers (CPU, memory...)'}>
+                                <Segmented
+                                    value={config.row.metricStyle}
+                                    onChange={(metricStyle) => set({ row: { ...config.row, metricStyle } })}
+                                    options={[
+                                        { value: 'bars', label: 'Bars' },
+                                        { value: 'tiles', label: 'Tiles' },
+                                        { value: 'rings', label: 'Rings' },
+                                        { value: 'chips', label: 'Chips' },
+                                    ]}
+                                />
+                            </Row>
                             <Row label={'Size of a server'}>
                                 <Segmented
                                     value={config.row.size}

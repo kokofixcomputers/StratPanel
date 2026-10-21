@@ -45,28 +45,134 @@ const StatusIndicatorBox = styled(GreyRowBox)<{ $status: ServerPowerState | unde
     }
 `;
 
-const Metric = ({ label, value, limit, alarm, ratio, card }: Record<string, any>) => (
-    <div css={card ? tw`min-w-0` : tw`w-32`}>
-        <div css={tw`flex items-baseline justify-between`}>
-            <span css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
-            <span css={[tw`text-xs font-semibold`, alarm ? tw`text-red-600` : tw`text-neutral-100`]}>{value}</span>
-        </div>
-        {ratio !== undefined && (
-            <div css={tw`mt-1.5 h-1.5 rounded-full bg-neutral-600 overflow-hidden`}>
-                <div
-                    css={[
-                        tw`h-full rounded-full transition-all duration-500`,
-                        alarm ? tw`bg-red-500` : tw`bg-primary-600`,
-                    ]}
-                    style={{ width: `${ratio}%` }}
-                />
+/** One number of a server (CPU, memory...), drawn the way the theme says (`row.metricStyle`): bars, tiles, rings or chips. */
+const Metric = ({ label, value, limit, alarm, ratio, card }: Record<string, any>) => {
+    const style = useThemeConfig().row.metricStyle;
+    const note = ratio === undefined ? limit : `of ${limit}`;
+
+    if (style === 'chips') {
+        // The dot says how loaded it is: green, amber from 70 percent, red from 90.
+        const dot =
+            ratio === undefined
+                ? 'bg-neutral-400'
+                : ratio >= 90 || alarm
+                ? 'bg-red-500'
+                : ratio >= 70
+                ? 'bg-amber-500'
+                : 'bg-green-500';
+
+        return (
+            <div
+                title={`${label}: ${value} ${note}`}
+                css={tw`inline-flex items-center gap-1.5 rounded-full border border-neutral-500 bg-neutral-600 px-2.5 py-1`}
+            >
+                <span className={dot} css={tw`h-2 w-2 rounded-full flex-shrink-0`} />
+                <span css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
+                <span css={[tw`text-xs font-semibold`, alarm ? tw`text-red-600` : tw`text-neutral-100`]}>{value}</span>
             </div>
-        )}
-        <p className={'metric-note'} css={tw`mt-1 text-2xs text-neutral-400`}>
-            {ratio === undefined ? limit : `of ${limit}`}
-        </p>
-    </div>
-);
+        );
+    }
+
+    if (style === 'rings') {
+        const radius = 16;
+        const circumference = 2 * Math.PI * radius;
+
+        return (
+            <div css={[tw`flex items-center gap-2.5`, card ? tw`min-w-0` : tw`w-36`]}>
+                {ratio !== undefined && (
+                    <svg viewBox={'0 0 40 40'} css={tw`h-10 w-10 flex-shrink-0 -rotate-90`} aria-hidden>
+                        <circle
+                            cx={20}
+                            cy={20}
+                            r={radius}
+                            fill={'none'}
+                            strokeWidth={4}
+                            stroke={'rgb(var(--c-neutral-600))'}
+                        />
+                        <circle
+                            cx={20}
+                            cy={20}
+                            r={radius}
+                            fill={'none'}
+                            strokeWidth={4}
+                            strokeLinecap={'round'}
+                            stroke={alarm ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-primary-600))'}
+                            strokeDasharray={circumference}
+                            strokeDashoffset={circumference * (1 - Math.min(100, ratio) / 100)}
+                            style={{ transition: 'stroke-dashoffset 500ms' }}
+                        />
+                    </svg>
+                )}
+                <div css={tw`min-w-0`}>
+                    <span css={tw`block text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
+                    <span
+                        css={[
+                            tw`block text-sm font-semibold leading-tight`,
+                            alarm ? tw`text-red-600` : tw`text-neutral-100`,
+                        ]}
+                    >
+                        {value}
+                    </span>
+                    <span className={'metric-note'} css={tw`block text-2xs text-neutral-400 truncate`}>
+                        {note}
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    if (style === 'tiles') {
+        return (
+            <div
+                css={[tw`rounded-lg border border-neutral-500 bg-neutral-600 px-3 py-2`, card ? tw`min-w-0` : tw`w-28`]}
+            >
+                <span css={tw`block text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
+                <span
+                    css={[
+                        tw`block text-base font-semibold leading-snug`,
+                        alarm ? tw`text-red-600` : tw`text-neutral-50`,
+                    ]}
+                >
+                    {value}
+                </span>
+                {ratio !== undefined && (
+                    <div css={tw`mt-1 h-1 rounded-full bg-neutral-500 overflow-hidden`}>
+                        <div
+                            css={[tw`h-full rounded-full`, alarm ? tw`bg-red-500` : tw`bg-primary-600`]}
+                            style={{ width: `${ratio}%` }}
+                        />
+                    </div>
+                )}
+                <span className={'metric-note'} css={tw`mt-1 block text-2xs text-neutral-400 truncate`}>
+                    {note}
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <div css={card ? tw`min-w-0` : tw`w-32`}>
+            <div css={tw`flex items-baseline justify-between`}>
+                <span css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>{label}</span>
+                <span css={[tw`text-xs font-semibold`, alarm ? tw`text-red-600` : tw`text-neutral-100`]}>{value}</span>
+            </div>
+            {ratio !== undefined && (
+                <div css={tw`mt-1.5 h-1.5 rounded-full bg-neutral-600 overflow-hidden`}>
+                    <div
+                        css={[
+                            tw`h-full rounded-full transition-all duration-500`,
+                            alarm ? tw`bg-red-500` : tw`bg-primary-600`,
+                        ]}
+                        style={{ width: `${ratio}%` }}
+                    />
+                </div>
+            )}
+            <p className={'metric-note'} css={tw`mt-1 text-2xs text-neutral-400`}>
+                {note}
+            </p>
+        </div>
+    );
+};
 
 /** "3d 4h", "2h 5m", "40s". */
 export const uptimeText = (milliseconds: number): string => {
@@ -418,7 +524,11 @@ export default ({
             <div
                 className={'row-metrics'}
                 css={
-                    card
+                    show.metricStyle === 'chips'
+                        ? card
+                            ? tw`hidden sm:flex flex-wrap col-span-12 gap-2 pr-4`
+                            : tw`hidden sm:flex flex-wrap col-span-12 sm:col-span-6 lg:col-span-7 items-center justify-end gap-2 pr-4`
+                        : card
                         ? tw`hidden sm:grid col-span-12 grid-cols-2 gap-x-4 gap-y-3 pr-4`
                         : tw`hidden sm:flex col-span-12 sm:col-span-6 lg:col-span-7 items-center justify-end gap-6 pr-4`
                 }

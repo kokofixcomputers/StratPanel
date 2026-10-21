@@ -169,6 +169,8 @@ export interface ThemeConfig {
         address: boolean;
         description: boolean;
         size: 'small' | 'medium' | 'large';
+        // How the numbers are drawn: bars, tiles side by side, rings, or small chips.
+        metricStyle: 'bars' | 'tiles' | 'rings' | 'chips';
         status: 'bar' | 'dot' | 'none';
     };
     // The weight of headings (500 to 800) and the spacing of letters.
@@ -235,6 +237,7 @@ export const DEFAULT_CONFIG: ThemeConfig = {
         address: true,
         description: true,
         size: 'medium',
+        metricStyle: 'bars',
         status: 'bar',
     },
     headingWeight: 600,

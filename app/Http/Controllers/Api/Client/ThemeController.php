@@ -91,6 +91,7 @@ class ThemeController extends ClientApiController
             'css' => 'present|nullable|string|max:30000',
             'attributes' => 'sometimes|array|max:30',
             'config.row.size' => ['required', Rule::in(['small', 'medium', 'large'])],
+            'config.row.metricStyle' => ['required', Rule::in(['bars', 'tiles', 'rings', 'chips'])],
             'config.row.status' => ['required', Rule::in(['bar', 'dot', 'none'])],
             'config.headingWeight' => ['required', Rule::in([500, 600, 700, 800])],
             'config.tracking' => ['required', Rule::in(['tight', 'normal', 'wide'])],

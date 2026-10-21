@@ -21,7 +21,7 @@ class ThemeTest extends RoleTestCase
             ],
             'radiusCustom' => 10, 'fontScale' => 105,
             'console' => ['style' => 'dark', 'brightness' => 80, 'fontSize' => 12],
-            'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'status' => 'dot'],
+            'row' => ['metrics' => ['cpu', 'uptime'], 'address' => true, 'description' => false, 'size' => 'small', 'metricStyle' => 'rings', 'status' => 'dot'],
             'customGradient' => ['angle' => 120, 'light' => ['#fdf6e3', '#f0e0c0'], 'dark' => ['#101010', '#202030', '#303040']],
             'folders' => ['style' => 'cards'],
             'banners' => ['eggs' => ['1' => '/branding/background-abcdef123456.jpg'], 'software' => ['PAPER' => 'https://img.example.com/paper.png'], 'dim' => 50],
@@ -150,6 +150,7 @@ class ThemeTest extends RoleTestCase
             ['login' => ['gradient' => 'Bad Gradient!']],
             ['motion' => ['buttonHover' => 'explode']],
             ['row' => ['size' => 'gigantic']],
+            ['row' => ['metricStyle' => 'pie']],
             ['pageWidth' => 'huge'],
         ] as $changes) {
             $this->actingAs($admin)->putJson('/api/client/theme', ['config' => $this->config($changes), 'css' => ''])->assertStatus(422);

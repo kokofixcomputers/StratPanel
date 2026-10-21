@@ -93,3 +93,8 @@ Server banners (`banners` in the config, section "Server banners"): a picture fo
 as `egg_id`) and for each software, also those that are no egg (Vanilla, Paper, Purpur, Spigot, Fabric, Quilt, Forge, NeoForge, Velocity). The picture
 fills the whole row of a server in place of the faint software logo, covered by the card colour (`dim`) so the text can be read. A server gets the
 banner of its egg first, else the one of its software (`bannerFor`).
+
+Numbers on a server row (`row.metricStyle`, Dashboard section, drawn by `Metric` in `components/dashboard/ServerRow.tsx`): *bars* (label and value with a bar and
+"of the limit", the way it was), *tiles* (each number in a small card, side by side), *rings* (a circular gauge with the value next to it) and *chips*
+(small pills with a dot that is green, amber from 70% and red from 90% load, which take the least room). Numbers that have no limit (uptime, network)
+show without a bar or ring.
