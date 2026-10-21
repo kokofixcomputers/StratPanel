@@ -20,6 +20,11 @@ class BrandingService
 
     public const SEO = 'settings::branding:seo';
 
+    public const CONSOLE_PROMPT = 'settings::branding:console_prompt';
+
+    /** What the panel's own lines in a server console start with ("Server marked as offline..."). */
+    public const DEFAULT_CONSOLE_PROMPT = 'container@stratosphere~';
+
     /** What search and sharing say about the panel, an empty value keeps the default (the name of the panel). */
     public const SEO_DEFAULTS = [
         'title' => '',
@@ -102,6 +107,27 @@ class BrandingService
         }
         $this->settings->forget(self::FAVICON);
         $this->payload = [];
+    }
+
+    /** The start of the panel's own lines in the console of a server, the default when an admin did not set one. */
+    public function consolePrompt(): string
+    {
+        $prompt = trim((string) $this->settings->get(self::CONSOLE_PROMPT, ''));
+
+        return $prompt !== '' ? $prompt : self::DEFAULT_CONSOLE_PROMPT;
+    }
+
+    /** An empty prompt goes back to the default. The characters are the ones of a shell prompt, nothing that could draw on the terminal. */
+    public function setConsolePrompt(?string $prompt): void
+    {
+        $this->payload = [];
+        $prompt = trim((string) $prompt);
+        if ($prompt === '' || $prompt === self::DEFAULT_CONSOLE_PROMPT) {
+            $this->settings->forget(self::CONSOLE_PROMPT);
+
+            return;
+        }
+        $this->settings->set(self::CONSOLE_PROMPT, $prompt);
     }
 
     /**
@@ -203,7 +229,7 @@ class BrandingService
     /** @return array<string, mixed> */
     private function build(bool $authenticated): array
     {
-        $data = ['favicon' => $this->favicon(), 'announcements' => [], 'links' => []];
+        $data = ['favicon' => $this->favicon(), 'announcements' => [], 'links' => [], 'console_prompt' => $this->consolePrompt()];
         if (!$authenticated) {
             return $data;
         }

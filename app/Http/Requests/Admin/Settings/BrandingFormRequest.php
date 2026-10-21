@@ -16,6 +16,7 @@ class BrandingFormRequest extends AdminFormRequest
         return [
             'favicon' => 'nullable|file|mimes:png,ico,gif,jpg,jpeg|max:512',
             'remove_favicon' => 'nullable|boolean',
+            'console_prompt' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9@._~:\- ]+$/'],
 
             'announcements' => 'nullable|array|max:20',
             'announcements.*.id' => 'nullable|string|max:32',
@@ -39,6 +40,7 @@ class BrandingFormRequest extends AdminFormRequest
     {
         return [
             'favicon' => 'Favicon',
+            'console_prompt' => 'console prompt',
             'announcements.*.message' => 'announcement message',
             'announcements.*.link_url' => 'announcement link',
             'links.*.label' => 'link label',
@@ -49,6 +51,7 @@ class BrandingFormRequest extends AdminFormRequest
     public function messages(): array
     {
         return [
+            'console_prompt.regex' => 'The console prompt may hold letters, numbers and @ . _ ~ : - and spaces.',
             'announcements.*.link_url.regex' => 'An announcement link must start with http://, https:// or /.',
             'links.*.url.regex' => 'A link address must start with http://, https:// or /.',
         ];

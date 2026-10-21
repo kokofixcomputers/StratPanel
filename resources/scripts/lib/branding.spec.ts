@@ -1,8 +1,24 @@
 import { DEFAULT_LOGO, isSafeUrl, linksAt, logoUrl, parseBranding, visibleAnnouncements } from '@/lib/branding';
 
+describe('console prompt', () => {
+    it('is the default when none is set', () => {
+        expect(parseBranding({}).consolePrompt).toBe('container@stratosphere~');
+        expect(parseBranding({ console_prompt: '   ' }).consolePrompt).toBe('container@stratosphere~');
+    });
+
+    it('is the one an admin set', () => {
+        expect(parseBranding({ console_prompt: ' koko@hosting~ ' }).consolePrompt).toBe('koko@hosting~');
+    });
+});
+
 describe('parseBranding', () => {
     it('gives nothing for a page without branding', () => {
-        expect(parseBranding(undefined)).toEqual({ favicon: null, announcements: [], links: [] });
+        expect(parseBranding(undefined)).toEqual({
+            favicon: null,
+            consolePrompt: 'container@stratosphere~',
+            announcements: [],
+            links: [],
+        });
         expect(parseBranding('x').links).toEqual([]);
     });
 

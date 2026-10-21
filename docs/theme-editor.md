@@ -116,3 +116,8 @@ Search and sharing (`seo` in `BrandingService`, section "Search and sharing", sa
 of the browser bar (`theme-color`, kept as it is instead of following light and dark when set) and the name and short name of the installed app. The web app manifest is
 public at `/manifest.webmanifest` (`Base/ManifestController.php`, name, short name, colours, the logo as the icon); the page links it and sets the Apple app title.
 An empty field means the name of the panel.
+
+Console prompt (`console_prompt` in `BrandingService`, default `container@stratosphere~`): the text in front of the lines the panel writes itself in a server console ("Server marked as
+offline...", the transfer failure notice, the lines of a forced stop). It is set under Admin > Settings > Branding (Console prompt box) or in the theme editor's Branding section, only
+letters, numbers and `@ . _ ~ : -` and spaces (max 40), empty is the default. It reaches the page with the rest of the branding, `Console.tsx` reads it with `useBranding`. Lines that come
+from Wings or the game are not changed.

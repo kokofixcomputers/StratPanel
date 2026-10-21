@@ -45,6 +45,7 @@ import {
 import WorldClockPill from '@/components/server/console/WorldClockPill';
 import { currentTheme, useTheme } from '@/lib/theme';
 import { consoleTheme, lightConsole } from '@/lib/consoleTheme';
+import useBranding from '@/plugins/useBranding';
 import { pageThemeConfig, useThemeConfig } from '@/lib/themeConfig';
 import { censorText, privacyOn, usePrivacy } from '@/lib/privacy';
 import 'xterm/css/xterm.css';
@@ -70,7 +71,9 @@ interface Chunk {
 }
 
 export default () => {
-    const TERMINAL_PRELUDE = '\u001b[1m\u001b[33mcontainer@pterodactyl~ \u001b[0m';
+    // The start of the lines the panel writes itself, an admin can change it (Settings > Branding).
+    const { consolePrompt } = useBranding();
+    const TERMINAL_PRELUDE = `\u001b[1m\u001b[33m${consolePrompt} \u001b[0m`;
     const ref = useRef<HTMLDivElement>(null);
     const { theme: mode } = useTheme();
     const look = useThemeConfig().console;

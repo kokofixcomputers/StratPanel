@@ -25,6 +25,8 @@ export interface CustomLink {
 
 export interface Branding {
     favicon: string | null;
+    // The start of the panel's own lines in a server console.
+    consolePrompt: string;
     announcements: Announcement[];
     links: CustomLink[];
 }
@@ -35,7 +37,14 @@ export const DEFAULT_LOGO = '/favicons/android-chrome-192x192.png';
 /** The picture for the logo spots of the panel (top bar, sign in page): the favicon an admin uploaded, or the default. */
 export const logoUrl = (favicon: string | null | undefined): string => favicon || DEFAULT_LOGO;
 
-export const EMPTY_BRANDING: Branding = { favicon: null, announcements: [], links: [] };
+export const DEFAULT_CONSOLE_PROMPT = 'container@stratosphere~';
+
+export const EMPTY_BRANDING: Branding = {
+    favicon: null,
+    consolePrompt: DEFAULT_CONSOLE_PROMPT,
+    announcements: [],
+    links: [],
+};
 
 /** The server sends snake_case, the panel works with camelCase. Anything missing falls back to nothing. */
 export const parseBranding = (raw: any): Branding => {
@@ -43,6 +52,10 @@ export const parseBranding = (raw: any): Branding => {
 
     return {
         favicon: typeof raw.favicon === 'string' && raw.favicon ? raw.favicon : null,
+        consolePrompt:
+            typeof raw.console_prompt === 'string' && raw.console_prompt.trim()
+                ? raw.console_prompt.trim()
+                : DEFAULT_CONSOLE_PROMPT,
         announcements: (Array.isArray(raw.announcements) ? raw.announcements : [])
             .filter((a: any) => a && typeof a.message === 'string' && a.message)
             .map((a: any) => ({

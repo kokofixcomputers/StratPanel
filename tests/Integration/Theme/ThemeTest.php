@@ -15,6 +15,7 @@ class ThemeTest extends RoleTestCase
         // The settings are kept between tests, every test starts from the default look and the default search and sharing settings.
         app(ThemeService::class)->reset();
         app(BrandingService::class)->saveSeo([]);
+        app(BrandingService::class)->setConsolePrompt(null);
     }
 
     private function config(array $changes = []): array
@@ -317,5 +318,37 @@ class ThemeTest extends RoleTestCase
 
         $this->assertStringContainsString('content="noindex"', $html);
         $this->assertStringNotContainsString('name="description"', $html);
+    }
+
+    public function testTheConsolePromptDefaultsToStratosphereAndCanBeChanged(): void
+    {
+        $admin = $this->rootAdmin();
+        $branding = app(BrandingService::class);
+
+        $this->assertSame('container@stratosphere~', $branding->consolePrompt());
+        $this->actingAs($admin)->getJson('/api/client/theme/branding')->assertOk()->assertJsonPath('console_prompt', 'container@stratosphere~');
+
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['console_prompt' => 'koko@hosting~'])->assertOk()->assertJsonPath('console_prompt', 'koko@hosting~');
+        $this->assertSame('koko@hosting~', $branding->consolePrompt());
+        // The panel hands it to the page with the rest of the branding.
+        $this->assertSame('koko@hosting~', $branding->toArray(true)['console_prompt']);
+
+        // Empty goes back to the default, a prompt with control characters or a lot of text is refused.
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['console_prompt' => ''])->assertOk()->assertJsonPath('console_prompt', 'container@stratosphere~');
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['console_prompt' => "x\e[31m"])->assertStatus(422);
+        $this->actingAs($admin)->putJson('/api/client/theme/branding', ['console_prompt' => str_repeat('a', 41)])->assertStatus(422);
+        $this->actingAs($this->makeUser())->putJson('/api/client/theme/branding', ['console_prompt' => 'x'])->assertForbidden();
+    }
+
+    public function testTheAdminBrandingPageHasTheConsolePrompt(): void
+    {
+        $admin = $this->rootAdmin();
+        if (!defined('LARAVEL_START')) {
+            define('LARAVEL_START', microtime(true));
+        }
+
+        $this->actingAs($admin)->get('/admin/settings/branding')->assertOk()->assertSee('Console prompt')->assertSee('container@stratosphere~');
+        $this->actingAs($admin)->patch('/admin/settings/branding', ['console_prompt' => 'koko@hosting~'])->assertRedirect();
+        $this->assertSame('koko@hosting~', app(BrandingService::class)->consolePrompt());
     }
 }

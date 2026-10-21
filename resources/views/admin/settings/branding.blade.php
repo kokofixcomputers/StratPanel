@@ -59,6 +59,23 @@
             <div class="col-xs-12">
                 <div class="box">
                     <div class="box-header with-border">
+                        <h3 class="box-title">Console prompt</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="form-group" style="max-width: 420px; margin-bottom: 0;">
+                            <label class="control-label" for="console-prompt">Start of the panel's own lines</label>
+                            <input type="text" id="console-prompt" name="console_prompt" class="form-control" maxlength="40" value="{{ old('console_prompt', $consolePrompt) }}" placeholder="{{ \Pterodactyl\Services\Branding\BrandingService::DEFAULT_CONSOLE_PROMPT }}">
+                            <p class="bx-hint" style="margin: 8px 0 0;">The text in front of the lines the panel writes in a server's console, such as <code>{{ $consolePrompt }} Server marked as offline...</code>. Leave it empty for the default.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="box">
+                    <div class="box-header with-border">
                         <h3 class="box-title">Announcements</h3>
                         <div class="box-tools">
                             <button type="button" class="btn btn-default btn-xs" id="add-announcement"><i class="fa fa-plus"></i> Add announcement</button>

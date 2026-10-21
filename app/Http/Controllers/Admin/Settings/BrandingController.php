@@ -22,6 +22,7 @@ class BrandingController extends Controller
     {
         return view('admin.settings.branding', [
             'favicon' => $this->branding->favicon(),
+            'consolePrompt' => $this->branding->consolePrompt(),
             'announcements' => $this->branding->announcements(),
             'links' => $this->branding->links(),
             'locations' => BrandingService::LOCATIONS,
@@ -40,6 +41,7 @@ class BrandingController extends Controller
             $this->branding->removeFavicon();
         }
 
+        $this->branding->setConsolePrompt($request->input('console_prompt'));
         $this->branding->saveAnnouncements($request->input('announcements', []));
         $this->branding->saveLinks($request->input('links', []));
 

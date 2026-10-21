@@ -35,6 +35,7 @@ export interface Seo {
 
 export interface BrandingData {
     favicon: string | null;
+    console_prompt: string;
     seo: Seo;
     announcements: Announcement[];
     links: BrandLink[];
@@ -78,6 +79,7 @@ export const BrandingPanel = ({
     onDraft: (links: BrandLink[]) => void;
 }) => {
     const [links, setLinks] = useState<BrandLink[]>(data.links);
+    const [prompt, setPrompt] = useState(data.console_prompt);
     useEffect(() => onDraft(links), [links]);
     const save = useSave(onSaved);
     const change = (i: number, changes: Partial<BrandLink>) =>
@@ -137,6 +139,35 @@ export const BrandingPanel = ({
                 <p className={'mt-1 text-2xs text-neutral-400'}>
                     The same picture is the logo of the panel and the icon of the browser tab (png, ico, gif or jpg, 512
                     KB).
+                </p>
+            </Row>
+            <Row label={'Console prompt'}>
+                <div className={'flex items-center gap-2'}>
+                    <input
+                        value={prompt}
+                        maxLength={40}
+                        spellCheck={false}
+                        placeholder={'container@stratosphere~'}
+                        onChange={(e) => setPrompt(e.currentTarget.value)}
+                        className={`${field} font-mono text-xs`}
+                    />
+                    <Button
+                        type={'button'}
+                        disabled={save.busy}
+                        onClick={() =>
+                            save.run(
+                                () => http.put('/api/client/theme/branding', { console_prompt: prompt }),
+                                'Prompt saved.'
+                            )
+                        }
+                    >
+                        Save
+                    </Button>
+                </div>
+                <p className={'mt-1 text-2xs text-neutral-400'}>
+                    The start of the lines the panel writes in a server console, like{' '}
+                    <code>{prompt || 'container@stratosphere~'} Server marked as offline...</code>. Letters, numbers and
+                    @ . _ ~ : - only. Empty is the default.
                 </p>
             </Row>
             <Row label={'Links in the bars'}>
