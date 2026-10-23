@@ -81,6 +81,7 @@ export default () => {
                 software,
                 version: selectedVersion,
                 build: selectedBuild,
+                loader: selection.loader,
                 onProgress: setProgress,
             });
             setFinished('success');

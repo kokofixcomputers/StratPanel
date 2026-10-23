@@ -24,6 +24,8 @@ export interface Software {
     description: string;
     // MCJars calls it experimental: it works, but it may break or lag behind, and the panel says so where it is chosen.
     experimental?: boolean;
+    // Its builds are for several mod loaders (the name of a build ends in the loader): the loader is chosen after the version.
+    loaders?: boolean;
 }
 
 export const SOFTWARE: Software[] = [
@@ -46,6 +48,7 @@ export const SOFTWARE: Software[] = [
         type: 'ARCLIGHT',
         name: 'Arclight',
         description: 'A Bukkit server built with Mixins, for mods and plugins on Fabric, Forge or NeoForge.',
+        loaders: true,
     },
 ];
 
@@ -101,6 +104,35 @@ export const getBuilds = async (type: SoftwareType, version: string): Promise<Bu
     const { builds } = await getJson(`/builds/${type}/${encodeURIComponent(version)}`);
 
     return (builds as Build[]).sort((a, b) => b.id - a.id);
+};
+
+export type ModLoader = 'fabric' | 'neoforge' | 'forge';
+
+export const MOD_LOADER_INFO: Record<ModLoader, { name: string; description: string }> = {
+    fabric: { name: 'Fabric', description: 'Light and fast, most new mods.' },
+    neoforge: { name: 'NeoForge', description: 'The modern continuation of Forge.' },
+    forge: { name: 'Forge', description: 'The classic mod loader, many older mods.' },
+};
+
+/** The mod loader a build is for, from the end of its name ("1.0.0-SNAPSHOT-6933aad-fabric"). Null when the name does not say. */
+export const loaderOfBuild = (build: Pick<Build, 'name' | 'projectVersionId'>): ModLoader | null => {
+    for (const text of [build.name, build.projectVersionId]) {
+        const match = /-(neoforge|fabric|forge)$/i.exec(text || '');
+        if (match) return match[1].toLowerCase() as ModLoader;
+    }
+
+    return null;
+};
+
+/** The loaders the builds of a version are for, the one of the newest build first. */
+export const loadersOfBuilds = (builds: Pick<Build, 'name' | 'projectVersionId'>[]): ModLoader[] => {
+    const found: ModLoader[] = [];
+    for (const build of builds) {
+        const loader = loaderOfBuild(build);
+        if (loader && !found.includes(loader)) found.push(loader);
+    }
+
+    return found;
 };
 
 export const buildLabel = (build: Build): string =>

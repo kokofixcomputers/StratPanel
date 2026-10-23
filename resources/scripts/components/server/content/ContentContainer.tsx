@@ -87,6 +87,8 @@ export default () => {
 
                 if (MOD_LOADERS.includes(current.type)) update({ kind: 'mod', loader: current.type.toLowerCase() });
                 else if (HYBRID_LOADERS[current.type]) update({ kind: 'mod', loader: HYBRID_LOADERS[current.type] });
+                else if (current.loader && ['fabric', 'neoforge', 'forge'].includes(current.loader))
+                    update({ kind: 'mod', loader: current.loader });
                 else if (PROXY_LOADERS[current.type]) update({ loader: PROXY_LOADERS[current.type] });
             })
             .catch(() => undefined);

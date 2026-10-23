@@ -12,6 +12,10 @@ import {
     getBuilds,
     getVersions,
     iconFor,
+    loaderOfBuild,
+    loadersOfBuilds,
+    MOD_LOADER_INFO,
+    ModLoader,
     Software,
     SOFTWARE,
     SoftwareType,
@@ -93,13 +97,16 @@ export const useVersionSelection = (type: SoftwareType, onError: (message: strin
     const [versions, setVersions] = useState<VersionInfo[] | null>(null);
     const [showSnapshots, setShowSnapshots] = useState(false);
     const [version, setVersion] = useState('');
-    const [builds, setBuilds] = useState<Build[] | null>(null);
+    const [allBuilds, setAllBuilds] = useState<Build[] | null>(null);
     const [buildId, setBuildId] = useState<number | null>(null);
+    // Software whose builds are for several mod loaders (Arclight) asks for the loader after the version.
+    const [wantedLoader, setWantedLoader] = useState<ModLoader | null>(null);
+    const chooses = !!SOFTWARE.find((s) => s.type === type)?.loaders;
 
     useEffect(() => {
         let cancelled = false;
         setVersions(null);
-        setBuilds(null);
+        setAllBuilds(null);
         setVersion('');
 
         getVersions(type)
@@ -125,21 +132,32 @@ export const useVersionSelection = (type: SoftwareType, onError: (message: strin
         if (!version) return;
 
         let cancelled = false;
-        setBuilds(null);
+        setAllBuilds(null);
         getBuilds(type, version)
-            .then((list) => {
-                if (cancelled) return;
-
-                setBuilds(list);
-                // Prefer the newest stable build, experimental ones are still selectable.
-                setBuildId((list.find((b) => !b.experimental) || list[0])?.id ?? null);
-            })
+            .then((list) => !cancelled && setAllBuilds(list))
             .catch((error) => onError(error.message));
 
         return () => {
             cancelled = true;
         };
     }, [type, version]);
+
+    // What was chosen stays chosen from one version to the next while the version has builds for it, otherwise the loader of the newest build.
+    const loaders = useMemo(() => (chooses && allBuilds ? loadersOfBuilds(allBuilds) : []), [chooses, allBuilds]);
+    const loader: ModLoader | null = loaders.length
+        ? wantedLoader && loaders.includes(wantedLoader)
+            ? wantedLoader
+            : loaders[0]
+        : null;
+    const builds = useMemo(
+        () => (allBuilds && loader ? allBuilds.filter((b) => loaderOfBuild(b) === loader) : allBuilds),
+        [allBuilds, loader]
+    );
+
+    // Prefer the newest stable build, experimental ones are still selectable.
+    useEffect(() => {
+        if (builds) setBuildId((builds.find((b) => !b.experimental) || builds[0])?.id ?? null);
+    }, [builds]);
 
     return {
         versions,
@@ -149,6 +167,9 @@ export const useVersionSelection = (type: SoftwareType, onError: (message: strin
         version,
         setVersion,
         builds,
+        loaders,
+        loader,
+        setLoader: setWantedLoader,
         buildId,
         setBuildId,
         selectedVersion: (versions || []).find((v) => v.id === version),
@@ -203,8 +224,20 @@ const pick = (selected: boolean) =>
 
 /** The version to install, as cards with a search, and then the build of it as cards. */
 export const VersionFields = ({ title, selection }: { title: string; selection: Selection }) => {
-    const { versions, visible, version, setVersion, builds, buildId, setBuildId, showSnapshots, setShowSnapshots } =
-        selection;
+    const {
+        versions,
+        visible,
+        version,
+        setVersion,
+        builds,
+        buildId,
+        setBuildId,
+        showSnapshots,
+        setShowSnapshots,
+        loaders,
+        loader,
+        setLoader,
+    } = selection;
     const [query, setQuery] = useState('');
     const [allVersions, setAllVersions] = useState(false);
     const [buildQuery, setBuildQuery] = useState('');
@@ -289,9 +322,35 @@ export const VersionFields = ({ title, selection }: { title: string; selection: 
                             </button>
                         )}
                     </div>
+                    {loaders.length > 0 && (
+                        <div>
+                            <Label>Mod loader</Label>
+                            <div css={tw`grid grid-cols-1 gap-2 sm:grid-cols-3`}>
+                                {loaders.map((id) => (
+                                    <button
+                                        key={id}
+                                        type={'button'}
+                                        onClick={() => setLoader(id)}
+                                        aria-pressed={id === loader}
+                                        className={pick(id === loader)}
+                                    >
+                                        <span css={tw`block text-sm font-semibold text-neutral-50`}>
+                                            {MOD_LOADER_INFO[id].name}
+                                        </span>
+                                        <span css={tw`mt-1 block text-xs text-neutral-400`}>
+                                            {MOD_LOADER_INFO[id].description}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <div css={tw`mb-2 flex items-center justify-between gap-3`}>
-                            <Label css={tw`mb-0`}>Build{version ? ` of ${version}` : ''}</Label>
+                            <Label css={tw`mb-0`}>
+                                Build{version ? ` of ${version}` : ''}
+                                {loader ? ` for ${MOD_LOADER_INFO[loader].name}` : ''}
+                            </Label>
                             <div css={tw`w-48`}>
                                 <SearchBox value={buildQuery} onChange={setBuildQuery} placeholder={'Search builds'} />
                             </div>
@@ -313,8 +372,13 @@ export const VersionFields = ({ title, selection }: { title: string; selection: 
                                         className={pick(b.id === buildId)}
                                     >
                                         <span css={tw`flex items-center justify-between gap-2`}>
-                                            <span css={tw`truncate text-sm font-semibold text-neutral-50`}>
-                                                {buildLabel(b)}
+                                            <span
+                                                css={tw`truncate text-sm font-semibold text-neutral-50`}
+                                                title={buildLabel(b)}
+                                            >
+                                                {loader
+                                                    ? buildLabel(b).replace(new RegExp(`-${loader}$`, 'i'), '')
+                                                    : buildLabel(b)}
                                             </span>
                                             {b.id === builds[0]?.id && buildQuery.trim() === '' ? (
                                                 <Chip tone={'primary'}>newest</Chip>

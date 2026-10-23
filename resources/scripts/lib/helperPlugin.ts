@@ -32,15 +32,26 @@ const BUILDS: Record<string, HelperBuild> = {
 export const HELPER_FILE = PLUGIN.file;
 export const HELPER_SOFTWARE = Object.keys(BUILDS);
 
-/** The helper that fits a kind of server software (PAPER, fabric, ...), null when there is none. */
-export const helperBuild = (software: string | null | undefined): HelperBuild | null =>
-    (software && BUILDS[software.toUpperCase()]) || null;
+// Arclight runs mods of the loader that was chosen with it, so the helper is the mod of that loader. There is none for Forge.
+const BY_LOADER: Record<string, HelperBuild | null> = { fabric: BUILDS.FABRIC, neoforge: BUILDS.NEOFORGE, forge: null };
 
-export const wantsHelper = (software: string | null | undefined): boolean => !!helperBuild(software);
+/**
+ * The helper that fits a kind of server software (PAPER, fabric, ...), null when there is none. Software with several mod loaders
+ * (Arclight) needs the loader as well.
+ */
+export const helperBuild = (software: string | null | undefined, loader?: string | null): HelperBuild | null => {
+    const key = (software || '').toUpperCase();
+    if (key === 'ARCLIGHT') return (loader && BY_LOADER[loader.toLowerCase()]) || null;
+
+    return (key && BUILDS[key]) || null;
+};
+
+export const wantsHelper = (software: string | null | undefined, loader?: string | null): boolean =>
+    !!helperBuild(software, loader);
 
 /** Puts the bundled helper into /plugins or /mods, replacing an older copy of itself. */
-export const installHelperPlugin = async (uuid: string, software = 'PAPER'): Promise<void> => {
-    const build = helperBuild(software);
+export const installHelperPlugin = async (uuid: string, software = 'PAPER', loader?: string | null): Promise<void> => {
+    const build = helperBuild(software, loader);
     if (!build) throw new Error('There is no helper for this kind of server.');
 
     const response = await fetch(`/helper/${build.file}`, { cache: 'no-cache' });
@@ -71,8 +82,8 @@ export const installHelperPlugin = async (uuid: string, software = 'PAPER'): Pro
 };
 
 /** The version of the helper that ships with this panel for a kind of software, null when the panel has none. */
-export const bundledHelperVersion = async (software = 'PAPER'): Promise<string | null> => {
-    const build = helperBuild(software);
+export const bundledHelperVersion = async (software = 'PAPER', loader?: string | null): Promise<string | null> => {
+    const build = helperBuild(software, loader);
     if (!build) return null;
 
     try {

@@ -10,6 +10,8 @@ export interface CurrentVersion {
     version: string | null;
     build: string | null;
     java?: number | null;
+    // The mod loader of software that has several (Arclight), as the panel stored it when it installed it.
+    loader?: string | null;
     source: 'panel' | 'detected';
     installedAt?: string;
 }
@@ -21,6 +23,7 @@ interface Marker {
     minecraftVersion: string;
     build: string;
     java: number;
+    loader?: string;
     installedAt: string;
     installedBy: string;
 }
@@ -50,6 +53,7 @@ const readMarker = async (uuid: string): Promise<CurrentVersion | null> => {
             version,
             build: data.build ? String(data.build) : null,
             java: data.java ? Number(data.java) : null,
+            loader: typeof data.loader === 'string' && data.loader ? data.loader.toLowerCase() : null,
             source: 'panel',
             installedAt: data.installedAt as string | undefined,
         };

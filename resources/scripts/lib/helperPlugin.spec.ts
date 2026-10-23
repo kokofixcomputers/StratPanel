@@ -30,13 +30,44 @@ describe('lib/helperPlugin', () => {
         });
     });
 
+    describe('Arclight, which has several mod loaders', () => {
+        it('gets the mod of the loader that was chosen', () => {
+            expect(helperBuild('ARCLIGHT', 'fabric')).toEqual({
+                file: 'Stratosphere-fabric.jar',
+                folder: '/mods',
+                key: 'fabric',
+            });
+            expect(helperBuild('arclight', 'NeoForge')).toEqual({
+                file: 'Stratosphere-neoforge.jar',
+                folder: '/mods',
+                key: 'neoforge',
+            });
+        });
+
+        it('gets nothing for Forge, which has no helper, or without a loader', () => {
+            expect(helperBuild('ARCLIGHT', 'forge')).toBeNull();
+            expect(helperBuild('ARCLIGHT')).toBeNull();
+            expect(helperBuild('ARCLIGHT', 'quilt')).toBeNull();
+            expect(wantsHelper('ARCLIGHT', 'fabric')).toBe(true);
+            expect(wantsHelper('ARCLIGHT', null)).toBe(false);
+        });
+
+        it('does not let a loader change the software that has one helper', () => {
+            expect(helperBuild('PAPER', 'fabric')).toEqual({ file: 'Stratosphere.jar', folder: '/plugins', key: null });
+        });
+    });
+
     describe('wantsHelper', () => {
         it('is true for the software that has a helper', () => {
-            expect(['PAPER', 'FABRIC', 'NEOFORGE', 'SPIGOT', 'PURPUR'].every(wantsHelper)).toBe(true);
+            expect(['PAPER', 'FABRIC', 'NEOFORGE', 'SPIGOT', 'PURPUR'].every((software) => wantsHelper(software))).toBe(
+                true
+            );
         });
 
         it('is false for the rest', () => {
-            expect(['FORGE', 'QUILT', 'VELOCITY', '', null, undefined].some(wantsHelper)).toBe(false);
+            expect(['FORGE', 'QUILT', 'VELOCITY', '', null, undefined].some((software) => wantsHelper(software))).toBe(
+                false
+            );
         });
     });
 

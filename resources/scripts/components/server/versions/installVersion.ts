@@ -7,7 +7,7 @@ import setSelectedDockerImage from '@/api/server/setSelectedDockerImage';
 import { Websocket } from '@/plugins/Websocket';
 import { writeMarker } from '@/components/server/versions/detectCurrent';
 import { installHelperPlugin, wantsHelper } from '@/lib/helperPlugin';
-import { Build, CLEANUP_PATHS, InstallStep, Software, VersionInfo } from '@/lib/mcjars';
+import { Build, CLEANUP_PATHS, InstallStep, ModLoader, Software, VersionInfo } from '@/lib/mcjars';
 
 export type StepState = 'pending' | 'running' | 'done' | 'skipped' | 'failed';
 
@@ -25,6 +25,8 @@ interface Context {
     software: Software;
     version: VersionInfo;
     build: Build;
+    // The mod loader chosen for software that has several (Arclight), null for the rest.
+    loader?: ModLoader | null;
     onProgress: (steps: ProgressStep[]) => void;
 }
 
@@ -69,8 +71,14 @@ export default async (ctx: Context): Promise<void> => {
         })),
         { key: 'config', label: 'Updating the startup configuration', state: 'pending' },
         // Servers that load plugins get the helper plugin, without asking.
-        ...(wantsHelper(ctx.software.type)
-            ? [{ key: 'helper', label: 'Installing the helper plugin', state: 'pending' as StepState }]
+        ...(wantsHelper(ctx.software.type, ctx.loader)
+            ? [
+                  {
+                      key: 'helper',
+                      label: ctx.loader ? 'Installing the helper mod' : 'Installing the helper plugin',
+                      state: 'pending' as StepState,
+                  },
+              ]
             : []),
     ];
 
@@ -140,6 +148,8 @@ export default async (ctx: Context): Promise<void> => {
                 minecraftVersion: ctx.version.id,
                 build: ctx.build.projectVersionId || ctx.build.name,
                 java: ctx.version.java,
+                // The mod loader of software that has several, so the panel knows which mods and which helper fit. Gone for the rest.
+                loader: ctx.loader ?? undefined,
             }).catch(() => undefined);
 
             const { data } = await http.get(`/api/client/servers/${ctx.uuid}/startup`);
@@ -169,7 +179,7 @@ export default async (ctx: Context): Promise<void> => {
     );
 
     // Optional: a server without the helper plugin works, it only misses some conveniences.
-    if (wantsHelper(ctx.software.type)) {
-        await run('helper', () => installHelperPlugin(ctx.uuid, ctx.software.type), true);
+    if (wantsHelper(ctx.software.type, ctx.loader)) {
+        await run('helper', () => installHelperPlugin(ctx.uuid, ctx.software.type, ctx.loader), true);
     }
 };
