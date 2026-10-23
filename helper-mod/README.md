@@ -4,13 +4,19 @@ The mod version of the [helper plugin](../helper-plugin). It speaks the same pro
 [`docs/stratosphere-commands.md`](../docs/stratosphere-commands.md), so the panel treats it like the plugin: tab completion
 from the command tree of the server, the list of players, their vitals, inventory, ender chest and the shulker boxes in them, TPS and MSPT.
 
-There is **one jar per loader** and each works on **Minecraft 1.21.1 to 1.21.11 and 26.1 and newer** (tested on every one of 1.21.1 to
-1.21.11 and on 26.3, on both loaders):
+There is **one jar per loader**:
+
+- **Fabric:** Minecraft **1.20 to 1.21.11 and 26.1 and newer**.
+- **NeoForge:** Minecraft **1.20.2 to 1.21.11 and 26.1 and newer**. (NeoForge for 1.20 and 1.20.1 is Forge's API under another name, it
+  would need a mod of its own, which this is not.)
+
+Every one of these versions and loaders was tried on a real server (and 26.3 for the 26.x ones), see below.
+
 
 | Jar | Loader | Needs |
 |---|---|---|
-| `Stratosphere-fabric.jar` | Fabric Loader 0.16+ and Fabric API | Java 21 on 1.21.x, Java 25 on 26.x |
-| `Stratosphere-neoforge.jar` | NeoForge 21.1+ | Java 21 on 1.21.x, Java 25 on 26.x |
+| `Stratosphere-fabric.jar` | Fabric Loader 0.16+ and Fabric API | Java 17 on 1.20 to 1.20.4, Java 21 from 1.20.5, Java 25 on 26.x |
+| `Stratosphere-neoforge.jar` | NeoForge 20.2+ | the same |
 
 Put it in the `mods` folder. The panel does that itself when it installs Fabric or NeoForge, and offers to update it when the
 version differs from the one it ships with. Other versions of Minecraft are not supported, the mod says so in the log and
@@ -26,6 +32,9 @@ keeps working**:
 
 | Generation | Games | Built against |
 |---|---|---|
+| `g120` | 1.20 to 1.20.1 (Fabric only) | 1.20.1 |
+| `g1204` | 1.20.2 to 1.20.4 | 1.20.4 |
+| `g1206` | 1.20.5 to 1.20.6 | 1.20.6 |
 | `g121` | 1.21.1 | 1.21.1 |
 | `g1214` | 1.21.2 to 1.21.4 | 1.21.4 |
 | `g1218` | 1.21.5 to 1.21.10 | 1.21.8 |
@@ -45,8 +54,13 @@ fabric-26/, neoforge-26/ also hold the entry point, which knows no Minecraft cla
                  loads the package of the right generation.
 ```
 
+The older generations (`g120`, `g1204`) keep what an item carries in NBT, the newer ones in components (1.20.5), which is the main
+thing `Compat` has to know about: names, enchantments, trims, what is in a shulker box, and how a test player is made. NeoForge 20.2 to
+20.4 also have another tick event (`neoforge-hooks-20`) and read `META-INF/mods.toml`, which the jar carries next to
+`neoforge.mods.toml`.
+
 `./gradlew mods` merges the pieces into `build/libs/stratosphere-fabric-<version>.jar` and `stratosphere-neoforge-<version>.jar`.
-Everything is Java 21 bytecode so the jar loads on Java 21 as well as 25. Gradle itself has to run on Java 25, because the 26.x
+Everything is Java 17 bytecode so the jar loads on Java 17 (1.20 to 1.20.4) as well as 21 and 25. Gradle itself has to run on Java 25, because the 26.x
 game classes are Java 25 class files.
 
 ## Building
@@ -61,10 +75,10 @@ scripts/bundle.sh [version]    # the same, and copies them into ../public/helper
 
 ## Testing on real servers
 
-`scripts/test-server.sh <fabric|neoforge> <1.21.1 to 1.21.11|26.2|26.3>` downloads the server and the loader, installs the jar, starts it
+`scripts/test-server.sh <fabric|neoforge> <1.20 to 1.21.11|26.2|26.3>` downloads the server and the loader, installs the jar, starts it
 and sends the panel's commands to the console. The server runs with `-Dstratosphere.selftest=true`, which adds a player that is
 not connected, `TestBot`, with an enchanted sword, stone, boots, an ender chest item and shulker boxes (one with items in it), so the player tools can be tried without
-a game client. The script prints what the mod answered. This is how every combination was checked (1.21.1 to 1.21.11 and 26.3, both loaders); changing the game
+a game client. The script prints what the mod answered. This is how every combination was checked (1.20 to 1.21.11 and 26.3, both loaders where there is one); changing the game
 mode (`gamemode`) needs a real connection and is not covered.
 
 ## A version of the game that lacks something
@@ -79,5 +93,5 @@ Try it first: put the version in the table of `scripts/test-server.sh` and run i
 call is missing. Then add a generation: copy a `mc-<name>` folder (its `Compat.java`) and the two Gradle projects of the nearest one
 (`fabric-1218`, `neoforge-1218`), point them at the new game version in `gradle.properties`, and add them to `settings.gradle`, the root
 `fabricJar` / `neoforgeJar` tasks and `Generation.forMinecraft`. The compiler lists what changed; the differences go into `Compat`
-(in 1.21.2 to 1.21.11 that was five lines). A version that shares everything with a neighbour needs no generation of its own, only an
+(in 1.21.2 to 1.21.11 that was five lines; 1.20.x also needed the NBT version of the item code). A version that shares everything with a neighbour needs no generation of its own, only an
 entry in `Generation.forMinecraft`.
