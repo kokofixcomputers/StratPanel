@@ -46,12 +46,9 @@ Route::group(['prefix' => 'locations'], function () {
 |
 */
 Route::group(['prefix' => 'databases'], function () {
-    Route::get('/', [Admin\DatabaseController::class, 'index'])->name('admin.databases')->middleware('admin.can:databases.view');
-    Route::get('/view/{host:id}', [Admin\DatabaseController::class, 'view'])->name('admin.databases.view')->middleware('admin.can:databases.view');
-
-    Route::post('/', [Admin\DatabaseController::class, 'create'])->middleware('admin.can:databases.create');
-    Route::patch('/view/{host:id}', [Admin\DatabaseController::class, 'update'])->middleware('admin.can:databases.update');
-    Route::delete('/view/{host:id}', [Admin\DatabaseController::class, 'delete'])->middleware('admin.can:databases.delete');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.databases')->middleware('admin.can:databases.view');
+    Route::get('/view/{host:id}', Admin\SpaController::class)->name('admin.databases.view')->middleware('admin.can:databases.view');
 });
 
 /*
@@ -85,7 +82,6 @@ Route::group(['prefix' => 'settings'], function () {
     Route::delete('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->name('admin.settings.domains.delete')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
     Route::get('/pools', [Admin\Settings\PoolsController::class, 'index'])->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
     Route::patch('/pools', [Admin\Settings\PoolsController::class, 'update'])->middleware('admin.can:settings.pools.update');
-    Route::patch('/pools/users/{user:id}', [Admin\Settings\PoolsController::class, 'updateUser'])->name('admin.settings.pools.user')->middleware('admin.can:users.update');
     Route::get('/trash', [Admin\Settings\TrashController::class, 'index'])->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::patch('/trash', [Admin\Settings\TrashController::class, 'update'])->middleware('admin.can:settings.trash.update');
     Route::get('/certificates', [Admin\Settings\CertificatesController::class, 'index'])->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
@@ -145,15 +141,13 @@ Route::group(['prefix' => 'extensions'], function () {
 |
 */
 Route::group(['prefix' => 'users'], function () {
-    Route::get('/', [Admin\UserController::class, 'index'])->name('admin.users')->middleware('admin.can:users.view');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.users')->middleware('admin.can:users.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.users.new')->middleware('admin.can:users.create');
+    Route::get('/view/{user:id}', Admin\SpaController::class)->name('admin.users.view')->middleware('admin.can:users.view');
+
+    // Still read by the pages that are not part of the app yet (a list of people to choose from).
     Route::get('/accounts.json', [Admin\UserController::class, 'json'])->name('admin.users.json')->middleware('admin.can:users.view,servers.create,servers.update,roles.assign');
-    Route::get('/new', [Admin\UserController::class, 'create'])->name('admin.users.new')->middleware('admin.can:users.create');
-    Route::get('/view/{user:id}', [Admin\UserController::class, 'view'])->name('admin.users.view')->middleware('admin.can:users.view');
-
-    Route::post('/new', [Admin\UserController::class, 'store'])->middleware('admin.can:users.create');
-
-    Route::patch('/view/{user:id}', [Admin\UserController::class, 'update'])->middleware('admin.can:users.update');
-    Route::delete('/view/{user:id}', [Admin\UserController::class, 'delete'])->name('admin.users.delete')->middleware('admin.can:users.delete');
 });
 
 /*
@@ -253,9 +247,6 @@ Route::group(['prefix' => 'roles'], function () {
     Route::get('/', Admin\SpaController::class)->name('admin.roles')->middleware('admin.can:roles.view');
     Route::get('/new', Admin\SpaController::class)->name('admin.roles.new')->middleware('admin.can:roles.create');
     Route::get('/view/{role:id}', Admin\SpaController::class)->name('admin.roles.view')->middleware('admin.can:roles.view');
-
-    // Still a form on the page of a user, which is not part of the app yet.
-    Route::post('/users/{user:id}', [Admin\RolesController::class, 'syncUser'])->name('admin.roles.user')->middleware('admin.can:roles.assign');
 });
 
 /*
@@ -267,17 +258,9 @@ Route::group(['prefix' => 'roles'], function () {
 |
 */
 Route::group(['prefix' => 'mounts'], function () {
-    Route::get('/', [Admin\MountController::class, 'index'])->name('admin.mounts')->middleware('admin.can:mounts.view');
-    Route::get('/view/{mount:id}', [Admin\MountController::class, 'view'])->name('admin.mounts.view')->middleware('admin.can:mounts.view');
-
-    Route::post('/', [Admin\MountController::class, 'create'])->middleware('admin.can:mounts.create');
-    Route::post('/{mount:id}/eggs', [Admin\MountController::class, 'addEggs'])->name('admin.mounts.eggs')->middleware('admin.can:mounts.update');
-    Route::post('/{mount:id}/nodes', [Admin\MountController::class, 'addNodes'])->name('admin.mounts.nodes')->middleware('admin.can:mounts.update');
-
-    Route::patch('/view/{mount:id}', [Admin\MountController::class, 'update'])->middleware('admin.can:mounts.update,mounts.delete');
-
-    Route::delete('/{mount:id}/eggs/{egg_id}', [Admin\MountController::class, 'deleteEgg'])->middleware('admin.can:mounts.update');
-    Route::delete('/{mount:id}/nodes/{node_id}', [Admin\MountController::class, 'deleteNode'])->middleware('admin.can:mounts.update');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.mounts')->middleware('admin.can:mounts.view');
+    Route::get('/view/{mount:id}', Admin\SpaController::class)->name('admin.mounts.view')->middleware('admin.can:mounts.view');
 });
 
 /*

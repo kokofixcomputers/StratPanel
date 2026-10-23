@@ -39,7 +39,7 @@ class AdminAccessTest extends RoleTestCase
 
         // The pages that are not part of the React app yet (Blade) have the same light and dark theme as the panel: its variables, the
         // choice kept in the browser and a way to change it.
-        $this->page('/admin/mounts')->assertOk()
+        $this->page('/admin/nodes')->assertOk()
             ->assertSee('themes/pterodactyl/css/panel-theme.css', false)
             ->assertSee('stratosphere:theme', false)
             ->assertSee('id="admin-theme-toggle"', false);
@@ -66,10 +66,10 @@ class AdminAccessTest extends RoleTestCase
         $this->actingAs($viewer);
 
         $this->page('/admin/users/view/' . $target->id)->assertOk();
-        $this->patch('/admin/users/view/' . $target->id, ['email' => 'new@' . self::DOMAIN, 'username' => 'changed', 'name_first' => 'a', 'name_last' => 'b', 'language' => 'en'])->assertStatus(403);
-        $this->delete('/admin/users/view/' . $target->id)->assertStatus(403);
-        $this->post('/admin/users/new', [])->assertStatus(403);
         $this->get('/admin/users/new')->assertStatus(403);
+        $this->patchJson('/api/client/admin/users/' . $target->id, ['email' => 'new@' . self::DOMAIN, 'username' => 'changed', 'name_first' => 'a', 'name_last' => 'b', 'language' => 'en'])->assertStatus(403);
+        $this->deleteJson('/api/client/admin/users/' . $target->id)->assertStatus(403);
+        $this->postJson('/api/client/admin/users', [])->assertStatus(403);
         $this->assertNotSame('changed', $target->fresh()->username);
     }
 
@@ -80,8 +80,8 @@ class AdminAccessTest extends RoleTestCase
 
         // users.update comes with users.view, and does not come with deleting or creating.
         $this->page('/admin/users/view/' . $target->id)->assertOk();
-        $this->delete('/admin/users/view/' . $target->id)->assertStatus(403);
-        $this->post('/admin/users/new', [])->assertStatus(403);
+        $this->deleteJson('/api/client/admin/users/' . $target->id)->assertStatus(403);
+        $this->postJson('/api/client/admin/users', [])->assertStatus(403);
     }
 
     public function testSettingsArePerPage(): void
@@ -142,7 +142,7 @@ class AdminAccessTest extends RoleTestCase
     public function testTheSidebarOnlyShowsWhatIsOpen(): void
     {
         $this->actingAs($this->userWith(['overview.view', 'users.view', 'nodes.view']));
-        $html = $this->sidebar($this->page('/admin/users')->assertOk()->getContent());
+        $html = $this->sidebar($this->page('/admin/nodes')->assertOk()->getContent());
 
         $this->assertStringContainsString(route('admin.users'), $html);
         $this->assertStringContainsString(route('admin.nodes'), $html);
@@ -155,7 +155,7 @@ class AdminAccessTest extends RoleTestCase
     public function testRootAdminsSeeTheWholeSidebar(): void
     {
         $this->actingAs($this->rootAdmin());
-        $html = $this->sidebar($this->page('/admin/mounts')->assertOk()->getContent());
+        $html = $this->sidebar($this->page('/admin/nodes')->assertOk()->getContent());
 
         foreach (['admin.users', 'admin.servers', 'admin.nodes', 'admin.roles', 'admin.extensions', 'admin.mounts', 'admin.nests', 'admin.locations', 'admin.databases', 'admin.api.index'] as $route) {
             $this->assertStringContainsString('href="' . route($route) . '"', $html, $route);

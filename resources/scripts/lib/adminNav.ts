@@ -99,7 +99,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['databases.view'],
         group: 'infrastructure',
         icon: DatabaseIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'locations',
@@ -135,7 +135,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['users.view'],
         group: 'management',
         icon: UsersIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'roles',
@@ -153,7 +153,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['mounts.view'],
         group: 'management',
         icon: CollectionIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'nests',

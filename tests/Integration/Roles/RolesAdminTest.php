@@ -84,7 +84,8 @@ class RolesAdminTest extends RoleTestCase
         $member->roles()->attach($role->id);
         $this->actingAs($this->rootAdmin());
 
-        $this->page('/admin/users?filter[username]=rolemember')->assertOk()->assertSee('Helpers');
+        $users = $this->getJson('/api/client/admin/users?search=rolemember')->assertOk()->json('users');
+        $this->assertSame(['Helpers'], array_column($users[0]['roles'], 'name'));
     }
 
     // ---- making, changing, deleting -------------------------------------------------------------------------------------
@@ -292,10 +293,10 @@ class RolesAdminTest extends RoleTestCase
         $target->roles()->attach($a->id);
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/users/' . $target->id, ['roles' => [$b->id]])->assertRedirect('/admin/users/view/' . $target->id);
+        $this->putJson('/api/client/admin/users/' . $target->id . '/roles', ['roles' => [$b->id]])->assertOk();
 
         $this->assertSame([$b->id], $target->roles()->pluck('roles.id')->all());
-        $this->post('/admin/roles/users/' . $target->id, [])->assertRedirect();
+        $this->putJson('/api/client/admin/users/' . $target->id . '/roles', [])->assertOk();
         $this->assertSame(0, $target->roles()->count());
     }
 
@@ -303,7 +304,7 @@ class RolesAdminTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/users/' . $this->makeUser()->id, ['roles' => [999999]])->assertStatus(422);
+        $this->putJson('/api/client/admin/users/' . $this->makeUser()->id . '/roles', ['roles' => [999999]])->assertStatus(422);
     }
 
     public function testNobodyGivesARoleWithoutThePermissionToGiveRoles(): void
@@ -312,8 +313,7 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'untouched']);
         $this->actingAs($this->userWith(['roles.view', 'roles.update', 'users.view']));
 
-        // The form of the user page first: the client API changes how a route called {user} is found, for the rest of a test.
-        $this->post('/admin/roles/users/' . $target->id, ['roles' => [$role->id]])->assertStatus(403);
+        $this->putJson('/api/client/admin/users/' . $target->id . '/roles', ['roles' => [$role->id]])->assertStatus(403);
         $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'untouched'])->assertStatus(403);
         $this->assertSame(0, $target->roles()->count());
     }
@@ -324,7 +324,7 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'wouldgrow']);
         $this->actingAs($this->userWith(['roles.view', 'roles.assign', 'users.view']));
 
-        $this->post('/admin/roles/users/' . $target->id, ['roles' => [$strong->id]]);
+        $this->putJson('/api/client/admin/users/' . $target->id . '/roles', ['roles' => [$strong->id]]);
         $this->postJson('/api/client/admin/roles/' . $strong->id . '/members', ['user' => 'wouldgrow']);
 
         $this->assertSame(0, $target->roles()->count());
@@ -336,7 +336,7 @@ class RolesAdminTest extends RoleTestCase
         $me = $this->userWith(['roles.view', 'roles.assign', 'users.view']);
         $this->actingAs($me);
 
-        $this->post('/admin/roles/users/' . $me->id, ['roles' => [$strong->id]]);
+        $this->putJson('/api/client/admin/users/' . $me->id . '/roles', ['roles' => [$strong->id]]);
 
         $this->assertFalse($me->fresh()->hasPermission('servers.delete'));
     }
@@ -348,8 +348,8 @@ class RolesAdminTest extends RoleTestCase
         $stronger = $this->userWith(['users.view', 'servers.delete']);
         $this->actingAs($this->userWith(['roles.view', 'roles.assign', 'users.view']));
 
-        $this->post('/admin/roles/users/' . $root->id, ['roles' => [$role->id]]);
-        $this->post('/admin/roles/users/' . $stronger->id, ['roles' => []]);
+        $this->putJson('/api/client/admin/users/' . $root->id . '/roles', ['roles' => [$role->id]]);
+        $this->putJson('/api/client/admin/users/' . $stronger->id . '/roles', ['roles' => []]);
 
         $this->assertSame(0, $root->roles()->count());
         $this->assertSame(1, $stronger->roles()->count());
@@ -364,7 +364,7 @@ class RolesAdminTest extends RoleTestCase
         $this->actingAs($this->userWith(['roles.view', 'roles.assign', 'users.view', 'servers.delete']));
 
         // A giver who holds everything can touch both, one who does not would leave "Theirs" alone.
-        $this->post('/admin/roles/users/' . $target->id, ['roles' => [$mine->id]])->assertRedirect();
+        $this->putJson('/api/client/admin/users/' . $target->id . '/roles', ['roles' => [$mine->id]])->assertOk();
 
         $this->assertSame([$mine->id], $target->roles()->pluck('roles.id')->all());
     }
@@ -376,7 +376,7 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser();
         $this->actingAs($this->userWith(['users.view', 'users.update']));
 
-        $this->patch('/admin/users/view/' . $target->id, ['email' => $target->email, 'username' => $target->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => '1'])->assertRedirect();
+        $this->patchJson('/api/client/admin/users/' . $target->id, ['email' => $target->email, 'username' => $target->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => true])->assertOk();
 
         $this->assertFalse($target->fresh()->root_admin);
     }
@@ -386,7 +386,7 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser();
         $this->actingAs($this->rootAdmin());
 
-        $this->patch('/admin/users/view/' . $target->id, ['email' => $target->email, 'username' => $target->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => '1'])->assertRedirect();
+        $this->patchJson('/api/client/admin/users/' . $target->id, ['email' => $target->email, 'username' => $target->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => true])->assertOk();
 
         $this->assertTrue($target->fresh()->root_admin);
     }
@@ -395,7 +395,7 @@ class RolesAdminTest extends RoleTestCase
     {
         $this->actingAs($this->userWith(['users.view', 'users.create']));
 
-        $this->post('/admin/users/new', ['email' => 'created@' . self::DOMAIN, 'username' => 'createdone', 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => '1', 'password' => ''])->assertRedirect();
+        $this->postJson('/api/client/admin/users', ['email' => 'created@' . self::DOMAIN, 'username' => 'createdone', 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'root_admin' => true, 'password' => ''])->assertStatus(201);
 
         $created = User::query()->where('username', 'createdone')->first();
         $this->assertNotNull($created);
@@ -408,8 +408,8 @@ class RolesAdminTest extends RoleTestCase
         $before = $root->email;
         $this->actingAs($this->userWith(['users.view', 'users.update', 'users.delete']));
 
-        $this->patch('/admin/users/view/' . $root->id, ['email' => 'taken@' . self::DOMAIN, 'username' => $root->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'password' => 'a-new-password-1']);
-        $this->delete('/admin/users/view/' . $root->id);
+        $this->patchJson('/api/client/admin/users/' . $root->id, ['email' => 'taken@' . self::DOMAIN, 'username' => $root->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en', 'password' => 'a-new-password-1']);
+        $this->deleteJson('/api/client/admin/users/' . $root->id);
 
         $this->assertSame($before, $root->fresh()->email);
         $this->assertNotNull(User::query()->find($root->id));
@@ -420,8 +420,8 @@ class RolesAdminTest extends RoleTestCase
         $stronger = $this->userWith(['users.view', 'servers.delete']);
         $this->actingAs($this->userWith(['users.view', 'users.update', 'users.delete']));
 
-        $this->patch('/admin/users/view/' . $stronger->id, ['email' => 'hijack@' . self::DOMAIN, 'username' => $stronger->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en']);
-        $this->delete('/admin/users/view/' . $stronger->id);
+        $this->patchJson('/api/client/admin/users/' . $stronger->id, ['email' => 'hijack@' . self::DOMAIN, 'username' => $stronger->username, 'name_first' => 'A', 'name_last' => 'B', 'language' => 'en']);
+        $this->deleteJson('/api/client/admin/users/' . $stronger->id);
 
         $this->assertNotSame('hijack@' . self::DOMAIN, $stronger->fresh()->email);
         $this->assertNotNull(User::query()->find($stronger->id));
@@ -432,21 +432,19 @@ class RolesAdminTest extends RoleTestCase
         $weaker = $this->userWith(['users.view']);
         $this->actingAs($this->userWith(['users.view', 'users.update', 'servers.view']));
 
-        $this->patch('/admin/users/view/' . $weaker->id, ['email' => $weaker->email, 'username' => $weaker->username, 'name_first' => 'Changed', 'name_last' => 'B', 'language' => 'en'])->assertRedirect();
+        $this->patchJson('/api/client/admin/users/' . $weaker->id, ['email' => $weaker->email, 'username' => $weaker->username, 'name_first' => 'Changed', 'name_last' => 'B', 'language' => 'en'])->assertOk();
 
         $this->assertSame('Changed', $weaker->fresh()->name_first);
     }
 
-    public function testTheUserPageShowsTheRootAdminFieldOnlyToRootAdmins(): void
+    public function testTheUserPageSaysWhatThePersonMayChange(): void
     {
         $target = $this->makeUser();
-
+        $root = $this->rootAdmin();
         $this->actingAs($this->userWith(['users.view', 'users.update']));
-        $this->page('/admin/users/view/' . $target->id)->assertOk()->assertDontSee('name="root_admin"', false)->assertSee('Only root admins make root admins');
 
-        $this->signOut();
-        $this->actingAs($this->rootAdmin());
-        $this->page('/admin/users/view/' . $target->id)->assertOk()->assertSee('name="root_admin"', false);
+        $this->assertTrue($this->getJson('/api/client/admin/users/' . $target->id)->assertOk()->json('can_change'));
+        $this->assertFalse($this->getJson('/api/client/admin/users/' . $root->id)->assertOk()->json('can_change'), 'a root admin can only be looked at');
     }
 
     // ---- servers --------------------------------------------------------------------------------------------------------

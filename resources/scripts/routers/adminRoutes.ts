@@ -25,11 +25,37 @@ const LocationPage = lazy(
  * The pages of the admin area that are part of this app. A page is added here when its Blade view is gone, the route that serves it in
  * routes/admin.php answers with the app (Admin\SpaController) instead.
  */
+const DatabasesPage = lazy(
+    () => import(/* webpackChunkName: "admin-databases" */ '@/components/admin/pages/databases/DatabasesPage')
+);
+const DatabaseHostPage = lazy(
+    () => import(/* webpackChunkName: "admin-databases" */ '@/components/admin/pages/databases/DatabaseHostPage')
+);
+
+const MountsPage = lazy(
+    () => import(/* webpackChunkName: "admin-mounts" */ '@/components/admin/pages/mounts/MountsPage')
+);
+const MountPage = lazy(
+    () => import(/* webpackChunkName: "admin-mounts" */ '@/components/admin/pages/mounts/MountPage')
+);
+
+const UsersPage = lazy(() => import(/* webpackChunkName: "admin-users" */ '@/components/admin/pages/users/UsersPage'));
+const UserEditor = lazy(
+    () => import(/* webpackChunkName: "admin-users" */ '@/components/admin/pages/users/UserEditor')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
     { path: '/admin/roles/new', permissions: ['roles.create'], component: RoleEditor },
     { path: '/admin/roles/view/:id', permissions: ['roles.view'], component: RoleEditor },
+    { path: '/admin/databases', permissions: ['databases.view'], component: DatabasesPage },
+    { path: '/admin/databases/view/:id', permissions: ['databases.view'], component: DatabaseHostPage },
+    { path: '/admin/mounts', permissions: ['mounts.view'], component: MountsPage },
+    { path: '/admin/mounts/view/:id', permissions: ['mounts.view'], component: MountPage },
+    { path: '/admin/users', permissions: ['users.view'], component: UsersPage },
+    { path: '/admin/users/new', permissions: ['users.create'], component: UserEditor },
+    { path: '/admin/users/view/:id', permissions: ['users.view'], component: UserEditor },
     { path: '/admin/locations', permissions: ['locations.view'], component: LocationsPage },
     { path: '/admin/locations/view/:id', permissions: ['locations.view'], component: LocationPage },
 ];

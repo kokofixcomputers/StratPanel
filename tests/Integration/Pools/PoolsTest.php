@@ -340,8 +340,8 @@ class PoolsTest extends IntegrationTestCase
         $admin = $this->user(['root_admin' => true]);
         $person = $this->user();
 
-        $this->actingAs($admin)->get('/admin/users/view/' . $person->id)->assertOk()->assertSee('Resource pool');
-        $this->actingAs($admin)->patch('/admin/settings/pools/users/' . $person->id, ['memory' => 16384, 'disk' => '', 'cpu' => 800, 'allocations' => 0, 'backups' => 9])->assertRedirect();
+        $this->actingAs($admin)->getJson('/api/client/admin/users/' . $person->id)->assertOk()->assertJsonPath('pool.enabled', true);
+        $this->actingAs($admin)->patchJson('/api/client/admin/users/' . $person->id . '/pool', ['memory' => 16384, 'disk' => '', 'cpu' => 800, 'allocations' => 0, 'backups' => 9])->assertOk();
 
         $person = $person->fresh();
         $this->assertSame(16384, $person->pool_memory);
@@ -357,7 +357,7 @@ class PoolsTest extends IntegrationTestCase
         $root = $this->user(['root_admin' => true]);
         $plain = $this->user();
 
-        $this->actingAs($plain)->patch('/admin/settings/pools/users/' . $root->id, ['memory' => 1])->assertStatus(403);
         $this->actingAs($plain)->get('/admin/settings/pools')->assertStatus(403);
+        $this->actingAs($plain)->patchJson('/api/client/admin/users/' . $root->id . '/pool', ['memory' => 1])->assertStatus(403);
     }
 }

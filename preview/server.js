@@ -179,6 +179,44 @@ api.post('/admin/locations', (req, res) => { const l = { id: adminLocations.leng
 api.patch('/admin/locations/:id', (req, res) => { Object.assign(adminLocations.find((x) => x.id === Number(req.params.id)), { short: req.body.short, long: req.body.long }); res.json({ id: Number(req.params.id) }); });
 api.delete('/admin/locations/:id', (req, res) => { adminLocations = adminLocations.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
 
+
+let adminHosts = [{ id: 1, name: 'MariaDB main', host: 'db.example.com', port: 3306, username: 'panel', node_id: 1 }, { id: 2, name: 'Backup db', host: '10.0.0.5', port: 3306, username: 'root', node_id: null }];
+api.get('/admin/lookups/nodes', (req, res) => res.json({ locations: [{ id: 1, short: 'fra', nodes: [{ id: 1, name: 'Frankfurt-1' }] }, { id: 2, short: 'sgp', nodes: [{ id: 2, name: 'Singapore-1' }] }] }));
+api.get('/admin/databases', (req, res) => res.json({ hosts: adminHosts.map((h) => ({ ...h, databases: h.id === 1 ? 6 : 0, node: h.node_id ? { id: h.node_id, name: h.node_id === 1 ? 'Frankfurt-1' : 'Singapore-1' } : null })) }));
+api.get('/admin/databases/:id', (req, res) => { const host = adminHosts.find((h) => h.id === Number(req.params.id)); return host ? res.json({ host, databases: host.id === 1 ? [{ id: 1, database: 's1_survival', username: 'u1_abc', remote: '%', max_connections: null, server: { id: 3, name: 'Survival' } }, { id: 2, database: 's2_creative', username: 'u2_def', remote: '%', max_connections: 20, server: { id: 2, name: 'Creative' } }] : [], pagination: { total: host.id === 1 ? 2 : 0, count: host.id === 1 ? 2 : 0, per_page: 25, current_page: 1, total_pages: 1 } }) : res.status(404).json({ errors: [{ detail: 'Not found' }] }); });
+api.post('/admin/databases', (req, res) => { const h = { id: adminHosts.length + 1, name: req.body.name, host: req.body.host, port: Number(req.body.port), username: req.body.username, node_id: req.body.node_id ? Number(req.body.node_id) : null }; adminHosts.push(h); res.status(201).json(h); });
+api.patch('/admin/databases/:id', (req, res) => { const h = adminHosts.find((x) => x.id === Number(req.params.id)); Object.assign(h, { name: req.body.name, host: req.body.host, port: Number(req.body.port), username: req.body.username, node_id: req.body.node_id ? Number(req.body.node_id) : null }); res.json(h); });
+api.delete('/admin/databases/:id', (req, res) => { adminHosts = adminHosts.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
+
+
+let adminMounts = [{ id: 1, uuid: '5a1b2c3d-0000-4000-8000-000000000001', name: 'Shared maps', description: 'Maps for every lobby', source: '/srv/maps', target: '/maps', read_only: true, user_mountable: false, eggs: [{ id: 1, name: 'Paper' }], nodes: [{ id: 1, name: 'Frankfurt-1', fqdn: 'fra.example.com' }] }];
+api.get('/admin/lookups/eggs', (req, res) => res.json({ nests: [{ id: 1, name: 'Minecraft', eggs: [{ id: 1, name: 'Paper' }, { id: 2, name: 'Fabric' }, { id: 3, name: 'Velocity' }] }] }));
+api.get('/admin/mounts', (req, res) => res.json({ mounts: adminMounts.map((m) => ({ id: m.id, name: m.name, source: m.source, target: m.target, eggs: m.eggs.length, nodes: m.nodes.length, servers: 2 })) }));
+api.get('/admin/mounts/:id', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); return m ? res.json(m) : res.status(404).json({ errors: [{ detail: 'Not found' }] }); });
+api.post('/admin/mounts', (req, res) => { const m = { id: adminMounts.length + 1, uuid: '5a1b2c3d-0000-4000-8000-00000000000' + (adminMounts.length + 1), ...req.body, eggs: [], nodes: [] }; adminMounts.push(m); res.status(201).json(m); });
+api.patch('/admin/mounts/:id', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); Object.assign(m, req.body); res.json(m); });
+api.delete('/admin/mounts/:id', (req, res) => { adminMounts = adminMounts.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
+api.post('/admin/mounts/:id/eggs', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); const names = { 1: 'Paper', 2: 'Fabric', 3: 'Velocity' }; for (const id of req.body.eggs) if (!m.eggs.find((e) => e.id === id)) m.eggs.push({ id, name: names[id] }); res.json(m); });
+api.post('/admin/mounts/:id/nodes', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); const names = { 1: 'Frankfurt-1', 2: 'Singapore-1' }; for (const id of req.body.nodes) if (!m.nodes.find((e) => e.id === id)) m.nodes.push({ id, name: names[id], fqdn: names[id].toLowerCase() + '.example.com' }); res.json(m); });
+api.delete('/admin/mounts/:id/eggs/:egg', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); m.eggs = m.eggs.filter((e) => e.id !== Number(req.params.egg)); res.status(204).end(); });
+api.delete('/admin/mounts/:id/nodes/:node', (req, res) => { const m = adminMounts.find((x) => x.id === Number(req.params.id)); m.nodes = m.nodes.filter((e) => e.id !== Number(req.params.node)); res.status(204).end(); });
+
+
+let adminUsers = [
+    { id: 1, email: 'preview@example.com', username: 'preview', name_first: 'Pre', name_last: 'View', language: 'en', root_admin: true, use_totp: true, servers: 3, subuser_of: 0, roles: [] },
+    { id: 5, email: 'alex@example.com', username: 'alex', name_first: 'Alex', name_last: 'Miller', language: 'en', root_admin: false, use_totp: false, servers: 2, subuser_of: 1, roles: [{ id: 1, name: 'Support', color: '#3b82f6' }] },
+    { id: 6, email: 'sam@example.com', username: 'sam', name_first: 'Sam', name_last: 'Lee', language: 'de', root_admin: false, use_totp: false, servers: 0, subuser_of: 0, roles: [] },
+];
+const userPool = { enabled: true, unlimited: false, defaults: { memory: 4096, disk: 10240, cpu: 200, allocations: 5, backups: 5 }, limits: { memory: 4096, disk: 10240, cpu: 200, allocations: 5, backups: 5 }, used: { memory: 1024, disk: 2048, cpu: 50, allocations: 2, backups: 1 }, own: { memory: null, disk: null, cpu: null, allocations: null, backups: null } };
+api.get('/admin/users/meta', (req, res) => res.json({ languages: { en: 'English', de: 'Deutsch' }, locale: 'en' }));
+api.get('/admin/users', (req, res) => { const q = String(req.query.search || '').toLowerCase(); const list = adminUsers.filter((u) => !q || u.email.includes(q) || u.username.includes(q)); res.json({ users: list.map((u) => ({ ...u, gravatar: 'https://www.gravatar.com/avatar/0?d=identicon&s=100' })), pagination: { total: list.length, count: list.length, per_page: 50, current_page: 1, total_pages: 1 } }); });
+api.get('/admin/users/:id', (req, res) => { const u = adminUsers.find((x) => x.id === Number(req.params.id)); return u ? res.json({ user: { id: u.id, email: u.email, username: u.username, name_first: u.name_first, name_last: u.name_last, language: u.language, root_admin: u.root_admin }, languages: { en: 'English', de: 'Deutsch' }, can_change: true, roles: adminRoles.map((r) => ({ id: r.id, name: r.name, description: r.description, color: r.color, assigned: u.roles.some((x) => x.id === r.id), assignable: true })), pool: { ...userPool, own: { ...userPool.own, ...(u.pool || {}) } } }) : res.status(404).json({ errors: [{ detail: 'Not found' }] }); });
+api.post('/admin/users', (req, res) => { const u = { id: adminUsers.length + 10, ...req.body, use_totp: false, servers: 0, subuser_of: 0, roles: [] }; adminUsers.push(u); res.status(201).json(u); });
+api.patch('/admin/users/:id/pool', (req, res) => { const u = adminUsers.find((x) => x.id === Number(req.params.id)); u.pool = Object.fromEntries(Object.entries(req.body).map(([k, v]) => [k, v === '' || v === null ? null : Number(v)])); res.json({ ...userPool, own: { ...userPool.own, ...u.pool } }); });
+api.put('/admin/users/:id/roles', (req, res) => { const u = adminUsers.find((x) => x.id === Number(req.params.id)); u.roles = adminRoles.filter((r) => (req.body.roles || []).includes(r.id)).map((r) => ({ id: r.id, name: r.name, color: r.color })); res.json({ roles: req.body.roles || [] }); });
+api.patch('/admin/users/:id', (req, res) => { const u = adminUsers.find((x) => x.id === Number(req.params.id)); Object.assign(u, { ...req.body, password: undefined }); res.json(u); });
+api.delete('/admin/users/:id', (req, res) => { adminUsers = adminUsers.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -625,7 +663,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 // The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
-const PORTED_ADMIN = /^\/admin(\/(roles|locations)(\/.*)?)?\/?$/;
+const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users)(\/.*)?)?\/?$/;
 app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
     PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
 );

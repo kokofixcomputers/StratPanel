@@ -19,6 +19,41 @@ use Pterodactyl\Http\Middleware\AdminAuthenticate;
 Route::middleware(AdminAuthenticate::class)->group(function () {
     Route::get('/overview', Admin\OverviewController::class)->middleware('admin.can:overview.view');
 
+    Route::get('/lookups/nodes', [Admin\LookupsController::class, 'nodes'])->middleware('admin.can:databases.view,databases.create,databases.update,servers.view,servers.create,nodes.view,mounts.view,mounts.update');
+
+    Route::get('/lookups/eggs', [Admin\LookupsController::class, 'eggs'])->middleware('admin.can:mounts.view,mounts.update,servers.view,servers.create,nests.view');
+
+    Route::prefix('/users')->group(function () {
+        Route::get('/', [Admin\UsersController::class, 'index'])->middleware('admin.can:users.view');
+        Route::get('/meta', [Admin\UsersController::class, 'meta'])->middleware('admin.can:users.view,users.create');
+        Route::post('/', [Admin\UsersController::class, 'store'])->middleware('admin.can:users.create');
+        Route::get('/{person}', [Admin\UsersController::class, 'view'])->whereNumber('person')->middleware('admin.can:users.view');
+        Route::patch('/{person}', [Admin\UsersController::class, 'update'])->whereNumber('person')->middleware('admin.can:users.update');
+        Route::delete('/{person}', [Admin\UsersController::class, 'destroy'])->whereNumber('person')->middleware('admin.can:users.delete');
+        Route::put('/{person}/roles', [Admin\UsersController::class, 'syncRoles'])->whereNumber('person')->middleware('admin.can:roles.assign');
+        Route::patch('/{person}/pool', [Admin\UsersController::class, 'updatePool'])->whereNumber('person')->middleware('admin.can:users.update');
+    });
+
+    Route::prefix('/mounts')->group(function () {
+        Route::get('/', [Admin\MountsController::class, 'index'])->middleware('admin.can:mounts.view');
+        Route::post('/', [Admin\MountsController::class, 'store'])->middleware('admin.can:mounts.create');
+        Route::get('/{mount}', [Admin\MountsController::class, 'view'])->whereNumber('mount')->middleware('admin.can:mounts.view');
+        Route::patch('/{mount}', [Admin\MountsController::class, 'update'])->whereNumber('mount')->middleware('admin.can:mounts.update');
+        Route::delete('/{mount}', [Admin\MountsController::class, 'destroy'])->whereNumber('mount')->middleware('admin.can:mounts.delete');
+        Route::post('/{mount}/eggs', [Admin\MountsController::class, 'addEggs'])->whereNumber('mount')->middleware('admin.can:mounts.update');
+        Route::post('/{mount}/nodes', [Admin\MountsController::class, 'addNodes'])->whereNumber('mount')->middleware('admin.can:mounts.update');
+        Route::delete('/{mount}/eggs/{egg}', [Admin\MountsController::class, 'removeEgg'])->whereNumber(['mount', 'egg'])->middleware('admin.can:mounts.update');
+        Route::delete('/{mount}/nodes/{node}', [Admin\MountsController::class, 'removeNode'])->whereNumber(['mount', 'node'])->middleware('admin.can:mounts.update');
+    });
+
+    Route::prefix('/databases')->group(function () {
+        Route::get('/', [Admin\DatabaseHostsController::class, 'index'])->middleware('admin.can:databases.view');
+        Route::post('/', [Admin\DatabaseHostsController::class, 'store'])->middleware('admin.can:databases.create');
+        Route::get('/{host}', [Admin\DatabaseHostsController::class, 'view'])->whereNumber('host')->middleware('admin.can:databases.view');
+        Route::patch('/{host}', [Admin\DatabaseHostsController::class, 'update'])->whereNumber('host')->middleware('admin.can:databases.update');
+        Route::delete('/{host}', [Admin\DatabaseHostsController::class, 'destroy'])->whereNumber('host')->middleware('admin.can:databases.delete');
+    });
+
     Route::prefix('/locations')->group(function () {
         Route::get('/', [Admin\LocationsController::class, 'index'])->middleware('admin.can:locations.view');
         Route::post('/', [Admin\LocationsController::class, 'store'])->middleware('admin.can:locations.create');
