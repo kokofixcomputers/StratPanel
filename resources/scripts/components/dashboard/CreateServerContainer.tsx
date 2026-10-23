@@ -283,9 +283,9 @@ export default () => {
                                   mbToBytes(config.pool.remaining.memory)
                               )} memory, ${bytesToString(mbToBytes(config.pool.remaining.disk))} disk, ${
                                   config.pool.remaining.cpu
-                              }% CPU and ${
-                                  config.pool.remaining.allocations
-                              } allocations are left. Delete a server to get its share back.`
+                              }% CPU and ${config.pool.remaining.allocations} allocations and ${
+                                  config.pool.remaining.backups
+                              } backups are left. Delete a server to get its share back.`
                             : config && config.maxServers > 0 && config.owned >= config.maxServers
                             ? `You already have ${config.owned} of ${config.maxServers} servers allowed on your account.`
                             : 'Creating servers is not enabled on this panel.'}
@@ -587,13 +587,18 @@ export default () => {
                             {specs && !editingSpecs && (
                                 <dl
                                     css={tw`mt-3 grid gap-3`}
-                                    className={config.pool ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}
+                                    className={config.pool ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-3'}
                                 >
                                     {[
                                         ['Memory', bytesToString(mbToBytes(specs.memory))],
                                         ['Disk', bytesToString(mbToBytes(specs.disk))],
                                         ['CPU', `${specs.cpu}%`],
-                                        ...(config.pool ? [['Allocations', String(specs.allocations ?? 1)]] : []),
+                                        ...(config.pool
+                                            ? [
+                                                  ['Allocations', String(specs.allocations ?? 1)],
+                                                  ['Backups', String(specs.backups ?? 0)],
+                                              ]
+                                            : []),
                                     ].map(([label, value]) => (
                                         <div
                                             key={label}
@@ -652,6 +657,21 @@ export default () => {
                                             onChange={(allocations) => setSpecs({ ...specs, allocations })}
                                         />
                                     )}
+                                    {config.pool && (
+                                        <Slider
+                                            label={'Backups'}
+                                            value={specs.backups ?? 0}
+                                            min={0}
+                                            max={Math.max(0, config.max.backups ?? 0)}
+                                            step={1}
+                                            display={String(specs.backups ?? 0)}
+                                            hint={`backups the server may keep, up to ${Math.max(
+                                                0,
+                                                config.max.backups ?? 0
+                                            )}`}
+                                            onChange={(backups) => setSpecs({ ...specs, backups })}
+                                        />
+                                    )}
                                     <Button
                                         type={'button'}
                                         isSecondary
@@ -667,7 +687,7 @@ export default () => {
                                     <p css={tw`text-sm font-semibold text-neutral-50`}>
                                         Left in your pool after this server
                                     </p>
-                                    <dl css={tw`mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3`}>
+                                    <dl css={tw`mt-3 grid grid-cols-2 sm:grid-cols-5 gap-3`}>
                                         {(() => {
                                             const after = poolAfter(config.pool.remaining, specs);
                                             const limits = config.pool.limits;
@@ -692,6 +712,7 @@ export default () => {
                                                     limits.allocations,
                                                     (v: number) => String(v),
                                                 ],
+                                                ['Backups', after.backups, limits.backups, (v: number) => String(v)],
                                             ].map(([label, left, total, format]) => (
                                                 <div key={label as string}>
                                                     <dt css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>

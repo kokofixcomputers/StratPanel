@@ -47,7 +47,7 @@ class SelfServiceController extends ClientApiController
         // With resource pools the servers are paid from the pool, not counted: what is left decides what can be picked.
         $pooled = $this->pools->appliesTo($request->user());
         $remaining = $pooled ? $this->pools->remaining($request->user()) : null;
-        $start = ['memory' => (int) $config['memory'], 'disk' => (int) $config['disk'], 'cpu' => (int) $config['cpu'], 'allocations' => 2];
+        $start = ['memory' => (int) $config['memory'], 'disk' => (int) $config['disk'], 'cpu' => (int) $config['cpu'], 'allocations' => 2, 'backups' => (int) $config['backups']];
         if ($pooled) {
             $start = $this->pools->fit($request->user(), $start);
         }
@@ -83,6 +83,7 @@ class SelfServiceController extends ClientApiController
                     'cpu' => $start['cpu'],
                     // How many allocations the server starts with: two without a pool, one at least.
                     'allocations' => $start['allocations'],
+                    'backups' => $start['backups'],
                 ],
                 'nodes' => $this->availableNodes()->map(function (Node $node) {
                     $memoryLimit = $node->memory * (1 + ($node->memory_overallocate / 100));
@@ -107,6 +108,7 @@ class SelfServiceController extends ClientApiController
                     'disk' => $ceiling['disk'],
                     'cpu' => $ceiling['cpu'],
                     'allocations' => $pooled ? max(1, $remaining['allocations']) : 2,
+                    'backups' => $pooled ? $remaining['backups'] : (int) $config['backups'],
                 ],
             ],
         ];
@@ -153,14 +155,17 @@ class SelfServiceController extends ClientApiController
         $disk = (int) $request->input('disk', $config['disk']);
         $cpu = (int) $request->input('cpu', $config['cpu']);
         $allocations = $pooled ? max(1, (int) $request->input('allocations', 2)) : 2;
+        $backups = (int) $config['backups'];
         if ($pooled) {
             // What was not asked for is the usual size, cut down to what is left; what was asked for has to fit as it is.
-            $usual = $this->pools->fit($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations]);
+            $backups = (int) $request->input('backups', $config['backups']);
+            $usual = $this->pools->fit($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups]);
             $memory = $request->has('memory') ? $memory : $usual['memory'];
             $disk = $request->has('disk') ? $disk : $usual['disk'];
             $cpu = $request->has('cpu') ? $cpu : $usual['cpu'];
             $allocations = $request->has('allocations') ? $allocations : max(1, $usual['allocations']);
-            $this->pools->check($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations]);
+            $backups = $request->has('backups') ? $backups : $usual['backups'];
+            $this->pools->check($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups]);
             foreach (['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu] as $resource => $value) {
                 if ($value < ResourcePool::MINIMUM[$resource]) {
                     throw new DisplayException('Your resource pool has too little ' . $resource . ' left to make another server.');
@@ -209,7 +214,7 @@ class SelfServiceController extends ClientApiController
             // At least the two allocations a server starts with, the setting is how many it may have in total. With a pool it is the whole pool
             // of the person: how many they really get is decided by what is left of it (see NetworkAllocationController).
             'allocation_limit' => $pooled ? max($allocations, $this->pools->limits($user)['allocations']) : max(2, (int) $config['allocations']),
-            'backup_limit' => (int) $config['backups'],
+            'backup_limit' => $backups,
             'start_on_completion' => false,
         ], $placement), $deployment);
 

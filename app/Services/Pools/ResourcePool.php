@@ -17,12 +17,12 @@ use Pterodactyl\Exceptions\DisplayException;
  */
 class ResourcePool
 {
-    public const RESOURCES = ['memory', 'disk', 'cpu', 'allocations'];
+    public const RESOURCES = ['memory', 'disk', 'cpu', 'allocations', 'backups'];
 
     /** The least a server can be made with, in the units of the pool. A pool with less left than this can not make another one. */
-    public const MINIMUM = ['memory' => 512, 'disk' => 1024, 'cpu' => 50, 'allocations' => 1];
+    public const MINIMUM = ['memory' => 512, 'disk' => 1024, 'cpu' => 50, 'allocations' => 1, 'backups' => 0];
 
-    private const LABELS = ['memory' => 'memory', 'disk' => 'disk space', 'cpu' => 'CPU', 'allocations' => 'allocations'];
+    private const LABELS = ['memory' => 'memory', 'disk' => 'disk space', 'cpu' => 'CPU', 'allocations' => 'allocations', 'backups' => 'backups'];
 
     public function enabled(): bool
     {
@@ -35,7 +35,7 @@ class ResourcePool
         return $this->enabled() && !$user->hasPermission('servers.create');
     }
 
-    /** @return array{memory: int, disk: int, cpu: int, allocations: int} what a person gets who has no pool of their own */
+    /** @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int} what a person gets who has no pool of their own */
     public function defaults(): array
     {
         return [
@@ -43,10 +43,11 @@ class ResourcePool
             'disk' => max(0, (int) config('pterodactyl.pools.disk')),
             'cpu' => max(0, (int) config('pterodactyl.pools.cpu')),
             'allocations' => max(0, (int) config('pterodactyl.pools.allocations')),
+            'backups' => max(0, (int) config('pterodactyl.pools.backups')),
         ];
     }
 
-    /** @return array{memory: int, disk: int, cpu: int, allocations: int} the pool of this person: theirs, or the defaults for what is not set */
+    /** @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int} the pool of this person: theirs, or the defaults for what is not set */
     public function limits(User $user): array
     {
         $limits = $this->defaults();
@@ -60,7 +61,7 @@ class ResourcePool
         return $limits;
     }
 
-    /** @return array{memory: int, disk: int, cpu: int, allocations: int} what the servers of this person use now */
+    /** @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int} what the servers of this person use now */
     public function used(User $user): array
     {
         $servers = Server::query()->where('owner_id', $user->id);
@@ -70,10 +71,12 @@ class ResourcePool
             'disk' => (int) (clone $servers)->sum('disk'),
             'cpu' => (int) (clone $servers)->sum('cpu'),
             'allocations' => Allocation::query()->whereIn('server_id', (clone $servers)->select('id'))->count(),
+            // What the servers may keep, their backup limits added up (a server without a limit counts as none).
+            'backups' => (int) (clone $servers)->sum('backup_limit'),
         ];
     }
 
-    /** @return array{memory: int, disk: int, cpu: int, allocations: int} what is left, never below zero */
+    /** @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int} what is left, never below zero */
     public function remaining(User $user): array
     {
         $limits = $this->limits($user);
@@ -98,8 +101,8 @@ class ResourcePool
     /**
      * What a person can be given when they ask for nothing in particular: the usual size of a server, cut down to what is left.
      *
-     * @param  array{memory: int, disk: int, cpu: int, allocations: int}  $wanted
-     * @return array{memory: int, disk: int, cpu: int, allocations: int}
+     * @param  array{memory: int, disk: int, cpu: int, allocations: int, backups: int}  $wanted
+     * @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int}
      */
     public function fit(User $user, array $wanted): array
     {
@@ -111,7 +114,7 @@ class ResourcePool
     /**
      * Refuses what does not fit in what is left, saying which part does not.
      *
-     * @param  array{memory?: int, disk?: int, cpu?: int, allocations?: int}  $asked
+     * @param  array{memory?: int, disk?: int, cpu?: int, allocations?: int, backups?: int}  $asked
      *
      * @throws DisplayException
      */
@@ -126,7 +129,7 @@ class ResourcePool
                     'Your resource pool has %s of %s %s left, this needs %s.',
                     self::format($resource, $remaining[$resource]),
                     self::format($resource, $limits[$resource]),
-                    $resource === 'allocations' ? 'allocations' : self::LABELS[$resource],
+                    self::LABELS[$resource],
                     self::format($resource, $asked[$resource])
                 ));
             }

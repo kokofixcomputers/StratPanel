@@ -13,6 +13,7 @@ import {
     LinkIcon,
     ExternalLinkIcon,
     FingerPrintIcon,
+    ChartBarIcon,
 } from '@heroicons/react/solid';
 import { ApplicationStore } from '@/state';
 import { useThemeConfig } from '@/lib/themeConfig';
@@ -22,6 +23,7 @@ import routes from '@/routers/routes';
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     '/': UserCircleIcon,
+    '/resources': ChartBarIcon,
     '/api': KeyIcon,
     '/ssh': TerminalIcon,
     '/providers': LinkIcon,

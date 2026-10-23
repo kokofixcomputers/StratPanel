@@ -107,6 +107,7 @@ export const SIDEBAR_DEFAULTS: Record<SidebarId, DefaultSidebar> = {
         title: 'Account',
         labels: {
             '/': 'Account',
+            '/resources': 'Resources',
             '/api': 'API Credentials',
             '/ssh': 'SSH Keys',
             '/providers': 'Providers',
@@ -114,7 +115,11 @@ export const SIDEBAR_DEFAULTS: Record<SidebarId, DefaultSidebar> = {
             '/activity': 'Activity',
         },
         categories: [
-            { id: 'account', title: 'Account', keys: ['/', '/api', '/ssh', '/providers', '/passkeys', '/activity'] },
+            {
+                id: 'account',
+                title: 'Account',
+                keys: ['/', '/resources', '/api', '/ssh', '/providers', '/passkeys', '/activity'],
+            },
         ],
     },
 };

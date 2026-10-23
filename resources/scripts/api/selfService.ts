@@ -26,6 +26,7 @@ export interface PoolAmounts {
     disk: number;
     cpu: number;
     allocations: number;
+    backups: number;
 }
 
 export interface SelfServiceNode {
@@ -45,6 +46,8 @@ export interface Specs {
     cpu: number;
     // How many allocations the server starts with. Only chosen with resource pools, otherwise it is two.
     allocations?: number;
+    // How many backups the server may keep. Only chosen with resource pools.
+    backups?: number;
 }
 
 export const getSelfService = async (): Promise<SelfService> => {

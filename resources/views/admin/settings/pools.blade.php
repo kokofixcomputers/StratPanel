@@ -23,7 +23,7 @@
                     <div class="box-body">
                         <p class="text-muted">
                             Off by default. When it is on, the servers people create for themselves (the "Create a server" page) are paid from a pool: so much
-                            memory, disk space, CPU and so many allocations in total. They can make as many servers as fit, and the wizard shows what is left
+                            memory, disk space, CPU, allocations and backups in total. They can make as many servers as fit, and the wizard shows what is left
                             after the server they are making. The limit on the number of servers no longer applies. Everybody has the defaults below, unless
                             you give a person their own pool on their user page.
                         </p>
@@ -53,6 +53,11 @@
                                 <label class="control-label" for="allocations">Allocations</label>
                                 <input id="allocations" type="number" name="allocations" class="form-control" min="0" required value="{{ old('allocations', $defaults['allocations']) }}">
                                 <p class="text-muted small">Ports in total. A server uses at least one.</p>
+                            </div>
+                            <div class="form-group col-sm-6">
+                                <label class="control-label" for="backups">Backups</label>
+                                <input id="backups" type="number" name="backups" class="form-control" min="0" required value="{{ old('backups', $defaults['backups']) }}">
+                                <p class="text-muted small">How many backups the servers of a person may keep in total (their backup limits added up).</p>
                             </div>
                         </div>
                     </div>

@@ -240,6 +240,8 @@ return [
         'cpu' => (int) env('PTERODACTYL_POOLS_CPU', 200),
         'disk' => (int) env('PTERODACTYL_POOLS_DISK', 10240),
         'allocations' => (int) env('PTERODACTYL_POOLS_ALLOCATIONS', 5),
+        // How many backups the servers of a person may keep in total (the backup limits of their servers added up).
+        'backups' => (int) env('PTERODACTYL_POOLS_BACKUPS', 5),
     ],
 
     /*

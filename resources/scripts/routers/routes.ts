@@ -23,6 +23,7 @@ import AccountApiContainer from '@/components/dashboard/AccountApiContainer';
 import AccountSSHContainer from '@/components/dashboard/ssh/AccountSSHContainer';
 import AccountProvidersContainer from '@/components/dashboard/signin/AccountProvidersContainer';
 import AccountPasskeysContainer from '@/components/dashboard/signin/AccountPasskeysContainer';
+import AccountResourcesContainer from '@/components/dashboard/AccountResourcesContainer';
 import ActivityLogContainer from '@/components/dashboard/activity/ActivityLogContainer';
 import ServerActivityLogContainer from '@/components/server/ServerActivityLogContainer';
 
@@ -60,6 +61,11 @@ export default {
             name: 'Account',
             component: AccountOverviewContainer,
             exact: true,
+        },
+        {
+            path: '/resources',
+            name: 'Resources',
+            component: AccountResourcesContainer,
         },
         {
             path: '/api',

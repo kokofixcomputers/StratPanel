@@ -128,8 +128,8 @@
                         <p class="text-muted">What this person may spend on the servers they create themselves. Leave a field empty to give them the default of the panel (shown as the placeholder).
                             @if(Auth::user()->hasPermission('settings.pools.view'))<a href="{{ route('admin.settings.pools') }}">Defaults and the switch</a>.@endif</p>
                         <div class="row">
-                            @foreach(['memory' => ['Memory (MB)', 'pool_memory'], 'disk' => ['Disk space (MB)', 'pool_disk'], 'cpu' => ['CPU (%)', 'pool_cpu'], 'allocations' => ['Allocations', 'pool_allocations']] as $resource => [$label, $column])
-                                <div class="form-group col-sm-3">
+                            @foreach(['memory' => ['Memory (MB)', 'pool_memory'], 'disk' => ['Disk space (MB)', 'pool_disk'], 'cpu' => ['CPU (%)', 'pool_cpu'], 'allocations' => ['Allocations', 'pool_allocations'], 'backups' => ['Backups', 'pool_backups']] as $resource => [$label, $column])
+                                <div class="form-group col-sm-2">
                                     <label class="control-label" for="pool-{{ $resource }}">{{ $label }}</label>
                                     <input id="pool-{{ $resource }}" type="number" min="0" name="{{ $resource }}" class="form-control" placeholder="{{ $pools->defaults()[$resource] }}" value="{{ old($resource, $user->getAttribute($column)) }}" @if(!$canChange) disabled @endif>
                                     <p class="text-muted small no-margin-bottom">uses {{ \Pterodactyl\Services\Pools\ResourcePool::format($resource, $poolUsed[$resource]) }} of {{ \Pterodactyl\Services\Pools\ResourcePool::format($resource, $poolLimits[$resource]) }}</p>

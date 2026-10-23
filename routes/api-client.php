@@ -95,6 +95,7 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::put('/password', [Client\AccountController::class, 'updatePassword'])->name('api:client.account.update-password');
 
     Route::get('/activity', Client\ActivityLogController::class)->name('api:client.account.activity');
+    Route::get('/resources', Client\ResourcesController::class)->name('api:client.account.resources');
 
     Route::get('/passkeys', [Client\PasskeyController::class, 'index']);
     Route::post('/passkeys/options', [Client\PasskeyController::class, 'options']);

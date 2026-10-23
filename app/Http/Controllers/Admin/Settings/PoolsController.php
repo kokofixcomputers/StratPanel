@@ -43,6 +43,7 @@ class PoolsController extends Controller
             'disk' => 'required|integer|between:0,100000000',
             'cpu' => 'required|integer|between:0,100000',
             'allocations' => 'required|integer|between:0,1000',
+            'backups' => 'required|integer|between:0,10000',
         ]);
 
         $this->settings->set('settings::pterodactyl:pools:enabled', $request->boolean('enabled') ? 'true' : 'false');
@@ -72,6 +73,7 @@ class PoolsController extends Controller
             'disk' => 'nullable|integer|between:0,100000000',
             'cpu' => 'nullable|integer|between:0,100000',
             'allocations' => 'nullable|integer|between:0,1000',
+            'backups' => 'nullable|integer|between:0,10000',
         ]);
 
         $before = array_map(fn (string $resource) => $user->getAttribute('pool_' . $resource), array_combine(ResourcePool::RESOURCES, ResourcePool::RESOURCES));
