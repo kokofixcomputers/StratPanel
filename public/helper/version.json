@@ -7,7 +7,7 @@
     "purpur"
   ],
   "mod": {
-    "version": "261023-1950-SNAPSHOT",
+    "version": "261023-2019-SNAPSHOT",
     "file": "Stratosphere-mod.jar",
     "platforms": [
       "fabric",

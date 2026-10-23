@@ -21,6 +21,8 @@ class GenerationTest {
 
   @Test
   void eachStretchOfOneTwentyOneHasItsOwnBuild() {
+    assertEquals(Generation.OLD, Generation.forMinecraft("1.21"));
+    assertEquals(Generation.OLD, Generation.forMinecraft("1.21.0"));
     assertEquals(Generation.OLD, Generation.forMinecraft("1.21.1"));
     for (int patch = 2; patch <= 4; patch++) {
       assertEquals(Generation.V1214, Generation.forMinecraft("1.21." + patch), "1.21." + patch);
@@ -43,11 +45,11 @@ class GenerationTest {
 
   @Test
   void otherVersionsHaveNoBuild() {
-    assertNull(Generation.forMinecraft("1.21"));
     assertNull(Generation.forMinecraft("1.20.7"));
     assertNull(Generation.forMinecraft("1.19.4"));
     assertNull(Generation.forMinecraft("1.21.12"));
-    assertNull(Generation.forMinecraft("1.21.0"));
+    assertNull(Generation.forMinecraft("1.22"));
+    assertNull(Generation.forMinecraft("1.21.x"));
     assertNull(Generation.forMinecraft("nonsense"));
     assertNull(Generation.forMinecraft(""));
     assertNull(Generation.forMinecraft(null));
