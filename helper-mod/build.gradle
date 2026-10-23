@@ -14,8 +14,14 @@ subprojects {
 // generation of the game, the right one is picked when the server starts.
 evaluationDependsOn(':fabric-26')
 evaluationDependsOn(':fabric-121')
+evaluationDependsOn(':fabric-1214')
+evaluationDependsOn(':fabric-1218')
+evaluationDependsOn(':fabric-12111')
 evaluationDependsOn(':neoforge-26')
 evaluationDependsOn(':neoforge-121')
+evaluationDependsOn(':neoforge-1214')
+evaluationDependsOn(':neoforge-1218')
+evaluationDependsOn(':neoforge-12111')
 
 tasks.register('fabricJar', Jar) {
     archiveFileName = "stratosphere-fabric-${mod_version}.jar"
@@ -27,6 +33,15 @@ tasks.register('fabricJar', Jar) {
     from(zipTree(project(':fabric-121').tasks.named('remapJar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
+    from(zipTree(project(':fabric-1214').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':fabric-1218').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':fabric-12111').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
 }
 
 tasks.register('neoforgeJar', Jar) {
@@ -36,6 +51,15 @@ tasks.register('neoforgeJar', Jar) {
     from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':neoforge-26').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':neoforge-121').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':neoforge-1214').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':neoforge-1218').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':neoforge-12111').tasks.named('jar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
 }

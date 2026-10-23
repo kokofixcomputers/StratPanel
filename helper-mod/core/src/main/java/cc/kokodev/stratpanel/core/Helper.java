@@ -3,8 +3,10 @@ package cc.kokodev.stratpanel.core;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The helper itself: answers the panel's console command and reports who is online. The loader code calls the {@code on...}
@@ -30,6 +32,8 @@ public final class Helper {
   private final PlayerTools tools;
   private final CommandScanner scanner;
   private final TickTracker ticks = new TickTracker();
+  // What went wrong already, each is said once in the log (see guard).
+  private final Set<String> reported = new HashSet<>();
 
   private long tick;
   // The tick on which the commands are scanned, -1 for never.
@@ -53,23 +57,50 @@ public final class Helper {
     return ticks;
   }
 
+  /**
+   * Runs something of the helper and keeps whatever goes wrong inside it from reaching the server. The game is built from classes
+   * that change between versions: a method that is not there any more is a {@link LinkageError}, which is an {@code Error} and
+   * would otherwise end the server's tick loop. It is written to the log once (by what failed) and the rest of the helper goes on.
+   */
+  private void guard(String what, Runnable work) {
+    try {
+      work.run();
+    } catch (OutOfMemoryError e) {
+      throw e;
+    } catch (Throwable e) {
+      if (reported.add(what)) {
+        platform.warn(
+            "Stratosphere: "
+                + what
+                + " does not work here ("
+                + e
+                + "). Everything else of the helper keeps running; this is probably a version of Minecraft the helper was not made for.",
+            e);
+      }
+    }
+  }
+
   /** The server is up: tell the panel who is there and write the commands. */
   public void onStarted() {
-    for (PlayerHandle player : game.players()) {
-      online.put(player.uuid(), player.name());
-    }
-    scheduleScan();
-    // Anybody who was already there (the helper was loaded later) is told to the panel soon, like the plugin does.
-    sendPlayers();
+    guard(
+        "the start",
+        () -> {
+          for (PlayerHandle player : game.players()) {
+            online.put(player.uuid(), player.name());
+          }
+          scheduleScan();
+          // Anybody who was already there (the helper was loaded later) is told to the panel soon, like the plugin does.
+          sendPlayers();
+        });
   }
 
   public void onStopping() {
-    scanner.close();
+    guard("the stop", scanner::close);
   }
 
   /** The command tree was (re)built, so every mod has registered its commands. */
   public void onCommandsRegistered() {
-    scheduleScan();
+    guard("the command list", this::scheduleScan);
   }
 
   public void onTickStart() {
@@ -81,12 +112,12 @@ public final class Helper {
     tick++;
     if (scanAt >= 0 && tick >= scanAt) {
       scanAt = -1;
-      scanner.scan(false, null);
+      guard("the scan of the commands", () -> scanner.scan(false, null));
     }
     // Joins and leaves are found by comparing the list, which is cheap once every few ticks and does not depend on an event
     // that has a different name or timing in every version.
     if (tick % 5 == 0) {
-      watchPlayers();
+      guard("the player list", this::watchPlayers);
     }
   }
 
@@ -126,6 +157,11 @@ public final class Helper {
     if (args.length < 1) {
       return;
     }
+    // Each command is its own part of the helper: one that does not work on this version leaves the others alone.
+    guard("the command \"" + args[0].toLowerCase(Locale.ROOT) + "\"", () -> run(args));
+  }
+
+  private void run(String[] args) {
     if (args.length > 1) {
       playerCommand(args);
       return;

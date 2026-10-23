@@ -26,9 +26,14 @@ public final class FabricHooks {
         });
     ServerLifecycleEvents.SERVER_STARTED.register(
         server -> {
-          Helper created = new Helper(new McGame(server), platform);
-          helper = created;
-          created.onStarted();
+          try {
+            Helper created = new Helper(new McGame(server), platform);
+            helper = created;
+            created.onStarted();
+          } catch (Throwable e) {
+            // Whatever is wrong, the server starts without the helper.
+            platform.warn("Stratosphere could not start on this version of Minecraft, the panel will work without it.", e);
+          }
         });
     ServerLifecycleEvents.SERVER_STOPPING.register(
         server -> {

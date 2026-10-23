@@ -8,11 +8,11 @@
   ],
   "mods": {
     "fabric": {
-      "version": "261018-0357-SNAPSHOT",
+      "version": "261023-1748-SNAPSHOT",
       "file": "Stratosphere-fabric.jar"
     },
     "neoforge": {
-      "version": "261018-0357-SNAPSHOT",
+      "version": "261023-1748-SNAPSHOT",
       "file": "Stratosphere-neoforge.jar"
     }
   }

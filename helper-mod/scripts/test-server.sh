@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts a real server with the helper installed, sends the panel's commands to it and prints what came back.
-#   [FABRIC_LOADER=0.20.0] scripts/test-server.sh <fabric|neoforge> <1.21.1|26.2|26.3> [work dir]
+#   [FABRIC_LOADER=0.20.0] scripts/test-server.sh <fabric|neoforge> <1.21.1 to 1.21.11|26.2|26.3> [work dir]
 # (use another work dir for another loader version: the downloaded server launcher is cached by Minecraft version)
 # Needs the jars from `./gradlew mods`, Java 21 for 1.21.1 and Java 25 for 26.x (JAVA21 / JAVA25 override the defaults).
 # The server runs with -Dstratosphere.selftest=true, which adds an unconnected player "TestBot" with a few items.
@@ -19,7 +19,16 @@ case "$MC" in
   1.21.1) FABRIC_API_VERSION="0.116.17+1.21.1"; NEOFORGE_VERSION="21.1.262" ;;
   26.2) FABRIC_API_VERSION="0.161.0+26.2"; NEOFORGE_VERSION="26.2.0.93" ;;
   26.3) FABRIC_API_VERSION="0.163.0+26.3"; NEOFORGE_VERSION="26.3.0.84" ;;
-  1.21.4) FABRIC_API_VERSION="0.119.4+1.21.4"; NEOFORGE_VERSION="21.4.161" ;; # not supported: checks that the helper steps aside
+  1.21.2) FABRIC_API_VERSION="0.106.1+1.21.2"; NEOFORGE_VERSION="21.2.1-beta" ;;
+  1.21.3) FABRIC_API_VERSION="0.114.1+1.21.3"; NEOFORGE_VERSION="21.3.100" ;;
+  1.21.4) FABRIC_API_VERSION="0.119.4+1.21.4"; NEOFORGE_VERSION="21.4.161" ;;
+  1.21.5) FABRIC_API_VERSION="0.128.2+1.21.5"; NEOFORGE_VERSION="21.5.101" ;;
+  1.21.6) FABRIC_API_VERSION="0.128.2+1.21.6"; NEOFORGE_VERSION="21.6.20-beta" ;;
+  1.21.7) FABRIC_API_VERSION="0.129.0+1.21.7"; NEOFORGE_VERSION="21.7.25-beta" ;;
+  1.21.8) FABRIC_API_VERSION="0.136.1+1.21.8"; NEOFORGE_VERSION="21.8.57" ;;
+  1.21.9) FABRIC_API_VERSION="0.134.1+1.21.9"; NEOFORGE_VERSION="21.9.16-beta" ;;
+  1.21.10) FABRIC_API_VERSION="0.138.4+1.21.10"; NEOFORGE_VERSION="21.10.64" ;;
+  1.21.11) FABRIC_API_VERSION="0.141.6+1.21.11"; NEOFORGE_VERSION="21.11.48" ;;
   *) echo "unknown Minecraft version $MC" >&2; exit 1 ;;
 esac
 FABRIC_LOADER=${FABRIC_LOADER:-0.19.5}

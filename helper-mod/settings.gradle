@@ -17,4 +17,5 @@ rootProject.name = 'stratosphere-helper-mod'
 
 // core: the protocol, free of Minecraft. fabric-*/neoforge-*: the code that talks to one Minecraft generation through one
 // loader. Each loader's jar bundles its two generations, see README.md.
-include 'core', 'fabric-121', 'fabric-26', 'neoforge-121', 'neoforge-26'
+include 'core', 'fabric-121', 'fabric-1214', 'fabric-1218', 'fabric-12111', 'fabric-26',
+        'neoforge-121', 'neoforge-1214', 'neoforge-1218', 'neoforge-12111', 'neoforge-26'

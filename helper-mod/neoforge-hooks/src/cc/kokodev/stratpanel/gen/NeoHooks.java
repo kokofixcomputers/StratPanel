@@ -28,9 +28,14 @@ public final class NeoHooks {
         });
     NeoForge.EVENT_BUS.addListener(
         (ServerStartedEvent event) -> {
-          Helper created = new Helper(new McGame(event.getServer()), platform);
-          helper = created;
-          created.onStarted();
+          try {
+            Helper created = new Helper(new McGame(event.getServer()), platform);
+            helper = created;
+            created.onStarted();
+          } catch (Throwable e) {
+            // Whatever is wrong, the server starts without the helper.
+            platform.warn("Stratosphere could not start on this version of Minecraft, the panel will work without it.", e);
+          }
         });
     NeoForge.EVENT_BUS.addListener(
         (ServerStoppingEvent event) -> {

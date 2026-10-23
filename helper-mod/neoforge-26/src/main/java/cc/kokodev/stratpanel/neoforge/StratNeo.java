@@ -25,7 +25,7 @@ public final class StratNeo {
     String generation = Generation.forMinecraft(minecraft);
     if (generation == null) {
       platform.warn(
-          "Stratosphere supports NeoForge on Minecraft 1.21.1 and 26.1 and newer, this is " + minecraft
+          "Stratosphere supports NeoForge on Minecraft 1.21.1 to 1.21.11 and 26.1 and newer, this is " + minecraft
               + ". The panel will work without it.",
           null);
       return;
