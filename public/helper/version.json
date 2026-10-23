@@ -6,14 +6,12 @@
     "spigot",
     "purpur"
   ],
-  "mods": {
-    "fabric": {
-      "version": "261023-1811-SNAPSHOT",
-      "file": "Stratosphere-fabric.jar"
-    },
-    "neoforge": {
-      "version": "261023-1811-SNAPSHOT",
-      "file": "Stratosphere-neoforge.jar"
-    }
+  "mod": {
+    "version": "261023-1950-SNAPSHOT",
+    "file": "Stratosphere-mod.jar",
+    "platforms": [
+      "fabric",
+      "neoforge"
+    ]
   }
 }
