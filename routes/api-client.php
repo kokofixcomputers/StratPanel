@@ -81,6 +81,9 @@ Route::prefix('/curseforge')->group(function () {
 });
 Route::post('/self-service', [Client\SelfServiceController::class, 'store'])->middleware('throttle:10,1');
 
+// What the pages of the admin area read and change.
+Route::prefix('/admin')->group(base_path('routes/api-admin.php'));
+
 Route::prefix('/account')->middleware(AccountSubject::class)->group(function () {
     Route::prefix('/')->withoutMiddleware(RequireTwoFactorAuthentication::class)->group(function () {
         Route::get('/', [Client\AccountController::class, 'index'])->name('api:client.account');

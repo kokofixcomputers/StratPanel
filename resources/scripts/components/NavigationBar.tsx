@@ -95,9 +95,9 @@ export default () => {
                     </Tooltip>
                     {rootAdmin && (
                         <Tooltip placement={'bottom'} content={'Admin'}>
-                            <a href={'/admin'} rel={'noreferrer'}>
+                            <NavLink to={'/admin'}>
                                 <AdjustmentsIcon />
-                            </a>
+                            </NavLink>
                         </Tooltip>
                     )}
                     <PrivacyBadge />

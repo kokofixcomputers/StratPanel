@@ -207,6 +207,8 @@ class User extends Model implements
                 'identifier' => $this->identifier,
                 'can_access_admin' => $this->canAccessAdmin(),
                 'can_access_all_servers' => $this->canAccessAllServers(),
+                // What the admin area shows this person: every permission for root admins, the ones of their roles for the rest.
+                'admin_permissions' => $this->root_admin ? PermissionRegistry::all() : $this->rolePermissions(),
             ])
             ->toArray();
     }

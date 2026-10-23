@@ -19,6 +19,7 @@ import Spinner from '@/components/elements/Spinner';
 
 const DashboardRouter = lazy(() => import(/* webpackChunkName: "dashboard" */ '@/routers/DashboardRouter'));
 const ServerRouter = lazy(() => import(/* webpackChunkName: "server" */ '@/routers/ServerRouter'));
+const AdminRouter = lazy(() => import(/* webpackChunkName: "admin" */ '@/routers/AdminRouter'));
 const ThemeEditor = lazy(() => import(/* webpackChunkName: "theme-editor" */ '@/components/admin/ThemeEditor'));
 const LoginPreview = lazy(() => import(/* webpackChunkName: "login-preview" */ '@/components/auth/LoginPreview'));
 const AuthenticationRouter = lazy(() => import(/* webpackChunkName: "auth" */ '@/routers/AuthenticationRouter'));
@@ -34,6 +35,7 @@ interface ExtendedWindow extends Window {
         password_set?: boolean;
         can_access_admin?: boolean;
         can_access_all_servers?: boolean;
+        admin_permissions?: string[];
         use_totp: boolean;
         language: string;
         updated_at: string;
@@ -55,6 +57,7 @@ const App = () => {
             rootAdmin: PterodactylUser.root_admin,
             canAccessAdmin: PterodactylUser.can_access_admin ?? PterodactylUser.root_admin,
             canAccessAllServers: PterodactylUser.can_access_all_servers ?? PterodactylUser.root_admin,
+            adminPermissions: PterodactylUser.admin_permissions ?? [],
             passwordSet: PterodactylUser.password_set !== false,
             useTotp: PterodactylUser.use_totp,
             createdAt: new Date(PterodactylUser.created_at),
@@ -88,6 +91,11 @@ const App = () => {
                                     <ServerContext.Provider>
                                         <ServerRouter />
                                     </ServerContext.Provider>
+                                </Spinner.Suspense>
+                            </AuthenticatedRoute>
+                            <AuthenticatedRoute path={'/admin'}>
+                                <Spinner.Suspense>
+                                    <AdminRouter />
                                 </Spinner.Suspense>
                             </AuthenticatedRoute>
                             <AuthenticatedRoute path={'/theme-preview/login'}>

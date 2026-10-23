@@ -88,24 +88,26 @@ class DenyTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/new', [
+        $this->postJson('/api/client/admin/roles', [
             'name' => 'Restricted', 'color' => '#ff0000',
             'states' => ['users.update' => 'grant', 'self.servers.create' => 'deny', 'self.ssh_keys.create' => 'default', 'servers.delete' => 'deny'],
-        ])->assertRedirect();
+        ])->assertStatus(201);
 
         $role = Role::query()->where('name', 'Restricted')->firstOrFail();
         $this->assertSame(['users.view', 'users.update'], $role->permissionList());
         $this->assertSame(['servers.delete', 'self.servers.create'], $role->deniedList());
         $this->assertSame([], $role->userGrantList());
 
-        $this->page(route('admin.roles.view', $role->id, false))->assertOk()->assertSee('Default')->assertSee('Deny');
+        $json = $this->getJson('/api/client/admin/roles/' . $role->id)->assertOk()->json('role');
+        $this->assertSame(['users.view', 'users.update'], $json['granted']);
+        $this->assertSame(['servers.delete', 'self.servers.create'], $json['denied']);
     }
 
     public function testSomethingBothGrantedAndDeniedIsDenied(): void
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/new', ['name' => 'Both', 'color' => '#ff0000', 'permissions' => ['servers.delete'], 'denied' => ['servers.delete']])->assertRedirect();
+        $this->postJson('/api/client/admin/roles', ['name' => 'Both', 'color' => '#ff0000', 'permissions' => ['servers.delete'], 'denied' => ['servers.delete']])->assertStatus(201);
 
         $role = Role::query()->where('name', 'Both')->firstOrFail();
         $this->assertSame([], $role->permissionList());
@@ -116,8 +118,8 @@ class DenyTest extends RoleTestCase
     {
         $this->actingAs($this->userWith(['roles.create', 'servers.view']));
 
-        $this->post('/admin/roles/new', ['name' => 'Over', 'color' => '#ff0000', 'states' => ['users.delete' => 'grant']])->assertStatus(400);
-        $this->post('/admin/roles/new', ['name' => 'Down', 'color' => '#ff0000', 'states' => ['users.delete' => 'deny', 'self.servers.create' => 'grant']]);
+        $this->postJson('/api/client/admin/roles', ['name' => 'Over', 'color' => '#ff0000', 'states' => ['users.delete' => 'grant']])->assertStatus(400);
+        $this->postJson('/api/client/admin/roles', ['name' => 'Down', 'color' => '#ff0000', 'states' => ['users.delete' => 'deny', 'self.servers.create' => 'grant']]);
 
         $role = Role::query()->where('name', 'Down')->firstOrFail();
         $this->assertSame(['users.delete'], $role->deniedList());

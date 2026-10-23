@@ -11,6 +11,8 @@ export interface UserData {
     canAccessAdmin: boolean;
     // Whether this user may open every server like its owner: root admins, and roles with that permission.
     canAccessAllServers: boolean;
+    // What the admin area shows this user: the permissions of the roles (every one for root admins).
+    adminPermissions: string[];
     useTotp: boolean;
     // False for somebody who signed up with another service and has not chosen a password yet.
     passwordSet: boolean;

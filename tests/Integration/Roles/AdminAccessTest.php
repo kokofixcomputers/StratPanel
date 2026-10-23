@@ -37,8 +37,9 @@ class AdminAccessTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin());
 
-        // The same light and dark theme as the panel: its variables, the choice kept in the browser and a way to change it.
-        $this->page('/admin')->assertOk()
+        // The pages that are not part of the React app yet (Blade) have the same light and dark theme as the panel: its variables, the
+        // choice kept in the browser and a way to change it.
+        $this->page('/admin/mounts')->assertOk()
             ->assertSee('themes/pterodactyl/css/panel-theme.css', false)
             ->assertSee('stratosphere:theme', false)
             ->assertSee('id="admin-theme-toggle"', false);
@@ -141,7 +142,7 @@ class AdminAccessTest extends RoleTestCase
     public function testTheSidebarOnlyShowsWhatIsOpen(): void
     {
         $this->actingAs($this->userWith(['overview.view', 'users.view', 'nodes.view']));
-        $html = $this->sidebar($this->page('/admin')->assertOk()->getContent());
+        $html = $this->sidebar($this->page('/admin/users')->assertOk()->getContent());
 
         $this->assertStringContainsString(route('admin.users'), $html);
         $this->assertStringContainsString(route('admin.nodes'), $html);
@@ -154,7 +155,7 @@ class AdminAccessTest extends RoleTestCase
     public function testRootAdminsSeeTheWholeSidebar(): void
     {
         $this->actingAs($this->rootAdmin());
-        $html = $this->sidebar($this->page('/admin')->assertOk()->getContent());
+        $html = $this->sidebar($this->page('/admin/mounts')->assertOk()->getContent());
 
         foreach (['admin.users', 'admin.servers', 'admin.nodes', 'admin.roles', 'admin.extensions', 'admin.mounts', 'admin.nests', 'admin.locations', 'admin.databases', 'admin.api.index'] as $route) {
             $this->assertStringContainsString('href="' . route($route) . '"', $html, $route);
@@ -177,14 +178,15 @@ class AdminAccessTest extends RoleTestCase
         $location = Location::query()->create(['short' => 'perm' . bin2hex(random_bytes(3)), 'long' => 'x']);
         $this->actingAs($this->userWith(['locations.update']));
 
-        $this->patch('/admin/locations/view/' . $location->id, ['short' => $location->short, 'long' => 'changed'])->assertRedirect();
-        $this->patch('/admin/locations/view/' . $location->id, ['short' => $location->short, 'long' => 'changed', 'action' => 'delete'])->assertStatus(403);
+        $url = '/api/client/admin/locations/' . $location->id;
+        $this->patchJson($url, ['short' => $location->short, 'long' => 'changed'])->assertOk();
+        $this->deleteJson($url)->assertStatus(403);
         $this->assertNotNull(Location::query()->find($location->id));
 
         $this->signOut();
         $this->actingAs($this->userWith(['locations.delete']));
-        $this->patch('/admin/locations/view/' . $location->id, ['short' => $location->short, 'long' => 'x'])->assertStatus(403);
-        $this->patch('/admin/locations/view/' . $location->id, ['short' => $location->short, 'long' => 'x', 'action' => 'delete'])->assertRedirect();
+        $this->patchJson($url, ['short' => $location->short, 'long' => 'x'])->assertStatus(403);
+        $this->deleteJson($url)->assertNoContent();
         $this->assertNull(Location::query()->find($location->id));
     }
 

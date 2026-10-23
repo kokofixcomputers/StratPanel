@@ -32,11 +32,9 @@ Route::group(['prefix' => 'api'], function () {
 |
 */
 Route::group(['prefix' => 'locations'], function () {
-    Route::get('/', [Admin\LocationController::class, 'index'])->name('admin.locations')->middleware('admin.can:locations.view');
-    Route::get('/view/{location:id}', [Admin\LocationController::class, 'view'])->name('admin.locations.view')->middleware('admin.can:locations.view');
-
-    Route::post('/', [Admin\LocationController::class, 'create'])->middleware('admin.can:locations.create');
-    Route::patch('/view/{location:id}', [Admin\LocationController::class, 'update'])->middleware('admin.can:locations.update,locations.delete');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.locations')->middleware('admin.can:locations.view');
+    Route::get('/view/{location:id}', Admin\SpaController::class)->name('admin.locations.view')->middleware('admin.can:locations.view');
 });
 
 /*
@@ -251,18 +249,13 @@ Route::group(['prefix' => 'nodes'], function () {
 |
 */
 Route::group(['prefix' => 'roles'], function () {
-    Route::get('/', [Admin\RolesController::class, 'index'])->name('admin.roles')->middleware('admin.can:roles.view');
-    Route::get('/new', [Admin\RolesController::class, 'create'])->name('admin.roles.new')->middleware('admin.can:roles.create');
-    Route::get('/view/{role:id}', [Admin\RolesController::class, 'view'])->name('admin.roles.view')->middleware('admin.can:roles.view');
+    // The pages are part of the React app (Admin\SpaController), they read and change roles through the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.roles')->middleware('admin.can:roles.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.roles.new')->middleware('admin.can:roles.create');
+    Route::get('/view/{role:id}', Admin\SpaController::class)->name('admin.roles.view')->middleware('admin.can:roles.view');
 
-    Route::post('/new', [Admin\RolesController::class, 'store'])->middleware('admin.can:roles.create');
-    Route::post('/view/{role:id}/members', [Admin\RolesController::class, 'addMember'])->name('admin.roles.members.add')->middleware('admin.can:roles.assign');
+    // Still a form on the page of a user, which is not part of the app yet.
     Route::post('/users/{user:id}', [Admin\RolesController::class, 'syncUser'])->name('admin.roles.user')->middleware('admin.can:roles.assign');
-
-    Route::patch('/view/{role:id}', [Admin\RolesController::class, 'update'])->middleware('admin.can:roles.update');
-
-    Route::delete('/view/{role:id}', [Admin\RolesController::class, 'destroy'])->name('admin.roles.delete')->middleware('admin.can:roles.delete');
-    Route::delete('/view/{role:id}/members/{user:id}', [Admin\RolesController::class, 'removeMember'])->name('admin.roles.members.remove')->middleware('admin.can:roles.assign');
 });
 
 /*

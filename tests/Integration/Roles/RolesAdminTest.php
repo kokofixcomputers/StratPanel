@@ -15,10 +15,20 @@ class RolesAdminTest extends RoleTestCase
 
     private function save(array $data = [])
     {
-        return $this->post('/admin/roles/new', array_merge(['name' => 'Support', 'color' => '#ff0000', 'permissions' => ['users.view']], $data));
+        return $this->postJson('/api/client/admin/roles', array_merge(['name' => 'Support', 'color' => '#ff0000', 'permissions' => ['users.view']], $data));
     }
 
     // ---- the pages ------------------------------------------------------------------------------------------------------
+
+    public function testThePagesAreTheReactApp(): void
+    {
+        $role = $this->role(['users.view'], 'Helpers');
+        $this->actingAs($this->rootAdmin());
+
+        foreach (['/admin/roles', '/admin/roles/new', '/admin/roles/view/' . $role->id] as $uri) {
+            $this->page($uri)->assertOk()->assertSee('id="app"', false);
+        }
+    }
 
     public function testTheListShowsRolesWithTheirMembers(): void
     {
@@ -26,20 +36,31 @@ class RolesAdminTest extends RoleTestCase
         $role->users()->attach([$this->makeUser()->id, $this->makeUser()->id]);
         $this->actingAs($this->rootAdmin());
 
-        $this->page('/admin/roles')->assertOk()->assertSee('Helpers')->assertSee('Root admin');
+        $json = $this->getJson('/api/client/admin/roles')->assertOk()->json();
+        $this->assertSame(1, $json['root_admins']);
+        $this->assertSame('Helpers', $json['roles'][0]['name']);
+        $this->assertSame(2, $json['roles'][0]['users']);
+        $this->assertSame(1, $json['roles'][0]['permissions']);
     }
 
-    public function testTheEditorShowsEveryPermissionGrouped(): void
+    public function testTheEditorGetsEveryPermissionGrouped(): void
     {
         $this->actingAs($this->rootAdmin());
 
-        $html = $this->page('/admin/roles/new')->assertOk()->getContent();
+        $json = $this->getJson('/api/client/admin/roles/permissions')->assertOk()->json();
+        $keys = collect($json['groups'])->flatMap(fn ($group) => collect($group['permissions'])->pluck('key'))->all();
         foreach (PermissionRegistry::all() as $permission) {
-            $this->assertStringContainsString('name="states[' . $permission . ']"', $html, $permission);
+            $this->assertContains($permission, $keys, $permission);
         }
-        foreach (PermissionRegistry::groups() as $group) {
-            $this->assertStringContainsString($group['label'], $html);
+        foreach (array_keys(PermissionRegistry::user()) as $permission) {
+            $this->assertContains($permission, $keys, $permission);
         }
+        $this->assertNull($json['mine'], 'root admins hold everything');
+
+        $this->actingAs($this->userWith(['roles.view', 'users.view']));
+        $mine = $this->getJson('/api/client/admin/roles/permissions')->json('mine');
+        sort($mine);
+        $this->assertSame(['roles.view', 'users.view'], $mine);
     }
 
     public function testAPageShowsWhoHasTheRole(): void
@@ -49,7 +70,11 @@ class RolesAdminTest extends RoleTestCase
         $role->users()->attach($member->id);
         $this->actingAs($this->rootAdmin());
 
-        $this->page('/admin/roles/view/' . $role->id)->assertOk()->assertSee('memberone')->assertSee('People with this role');
+        $json = $this->getJson('/api/client/admin/roles/' . $role->id)->assertOk()->json();
+        $this->assertSame('Helpers', $json['role']['name']);
+        $this->assertSame(['users.view'], $json['role']['granted']);
+        $this->assertSame(['memberone'], array_column($json['members'], 'username'));
+        $this->assertTrue($json['covers']);
     }
 
     public function testTheUsersListShowsTheirRoles(): void
@@ -68,7 +93,7 @@ class RolesAdminTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->save(['permissions' => ['servers.delete', 'nonsense', 'users.update']])->assertRedirect();
+        $this->save(['permissions' => ['servers.delete', 'nonsense', 'users.update']])->assertStatus(201);
 
         $role = Role::query()->where('name', 'Support')->firstOrFail();
         $this->assertSame(['users.view', 'users.update', 'servers.view', 'servers.delete'], $role->permissions);
@@ -86,7 +111,7 @@ class RolesAdminTest extends RoleTestCase
         $this->save(['permissions' => 'users.view'])->assertStatus(422);
         $this->assertSame(0, Role::query()->count());
 
-        $this->save()->assertRedirect();
+        $this->save()->assertStatus(201);
         $this->save()->assertStatus(422);
         $this->assertSame(1, Role::query()->count());
     }
@@ -95,7 +120,7 @@ class RolesAdminTest extends RoleTestCase
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->save(['permissions' => []])->assertRedirect();
+        $this->save(['permissions' => []])->assertStatus(201);
 
         $this->assertSame([], Role::query()->firstOrFail()->permissions);
     }
@@ -107,8 +132,8 @@ class RolesAdminTest extends RoleTestCase
         $member->roles()->attach($role->id);
         $this->actingAs($this->rootAdmin());
 
-        $this->patch('/admin/roles/view/' . $role->id, ['name' => 'New', 'description' => 'Nice', 'color' => '#00ff00', 'permissions' => ['nodes.view']])
-            ->assertRedirect('/admin/roles/view/' . $role->id);
+        $this->patchJson('/api/client/admin/roles/' . $role->id, ['name' => 'New', 'description' => 'Nice', 'color' => '#00ff00', 'permissions' => ['nodes.view']])
+            ->assertOk();
 
         $role->refresh();
         $this->assertSame('New', $role->name);
@@ -123,7 +148,7 @@ class RolesAdminTest extends RoleTestCase
         $role = $this->role(['users.view'], 'Same');
         $this->actingAs($this->rootAdmin());
 
-        $this->patch('/admin/roles/view/' . $role->id, ['name' => 'Same', 'color' => '#000000', 'permissions' => ['users.view']])->assertRedirect();
+        $this->patchJson('/api/client/admin/roles/' . $role->id, ['name' => 'Same', 'color' => '#000000', 'permissions' => ['users.view']])->assertOk();
 
         $this->assertSame('#000000', $role->fresh()->color);
     }
@@ -135,7 +160,7 @@ class RolesAdminTest extends RoleTestCase
         $member->roles()->attach($role->id);
         $this->actingAs($this->rootAdmin());
 
-        $this->delete('/admin/roles/view/' . $role->id)->assertRedirect('/admin/roles');
+        $this->deleteJson('/api/client/admin/roles/' . $role->id)->assertNoContent();
 
         $this->assertNull(Role::query()->find($role->id));
         $this->assertFalse($member->fresh()->canAccessAdmin());
@@ -147,18 +172,18 @@ class RolesAdminTest extends RoleTestCase
         $role = $this->role(['users.view'], 'Target');
 
         $this->actingAs($this->userWith(['roles.view']));
-        $this->page('/admin/roles')->assertOk();
-        $this->post('/admin/roles/new', ['name' => 'x', 'color' => '#000000'])->assertStatus(403);
-        $this->patch('/admin/roles/view/' . $role->id, ['name' => 'x', 'color' => '#000000'])->assertStatus(403);
-        $this->delete('/admin/roles/view/' . $role->id)->assertStatus(403);
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'x'])->assertStatus(403);
+        $this->getJson('/api/client/admin/roles')->assertOk();
+        $this->postJson('/api/client/admin/roles', ['name' => 'x', 'color' => '#000000'])->assertStatus(403);
+        $this->patchJson('/api/client/admin/roles/' . $role->id, ['name' => 'x', 'color' => '#000000'])->assertStatus(403);
+        $this->deleteJson('/api/client/admin/roles/' . $role->id)->assertStatus(403);
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'x'])->assertStatus(403);
     }
 
     public function testChangesAreWrittenToTheActivityLog(): void
     {
         $this->actingAs($this->rootAdmin());
 
-        $this->save(['name' => 'Logged'])->assertRedirect();
+        $this->save(['name' => 'Logged'])->assertStatus(201);
 
         $this->assertTrue(ActivityLog::query()->where('event', 'role:create')->exists());
     }
@@ -173,7 +198,7 @@ class RolesAdminTest extends RoleTestCase
         $this->save(['name' => 'Too much', 'permissions' => ['users.view', 'servers.delete']]);
         $this->assertNull(Role::query()->where('name', 'Too much')->first());
 
-        $this->save(['name' => 'Fine', 'permissions' => ['users.view']])->assertRedirect();
+        $this->save(['name' => 'Fine', 'permissions' => ['users.view']])->assertStatus(201);
         $this->assertNotNull(Role::query()->where('name', 'Fine')->first());
     }
 
@@ -184,7 +209,7 @@ class RolesAdminTest extends RoleTestCase
         $maker->roles()->attach($own->id);
         $this->actingAs($maker->fresh());
 
-        $this->patch('/admin/roles/view/' . $own->id, ['name' => 'Own', 'color' => '#000000', 'permissions' => ['roles.view', 'roles.update', 'users.view', 'users.delete']]);
+        $this->patchJson('/api/client/admin/roles/' . $own->id, ['name' => 'Own', 'color' => '#000000', 'permissions' => ['roles.view', 'roles.update', 'users.view', 'users.delete']]);
 
         $this->assertNotContains('users.delete', $own->fresh()->permissions);
     }
@@ -194,8 +219,8 @@ class RolesAdminTest extends RoleTestCase
         $strong = $this->role(['users.view', 'servers.delete'], 'Strong');
         $this->actingAs($this->userWith(['roles.view', 'roles.update', 'roles.delete', 'users.view']));
 
-        $this->patch('/admin/roles/view/' . $strong->id, ['name' => 'Weak', 'color' => '#000000', 'permissions' => ['users.view']]);
-        $this->delete('/admin/roles/view/' . $strong->id);
+        $this->patchJson('/api/client/admin/roles/' . $strong->id, ['name' => 'Weak', 'color' => '#000000', 'permissions' => ['users.view']]);
+        $this->deleteJson('/api/client/admin/roles/' . $strong->id);
 
         $strong->refresh();
         $this->assertSame('Strong', $strong->name);
@@ -207,7 +232,7 @@ class RolesAdminTest extends RoleTestCase
         $strong = $this->role(['users.view', 'servers.delete'], 'Strong');
         $this->actingAs($this->userWith(['roles.view', 'roles.update', 'users.view']));
 
-        $this->page('/admin/roles/view/' . $strong->id)->assertOk()->assertSee('you can look at it but not change it');
+        $this->getJson('/api/client/admin/roles/' . $strong->id)->assertOk()->assertJsonPath('covers', false);
     }
 
     // ---- giving roles ---------------------------------------------------------------------------------------------------
@@ -218,11 +243,11 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'targetuser']);
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'targetuser'])->assertRedirect();
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'targetuser'])->assertStatus(201);
         $this->assertTrue($target->fresh()->hasPermission('users.view'));
         $this->assertTrue($role->users()->where('users.id', $target->id)->exists());
 
-        $this->delete('/admin/roles/view/' . $role->id . '/members/' . $target->id)->assertRedirect();
+        $this->deleteJson('/api/client/admin/roles/' . $role->id . '/members/' . $target->id)->assertNoContent();
         $this->assertFalse($target->fresh()->canAccessAdmin());
     }
 
@@ -232,7 +257,7 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'mailtarget']);
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => $target->email])->assertRedirect();
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => $target->email])->assertStatus(201);
 
         $this->assertTrue($target->fresh()->canAccessAdmin());
     }
@@ -243,8 +268,8 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'twice']);
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'twice']);
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'twice']);
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'twice']);
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'twice']);
 
         $this->assertSame(1, $role->users()->count());
     }
@@ -254,7 +279,7 @@ class RolesAdminTest extends RoleTestCase
         $role = $this->role(['users.view'], 'Helpers');
         $this->actingAs($this->rootAdmin());
 
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'nobody-by-that-name']);
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'nobody-by-that-name']);
 
         $this->assertSame(0, $role->users()->count());
     }
@@ -287,8 +312,9 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'untouched']);
         $this->actingAs($this->userWith(['roles.view', 'roles.update', 'users.view']));
 
-        $this->post('/admin/roles/view/' . $role->id . '/members', ['user' => 'untouched'])->assertStatus(403);
+        // The form of the user page first: the client API changes how a route called {user} is found, for the rest of a test.
         $this->post('/admin/roles/users/' . $target->id, ['roles' => [$role->id]])->assertStatus(403);
+        $this->postJson('/api/client/admin/roles/' . $role->id . '/members', ['user' => 'untouched'])->assertStatus(403);
         $this->assertSame(0, $target->roles()->count());
     }
 
@@ -298,8 +324,8 @@ class RolesAdminTest extends RoleTestCase
         $target = $this->makeUser(['username' => 'wouldgrow']);
         $this->actingAs($this->userWith(['roles.view', 'roles.assign', 'users.view']));
 
-        $this->post('/admin/roles/view/' . $strong->id . '/members', ['user' => 'wouldgrow']);
         $this->post('/admin/roles/users/' . $target->id, ['roles' => [$strong->id]]);
+        $this->postJson('/api/client/admin/roles/' . $strong->id . '/members', ['user' => 'wouldgrow']);
 
         $this->assertSame(0, $target->roles()->count());
     }

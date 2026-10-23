@@ -7,18 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Pterodactyl\Services\Roles\AdminNavigation;
 use Pterodactyl\Http\Controllers\Controller;
-use Pterodactyl\Services\Admin\OverviewService;
-use Pterodactyl\Services\Helpers\SoftwareVersionService;
 
 class BaseController extends Controller
 {
-    /**
-     * BaseController constructor.
-     */
-    public function __construct(private SoftwareVersionService $version, private OverviewService $overview)
-    {
-    }
-
     /**
      * Return the admin index view.
      */
@@ -32,17 +23,7 @@ class BaseController extends Controller
             return redirect()->route($route);
         }
 
-        $nodes = $this->overview->nodes();
-
-        return view('admin.index', [
-            'version' => $this->version,
-            'totals' => $this->overview->totals(),
-            'nodes' => $nodes,
-            'capacity' => $this->overview->capacity($nodes),
-            'eggs' => $this->overview->eggs(),
-            'recentServers' => $this->overview->recentServers(),
-            'recentUsers' => $this->overview->recentUsers(),
-            'activity' => $this->overview->recentActivity(),
-        ]);
+        // The page is part of the React app, it reads its numbers from the admin API (Api\Client\Admin\OverviewController).
+        return view('templates/base.core');
     }
 }

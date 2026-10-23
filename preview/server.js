@@ -144,6 +144,41 @@ api.get('/self-service', (req, res) => res.json({ object: 'self_service', attrib
             ? { limits: { memory: 2048, disk: 5120, cpu: 100, allocations: 2, backups: 2 }, max: { memory: 3072, disk: 8192, cpu: 150, allocations: 3, backups: 4 }, pool: { limits: { memory: 4096, disk: 10240, cpu: 200, allocations: 5, backups: 5 }, used: { memory: 1024, disk: 2048, cpu: 50, allocations: 2, backups: 1 }, remaining: { memory: 3072, disk: 8192, cpu: 150, allocations: 3, backups: 4 }, minimum: { memory: 512, disk: 1024, cpu: 50, allocations: 1, backups: 0 } } }
             : { limits: { memory: 2048, disk: 10240, cpu: 200 }, max: { memory: 8192, disk: 51200, cpu: 400 } }), nodes: [{ id: 1, name: 'Frankfurt-1', location: 'fra', description: 'Frankfurt', ping_url: `http://localhost:${PORT}`, memory_free: 16384, disk_free: 200000, free_allocations: 40 }, { id: 2, name: 'Singapore-1', location: 'sgp', description: 'Singapore', ping_url: 'http://10.255.255.1:8080', memory_free: 1024, disk_free: 200000, free_allocations: 10 }, { id: 3, name: 'Dallas-1', location: 'dal', description: 'Dallas', ping_url: `http://127.0.0.1:${PORT}`, memory_free: 8192, disk_free: 90000, free_allocations: 0 }] } }));
 api.get('/account/resources', (req, res) => res.json({ object: 'resources', attributes: { enabled: true, limited: true, limits: { memory: 4096, disk: 10240, cpu: 200, allocations: 5, backups: 5 }, used: { memory: 1024, disk: 2048, cpu: 50, allocations: 2, backups: 1 }, remaining: { memory: 3072, disk: 8192, cpu: 150, allocations: 3, backups: 4 }, servers: [{ identifier: 'aaaa1111', name: 'Survival', memory: 1024, disk: 2048, cpu: 50, allocations: 2, backups: 1 }] } }));
+
+// The admin pages that are part of the app (Admin > Overview, Roles, Locations): kept in memory.
+const usage = (used, limit) => ({ used, limit, percent: Math.round((used / limit) * 1000) / 10, level: used / limit > 0.9 ? 'danger' : used / limit > 0.7 ? 'warning' : 'ok' });
+api.get('/admin/overview', (req, res) => res.json({
+    totals: { servers: { total: 12, installing: 1, suspended: 0, failed: 1 }, users: { total: 34, admins: 2, two_factor: 9, new: 3 }, nodes: { total: 2, maintenance: 1 }, domains: { total: 5 } },
+    capacity: { memory: usage(18432, 32768), disk: usage(90000, 200000), allocations: usage(14, 60) },
+    nodes: [
+        { id: 1, name: 'Frankfurt-1', fqdn: 'fra.example.com', location: 'fra', maintenance: false, servers: 8, memory: usage(14336, 16384), disk: usage(60000, 100000), allocations: usage(10, 30) },
+        { id: 2, name: 'Singapore-1', fqdn: 'sgp.example.com', location: 'sgp', maintenance: true, servers: 4, memory: usage(4096, 16384), disk: usage(30000, 100000), allocations: usage(4, 30) },
+    ],
+    eggs: [{ id: 1, name: 'Paper', servers: 7 }, { id: 2, name: 'Fabric', servers: 3 }, { id: 3, name: 'Velocity', servers: 2 }],
+    recent_servers: [{ id: 3, name: 'Survival', owner: 'alex', node: 'Frankfurt-1', created_at: new Date(Date.now() - 3600e3).toISOString() }, { id: 2, name: 'Creative', owner: 'sam', node: 'Singapore-1', created_at: new Date(Date.now() - 86400e3).toISOString() }],
+    recent_users: [{ id: 5, username: 'alex', email: 'alex@example.com', root_admin: false, created_at: new Date(Date.now() - 7200e3).toISOString() }, { id: 1, username: 'preview', email: 'preview@example.com', root_admin: true, created_at: new Date(Date.now() - 864000e3).toISOString() }],
+    activity: [{ event: 'server:create', actor: 'alex', ip: '203.0.113.5', timestamp: new Date(Date.now() - 3000e3).toISOString() }, { event: 'auth:success', actor: 'sam', ip: '203.0.113.9', timestamp: new Date(Date.now() - 9000e3).toISOString() }],
+    links: { discord: 'https://discord.gg/example', donations: 'https://example.com/donate' },
+}));
+let adminRoles = [{ id: 1, name: 'Support', description: 'Helps users', color: '#3b82f6', granted: ['users.view', 'servers.view'], denied: ['servers.delete'] }, { id: 2, name: 'Builders', description: '', color: '#16a34a', granted: ['nests.view'], denied: [] }];
+const adminGroups = [
+    { id: 'users', label: 'Users', description: 'Accounts of the panel.', permissions: [{ key: 'users.view', label: 'See users and their details', needs: null, everybody: false }, { key: 'users.update', label: 'Change users', needs: 'users.view', everybody: false }] },
+    { id: 'servers', label: 'Servers', description: 'Servers on the nodes, in the admin area.', permissions: [{ key: 'servers.view', label: 'See servers', needs: null, everybody: false }, { key: 'servers.delete', label: 'Delete servers', needs: 'servers.view', everybody: false }] },
+    { id: 'self', label: 'Everybody', description: 'What every account can do without a role.', permissions: [{ key: 'self.servers.create', label: 'Create a server for themselves', needs: null, everybody: true }] },
+];
+api.get('/admin/roles/permissions', (req, res) => res.json({ groups: adminGroups, mine: null }));
+api.get('/admin/roles', (req, res) => res.json({ root_admins: 2, roles: adminRoles.map((r) => ({ id: r.id, name: r.name, description: r.description, color: r.color, permissions: r.granted.length, denied: r.denied.length, users: r.id === 1 ? 3 : 0 })) }));
+api.get('/admin/roles/:id', (req, res) => { const role = adminRoles.find((r) => r.id === Number(req.params.id)); return role ? res.json({ role, covers: true, members: role.id === 1 ? [{ id: 5, username: 'alex', email: 'alex@example.com', root_admin: false, since: new Date(Date.now() - 86400e3).toISOString() }] : [] }) : res.status(404).json({ errors: [{ detail: 'Not found' }] }); });
+api.post('/admin/roles', (req, res) => { const states = req.body.states || {}; const role = { id: adminRoles.length + 1, name: req.body.name, description: req.body.description, color: req.body.color, granted: Object.keys(states).filter((k) => states[k] === 'grant'), denied: Object.keys(states).filter((k) => states[k] === 'deny') }; adminRoles.push(role); res.status(201).json(role); });
+api.patch('/admin/roles/:id', (req, res) => { const role = adminRoles.find((r) => r.id === Number(req.params.id)); const states = req.body.states || {}; Object.assign(role, { name: req.body.name, description: req.body.description, color: req.body.color, granted: Object.keys(states).filter((k) => states[k] === 'grant'), denied: Object.keys(states).filter((k) => states[k] === 'deny') }); res.json(role); });
+api.delete('/admin/roles/:id', (req, res) => { adminRoles = adminRoles.filter((r) => r.id !== Number(req.params.id)); res.status(204).end(); });
+let adminLocations = [{ id: 1, short: 'fra', long: 'Frankfurt, Germany', nodes: 1, servers: 8 }, { id: 2, short: 'sgp', long: 'Singapore', nodes: 1, servers: 4 }];
+api.get('/admin/locations', (req, res) => res.json({ locations: adminLocations }));
+api.get('/admin/locations/:id', (req, res) => { const l = adminLocations.find((x) => x.id === Number(req.params.id)); return l ? res.json({ ...l, nodes: [{ id: 1, name: 'Frankfurt-1', fqdn: 'fra.example.com', servers: 8 }] }) : res.status(404).json({ errors: [{ detail: 'Not found' }] }); });
+api.post('/admin/locations', (req, res) => { const l = { id: adminLocations.length + 1, short: req.body.short, long: req.body.long, nodes: 0, servers: 0 }; adminLocations.push(l); res.status(201).json(l); });
+api.patch('/admin/locations/:id', (req, res) => { Object.assign(adminLocations.find((x) => x.id === Number(req.params.id)), { short: req.body.short, long: req.body.long }); res.json({ id: Number(req.params.id) }); });
+api.delete('/admin/locations/:id', (req, res) => { adminLocations = adminLocations.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -564,7 +599,7 @@ api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', da
 app.use('/api/client', api);
 app.get('/locales/locale.json', (req, res) => res.json({}));
 
-const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, use_totp: false, language: 'en', updated_at: now(), created_at: now() };
+const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, can_access_admin: true, admin_permissions: [], use_totp: false, language: 'en', updated_at: now(), created_at: now() };
 const page = (title, guest = false) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
 <script>window.fetch=(function(f){return function(u,o){return f(typeof u==='string'?u.replace('https://api.modrinth.com/v2','/mr'):u,o)}})(window.fetch.bind(window));</script><script>${guest ? '' : `window.PterodactylUser=${JSON.stringify(user)};`}window.SiteConfiguration=${JSON.stringify({ theme: themeSaved.config, name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' }, captcha: { provider: 'none', siteKey: '' }, auth: { registration: true, passwordRegistration: true, passkeys: true, providers: [{ key: 'github', name: 'GitHub', type: 'github', signup: true }, { key: 'discord', name: 'Discord', type: 'discord', signup: true }, { key: 'google', name: 'Google', type: 'google', signup: false }] }, branding: { favicon: process.env.PREVIEW_FAVICON || null, announcements: [{ id: 'a1', key: 'a1:1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.\nServers come back by themselves.', type: 'warning', enabled: true, dismissible: true, link_label: 'Status page', link_url: 'https://status.example.com' }, { id: 'a2', key: 'a2:1', title: '', message: 'Welcome to Stratosphere, read the rules before you start.', type: 'info', enabled: true, dismissible: false, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }, { label: 'Rules', url: '/rules', location: 'sidebar', new_tab: false }, { label: 'Terms', url: '/terms', location: 'footer', new_tab: true }, { label: 'Privacy', url: '/privacy', location: 'footer', new_tab: true }] } })};</script><style>html.dark { background: #0c1017; color-scheme: dark; }</style><style id="stratosphere-custom-theme">${themeSaved.css}</style><script>var marks=${JSON.stringify(themeSaved.attributes || {})};for(var k in marks)document.documentElement.setAttribute(k,marks[k]);</script></head>
 <body><div id="modal-portal"></div><div id="app"></div><script src="/assets/bundle.js"></script></body></html>`;
@@ -589,7 +624,11 @@ app.use('/mr', async (req, res) => {
 mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
-app.get(/^\/admin(\/.*)?$/, (req, res) => res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin')));
+// The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
+const PORTED_ADMIN = /^\/admin(\/(roles|locations)(\/.*)?)?\/?$/;
+app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
+    PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
+);
 app.get('*', (req, res) => res.send(page('Panel preview', req.path.startsWith('/auth'))));
 
 // ---- fake wings --------------------------------------------------------------------------------
