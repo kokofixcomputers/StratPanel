@@ -13,12 +13,9 @@ describe('lib/helperPlugin', () => {
         });
 
         it('puts a mod in the mods folder for Fabric and NeoForge, any capitalisation', () => {
-            expect(helperBuild('FABRIC')).toEqual({ file: 'Stratosphere-fabric.jar', folder: '/mods', key: 'fabric' });
-            expect(helperBuild('neoforge')).toEqual({
-                file: 'Stratosphere-neoforge.jar',
-                folder: '/mods',
-                key: 'neoforge',
-            });
+            const mod = { file: 'Stratosphere-mod.jar', folder: '/mods', key: 'mod' };
+            expect(helperBuild('FABRIC')).toEqual(mod);
+            expect(helperBuild('neoforge')).toEqual(mod);
         });
 
         it('has nothing for software that is not supported', () => {
@@ -32,16 +29,9 @@ describe('lib/helperPlugin', () => {
 
     describe('Arclight, which has several mod loaders', () => {
         it('gets the mod of the loader that was chosen', () => {
-            expect(helperBuild('ARCLIGHT', 'fabric')).toEqual({
-                file: 'Stratosphere-fabric.jar',
-                folder: '/mods',
-                key: 'fabric',
-            });
-            expect(helperBuild('arclight', 'NeoForge')).toEqual({
-                file: 'Stratosphere-neoforge.jar',
-                folder: '/mods',
-                key: 'neoforge',
-            });
+            const mod = { file: 'Stratosphere-mod.jar', folder: '/mods', key: 'mod' };
+            expect(helperBuild('ARCLIGHT', 'fabric')).toEqual(mod);
+            expect(helperBuild('arclight', 'NeoForge')).toEqual(mod);
         });
 
         it('gets nothing for Forge, which has no helper, or without a loader', () => {
@@ -75,7 +65,7 @@ describe('lib/helperPlugin', () => {
         const info = {
             version: '261015-2134-SNAPSHOT',
             file: 'Stratosphere.jar',
-            mods: { fabric: { version: '2.0.0', file: 'Stratosphere-fabric.jar' }, neoforge: { version: '2.0.1' } },
+            mod: { version: '2.0.0', file: 'Stratosphere-mod.jar', platforms: ['fabric', 'neoforge'] },
         };
 
         it('reads the plugin version from the top level', async () => {
@@ -84,10 +74,12 @@ describe('lib/helperPlugin', () => {
             expect(await bundledHelperVersion()).toBe('261015-2134-SNAPSHOT');
         });
 
-        it('reads the version of the mod for the loader', async () => {
+        it('reads the version of the one mod for Fabric and NeoForge, and for Arclight with a loader', async () => {
             respond(info);
             expect(await bundledHelperVersion('fabric')).toBe('2.0.0');
-            expect(await bundledHelperVersion('NEOFORGE')).toBe('2.0.1');
+            expect(await bundledHelperVersion('NEOFORGE')).toBe('2.0.0');
+            expect(await bundledHelperVersion('ARCLIGHT', 'fabric')).toBe('2.0.0');
+            expect(await bundledHelperVersion('ARCLIGHT', 'forge')).toBeNull();
         });
 
         it('is null for a panel that ships no mods, an unknown loader or a broken file', async () => {

@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 /** A version of Minecraft that lacks a method the helper calls must not take the server down. */
 class HelperGuardTest {
 
-  private final List<String> log = new ArrayList<>();
+  // The command scan writes from a thread of its own, the test reads the log while it does.
+  private final List<String> log = new java.util.concurrent.CopyOnWriteArrayList<>();
   private final List<String> warnings = new ArrayList<>();
 
   private Helper helper(boolean playersBreak) {

@@ -1,6 +1,10 @@
 // The code that talks to Minecraft is written once and compiled for each generation of the game. The files are templates:
-// the package ends in ".gen", which is replaced by the generation ("g121" or "g26") so the classes of both generations can
-// live in one jar. Applied by the four loader projects, they set `gen`, `genDir` and `hooksDir` first.
+// the package ends in ".gen", which is replaced by the generation and the loader ("g121fabric", "g121neoforge", "g26fabric" ...) so
+// the classes of every generation and of both loaders can live in one jar: the code for Fabric on 1.21.x is renamed to Fabric's
+// intermediary names, the one for NeoForge is not, so they must not share a name. Applied by the loader projects, they set `gen`,
+// `genDir` and `hooksDir` first.
+def loaderName = project.name.startsWith('fabric') ? 'fabric' : 'neoforge'
+def pkg = "${gen}${loaderName}"
 def target = layout.buildDirectory.dir('generated/gen')
 
 def generate = tasks.register('generateGenSources', Sync) {
@@ -8,8 +12,8 @@ def generate = tasks.register('generateGenSources', Sync) {
     from(rootProject.file(genDir + '/src')) { into '.' }
     from(rootProject.file(hooksDir + '/src')) { into '.' }
     into target
-    eachFile { it.path = it.path.replace('/stratpanel/gen/', "/stratpanel/${gen}/") }
-    filter { line -> line.replace('cc.kokodev.stratpanel.gen', "cc.kokodev.stratpanel.${gen}") }
+    eachFile { it.path = it.path.replace('/stratpanel/gen/', "/stratpanel/${pkg}/") }
+    filter { line -> line.replace('cc.kokodev.stratpanel.gen', "cc.kokodev.stratpanel.${pkg}") }
 }
 
 sourceSets.main.java.srcDir(generate)

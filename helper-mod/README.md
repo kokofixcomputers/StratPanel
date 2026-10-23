@@ -4,7 +4,7 @@ The mod version of the [helper plugin](../helper-plugin). It speaks the same pro
 [`docs/stratosphere-commands.md`](../docs/stratosphere-commands.md), so the panel treats it like the plugin: tab completion
 from the command tree of the server, the list of players, their vitals, inventory, ender chest and the shulker boxes in them, TPS and MSPT.
 
-There is **one jar per loader**:
+There is **one jar, `Stratosphere-mod.jar`, for both loaders**:
 
 - **Fabric:** Minecraft **1.20 to 1.21.11 and 26.1 and newer**.
 - **NeoForge:** Minecraft **1.20.2 to 1.21.11 and 26.1 and newer**. (NeoForge for 1.20 and 1.20.1 is Forge's API under another name, it
@@ -13,14 +13,23 @@ There is **one jar per loader**:
 Every one of these versions and loaders was tried on a real server (and 26.3 for the 26.x ones), see below.
 
 
-| Jar | Loader | Needs |
+| Loader | Needs | Java |
 |---|---|---|
-| `Stratosphere-fabric.jar` | Fabric Loader 0.16+ and Fabric API | Java 17 on 1.20 to 1.20.4, Java 21 from 1.20.5, Java 25 on 26.x |
-| `Stratosphere-neoforge.jar` | NeoForge 20.2+ | the same |
+| Fabric | Fabric Loader 0.16+ and Fabric API | 17 on 1.20 to 1.20.4, 21 from 1.20.5, 25 on 26.x |
+| NeoForge | NeoForge 20.2+ | the same |
 
 Put it in the `mods` folder. The panel does that itself when it installs Fabric or NeoForge, and offers to update it when the
 version differs from the one it ships with. Other versions of Minecraft are not supported, the mod says so in the log and
 leaves the server alone.
+
+## How one jar covers both loaders
+
+Fabric reads `fabric.mod.json` and starts `StratFabric`, which it names there. NeoForge reads `neoforge.mods.toml` (`mods.toml` on 20.2
+to 20.4) and finds `StratNeo` by its `@Mod` annotation. Each ignores what is meant for the other, and the classes of the other are never
+loaded (NeoForge only reads `StratFabric` as bytes while it scans for annotations). The code that talks to the game is in the jar once
+for each loader, `g121fabric`, `g121neoforge` and so on, because the Fabric version for 1.20 and 1.21 is renamed to the names Fabric
+uses when running and the NeoForge one is not: the two would otherwise have the same class names with different bytes. Put the jar on
+a Forge server and Forge will refuse the mod (no `@Mod` of Forge), the panel does not install it there.
 
 ## How one jar covers all of these versions
 
@@ -48,7 +57,7 @@ mc/              Templates for the code that talks to the game (Mojang names): M
 mc-<generation>/ The few things that differ between the generations (Compat.java), one folder for each.
 fabric-hooks/    Templates for the Fabric events, neoforge-hooks/ the same for NeoForge.
 fabric-<generation>/ neoforge-<generation>/
-                 One Gradle project per loader and generation. Each stamps the templates with its package (g121, g1214, ...),
+                 One Gradle project per loader and generation. Each stamps the templates with its package (g121fabric, g1214neoforge, ...),
                  compiles them against that game, and the Fabric ones for 1.21.x remap the result to intermediary names.
 fabric-26/, neoforge-26/ also hold the entry point, which knows no Minecraft classes: it reads the version of the game and
                  loads the package of the right generation.
@@ -59,7 +68,7 @@ thing `Compat` has to know about: names, enchantments, trims, what is in a shulk
 20.4 also have another tick event (`neoforge-hooks-20`) and read `META-INF/mods.toml`, which the jar carries next to
 `neoforge.mods.toml`.
 
-`./gradlew mods` merges the pieces into `build/libs/stratosphere-fabric-<version>.jar` and `stratosphere-neoforge-<version>.jar`.
+`./gradlew mods` merges the pieces into `build/libs/stratosphere-mod-<version>.jar`.
 Everything is Java 17 bytecode so the jar loads on Java 17 (1.20 to 1.20.4) as well as 21 and 25. Gradle itself has to run on Java 25, because the 26.x
 game classes are Java 25 class files.
 

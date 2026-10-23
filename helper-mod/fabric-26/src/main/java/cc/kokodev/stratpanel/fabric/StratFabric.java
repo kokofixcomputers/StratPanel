@@ -30,7 +30,7 @@ public final class StratFabric implements ModInitializer {
       return;
     }
     try {
-      Class.forName("cc.kokodev.stratpanel." + generation + ".FabricHooks")
+      Class.forName("cc.kokodev.stratpanel." + generation + "fabric.FabricHooks")
           .getMethod("init", Platform.class)
           .invoke(null, platform);
     } catch (Throwable e) {

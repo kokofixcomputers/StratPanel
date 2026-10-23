@@ -10,31 +10,19 @@ subprojects {
     version = rootProject.mod_version
 }
 
-// One jar per loader. Each holds the shared core, the entry point and one build of the Minecraft-facing code for every
-// generation of the game, the right one is picked when the server starts.
-evaluationDependsOn(':fabric-26')
-evaluationDependsOn(':fabric-120')
-evaluationDependsOn(':fabric-1204')
-evaluationDependsOn(':fabric-1206')
-evaluationDependsOn(':fabric-121')
-evaluationDependsOn(':fabric-1214')
-evaluationDependsOn(':fabric-1218')
-evaluationDependsOn(':fabric-12111')
-evaluationDependsOn(':neoforge-26')
-evaluationDependsOn(':neoforge-1204')
-evaluationDependsOn(':neoforge-1206')
-evaluationDependsOn(':neoforge-121')
-evaluationDependsOn(':neoforge-1214')
-evaluationDependsOn(':neoforge-1218')
-evaluationDependsOn(':neoforge-12111')
-
-tasks.register('fabricJar', Jar) {
-    archiveFileName = "stratosphere-fabric-${mod_version}.jar"
+// One jar for both loaders. Fabric reads fabric.mod.json and starts StratFabric, NeoForge reads (neoforge.)mods.toml and finds
+// StratNeo by its @Mod annotation, each ignores what is meant for the other. The code of every generation is in the jar once for each
+// loader (g121fabric, g121neoforge, ...), the entry points load the one that fits the loader and the game. The Fabric 1.20 and 1.21
+// versions are renamed to the names Fabric uses when running, the rest is already in the jar.
+tasks.register('universalJar', Jar) {
+    archiveFileName = "stratosphere-mod-${mod_version}.jar"
     destinationDirectory = layout.buildDirectory.dir('libs')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':fabric-26').tasks.named('jar').flatMap { it.archiveFile }))
-    // The 1.21.1 classes are renamed to the names that Fabric uses on 1.21.1 when running, the rest is already in the jar.
+    from(zipTree(project(':neoforge-26').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
     from(zipTree(project(':fabric-120').tasks.named('remapJar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
@@ -56,14 +44,6 @@ tasks.register('fabricJar', Jar) {
     from(zipTree(project(':fabric-12111').tasks.named('remapJar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
-}
-
-tasks.register('neoforgeJar', Jar) {
-    archiveFileName = "stratosphere-neoforge-${mod_version}.jar"
-    destinationDirectory = layout.buildDirectory.dir('libs')
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
-    from(zipTree(project(':neoforge-26').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':neoforge-1204').tasks.named('jar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
@@ -85,5 +65,5 @@ tasks.register('neoforgeJar', Jar) {
 }
 
 tasks.register('mods') {
-    dependsOn 'fabricJar', 'neoforgeJar'
+    dependsOn 'universalJar'
 }

@@ -175,7 +175,8 @@ class HelperTest {
     }
   }
 
-  private final List<String> log = new ArrayList<>();
+  // The command scan writes from a thread of its own, the test reads the log while it does.
+  private final List<String> log = new java.util.concurrent.CopyOnWriteArrayList<>();
   private final List<PlayerHandle> online = new ArrayList<>();
   private final Steve steve = new Steve();
   private Helper helper;

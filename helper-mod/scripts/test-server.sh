@@ -60,14 +60,14 @@ if [ "$LOADER" = fabric ]; then
   fetch "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/$API/fabric-api-$API.jar" "fabric-api-$API.jar"
   cp "$CACHE/fabric-api-$API.jar" mods/
   rm -f mods/stratosphere-*.jar
-  cp "$(ls -t "$HERE"/build/libs/stratosphere-fabric-*.jar | head -1)" mods/
+  cp "$(ls -t "$HERE"/build/libs/stratosphere-mod-*.jar | head -1)" mods/
   START=("$JAVA" -Dstratosphere.selftest=true -Xmx1G -jar server.jar nogui)
 else
   V=$NEOFORGE_VERSION
   fetch "https://maven.neoforged.net/releases/net/neoforged/neoforge/$V/neoforge-$V-installer.jar" "neoforge-$V-installer.jar"
   if [ ! -d libraries ]; then "$JAVA" -jar "$CACHE/neoforge-$V-installer.jar" --installServer . >install.log 2>&1; fi
   rm -f mods/stratosphere-*.jar
-  cp "$(ls -t "$HERE"/build/libs/stratosphere-neoforge-*.jar | head -1)" mods/
+  cp "$(ls -t "$HERE"/build/libs/stratosphere-mod-*.jar | head -1)" mods/
   echo "-Dstratosphere.selftest=true -Xmx1G" > user_jvm_args.txt
   START=("$JAVA" @user_jvm_args.txt "@libraries/net/neoforged/neoforge/$V/unix_args.txt" nogui)
 fi

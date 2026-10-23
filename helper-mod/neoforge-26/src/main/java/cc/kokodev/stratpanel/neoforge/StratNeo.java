@@ -31,7 +31,7 @@ public final class StratNeo {
       return;
     }
     try {
-      Class.forName("cc.kokodev.stratpanel." + generation + ".NeoHooks")
+      Class.forName("cc.kokodev.stratpanel." + generation + "neoforge.NeoHooks")
           .getMethod("init", Platform.class)
           .invoke(null, platform);
     } catch (Throwable e) {

@@ -24,10 +24,13 @@ describe('files the panel depends on', () => {
             ]).map((f) => f.name)
         ).toEqual(['Stratosphere.jar', 'StratPanel.jar', 'StratPanel-1.2.jar', 'StratPanel']);
         expect(
-            protectedFiles('/mods', ['Stratosphere-fabric.jar', 'Stratosphere-neoforge.jar', 'sodium.jar']).map(
-                (f) => f.name
-            )
-        ).toEqual(['Stratosphere-fabric.jar', 'Stratosphere-neoforge.jar']);
+            protectedFiles('/mods', [
+                'Stratosphere-mod.jar',
+                'Stratosphere-fabric.jar',
+                'Stratosphere-neoforge.jar',
+                'sodium.jar',
+            ]).map((f) => f.name)
+        ).toEqual(['Stratosphere-mod.jar', 'Stratosphere-fabric.jar', 'Stratosphere-neoforge.jar']);
         expect(protectedFiles('/config', ['Stratosphere.jar'])).toEqual([]);
         // The same name somewhere else is just a file.
         expect(protectedFiles('/world', ['pterodactyl.json'])).toEqual([]);

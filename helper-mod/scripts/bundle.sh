@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Builds the Fabric and NeoForge mods and puts them into public/helper next to the plugin, with their version in
+# Builds the mod (one jar for Fabric and NeoForge) and puts it into public/helper next to the plugin, with its version in
 # public/helper/version.json (the panel compares it with the version the mod reports to know when to offer an update).
 #   helper-mod/scripts/bundle.sh [version]
 # Without a version the mods get a timestamped snapshot version. The game is built for Java 25 from 26.1 on, so Gradle has to
-# run on Java 25 (HELPER_MOD_JAVA_HOME, JAVA_HOME_25_X64 in CI, or the one macOS finds), the mods are Java 21 bytecode.
+# run on Java 25 (HELPER_MOD_JAVA_HOME, JAVA_HOME_25_X64 in CI, or the one macOS finds), the mod is Java 17 bytecode.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")/.." && pwd)
@@ -42,19 +42,18 @@ chmod +x gradlew
 ./gradlew --no-daemon test mods "-Pmod_version=$VERSION"
 
 mkdir -p "$PUBLIC"
-cp "build/libs/stratosphere-fabric-$VERSION.jar" "$PUBLIC/Stratosphere-fabric.jar"
-cp "build/libs/stratosphere-neoforge-$VERSION.jar" "$PUBLIC/Stratosphere-neoforge.jar"
+# One mod for both loaders (and the files of the two jars it replaced are taken away).
+cp "build/libs/stratosphere-mod-$VERSION.jar" "$PUBLIC/Stratosphere-mod.jar"
+rm -f "$PUBLIC/Stratosphere-fabric.jar" "$PUBLIC/Stratosphere-neoforge.jar"
 
-# Adds the mods to version.json and keeps what the plugin build wrote there.
+# Adds the mod to version.json and keeps what the plugin build wrote there.
 python3 - "$PUBLIC/version.json" "$VERSION" <<'PY'
 import json, os, sys
 
 path, version = sys.argv[1], sys.argv[2]
 info = json.load(open(path)) if os.path.exists(path) else {}
-info["mods"] = {
-    "fabric": {"version": version, "file": "Stratosphere-fabric.jar"},
-    "neoforge": {"version": version, "file": "Stratosphere-neoforge.jar"},
-}
+info.pop("mods", None)
+info["mod"] = {"version": version, "file": "Stratosphere-mod.jar", "platforms": ["fabric", "neoforge"]}
 with open(path, "w") as out:
     json.dump(info, out, indent=2)
     out.write("\n")

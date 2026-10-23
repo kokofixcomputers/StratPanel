@@ -15,25 +15,27 @@ export interface HelperBuild {
     // Where the server loads it from.
     folder: string;
     // The entry of public/helper/version.json that holds its version, null for the plugin (the top level version).
-    key: 'fabric' | 'neoforge' | null;
+    key: 'mod' | null;
 }
 
-// Purpur is a Paper fork and loads the same plugin. Fabric and NeoForge each have a mod that works on 1.20 (NeoForge 1.20.2) to 1.21.11
-// and on 26.1 and newer with the one jar.
+// Purpur is a Paper fork and loads the same plugin. Fabric and NeoForge share one mod that works on 1.20 (NeoForge 1.20.2) to
+// 1.21.11 and on 26.1 and newer.
 const PLUGIN: HelperBuild = { file: 'Stratosphere.jar', folder: '/plugins', key: null };
+// One jar for both loaders: Fabric and NeoForge each start the part that is theirs.
+const MOD: HelperBuild = { file: 'Stratosphere-mod.jar', folder: '/mods', key: 'mod' };
 const BUILDS: Record<string, HelperBuild> = {
     PAPER: PLUGIN,
     SPIGOT: PLUGIN,
     PURPUR: PLUGIN,
-    FABRIC: { file: 'Stratosphere-fabric.jar', folder: '/mods', key: 'fabric' },
-    NEOFORGE: { file: 'Stratosphere-neoforge.jar', folder: '/mods', key: 'neoforge' },
+    FABRIC: MOD,
+    NEOFORGE: MOD,
 };
 
 export const HELPER_FILE = PLUGIN.file;
 export const HELPER_SOFTWARE = Object.keys(BUILDS);
 
 // Arclight runs mods of the loader that was chosen with it, so the helper is the mod of that loader. There is none for Forge.
-const BY_LOADER: Record<string, HelperBuild | null> = { fabric: BUILDS.FABRIC, neoforge: BUILDS.NEOFORGE, forge: null };
+const BY_LOADER: Record<string, HelperBuild | null> = { fabric: MOD, neoforge: MOD, forge: null };
 
 /**
  * The helper that fits a kind of server software (PAPER, fabric, ...), null when there is none. Software with several mod loaders
@@ -91,7 +93,7 @@ export const bundledHelperVersion = async (software = 'PAPER', loader?: string |
         if (!response.ok) return null;
 
         const info = await response.json();
-        const version = build.key ? info.mods?.[build.key]?.version : info.version;
+        const version = build.key ? info[build.key]?.version : info.version;
 
         return typeof version === 'string' && version ? version : null;
     } catch (e) {
