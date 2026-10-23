@@ -22,13 +22,14 @@ configurations.configureEach {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = 17
     options.encoding = 'UTF-8'
 }
 
 processResources {
     inputs.property 'version', project.version
-    filesMatching('META-INF/neoforge.mods.toml') {
+    // NeoForge 20.2 to 20.4 read mods.toml, 20.5 and newer neoforge.mods.toml.
+    filesMatching(['META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
         expand 'version': project.version
     }
 }

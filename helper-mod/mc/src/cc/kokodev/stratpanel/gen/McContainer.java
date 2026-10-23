@@ -3,13 +3,8 @@ package cc.kokodev.stratpanel.gen;
 import cc.kokodev.stratpanel.core.InventorySlots;
 import cc.kokodev.stratpanel.core.ItemContainer;
 import cc.kokodev.stratpanel.core.ItemInfo;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -41,21 +36,15 @@ final class McContainer implements ItemContainer {
     }
     String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
     boolean wears = stack.isDamageableItem();
-    Component custom = stack.get(DataComponents.CUSTOM_NAME);
-
-    Map<String, Integer> enchants = new LinkedHashMap<>();
-    for (Object2IntMap.Entry<Holder<net.minecraft.world.item.enchantment.Enchantment>> entry :
-        stack.getEnchantments().entrySet()) {
-      String name = entry.getKey().getRegisteredName();
-      enchants.put(name.substring(name.indexOf(':') + 1), entry.getIntValue());
-    }
+    String custom = Compat.customName(stack);
+    Map<String, Integer> enchants = Compat.enchantments(stack);
     String[] trim = Compat.trimOf(stack);
     return new ItemInfo(
         id,
         stack.getCount(),
         wears ? stack.getDamageValue() : 0,
         wears ? stack.getMaxDamage() : 0,
-        custom == null ? null : custom.getString(),
+        custom,
         enchants,
         trim == null ? null : new ItemInfo.Trim(trim[0], trim[1]));
   }
@@ -66,7 +55,7 @@ final class McContainer implements ItemContainer {
     ItemStack b = container.getItem(to);
     return !a.isEmpty()
         && !b.isEmpty()
-        && ItemStack.isSameItemSameComponents(a, b)
+        && Compat.sameItem(a, b)
         && b.getCount() < b.getMaxStackSize();
   }
 

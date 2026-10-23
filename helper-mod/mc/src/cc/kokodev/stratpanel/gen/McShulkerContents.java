@@ -3,11 +3,8 @@ package cc.kokodev.stratpanel.gen;
 import cc.kokodev.stratpanel.core.InventorySlots;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.core.NonNullList;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.ItemContainerContents;
 
 /**
  * The 27 slots of a shulker box that is an item (in an inventory or an ender chest). It is a normal container that is filled
@@ -23,8 +20,7 @@ final class McShulkerContents extends SimpleContainer {
     super(InventorySlots.SHULKER_COUNT);
     this.box = box;
 
-    NonNullList<ItemStack> items = NonNullList.withSize(InventorySlots.SHULKER_COUNT, ItemStack.EMPTY);
-    box.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY).copyInto(items);
+    List<ItemStack> items = Compat.boxContents(box, InventorySlots.SHULKER_COUNT);
     for (int slot = 0; slot < items.size(); slot++) {
       setItem(slot, items.get(slot));
     }
@@ -45,10 +41,6 @@ final class McShulkerContents extends SimpleContainer {
       items.add(stack);
     }
     // A box with nothing in it has no contents at all, like one that was never filled: it still stacks with the others.
-    if (empty) {
-      box.remove(DataComponents.CONTAINER);
-    } else {
-      box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(items));
-    }
+    Compat.storeBox(box, items, empty);
   }
 }

@@ -13,11 +13,16 @@ subprojects {
 // One jar per loader. Each holds the shared core, the entry point and one build of the Minecraft-facing code for every
 // generation of the game, the right one is picked when the server starts.
 evaluationDependsOn(':fabric-26')
+evaluationDependsOn(':fabric-120')
+evaluationDependsOn(':fabric-1204')
+evaluationDependsOn(':fabric-1206')
 evaluationDependsOn(':fabric-121')
 evaluationDependsOn(':fabric-1214')
 evaluationDependsOn(':fabric-1218')
 evaluationDependsOn(':fabric-12111')
 evaluationDependsOn(':neoforge-26')
+evaluationDependsOn(':neoforge-1204')
+evaluationDependsOn(':neoforge-1206')
 evaluationDependsOn(':neoforge-121')
 evaluationDependsOn(':neoforge-1214')
 evaluationDependsOn(':neoforge-1218')
@@ -30,6 +35,15 @@ tasks.register('fabricJar', Jar) {
     from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':fabric-26').tasks.named('jar').flatMap { it.archiveFile }))
     // The 1.21.1 classes are renamed to the names that Fabric uses on 1.21.1 when running, the rest is already in the jar.
+    from(zipTree(project(':fabric-120').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':fabric-1204').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':fabric-1206').tasks.named('remapJar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
     from(zipTree(project(':fabric-121').tasks.named('remapJar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }
@@ -50,6 +64,12 @@ tasks.register('neoforgeJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(zipTree(project(':core').tasks.named('jar').flatMap { it.archiveFile }))
     from(zipTree(project(':neoforge-26').tasks.named('jar').flatMap { it.archiveFile }))
+    from(zipTree(project(':neoforge-1204').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    from(zipTree(project(':neoforge-1206').tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
     from(zipTree(project(':neoforge-121').tasks.named('jar').flatMap { it.archiveFile })) {
         exclude 'META-INF/MANIFEST.MF'
     }

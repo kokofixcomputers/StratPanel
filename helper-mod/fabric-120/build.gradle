@@ -1,0 +1,25 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:1.20.1"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_120}"
+    implementation project(':core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+ext.gen = 'g120'
+ext.genDir = 'mc-120'
+ext.hooksDir = 'fabric-hooks'
+apply from: rootProject.file('gen.gradle')

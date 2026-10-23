@@ -8,6 +8,18 @@ import org.junit.jupiter.api.Test;
 class GenerationTest {
 
   @Test
+  void eachStretchOfOneTwentyHasItsOwnBuild() {
+    assertEquals(Generation.V120, Generation.forMinecraft("1.20"));
+    assertEquals(Generation.V120, Generation.forMinecraft("1.20.1"));
+    for (int patch = 2; patch <= 4; patch++) {
+      assertEquals(Generation.V1204, Generation.forMinecraft("1.20." + patch), "1.20." + patch);
+    }
+    assertEquals(Generation.V1206, Generation.forMinecraft("1.20.5"));
+    assertEquals(Generation.V1206, Generation.forMinecraft("1.20.6"));
+    assertEquals(Generation.V1206, Generation.forMinecraft("1.20.6-rc1"));
+  }
+
+  @Test
   void eachStretchOfOneTwentyOneHasItsOwnBuild() {
     assertEquals(Generation.OLD, Generation.forMinecraft("1.21.1"));
     for (int patch = 2; patch <= 4; patch++) {
@@ -32,7 +44,8 @@ class GenerationTest {
   @Test
   void otherVersionsHaveNoBuild() {
     assertNull(Generation.forMinecraft("1.21"));
-    assertNull(Generation.forMinecraft("1.20.1"));
+    assertNull(Generation.forMinecraft("1.20.7"));
+    assertNull(Generation.forMinecraft("1.19.4"));
     assertNull(Generation.forMinecraft("1.21.12"));
     assertNull(Generation.forMinecraft("1.21.0"));
     assertNull(Generation.forMinecraft("nonsense"));

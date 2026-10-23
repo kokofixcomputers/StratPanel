@@ -2,7 +2,6 @@ package cc.kokodev.stratpanel.neoforge;
 
 import cc.kokodev.stratpanel.core.Generation;
 import cc.kokodev.stratpanel.core.Platform;
-import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 
@@ -15,7 +14,8 @@ public final class StratNeo {
 
   public static final String MOD_ID = "stratosphere";
 
-  public StratNeo(IEventBus modBus) {
+  // No parameters: the older NeoForge versions (20.x) do not all pass the event bus.
+  public StratNeo() {
     Platform platform = new NeoPlatform();
     String minecraft =
         ModList.get()
@@ -25,7 +25,7 @@ public final class StratNeo {
     String generation = Generation.forMinecraft(minecraft);
     if (generation == null) {
       platform.warn(
-          "Stratosphere supports NeoForge on Minecraft 1.21.1 to 1.21.11 and 26.1 and newer, this is " + minecraft
+          "Stratosphere supports NeoForge on Minecraft 1.20 to 1.21.11 and 26.1 and newer, this is " + minecraft
               + ". The panel will work without it.",
           null);
       return;

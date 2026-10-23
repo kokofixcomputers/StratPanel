@@ -2,9 +2,9 @@ plugins {
     id 'java-library'
 }
 
-// Java 21 bytecode so the jar loads on Java 21 (Minecraft 1.21.1) and Java 25 (26.x).
+// Java 17 bytecode so the jar loads on Java 17 (Minecraft 1.20 to 1.20.4), 21 (1.20.5 to 1.21.x) and 25 (26.x).
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = 17
     options.encoding = 'UTF-8'
 }
 

@@ -1,3 +1,5 @@
+import org.gradle.api.attributes.java.TargetJvmVersion
+
 plugins {
     id 'java-library'
     id 'net.neoforged.moddev'
@@ -11,8 +13,16 @@ dependencies {
     implementation project(':core')
 }
 
+// The classes we write are Java 17 bytecode (so the one jar loads on Java 17 as well), the game's libraries of this version are built
+// for Java 21: Gradle must be told it may look at those variants for compiling.
+configurations.configureEach {
+    if (canBeResolved) {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21)
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = 17
     options.encoding = 'UTF-8'
 }
 

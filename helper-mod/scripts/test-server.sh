@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Starts a real server with the helper installed, sends the panel's commands to it and prints what came back.
-#   [FABRIC_LOADER=0.20.0] scripts/test-server.sh <fabric|neoforge> <1.21.1 to 1.21.11|26.2|26.3> [work dir]
+#   [FABRIC_LOADER=0.20.0] scripts/test-server.sh <fabric|neoforge> <1.20 to 1.21.11|26.2|26.3> [work dir]
 # (use another work dir for another loader version: the downloaded server launcher is cached by Minecraft version)
-# Needs the jars from `./gradlew mods`, Java 21 for 1.21.1 and Java 25 for 26.x (JAVA21 / JAVA25 override the defaults).
+# Needs the jars from `./gradlew mods`, Java 17 for 1.20 to 1.20.4, Java 21 for 1.20.5 to 1.21.x and Java 25 for 26.x (JAVA17 / JAVA21 / JAVA25 override the defaults).
 # The server runs with -Dstratosphere.selftest=true, which adds an unconnected player "TestBot" with a few items.
 set -euo pipefail
 
@@ -10,12 +10,23 @@ LOADER=${1:?loader}
 MC=${2:?minecraft version}
 WORK=${3:-${TMPDIR:-/tmp}/stratosphere-servers}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
+JAVA17=${JAVA17:-$(ls -d "$HOME"/.gradle/jdks/*17*/*/Contents/Home/bin/java | head -1)}
 JAVA21=${JAVA21:-/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java}
 JAVA25=${JAVA25:-$(ls -d "$HOME"/.gradle/jdks/*25*/*/Contents/Home/bin/java | head -1)}
 JAVA=$JAVA25
-case "$MC" in 1.*) JAVA=$JAVA21 ;; esac
+case "$MC" in
+  1.20|1.20.1|1.20.2|1.20.3|1.20.4) JAVA=$JAVA17 ;;
+  1.*) JAVA=$JAVA21 ;;
+esac
 
 case "$MC" in
+  1.20) FABRIC_API_VERSION="0.83.0+1.20"; NEOFORGE_VERSION="" ;;
+  1.20.1) FABRIC_API_VERSION="0.92.12+1.20.1"; NEOFORGE_VERSION="" ;; # NeoForge 1.20.1 is Forge's API, not supported
+  1.20.2) FABRIC_API_VERSION="0.91.6+1.20.2"; NEOFORGE_VERSION="20.2.93" ;;
+  1.20.3) FABRIC_API_VERSION="0.91.1+1.20.3"; NEOFORGE_VERSION="20.3.8-beta" ;;
+  1.20.4) FABRIC_API_VERSION="0.97.3+1.20.4"; NEOFORGE_VERSION="20.4.253" ;;
+  1.20.5) FABRIC_API_VERSION="0.97.8+1.20.5"; NEOFORGE_VERSION="20.5.21-beta" ;;
+  1.20.6) FABRIC_API_VERSION="0.100.8+1.20.6"; NEOFORGE_VERSION="20.6.144" ;;
   1.21.1) FABRIC_API_VERSION="0.116.17+1.21.1"; NEOFORGE_VERSION="21.1.262" ;;
   26.2) FABRIC_API_VERSION="0.161.0+26.2"; NEOFORGE_VERSION="26.2.0.93" ;;
   26.3) FABRIC_API_VERSION="0.163.0+26.3"; NEOFORGE_VERSION="26.3.0.84" ;;
@@ -31,6 +42,7 @@ case "$MC" in
   1.21.11) FABRIC_API_VERSION="0.141.6+1.21.11"; NEOFORGE_VERSION="21.11.48" ;;
   *) echo "unknown Minecraft version $MC" >&2; exit 1 ;;
 esac
+if [ "$LOADER" = neoforge ] && [ -z "$NEOFORGE_VERSION" ]; then echo "no NeoForge for Minecraft $MC" >&2; exit 2; fi
 FABRIC_LOADER=${FABRIC_LOADER:-0.19.5}
 FABRIC_INSTALLER=${FABRIC_INSTALLER:-1.1.2}
 

@@ -18,8 +18,8 @@ export interface HelperBuild {
     key: 'fabric' | 'neoforge' | null;
 }
 
-// Purpur is a Paper fork and loads the same plugin. Fabric and NeoForge each have a mod that works on 1.21.1 to 1.21.11 and on
-// 26.1 and newer with the one jar.
+// Purpur is a Paper fork and loads the same plugin. Fabric and NeoForge each have a mod that works on 1.20 (NeoForge 1.20.2) to 1.21.11
+// and on 26.1 and newer with the one jar.
 const PLUGIN: HelperBuild = { file: 'Stratosphere.jar', folder: '/plugins', key: null };
 const BUILDS: Record<string, HelperBuild> = {
     PAPER: PLUGIN,

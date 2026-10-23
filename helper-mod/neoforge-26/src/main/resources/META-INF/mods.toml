@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "stratosphere"
+version = "${version}"
+displayName = "Stratosphere"
+authors = "kokodev"
+description = '''
+Shares the commands and the players of the server with the Stratosphere panel for tab completion, the player list and the player tools.
+'''
+
+[[dependencies.stratosphere]]
+modId = "neoforge"
+type = "required"
+mandatory = true # NeoForge 20.2 and 20.3 read this instead of the type
+versionRange = "[20.2.0,)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.stratosphere]]
+modId = "minecraft"
+type = "required"
+mandatory = true # NeoForge 20.2 and 20.3 read this instead of the type
+versionRange = "[1.20.2,)"
+ordering = "NONE"
+side = "SERVER"
