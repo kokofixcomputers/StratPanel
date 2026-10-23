@@ -9,6 +9,23 @@ export interface SelfService {
     limits: Specs;
     max: Specs;
     nodes: SelfServiceNode[];
+    // The resource pool of this person, null when the panel does not use pools.
+    pool: ResourcePool | null;
+}
+
+/** What a person may spend on servers: the pool they have, what their servers use and what is left (memory and disk in MB, CPU in percent). */
+export interface ResourcePool {
+    limits: PoolAmounts;
+    used: PoolAmounts;
+    remaining: PoolAmounts;
+    minimum: PoolAmounts;
+}
+
+export interface PoolAmounts {
+    memory: number;
+    disk: number;
+    cpu: number;
+    allocations: number;
 }
 
 export interface SelfServiceNode {
@@ -26,6 +43,8 @@ export interface Specs {
     memory: number;
     disk: number;
     cpu: number;
+    // How many allocations the server starts with. Only chosen with resource pools, otherwise it is two.
+    allocations?: number;
 }
 
 export const getSelfService = async (): Promise<SelfService> => {
@@ -39,6 +58,7 @@ export const getSelfService = async (): Promise<SelfService> => {
         owned: a.owned,
         limits: a.limits,
         max: a.max || a.limits,
+        pool: a.pool ?? null,
         nodes: (a.nodes || []).map((n: any) => ({
             id: n.id,
             name: n.name,

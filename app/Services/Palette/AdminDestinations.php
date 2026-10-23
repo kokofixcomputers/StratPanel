@@ -34,6 +34,7 @@ final class AdminDestinations
         ['settings.providers.view', 'admin.settings.providers', 'Settings: Sign-in providers', 'page', 'oauth github discord google sso'],
         ['settings.curseforge.view', 'admin.settings.curseforge', 'Settings: CurseForge', 'page', 'api key mods'],
         ['settings.domains.view', 'admin.settings.domains', 'Settings: Domains', 'page', 'subdomain dns cloudflare custom domain zones'],
+        ['settings.pools.view', 'admin.settings.pools', 'Settings: Resource pools', 'page', 'quota limits memory ram cpu disk allocations servers users create'],
         ['settings.trash.view', 'admin.settings.trash', 'Settings: Trash bin', 'page', 'deleted files retention'],
         ['settings.certificates.view', 'admin.settings.certificates', 'Settings: Certificates', 'page', 'https ssl tls lets encrypt'],
         ['settings.mail.view', 'admin.settings.mail', 'Settings: Mail', 'page', 'smtp email'],

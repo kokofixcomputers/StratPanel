@@ -9,6 +9,7 @@ use Pterodactyl\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Models\Objects\DeploymentObject;
+use Pterodactyl\Services\Pools\ResourcePool;
 use Pterodactyl\Services\Servers\ServerCreationService;
 use Pterodactyl\Services\Deployment\AllocationSelectionService;
 use Pterodactyl\Services\Allocations\FindAssignableAllocationService;
@@ -27,6 +28,7 @@ class SelfServiceController extends ClientApiController
         private ServerCreationService $creationService,
         private AllocationSelectionService $allocationSelectionService,
         private FindAssignableAllocationService $findAssignableAllocationService,
+        private ResourcePool $pools,
     ) {
         parent::__construct();
     }
@@ -42,17 +44,45 @@ class SelfServiceController extends ClientApiController
         // The panel's switch, unless a role of this person says otherwise.
         $enabled = $request->user()->allowedTo('self.servers.create', (bool) $config['enabled']);
 
+        // With resource pools the servers are paid from the pool, not counted: what is left decides what can be picked.
+        $pooled = $this->pools->appliesTo($request->user());
+        $remaining = $pooled ? $this->pools->remaining($request->user()) : null;
+        $start = ['memory' => (int) $config['memory'], 'disk' => (int) $config['disk'], 'cpu' => (int) $config['cpu'], 'allocations' => 2];
+        if ($pooled) {
+            $start = $this->pools->fit($request->user(), $start);
+        }
+        $ceiling = [
+            'memory' => max(512, (int) $config['max_memory'], (int) $config['memory']),
+            'disk' => max(1024, (int) $config['max_disk'], (int) $config['disk']),
+            'cpu' => max(50, (int) $config['max_cpu'], (int) $config['cpu']),
+        ];
+        if ($pooled) {
+            // Never more than is left, and never less than the least a server can have (the page needs a slider with room on it).
+            foreach (['memory', 'disk', 'cpu'] as $resource) {
+                $ceiling[$resource] = max(ResourcePool::MINIMUM[$resource], min($ceiling[$resource], $remaining[$resource]));
+            }
+        }
+
         return [
             'object' => 'self_service',
             'attributes' => [
                 'enabled' => $enabled,
-                'can_create' => $enabled && ($max === 0 || $owned < $max),
+                'can_create' => $enabled && ($pooled ? $this->pools->canCreate($request->user()) : ($max === 0 || $owned < $max)),
+                // The pool of this person: what they have, what the servers use and what is left. Null without resource pools.
+                'pool' => $pooled ? [
+                    'limits' => $this->pools->limits($request->user()),
+                    'used' => $this->pools->used($request->user()),
+                    'remaining' => $remaining,
+                    'minimum' => ResourcePool::MINIMUM,
+                ] : null,
                 'max_servers' => $max,
                 'owned' => $owned,
                 'limits' => [
-                    'memory' => (int) $config['memory'],
-                    'disk' => (int) $config['disk'],
-                    'cpu' => (int) $config['cpu'],
+                    'memory' => $start['memory'],
+                    'disk' => $start['disk'],
+                    'cpu' => $start['cpu'],
+                    // How many allocations the server starts with: two without a pool, one at least.
+                    'allocations' => $start['allocations'],
                 ],
                 'nodes' => $this->availableNodes()->map(function (Node $node) {
                     $memoryLimit = $node->memory * (1 + ($node->memory_overallocate / 100));
@@ -73,9 +103,10 @@ class SelfServiceController extends ClientApiController
                     ];
                 })->values()->all(),
                 'max' => [
-                    'memory' => max(512, (int) $config['max_memory'], (int) $config['memory']),
-                    'disk' => max(1024, (int) $config['max_disk'], (int) $config['disk']),
-                    'cpu' => max(50, (int) $config['max_cpu'], (int) $config['cpu']),
+                    'memory' => $ceiling['memory'],
+                    'disk' => $ceiling['disk'],
+                    'cpu' => $ceiling['cpu'],
+                    'allocations' => $pooled ? max(1, $remaining['allocations']) : 2,
                 ],
             ],
         ];
@@ -90,6 +121,7 @@ class SelfServiceController extends ClientApiController
     {
         $config = config('pterodactyl.self_service');
         $user = $request->user();
+        $pooled = $this->pools->appliesTo($user);
         if ($user->permissionState('self.servers.create') === 'deny') {
             throw new DisplayException('Your account is not allowed to create servers.');
         }
@@ -98,7 +130,8 @@ class SelfServiceController extends ClientApiController
         }
 
         $max = $this->maxServers($request);
-        if ($max > 0 && Server::query()->where('owner_id', $user->id)->count() >= $max) {
+        // With a pool it is the resources that run out, not a number of servers.
+        if (!$pooled && $max > 0 && Server::query()->where('owner_id', $user->id)->count() >= $max) {
             throw new DisplayException("You have reached the limit of $max servers for your account.");
         }
 
@@ -118,6 +151,22 @@ class SelfServiceController extends ClientApiController
 
         $memory = (int) $request->input('memory', $config['memory']);
         $disk = (int) $request->input('disk', $config['disk']);
+        $cpu = (int) $request->input('cpu', $config['cpu']);
+        $allocations = $pooled ? max(1, (int) $request->input('allocations', 2)) : 2;
+        if ($pooled) {
+            // What was not asked for is the usual size, cut down to what is left; what was asked for has to fit as it is.
+            $usual = $this->pools->fit($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations]);
+            $memory = $request->has('memory') ? $memory : $usual['memory'];
+            $disk = $request->has('disk') ? $disk : $usual['disk'];
+            $cpu = $request->has('cpu') ? $cpu : $usual['cpu'];
+            $allocations = $request->has('allocations') ? $allocations : max(1, $usual['allocations']);
+            $this->pools->check($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations]);
+            foreach (['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu] as $resource => $value) {
+                if ($value < ResourcePool::MINIMUM[$resource]) {
+                    throw new DisplayException('Your resource pool has too little ' . $resource . ' left to make another server.');
+                }
+            }
+        }
         $placement = [];
         $deployment = null;
 
@@ -152,26 +201,31 @@ class SelfServiceController extends ClientApiController
             'swap' => 0,
             'disk' => $disk,
             'io' => 500,
-            'cpu' => (int) $request->input('cpu', $config['cpu']),
+            'cpu' => $cpu,
             'threads' => null,
             'skip_scripts' => $skipScripts,
             'oom_disabled' => true,
             'database_limit' => (int) $config['databases'],
-            // At least the two allocations a server starts with, the setting is how many it may have in total.
-            'allocation_limit' => max(2, (int) $config['allocations']),
+            // At least the two allocations a server starts with, the setting is how many it may have in total. With a pool it is the whole pool
+            // of the person: how many they really get is decided by what is left of it (see NetworkAllocationController).
+            'allocation_limit' => $pooled ? max($allocations, $this->pools->limits($user)['allocations']) : max(2, (int) $config['allocations']),
             'backup_limit' => (int) $config['backups'],
             'start_on_completion' => false,
         ], $placement), $deployment);
 
         // A server starts with two allocations: the one it is played on and one more, for things like a voice chat plugin
         // or a web map. A node with a single free port gives a server with just that one.
-        try {
-            DB::transaction(function () use ($server) {
-                $this->findAssignableAllocationService->handle($server->loadMissing(['node', 'allocation']));
-            });
-            $server->unsetRelation('allocations');
-        } catch (NoAutoAllocationSpaceAvailableException) {
-            // Nothing to add, the server keeps its first allocation.
+        // With a pool the person chose how many (the first one is the primary), otherwise it is always the one more.
+        for ($i = 1; $i < $allocations; $i++) {
+            try {
+                DB::transaction(function () use ($server) {
+                    $this->findAssignableAllocationService->handle($server->loadMissing(['node', 'allocation']));
+                });
+                $server->unsetRelation('allocations');
+            } catch (NoAutoAllocationSpaceAvailableException) {
+                // Nothing to add, the server keeps what it has.
+                break;
+            }
         }
 
         return $this->fractal->item($server)

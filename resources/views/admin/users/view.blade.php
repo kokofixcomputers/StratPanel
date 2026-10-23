@@ -109,6 +109,45 @@
     @if(!$canChange)
         <div class="col-xs-12"><div class="alert alert-warning">This account is a root admin or holds permissions that you do not hold, so you can look at it but not change it.</div></div>
     @endif
+    @if(Auth::user()->hasPermission('users.update'))
+        @php($pools = app(\Pterodactyl\Services\Pools\ResourcePool::class))
+        @php($poolLimits = $pools->limits($user))
+        @php($poolUsed = $pools->used($user))
+        <div class="col-xs-12">
+            <div class="box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Resource pool</h3>
+                    @if(!$pools->enabled())
+                        <span class="label label-default" style="margin-left: 6px;">Resource pools are off</span>
+                    @elseif($user->hasPermission('servers.create'))
+                        <span class="label label-warning" style="margin-left: 6px;">Not limited: can create servers in the admin area</span>
+                    @endif
+                </div>
+                <form action="{{ route('admin.settings.pools.user', $user->id) }}" method="POST">
+                    <div class="box-body">
+                        <p class="text-muted">What this person may spend on the servers they create themselves. Leave a field empty to give them the default of the panel (shown as the placeholder).
+                            @if(Auth::user()->hasPermission('settings.pools.view'))<a href="{{ route('admin.settings.pools') }}">Defaults and the switch</a>.@endif</p>
+                        <div class="row">
+                            @foreach(['memory' => ['Memory (MB)', 'pool_memory'], 'disk' => ['Disk space (MB)', 'pool_disk'], 'cpu' => ['CPU (%)', 'pool_cpu'], 'allocations' => ['Allocations', 'pool_allocations']] as $resource => [$label, $column])
+                                <div class="form-group col-sm-3">
+                                    <label class="control-label" for="pool-{{ $resource }}">{{ $label }}</label>
+                                    <input id="pool-{{ $resource }}" type="number" min="0" name="{{ $resource }}" class="form-control" placeholder="{{ $pools->defaults()[$resource] }}" value="{{ old($resource, $user->getAttribute($column)) }}" @if(!$canChange) disabled @endif>
+                                    <p class="text-muted small no-margin-bottom">uses {{ \Pterodactyl\Services\Pools\ResourcePool::format($resource, $poolUsed[$resource]) }} of {{ \Pterodactyl\Services\Pools\ResourcePool::format($resource, $poolLimits[$resource]) }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @if($canChange)
+                        <div class="box-footer">
+                            {!! csrf_field() !!}
+                            {!! method_field('PATCH') !!}
+                            <button type="submit" class="btn btn-sm btn-primary pull-right">Save pool</button>
+                        </div>
+                    @endif
+                </form>
+            </div>
+        </div>
+    @endif
     @if(Auth::user()->hasAnyPermission('roles.view', 'roles.assign'))
         <div class="col-xs-12">
             <div class="box">

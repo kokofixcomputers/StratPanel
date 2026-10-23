@@ -225,6 +225,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Resource pools
+    |--------------------------------------------------------------------------
+    |
+    | When on (Admin > Settings > Resource pools, off by default) the servers a person makes for themselves are paid from a pool: so much
+    | memory, disk, CPU and so many allocations in total, as many servers as fit. The limit on the number of servers (max_servers above)
+    | no longer applies. These are what a person gets who was not given a pool of their own; memory and disk are in MB, CPU in percent.
+    | Whoever may create servers in the admin area is never limited by it.
+    */
+
+    'pools' => [
+        'enabled' => (bool) env('PTERODACTYL_POOLS_ENABLED', false),
+        'memory' => (int) env('PTERODACTYL_POOLS_MEMORY', 4096),
+        'cpu' => (int) env('PTERODACTYL_POOLS_CPU', 200),
+        'disk' => (int) env('PTERODACTYL_POOLS_DISK', 10240),
+        'allocations' => (int) env('PTERODACTYL_POOLS_ALLOCATIONS', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Domains
     |--------------------------------------------------------------------------
     |

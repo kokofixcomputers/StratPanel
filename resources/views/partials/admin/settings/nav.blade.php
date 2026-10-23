@@ -31,6 +31,9 @@
                     @if(Auth::user()->hasPermission('settings.domains.view'))
                     <li @if($activeTab === 'domains')class="active"@endif><a href="{{ route('admin.settings.domains') }}">Domains</a></li>
                     @endif
+                    @if(Auth::user()->hasPermission('settings.pools.view'))
+                    <li @if($activeTab === 'pools')class="active"@endif><a href="{{ route('admin.settings.pools') }}">Resource pools</a></li>
+                    @endif
                     @if(Auth::user()->hasPermission('settings.trash.view'))
                     <li @if($activeTab === 'trash')class="active"@endif><a href="{{ route('admin.settings.trash') }}">Trash</a></li>
                     @endif

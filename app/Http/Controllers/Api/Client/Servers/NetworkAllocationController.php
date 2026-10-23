@@ -3,6 +3,7 @@
 namespace Pterodactyl\Http\Controllers\Api\Client\Servers;
 
 use Pterodactyl\Models\Server;
+use Pterodactyl\Services\Pools\ResourcePool;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Allocation;
@@ -27,6 +28,7 @@ class NetworkAllocationController extends ClientApiController
         protected readonly ConnectionInterface $connection,
         private FindAssignableAllocationService $assignableAllocationService,
         private ServerRepository $serverRepository,
+        private ResourcePool $pools,
     ) {
         parent::__construct();
     }
@@ -97,6 +99,12 @@ class NetworkAllocationController extends ClientApiController
         $allocation = Activity::event('server:allocation.create')->transaction(function ($log) use ($server) {
             if ($server->allocations()->lockForUpdate()->count() >= $server->allocation_limit) {
                 throw new DisplayException('Cannot assign additional allocations to this server: limit has been reached.');
+            }
+
+            // With resource pools the allocations of all servers of the owner come out of one pool.
+            $owner = $server->user;
+            if ($owner !== null && $this->pools->appliesTo($owner)) {
+                $this->pools->check($owner, ['allocations' => 1]);
             }
 
             $allocation = $this->assignableAllocationService->handle($server);

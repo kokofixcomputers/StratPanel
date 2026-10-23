@@ -17,6 +17,7 @@ final class AdminNavigation
         ['settings.providers.view', 'admin.settings.providers'],
         ['settings.curseforge.view', 'admin.settings.curseforge'],
         ['settings.domains.view', 'admin.settings.domains'],
+        ['settings.pools.view', 'admin.settings.pools'],
         ['settings.trash.view', 'admin.settings.trash'],
         ['settings.certificates.view', 'admin.settings.certificates'],
         ['settings.mail.view', 'admin.settings.mail'],

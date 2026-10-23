@@ -85,6 +85,9 @@ Route::group(['prefix' => 'settings'], function () {
     Route::patch('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'updateZone'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
     Route::post('/domains/zones/{zone}/test', [Admin\Settings\DomainsController::class, 'test'])->name('admin.settings.domains.test')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
     Route::delete('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->name('admin.settings.domains.delete')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
+    Route::get('/pools', [Admin\Settings\PoolsController::class, 'index'])->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
+    Route::patch('/pools', [Admin\Settings\PoolsController::class, 'update'])->middleware('admin.can:settings.pools.update');
+    Route::patch('/pools/users/{user:id}', [Admin\Settings\PoolsController::class, 'updateUser'])->name('admin.settings.pools.user')->middleware('admin.can:users.update');
     Route::get('/trash', [Admin\Settings\TrashController::class, 'index'])->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::patch('/trash', [Admin\Settings\TrashController::class, 'update'])->middleware('admin.can:settings.trash.update');
     Route::get('/certificates', [Admin\Settings\CertificatesController::class, 'index'])->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');

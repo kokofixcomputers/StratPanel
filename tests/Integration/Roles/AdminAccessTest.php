@@ -27,7 +27,7 @@ class AdminAccessTest extends RoleTestCase
         $this->actingAs($this->rootAdmin());
 
         foreach (['/admin', '/admin/users', '/admin/roles', '/admin/servers', '/admin/nodes', '/admin/locations', '/admin/databases', '/admin/mounts',
-            '/admin/nests', '/admin/extensions', '/admin/settings', '/admin/settings/mail', '/admin/settings/advanced', '/admin/settings/branding',
+            '/admin/nests', '/admin/extensions', '/admin/settings', '/admin/settings/mail', '/admin/settings/advanced', '/admin/settings/branding', '/admin/settings/pools',
             '/admin/settings/authentication', '/admin/settings/providers', '/admin/settings/curseforge', '/admin/api'] as $uri) {
             $this->page($uri)->assertOk();
         }

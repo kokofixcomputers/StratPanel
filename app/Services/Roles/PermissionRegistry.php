@@ -152,6 +152,8 @@ final class PermissionRegistry
                 'settings.certificates.update' => 'Add, replace and delete certificates and their private keys',
                 'settings.domains.view' => 'See how people get a domain, and the domains of the panel (never their DNS keys)',
                 'settings.domains.update' => 'Allow or stop people bringing their own domain, add and remove the domains people can take a name under, and their DNS keys',
+                'settings.pools.view' => 'See the resource pool settings',
+                'settings.pools.update' => 'Turn resource pools on and off and change what people get',
                 'settings.trash.view' => 'See the trash bin settings',
                 'settings.trash.update' => 'Turn the trash bin on and off and change how long it keeps things',
                 'settings.curseforge.view' => 'See the CurseForge settings',

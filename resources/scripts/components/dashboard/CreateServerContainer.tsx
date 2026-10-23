@@ -23,6 +23,7 @@ import getServer, { Server } from '@/api/server/getServer';
 import { createServer, getSelfService, SelfService, SelfServiceNode, Specs } from '@/api/selfService';
 import Slider from '@/components/elements/Slider';
 import { pingUrl } from '@/lib/ping';
+import { poolAfter } from '@/lib/pool';
 import { LocationMarkerIcon } from '@heroicons/react/outline';
 import { buildLabel, iconFor, SOFTWARE, SoftwareType } from '@/lib/mcjars';
 import { bytesToString, mbToBytes } from '@/lib/formatters';
@@ -277,7 +278,15 @@ export default () => {
                 <Card>
                     <p css={tw`text-lg font-semibold text-neutral-50`}>You can&apos;t create a server right now</p>
                     <p css={tw`mt-1 text-sm text-neutral-400`}>
-                        {config && config.maxServers > 0 && config.owned >= config.maxServers
+                        {config?.pool
+                            ? `Your resource pool is used up: ${bytesToString(
+                                  mbToBytes(config.pool.remaining.memory)
+                              )} memory, ${bytesToString(mbToBytes(config.pool.remaining.disk))} disk, ${
+                                  config.pool.remaining.cpu
+                              }% CPU and ${
+                                  config.pool.remaining.allocations
+                              } allocations are left. Delete a server to get its share back.`
+                            : config && config.maxServers > 0 && config.owned >= config.maxServers
                             ? `You already have ${config.owned} of ${config.maxServers} servers allowed on your account.`
                             : 'Creating servers is not enabled on this panel.'}
                     </p>
@@ -576,11 +585,15 @@ export default () => {
                                 </Button>
                             </div>
                             {specs && !editingSpecs && (
-                                <dl css={tw`mt-3 grid grid-cols-3 gap-3`}>
+                                <dl
+                                    css={tw`mt-3 grid gap-3`}
+                                    className={config.pool ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}
+                                >
                                     {[
                                         ['Memory', bytesToString(mbToBytes(specs.memory))],
                                         ['Disk', bytesToString(mbToBytes(specs.disk))],
                                         ['CPU', `${specs.cpu}%`],
+                                        ...(config.pool ? [['Allocations', String(specs.allocations ?? 1)]] : []),
                                     ].map(([label, value]) => (
                                         <div
                                             key={label}
@@ -624,6 +637,21 @@ export default () => {
                                         hint={`up to ${config.max.cpu}%, 100% is one core`}
                                         onChange={(cpu) => setSpecs({ ...specs, cpu })}
                                     />
+                                    {config.pool && (
+                                        <Slider
+                                            label={'Allocations'}
+                                            value={specs.allocations ?? 1}
+                                            min={1}
+                                            max={Math.max(1, config.max.allocations ?? 1)}
+                                            step={1}
+                                            display={String(specs.allocations ?? 1)}
+                                            hint={`ports for the server, up to ${Math.max(
+                                                1,
+                                                config.max.allocations ?? 1
+                                            )}`}
+                                            onChange={(allocations) => setSpecs({ ...specs, allocations })}
+                                        />
+                                    )}
                                     <Button
                                         type={'button'}
                                         isSecondary
@@ -632,6 +660,68 @@ export default () => {
                                     >
                                         Reset to defaults
                                     </Button>
+                                </div>
+                            )}
+                            {specs && config.pool && (
+                                <div css={tw`mt-4 rounded-xl border border-neutral-500 bg-neutral-900 p-4`}>
+                                    <p css={tw`text-sm font-semibold text-neutral-50`}>
+                                        Left in your pool after this server
+                                    </p>
+                                    <dl css={tw`mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3`}>
+                                        {(() => {
+                                            const after = poolAfter(config.pool.remaining, specs);
+                                            const limits = config.pool.limits;
+
+                                            return [
+                                                [
+                                                    'Memory',
+                                                    after.memory,
+                                                    limits.memory,
+                                                    (v: number) => bytesToString(mbToBytes(v)),
+                                                ],
+                                                [
+                                                    'Disk',
+                                                    after.disk,
+                                                    limits.disk,
+                                                    (v: number) => bytesToString(mbToBytes(v)),
+                                                ],
+                                                ['CPU', after.cpu, limits.cpu, (v: number) => `${v}%`],
+                                                [
+                                                    'Allocations',
+                                                    after.allocations,
+                                                    limits.allocations,
+                                                    (v: number) => String(v),
+                                                ],
+                                            ].map(([label, left, total, format]) => (
+                                                <div key={label as string}>
+                                                    <dt css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>
+                                                        {label as string}
+                                                    </dt>
+                                                    <dd css={tw`mt-1 text-sm font-semibold text-neutral-50`}>
+                                                        {(format as (v: number) => string)(left as number)}
+                                                        <span css={tw`font-normal text-neutral-400`}>
+                                                            {' '}
+                                                            of {(format as (v: number) => string)(total as number)}
+                                                        </span>
+                                                    </dd>
+                                                    <div
+                                                        css={tw`mt-1.5 h-1.5 rounded-full bg-neutral-500 overflow-hidden`}
+                                                    >
+                                                        <div
+                                                            css={tw`h-full rounded-full bg-primary-600`}
+                                                            style={{
+                                                                width: `${
+                                                                    total
+                                                                        ? ((left as number) / (total as number)) * 100
+                                                                        : 0
+                                                                }%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </dl>
                                 </div>
                             )}
                             {!nodeFits && (

@@ -21,6 +21,8 @@ class CreateServerRequest extends ClientApiRequest
             'memory' => ['sometimes', 'integer', 'min:512', 'max:' . max(512, (int) config('pterodactyl.self_service.max_memory'))],
             'disk' => ['sometimes', 'integer', 'min:1024', 'max:' . max(1024, (int) config('pterodactyl.self_service.max_disk'))],
             'cpu' => ['sometimes', 'integer', 'min:50', 'max:' . max(50, (int) config('pterodactyl.self_service.max_cpu'))],
+            // Only used with resource pools: how many allocations the server starts with.
+            'allocations' => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
     }
 }
