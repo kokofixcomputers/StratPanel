@@ -234,9 +234,8 @@ export const CheckList = ({
                                     already && 'cursor-default opacity-60'
                                 )}
                             >
-                                <input
+                                <Input
                                     type={'checkbox'}
-                                    className={'form-input'}
                                     checked={already || selected.includes(item.id)}
                                     disabled={already}
                                     onChange={(e) =>

@@ -132,9 +132,8 @@ export default () => {
                             {data.allocations.map((allocation) => (
                                 <Row key={allocation.id}>
                                     <Cell>
-                                        <input
+                                        <Input
                                             type={'checkbox'}
-                                            className={'form-input'}
                                             disabled={!!allocation.server || !can}
                                             checked={chosen.includes(allocation.id)}
                                             aria-label={`Select ${allocation.ip}:${allocation.port}`}

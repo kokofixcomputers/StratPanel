@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Input from '@/components/elements/Input';
 import { ShieldCheckIcon } from '@heroicons/react/solid';
 import SectionCard from '@/components/elements/SectionCard';
 import { Button } from '@/components/elements/button/index';
@@ -66,9 +67,8 @@ export default ({
                                 role.assignable ? 'cursor-pointer' : 'opacity-60'
                             }`}
                         >
-                            <input
+                            <Input
                                 type={'checkbox'}
-                                className={'form-input'}
                                 checked={picked.includes(role.id)}
                                 disabled={!role.assignable}
                                 onChange={(e) =>
