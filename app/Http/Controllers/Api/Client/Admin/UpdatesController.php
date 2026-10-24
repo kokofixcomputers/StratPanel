@@ -1,32 +1,33 @@
 <?php
 
-namespace Pterodactyl\Http\Controllers\Admin;
+namespace Pterodactyl\Http\Controllers\Api\Client\Admin;
 
-use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\Node;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Nodes\WingsUpdateService;
 use Pterodactyl\Services\Updates\ToolUpdateService;
+use Pterodactyl\Services\Updates\UiUpdateChecker;
 
+/** Updating the panel, the router and the edge of this machine, for the admin pages. */
 class UpdatesController extends Controller
 {
-    public function __construct(private ToolUpdateService $tools, private WingsUpdateService $nodes)
+    public function __construct(private ToolUpdateService $tools, private WingsUpdateService $nodes, private UiUpdateChecker $ui)
     {
     }
 
-    public function index(): View
+    public function index(): JsonResponse
     {
-        return view('admin.updates', [
+        return new JsonResponse([
             'installed' => $this->tools->installed(),
             'status' => $this->tools->status(),
             'pending' => $this->tools->pending(),
             'backups' => $this->tools->backups(),
-            'wingsLatest' => $this->nodes->latest(),
-            'nodeCount' => Node::query()->count(),
-            'tarUrl' => config('updates.panel_tar_url'),
-            'tarNightlyUrl' => config('updates.panel_tar_nightly_url'),
+            'wings_latest' => $this->nodes->latest(),
+            'node_count' => Node::query()->count(),
+            'tar_url' => config('updates.panel_tar_url'),
+            'tar_nightly_url' => config('updates.panel_tar_nightly_url'),
         ]);
     }
 
@@ -34,6 +35,12 @@ class UpdatesController extends Controller
     public function status(): JsonResponse
     {
         return new JsonResponse(['pending' => $this->tools->pending(), 'status' => $this->tools->status(), 'backups' => $this->tools->backups()]);
+    }
+
+    /** A newer web interface than the one this panel has, if any. */
+    public function ui(): JsonResponse
+    {
+        return new JsonResponse(['update' => $this->ui->available() ?: null]);
     }
 
     public function run(Request $request): JsonResponse

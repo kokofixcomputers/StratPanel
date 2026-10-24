@@ -199,17 +199,18 @@ class UpdatesTest extends IntegrationTestCase
     public function testTheUpdatesPageIsNotForRolesEvenWithTheNodeRight(): void
     {
         $this->as($this->user(['nodes.view', 'nodes.software', 'settings.general.view']))->get('/admin/updates')->assertStatus(403);
-        $this->post('/admin/updates', ['action' => 'local'])->assertStatus(403);
+        $this->getJson('/api/client/admin/updates')->assertStatus(403);
+        $this->postJson('/api/client/admin/updates', ['action' => 'local'])->assertStatus(403);
     }
 
     public function testRootAdminsSeeTheUpdatesPage(): void
     {
-        $this->as($this->user([], true))->get('/admin/updates')->assertOk()->assertSee('Update the panel');
+        $this->as($this->user([], true))->getJson('/api/client/admin/updates')->assertOk()->assertJsonPath('installed', false);
     }
 
     public function testNothingIsAskedWithoutTheUpdaterInstalled(): void
     {
-        $this->as($this->user([], true))->post('/admin/updates', ['action' => 'local'])->assertStatus(409);
+        $this->as($this->user([], true))->postJson('/api/client/admin/updates', ['action' => 'local'])->assertStatus(409);
         $this->assertFileDoesNotExist($this->dir . '/request');
     }
 
@@ -218,50 +219,50 @@ class UpdatesTest extends IntegrationTestCase
         touch($this->dir . '/installed');
         $this->as($this->user([], true));
 
-        $this->post('/admin/updates', ['action' => 'download'])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'download'])->assertStatus(202);
         $this->assertSame('download', file_get_contents($this->dir . '/request'));
 
         // Waiting requests are not stacked.
-        $this->post('/admin/updates', ['action' => 'local'])->assertStatus(409);
+        $this->postJson('/api/client/admin/updates', ['action' => 'local'])->assertStatus(409);
         $this->assertSame('download', file_get_contents($this->dir . '/request'));
 
         unlink($this->dir . '/request');
         // Anything unknown means the harmless one, never something the updater would take as a command.
-        $this->post('/admin/updates', ['action' => 'rm -rf /; local'])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'rm -rf /; local'])->assertStatus(202);
         $this->assertSame('local', file_get_contents($this->dir . '/request'));
     }
 
     public function testTheNightlyChannelIsItsOwnWord(): void
     {
         touch($this->dir . '/installed');
-        $this->as($this->user([], true))->post('/admin/updates', ['action' => 'download', 'channel' => 'nightly'])->assertStatus(202);
+        $this->as($this->user([], true))->postJson('/api/client/admin/updates', ['action' => 'download', 'channel' => 'nightly'])->assertStatus(202);
         $this->assertSame('download-nightly', file_get_contents($this->dir . '/request'));
 
         unlink($this->dir . '/request');
-        $this->post('/admin/updates', ['action' => 'download', 'channel' => 'whatever'])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'download', 'channel' => 'whatever'])->assertStatus(202);
         $this->assertSame('download', file_get_contents($this->dir . '/request'));
 
         unlink($this->dir . '/request');
         // The channel means nothing for the files on this machine.
-        $this->post('/admin/updates', ['action' => 'local', 'channel' => 'nightly'])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'local', 'channel' => 'nightly'])->assertStatus(202);
         $this->assertSame('local', file_get_contents($this->dir . '/request'));
     }
 
     public function testTheWholePanelIsAskedForWithItsOwnWords(): void
     {
         touch($this->dir . '/installed');
-        $this->as($this->user([], true))->post('/admin/updates', ['action' => 'panel'])->assertStatus(202);
+        $this->as($this->user([], true))->postJson('/api/client/admin/updates', ['action' => 'panel'])->assertStatus(202);
         $this->assertSame('panel', file_get_contents($this->dir . '/request'));
 
         unlink($this->dir . '/request');
-        $this->post('/admin/updates', ['action' => 'panel', 'channel' => 'nightly'])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'panel', 'channel' => 'nightly'])->assertStatus(202);
         $this->assertSame('panel-nightly', file_get_contents($this->dir . '/request'));
     }
 
     public function testOnlyRootAdminsCanAskForAPanelUpdate(): void
     {
         touch($this->dir . '/installed');
-        $this->as($this->user(['nodes.view', 'nodes.software']))->post('/admin/updates', ['action' => 'panel'])->assertStatus(403);
+        $this->as($this->user(['nodes.view', 'nodes.software']))->postJson('/api/client/admin/updates', ['action' => 'panel'])->assertStatus(403);
         $this->assertFileDoesNotExist($this->dir . '/request');
     }
 
@@ -271,17 +272,17 @@ class UpdatesTest extends IntegrationTestCase
         $this->as($this->user([], true));
         $name = 'panel-backup-2026-10-18-1658.tar.gz';
 
-        $this->post('/admin/updates', ['action' => 'restore', 'backup' => $name])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'restore', 'backup' => $name])->assertStatus(202);
         $this->assertSame('restore:' . $name, file_get_contents($this->dir . '/request'));
 
         unlink($this->dir . '/request');
-        $this->post('/admin/updates', ['action' => 'delete-backup', 'backup' => $name])->assertStatus(202);
+        $this->postJson('/api/client/admin/updates', ['action' => 'delete-backup', 'backup' => $name])->assertStatus(202);
         $this->assertSame('delete-backup:' . $name, file_get_contents($this->dir . '/request'));
 
         // Never a path, never another file, never a second command.
         unlink($this->dir . '/request');
         foreach (['../../etc/passwd', 'panel-backup-2026-10-18-1658.tar.gz/../x', "{$name}\nlocal", 'x.tar.gz', '', '/etc/passwd'] as $bad) {
-            $this->post('/admin/updates', ['action' => 'restore', 'backup' => $bad])->assertStatus(422);
+            $this->postJson('/api/client/admin/updates', ['action' => 'restore', 'backup' => $bad])->assertStatus(422);
             $this->assertFileDoesNotExist($this->dir . '/request');
         }
     }
@@ -289,7 +290,7 @@ class UpdatesTest extends IntegrationTestCase
     public function testOnlyRootAdminsCanRestoreABackup(): void
     {
         touch($this->dir . '/installed');
-        $this->as($this->user(['nodes.view', 'nodes.software']))->post('/admin/updates', ['action' => 'restore', 'backup' => 'panel-backup-2026-10-18-1658.tar.gz'])->assertStatus(403);
+        $this->as($this->user(['nodes.view', 'nodes.software']))->postJson('/api/client/admin/updates', ['action' => 'restore', 'backup' => 'panel-backup-2026-10-18-1658.tar.gz'])->assertStatus(403);
         $this->assertFileDoesNotExist($this->dir . '/request');
     }
 
@@ -304,7 +305,7 @@ class UpdatesTest extends IntegrationTestCase
             ['name' => '../evil.tar.gz', 'size' => 1, 'created' => 1],
         ]));
 
-        $this->get('/admin/updates/status')->assertOk()->assertJsonCount(1, 'backups')->assertJsonPath('backups.0.size', 1234);
+        $this->getJson('/api/client/admin/updates/status')->assertOk()->assertJsonCount(1, 'backups')->assertJsonPath('backups.0.size', 1234);
     }
 
     public function testTheServiceRefusesUnknownActions(): void
@@ -320,8 +321,8 @@ class UpdatesTest extends IntegrationTestCase
         touch($this->dir . '/installed');
         file_put_contents($this->dir . '/status.json', json_encode(['action' => 'local', 'finished_at' => '2026-10-16T10:00:00Z', 'results' => [['name' => 'mc-router', 'status' => 'updated', 'detail' => 'restarted']]]));
 
-        $this->as($this->user([], true))->get('/admin/updates')->assertOk()->assertSee('2026-10-16T10:00:00Z');
-        $this->get('/admin/updates/status')->assertOk()->assertJson(['pending' => false, 'status' => ['action' => 'local']]);
+        $this->as($this->user([], true))->getJson('/api/client/admin/updates')->assertOk()->assertJsonPath('status.finished_at', '2026-10-16T10:00:00Z');
+        $this->getJson('/api/client/admin/updates/status')->assertOk()->assertJson(['pending' => false, 'status' => ['action' => 'local']]);
     }
 }
 

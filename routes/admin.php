@@ -15,12 +15,9 @@ Route::get('/', [Admin\BaseController::class, 'index'])->name('admin.index');
 |
 */
 Route::group(['prefix' => 'api'], function () {
-    Route::get('/', [Admin\ApiController::class, 'index'])->name('admin.api.index')->middleware('admin.can:root');
-    Route::get('/new', [Admin\ApiController::class, 'create'])->name('admin.api.new')->middleware('admin.can:root');
-
-    Route::post('/new', [Admin\ApiController::class, 'store'])->middleware('admin.can:root');
-
-    Route::delete('/revoke/{identifier}', [Admin\ApiController::class, 'delete'])->name('admin.api.delete')->middleware('admin.can:root');
+    // Part of the React app, see Admin\SpaController; the keys are read and made through the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.api.index')->middleware('admin.can:root');
+    Route::get('/new', Admin\SpaController::class)->name('admin.api.new')->middleware('admin.can:root');
 });
 
 /*
@@ -111,9 +108,8 @@ Route::group(['prefix' => 'settings'], function () {
 |
 */
 Route::group(['prefix' => 'updates'], function () {
-    Route::get('/', [Admin\UpdatesController::class, 'index'])->name('admin.updates')->middleware('admin.can:root');
-    Route::get('/status', [Admin\UpdatesController::class, 'status'])->name('admin.updates.status')->middleware('admin.can:root');
-    Route::post('/', [Admin\UpdatesController::class, 'run'])->name('admin.updates.run')->middleware('admin.can:root');
+    // Part of the React app, see Admin\SpaController; it follows the updater through the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.updates')->middleware('admin.can:root');
 });
 
 /*
@@ -125,11 +121,9 @@ Route::group(['prefix' => 'updates'], function () {
 |
 */
 Route::group(['prefix' => 'extensions'], function () {
-    Route::get('/', [Admin\ExtensionsController::class, 'index'])->name('admin.extensions')->middleware('admin.can:extensions.view');
-    Route::get('/{extension}/settings', [Admin\ExtensionsController::class, 'settings'])->name('admin.extensions.settings')->middleware('admin.can:extensions.view');
-    Route::patch('/{extension}/settings', [Admin\ExtensionsController::class, 'saveSettings'])->middleware('admin.can:extensions.manage');
-    Route::post('/{extension}/toggle', [Admin\ExtensionsController::class, 'toggle'])->name('admin.extensions.toggle')->middleware('admin.can:extensions.manage');
-    Route::post('/{extension}/clear-error', [Admin\ExtensionsController::class, 'clearError'])->name('admin.extensions.clear')->middleware('admin.can:extensions.manage');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.extensions')->middleware('admin.can:extensions.view');
+    Route::get('/{extension}/settings', Admin\SpaController::class)->name('admin.extensions.settings')->middleware('admin.can:extensions.view');
 });
 
 /*

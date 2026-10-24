@@ -217,6 +217,28 @@ api.put('/admin/users/:id/roles', (req, res) => { const u = adminUsers.find((x) 
 api.patch('/admin/users/:id', (req, res) => { const u = adminUsers.find((x) => x.id === Number(req.params.id)); Object.assign(u, { ...req.body, password: undefined }); res.json(u); });
 api.delete('/admin/users/:id', (req, res) => { adminUsers = adminUsers.filter((x) => x.id !== Number(req.params.id)); res.status(204).end(); });
 
+
+let appKeys = [{ identifier: 'ptla_abc123XYZ', key: 'ptla_abc123XYZ' + 'x'.repeat(32), memo: 'Billing integration', last_used_at: new Date(Date.now() - 3600e3).toISOString(), created_at: new Date(Date.now() - 864e5 * 9).toISOString(), user: { id: 1, username: 'preview' } }];
+api.get('/admin/application-keys', (req, res) => res.json({ keys: appKeys }));
+api.get('/admin/application-keys/resources', (req, res) => res.json({ resources: ['allocations', 'database_hosts', 'eggs', 'locations', 'nests', 'nodes', 'server_databases', 'servers', 'users'], levels: { none: 0, read: 1, write: 3 } }));
+api.post('/admin/application-keys', (req, res) => { appKeys.push({ identifier: 'ptla_new' + appKeys.length, key: 'ptla_new' + appKeys.length + 'y'.repeat(32), memo: req.body.memo, last_used_at: null, created_at: new Date().toISOString(), user: { id: 1, username: 'preview' } }); res.status(201).json({ identifier: 'x' }); });
+api.delete('/admin/application-keys/:id', (req, res) => { appKeys = appKeys.filter((k) => k.identifier !== req.params.id); res.status(204).end(); });
+let adminExts = [
+    { id: 'offline-motd', name: 'Offline MOTD', version: '1.0.0', author: 'Stratosphere', description: 'Shows a message when a server is off.', broken: false, enabled: true, running: true, failed: false, last_error: null, last_error_at: null, has_settings: true },
+    { id: 'broken-one', name: 'Broken', version: '0.1.0', author: null, description: 'Does not work.', broken: false, enabled: true, running: false, failed: true, last_error: 'RuntimeException: it fell over', last_error_at: new Date(Date.now() - 600e3).toISOString(), has_settings: false },
+];
+let extValues = { message: 'This server is asleep, join to wake it.', loud: false, mode: 'a' };
+api.get('/admin/extensions', (req, res) => res.json({ safe_mode: false, extensions: adminExts }));
+api.get('/admin/extensions/:id/settings', (req, res) => res.json({ id: req.params.id, name: 'Offline MOTD', version: '1.0.0', author: 'Stratosphere', homepage: 'https://example.com', enabled: true, settings: [{ key: 'message', type: 'textarea', label: 'Message', help: 'Shown in the server list.', rows: 3, options: null, saved: null }, { key: 'loud', type: 'boolean', label: 'Loud', options: null, saved: null }, { key: 'mode', type: 'select', label: 'Mode', options: { a: 'A', b: 'B' }, saved: null }, { key: 'token', type: 'password', label: 'Token', options: null, saved: true }], values: { ...extValues, token: '' } }));
+api.patch('/admin/extensions/:id/settings', (req, res) => { extValues = { ...extValues, ...req.body.settings }; res.json({ saved: true }); });
+api.post('/admin/extensions/:id/toggle', (req, res) => { const e = adminExts.find((x) => x.id === req.params.id); e.enabled = !e.enabled; res.json({ enabled: e.enabled }); });
+api.post('/admin/extensions/:id/clear-error', (req, res) => { const e = adminExts.find((x) => x.id === req.params.id); e.last_error = null; res.status(204).end(); });
+const upBackups = [{ name: 'panel-backup-2026-10-18-1658.tar.gz', size: 74e6, created: Math.floor(Date.now() / 1000) - 86400 }, { name: 'panel-backup-2026-10-10-0900-before.tar.gz', size: 73e6, created: Math.floor(Date.now() / 1000) - 864000 }];
+api.get('/admin/updates', (req, res) => res.json({ installed: true, status: { action: 'panel', finished_at: new Date(Date.now() - 864e5).toISOString(), results: [{ name: 'panel', status: 'updated' }] }, pending: false, backups: upBackups, wings_latest: 'v1.12.0', node_count: 2, tar_url: 'https://example.com/panel.tar.gz', tar_nightly_url: 'https://example.com/nightly.tar.gz' }));
+api.get('/admin/updates/status', (req, res) => res.json({ pending: false, status: { action: 'panel', finished_at: new Date(Date.now() - 864e5).toISOString(), results: [] }, backups: upBackups }));
+api.post('/admin/updates', (req, res) => res.status(202).json({ requested: req.body.action }));
+api.get('/admin/ui-update', (req, res) => res.json({ update: null }));
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -663,7 +685,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 // The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
-const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users)(\/.*)?)?\/?$/;
+const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates)(\/.*)?)?\/?$/;
 app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
     PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
 );

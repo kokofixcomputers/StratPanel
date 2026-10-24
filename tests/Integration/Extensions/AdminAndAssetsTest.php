@@ -40,7 +40,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
 
         $this->get('/admin/extensions')->assertStatus(403);
         $this->actingAs($user)->get('/admin/extensions')->assertStatus(403);
-        $this->actingAs($user)->post('/admin/extensions/set-one/toggle')->assertStatus(403);
+        $this->actingAs($user)->postJson('/api/client/admin/extensions/set-one/toggle')->assertStatus(403);
         $this->assertTrue(InstalledExtension::query()->firstOrFail()->enabled);
     }
 
@@ -50,19 +50,22 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->install($this->phpExtension('broken-one', 'Broken', 'public function boot(): void { throw new \RuntimeException("it fell over"); }'));
 
         $this->actingAs($this->admin());
-        $response = $this->page('/admin/extensions')->assertOk();
+        $this->page('/admin/extensions')->assertOk()->assertSee('<div id="app"></div>', false);
+        $json = $this->getJson('/api/client/admin/extensions')->assertOk()->json();
 
-        $response->assertSee('set-one')->assertSee('broken-one')->assertSee('it fell over');
+        $this->assertSame(['set-one', 'broken-one'], array_column($json['extensions'], 'id'));
+        $this->assertStringContainsString('it fell over', collect($json['extensions'])->firstWhere('id', 'broken-one')['last_error']);
+        $this->assertTrue(collect($json['extensions'])->firstWhere('id', 'set-one')['has_settings']);
     }
 
     public function testTheListWorksWithNothingInstalledAndInSafeMode(): void
     {
         $this->actingAs($this->admin());
-        $this->page('/admin/extensions')->assertOk();
+        $this->getJson('/api/client/admin/extensions')->assertOk()->assertJson(['safe_mode' => false, 'extensions' => []]);
 
         $this->settingsExtension();
         config(['extensions.enabled' => false]);
-        $this->page('/admin/extensions')->assertOk()->assertSee('afe mode');
+        $this->getJson('/api/client/admin/extensions')->assertOk()->assertJsonPath('safe_mode', true);
     }
 
     public function testTheListWorksWhenTheFilesAreGone(): void
@@ -71,7 +74,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->removePath($this->directory . '/set-one');
 
         $this->actingAs($this->admin());
-        $this->page('/admin/extensions')->assertOk()->assertSee('set-one');
+        $this->getJson('/api/client/admin/extensions')->assertOk()->assertJsonPath('extensions.0.id', 'set-one')->assertJsonPath('extensions.0.broken', true);
     }
 
     public function testExtensionsAreSwitchedOnAndOff(): void
@@ -79,10 +82,10 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->settingsExtension(false);
         $this->actingAs($this->admin());
 
-        $this->post('/admin/extensions/set-one/toggle')->assertRedirect('/admin/extensions');
+        $this->postJson('/api/client/admin/extensions/set-one/toggle')->assertSuccessful();
         $this->assertTrue(InstalledExtension::query()->firstOrFail()->enabled);
 
-        $this->post('/admin/extensions/set-one/toggle')->assertRedirect('/admin/extensions');
+        $this->postJson('/api/client/admin/extensions/set-one/toggle')->assertSuccessful();
         $this->assertFalse(InstalledExtension::query()->firstOrFail()->enabled);
     }
 
@@ -92,7 +95,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->removePath($this->directory . '/set-one');
         $this->actingAs($this->admin());
 
-        $this->post('/admin/extensions/set-one/toggle')->assertRedirect('/admin/extensions');
+        $this->postJson('/api/client/admin/extensions/set-one/toggle')->assertStatus(400);
 
         $this->assertFalse(InstalledExtension::query()->firstOrFail()->enabled);
     }
@@ -103,7 +106,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         InstalledExtension::query()->update(['last_error' => 'old', 'last_error_at' => now()]);
         $this->actingAs($this->admin());
 
-        $this->post('/admin/extensions/set-one/toggle');
+        $this->postJson('/api/client/admin/extensions/set-one/toggle');
 
         $this->assertNull(InstalledExtension::query()->firstOrFail()->last_error);
     }
@@ -114,7 +117,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         InstalledExtension::query()->update(['last_error' => 'old', 'last_error_at' => now()]);
         $this->actingAs($this->admin());
 
-        $this->post('/admin/extensions/set-one/clear-error')->assertRedirect('/admin/extensions');
+        $this->postJson('/api/client/admin/extensions/set-one/clear-error')->assertSuccessful();
 
         $this->assertNull(InstalledExtension::query()->firstOrFail()->last_error);
     }
@@ -123,8 +126,8 @@ class AdminAndAssetsTest extends ExtensionTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->get('/admin/extensions/nothing/settings')->assertNotFound();
-        $this->post('/admin/extensions/nothing/toggle')->assertNotFound();
+        $this->getJson('/api/client/admin/extensions/nothing/settings')->assertNotFound();
+        $this->postJson('/api/client/admin/extensions/nothing/toggle')->assertNotFound();
     }
 
     public function testTheSettingsFormShowsTheFieldsWithTheirValues(): void
@@ -133,8 +136,11 @@ class AdminAndAssetsTest extends ExtensionTestCase
         InstalledExtension::query()->update(['settings' => ['greeting' => 'hello']]);
         $this->actingAs($this->admin());
 
-        $this->page('/admin/extensions/set-one/settings')->assertOk()
-            ->assertSee('Greeting')->assertSee('hello')->assertSee('Loud')->assertSee('Mode');
+        $json = $this->getJson('/api/client/admin/extensions/set-one/settings')->assertOk()->json();
+
+        $this->assertSame(['Greeting', 'Loud', 'Count', 'Mode'], array_column($json['settings'], 'label'));
+        $this->assertSame('hello', $json['values']['greeting']);
+        $this->assertSame(['a' => 'A', 'b' => 'B'], $json['settings'][3]['options']);
     }
 
     public function testAnExtensionWithoutSettingsHasNoSettingsPage(): void
@@ -142,7 +148,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->install($this->phpExtension('plain-one', 'Plain', ''));
         $this->actingAs($this->admin());
 
-        $this->get('/admin/extensions/plain-one/settings')->assertRedirect('/admin/extensions');
+        $this->getJson('/api/client/admin/extensions/plain-one/settings')->assertStatus(400);
     }
 
     public function testSettingsAreSavedWithTheirTypes(): void
@@ -150,8 +156,8 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->settingsExtension();
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'loud' => '1', 'count' => '5', 'mode' => 'b']])
-            ->assertRedirect('/admin/extensions/set-one/settings');
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'loud' => '1', 'count' => '5', 'mode' => 'b']])
+            ->assertOk();
 
         $saved = InstalledExtension::query()->firstOrFail()->settings;
         $this->assertSame('yo', $saved['greeting']);
@@ -166,7 +172,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         InstalledExtension::query()->update(['settings' => ['loud' => true]]);
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'count' => '5', 'mode' => 'a']]);
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'count' => '5', 'mode' => 'a']]);
 
         $this->assertFalse(InstalledExtension::query()->firstOrFail()->settings['loud']);
     }
@@ -176,11 +182,11 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->settingsExtension();
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => str_repeat('x', 11), 'count' => '5', 'mode' => 'a']])
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => str_repeat('x', 11), 'count' => '5', 'mode' => 'a']])
             ->assertStatus(422);
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'ok', 'count' => '99', 'mode' => 'a']])
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'ok', 'count' => '99', 'mode' => 'a']])
             ->assertStatus(422);
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'ok', 'count' => '5', 'mode' => 'zzz']])
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'ok', 'count' => '5', 'mode' => 'zzz']])
             ->assertStatus(422);
 
         $this->assertEmpty(InstalledExtension::query()->firstOrFail()->settings ?? []);
@@ -191,7 +197,7 @@ class AdminAndAssetsTest extends ExtensionTestCase
         $this->settingsExtension();
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'count' => '5', 'mode' => 'a', 'sneaky' => 'x']]);
+        $this->patchJson('/api/client/admin/extensions/set-one/settings', ['settings' => ['greeting' => 'yo', 'count' => '5', 'mode' => 'a', 'sneaky' => 'x']]);
 
         $this->assertArrayNotHasKey('sneaky', InstalledExtension::query()->firstOrFail()->settings);
     }

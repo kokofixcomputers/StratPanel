@@ -81,7 +81,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['root'],
         group: 'main',
         icon: KeyIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'updates',
@@ -90,7 +90,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['root'],
         group: 'main',
         icon: CloudDownloadIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'databases',
@@ -171,7 +171,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['extensions.view'],
         group: 'management',
         icon: PuzzleIcon,
-        ported: false,
+        ported: true,
     },
 ];
 

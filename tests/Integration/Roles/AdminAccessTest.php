@@ -117,7 +117,8 @@ class AdminAccessTest extends RoleTestCase
 
         $this->get('/admin/api')->assertStatus(403);
         $this->get('/admin/api/new')->assertStatus(403);
-        $this->post('/admin/api/new', ['memo' => 'x'])->assertStatus(403);
+        $this->postJson('/api/client/admin/application-keys', ['memo' => 'x'])->assertStatus(403);
+        $this->getJson('/api/client/admin/application-keys')->assertStatus(403);
     }
 
     public function testTheOverviewIsAPermissionToo(): void

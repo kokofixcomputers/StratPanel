@@ -7,6 +7,7 @@ import PageContentBlock from '@/components/elements/PageContentBlock';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import UiUpdateNotice from '@/components/admin/UiUpdateNotice';
 import useAdmin from '@/plugins/useAdmin';
 import { adminUrl, firstPage, PAGES } from '@/lib/adminNav';
 import { ADMIN_ROUTES } from '@/routers/adminRoutes';
@@ -56,6 +57,7 @@ export default () => {
             <div className={'lg:flex'}>
                 <AdminSidebar />
                 <div className={'min-w-0 flex-1 lg:px-4'}>
+                    {admin.root && <UiUpdateNotice />}
                     <TransitionRouter>
                         <React.Suspense fallback={<Spinner centered />}>
                             <Switch location={location}>

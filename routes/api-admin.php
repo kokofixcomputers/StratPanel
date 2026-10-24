@@ -72,4 +72,28 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
         Route::post('/{role}/members', [Admin\RolesController::class, 'addMember'])->whereNumber('role')->middleware('admin.can:roles.assign');
         Route::delete('/{role}/members/{person}', [Admin\RolesController::class, 'removeMember'])->whereNumber(['role', 'person'])->middleware('admin.can:roles.assign');
     });
+
+    Route::prefix('/application-keys')->group(function () {
+        Route::get('/', [Admin\ApplicationKeysController::class, 'index'])->middleware('admin.can:root');
+        Route::get('/resources', [Admin\ApplicationKeysController::class, 'resources'])->middleware('admin.can:root');
+        Route::post('/', [Admin\ApplicationKeysController::class, 'store'])->middleware('admin.can:root');
+        Route::delete('/{identifier}', [Admin\ApplicationKeysController::class, 'destroy'])->middleware('admin.can:root');
+    });
+
+    Route::prefix('/extensions')->group(function () {
+        Route::get('/', [Admin\ExtensionsController::class, 'index'])->middleware('admin.can:extensions.view');
+        Route::get('/{extension}/settings', [Admin\ExtensionsController::class, 'settings'])->middleware('admin.can:extensions.view');
+        Route::patch('/{extension}/settings', [Admin\ExtensionsController::class, 'saveSettings'])->middleware('admin.can:extensions.manage');
+        Route::post('/{extension}/toggle', [Admin\ExtensionsController::class, 'toggle'])->middleware('admin.can:extensions.manage');
+        Route::post('/{extension}/clear-error', [Admin\ExtensionsController::class, 'clearError'])->middleware('admin.can:extensions.manage');
+    });
+
+    Route::prefix('/updates')->group(function () {
+        Route::get('/', [Admin\UpdatesController::class, 'index'])->middleware('admin.can:root');
+        Route::get('/status', [Admin\UpdatesController::class, 'status'])->middleware('admin.can:root');
+        Route::post('/', [Admin\UpdatesController::class, 'run'])->middleware('admin.can:root');
+    });
+
+    // The notice that a newer web interface exists is shown on every page of the admin area, to whoever may update.
+    Route::get('/ui-update', [Admin\UpdatesController::class, 'ui'])->middleware('admin.can:root');
 });

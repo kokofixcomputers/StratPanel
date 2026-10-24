@@ -44,6 +44,20 @@ const UserEditor = lazy(
     () => import(/* webpackChunkName: "admin-users" */ '@/components/admin/pages/users/UserEditor')
 );
 
+const ApiKeysPage = lazy(() => import(/* webpackChunkName: "admin-api" */ '@/components/admin/pages/api/ApiKeysPage'));
+const ApiKeyNewPage = lazy(
+    () => import(/* webpackChunkName: "admin-api" */ '@/components/admin/pages/api/ApiKeyNewPage')
+);
+const ExtensionsPage = lazy(
+    () => import(/* webpackChunkName: "admin-extensions" */ '@/components/admin/pages/extensions/ExtensionsPage')
+);
+const ExtensionSettingsPage = lazy(
+    () => import(/* webpackChunkName: "admin-extensions" */ '@/components/admin/pages/extensions/ExtensionSettingsPage')
+);
+const UpdatesPage = lazy(
+    () => import(/* webpackChunkName: "admin-updates" */ '@/components/admin/pages/updates/UpdatesPage')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
@@ -56,6 +70,11 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin/users', permissions: ['users.view'], component: UsersPage },
     { path: '/admin/users/new', permissions: ['users.create'], component: UserEditor },
     { path: '/admin/users/view/:id', permissions: ['users.view'], component: UserEditor },
+    { path: '/admin/api', permissions: ['root'], component: ApiKeysPage },
+    { path: '/admin/api/new', permissions: ['root'], component: ApiKeyNewPage },
+    { path: '/admin/extensions', permissions: ['extensions.view'], component: ExtensionsPage },
+    { path: '/admin/extensions/:id/settings', permissions: ['extensions.view'], component: ExtensionSettingsPage },
+    { path: '/admin/updates', permissions: ['root'], component: UpdatesPage },
     { path: '/admin/locations', permissions: ['locations.view'], component: LocationsPage },
     { path: '/admin/locations/view/:id', permissions: ['locations.view'], component: LocationPage },
 ];
