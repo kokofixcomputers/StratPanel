@@ -86,7 +86,8 @@ export default (detectedVersion: string) => {
                     set('t', fallbackKind(patch.source) === 'plugin' ? null : fallbackKind(patch.source));
             }
             if (patch.kind !== undefined) {
-                set('t', patch.kind === 'plugin' ? null : patch.kind);
+                // Plugins are written out too: an address without a kind is still open to the detection of what the server runs.
+                set('t', patch.kind);
                 // Categories and loaders belong to a kind of project.
                 params.delete('c');
                 params.delete('l');

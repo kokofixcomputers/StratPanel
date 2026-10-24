@@ -199,4 +199,39 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
         Route::post('/{node}/certificate/push', [Admin\NodeCertificateController::class, 'push'])->whereNumber('node')->middleware('admin.can:nodes.certificate');
         Route::post('/{node}/certificate/enable', [Admin\NodeCertificateController::class, 'enableHttps'])->whereNumber('node')->middleware('admin.can:nodes.certificate');
     });
+
+    // The people to choose an owner from, and the allocations of a node that are free: for the forms of servers.
+    Route::get('/lookups/people', [Admin\ServersController::class, 'people'])->middleware('admin.can:users.view,servers.create,servers.update,roles.assign');
+    Route::get('/nodes/{node}/free-allocations', [Admin\ServersController::class, 'freeAllocations'])->whereNumber('node')->middleware('admin.can:servers.create,servers.build,servers.transfer');
+
+    Route::prefix('/servers')->group(function () {
+        Route::get('/', [Admin\ServersController::class, 'index'])->middleware('admin.can:servers.view');
+        Route::get('/form', [Admin\ServersController::class, 'form'])->middleware('admin.can:servers.create');
+        Route::post('/', [Admin\ServersController::class, 'store'])->middleware('admin.can:servers.create');
+        Route::get('/{serverId}', [Admin\ServersController::class, 'view'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::patch('/{serverId}', [Admin\ServersController::class, 'updateDetails'])->whereNumber('serverId')->middleware('admin.can:servers.update');
+        Route::delete('/{serverId}', [Admin\ServersController::class, 'destroy'])->whereNumber('serverId')->middleware('admin.can:servers.delete');
+
+        Route::get('/{serverId}/build', [Admin\ServerSettingsController::class, 'build'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::patch('/{serverId}/build', [Admin\ServerSettingsController::class, 'updateBuild'])->whereNumber('serverId')->middleware('admin.can:servers.build');
+        Route::get('/{serverId}/startup', [Admin\ServerSettingsController::class, 'startup'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::patch('/{serverId}/startup', [Admin\ServerSettingsController::class, 'updateStartup'])->whereNumber('serverId')->middleware('admin.can:servers.startup');
+
+        Route::get('/{serverId}/databases', [Admin\ServerExtrasController::class, 'databases'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::post('/{serverId}/databases', [Admin\ServerExtrasController::class, 'createDatabase'])->whereNumber('serverId')->middleware('admin.can:servers.databases');
+        Route::patch('/{serverId}/databases/{database}', [Admin\ServerExtrasController::class, 'resetDatabasePassword'])->whereNumber(['serverId', 'database'])->middleware('admin.can:servers.databases');
+        Route::delete('/{serverId}/databases/{database}', [Admin\ServerExtrasController::class, 'deleteDatabase'])->whereNumber(['serverId', 'database'])->middleware('admin.can:servers.databases');
+        Route::get('/{serverId}/mounts', [Admin\ServerExtrasController::class, 'mounts'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::post('/{serverId}/mounts', [Admin\ServerExtrasController::class, 'addMount'])->whereNumber('serverId')->middleware('admin.can:servers.mounts');
+        Route::delete('/{serverId}/mounts/{mount}', [Admin\ServerExtrasController::class, 'deleteMount'])->whereNumber(['serverId', 'mount'])->middleware('admin.can:servers.mounts');
+        Route::get('/{serverId}/domains', [Admin\ServerExtrasController::class, 'domains'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::post('/{serverId}/domains', [Admin\ServerExtrasController::class, 'addDomain'])->whereNumber('serverId')->middleware('admin.can:servers.domains');
+        Route::delete('/{serverId}/domains/{domain}', [Admin\ServerExtrasController::class, 'deleteDomain'])->whereNumber(['serverId', 'domain'])->middleware('admin.can:servers.domains');
+
+        Route::get('/{serverId}/manage', [Admin\ServerManageController::class, 'view'])->whereNumber('serverId')->middleware('admin.can:servers.view');
+        Route::post('/{serverId}/manage/reinstall', [Admin\ServerManageController::class, 'reinstall'])->whereNumber('serverId')->middleware('admin.can:servers.reinstall');
+        Route::post('/{serverId}/manage/toggle', [Admin\ServerManageController::class, 'toggleInstall'])->whereNumber('serverId')->middleware('admin.can:servers.reinstall');
+        Route::post('/{serverId}/manage/suspension', [Admin\ServerManageController::class, 'suspension'])->whereNumber('serverId')->middleware('admin.can:servers.suspend');
+        Route::post('/{serverId}/manage/transfer', [Admin\ServerManageController::class, 'transfer'])->whereNumber('serverId')->middleware('admin.can:servers.transfer');
+    });
 });

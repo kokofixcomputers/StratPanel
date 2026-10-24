@@ -1,15 +1,13 @@
 # The admin area as part of the React app
 
-The admin area used to be Blade pages (AdminLTE, jQuery) next to the React app. It is moved into the app one page at a time: the pages that
-are moved are drawn by the same React app as the rest of the panel, with the same components (cards, buttons, dialogs, inputs), the same
-sidebar style as the account pages and the same theme. Pages that are not moved yet keep working as they were, nothing is lost on the way.
+The admin area used to be Blade pages (AdminLTE, jQuery) next to the React app. It was moved into the app one page at a time: the pages
+are drawn by the same React app as the rest of the panel, with the same components (cards, buttons, dialogs, inputs), the same
+sidebar style as the account pages and the same theme.
 
-## Moved so far
+## Moved
 
-Overview, Roles, Locations, Databases, Mounts, Users, Application API, Extensions, Updates and all of Settings (general, branding,
-authentication, providers, CurseForge, domains, resource pools, trash, certificates, mail, advanced). Nests and eggs (with their variables and install
-script). Nodes (about, settings, configuration, certificate,
-allocations, servers). The rest (Servers) is still Blade.
+All of it. The Blade layout, AdminLTE, jQuery and their assets are gone; `Admin\SpaController` answers every page of the admin area. The only
+things that are not pages are the downloads (`/admin/nests/egg/{egg}/export`, `/admin/servers/view/{server}/export`).
 
 ## How a moved page works
 
@@ -24,13 +22,12 @@ allocations, servers). The rest (Servers) is still Blade.
 - **Links:** use `AdminLink` for a link to a page of the admin area. It is a link inside the app for a moved page and a normal link for one
   that is not moved yet, so a page can be moved without changing the links that point at it.
 
-## Moving the next page
+## Adding a page
 
 1. An API controller in `Api/Client/Admin` and its routes in `routes/api-admin.php`, each with its `admin.can`.
-2. The React page in `components/admin/pages`, built from the existing components, and its entry in `ADMIN_ROUTES` and `PAGES` (`ported: true`).
-3. The routes of the page in `routes/admin.php` answer with `Admin\SpaController`; the Blade view, the old controller methods and the form
-   routes go.
-4. Tests: the API instead of the form (`tests/Integration/Admin`, `tests/Integration/Roles` show how).
+2. The React page in `components/admin/pages`, built from the existing components, and its entry in `ADMIN_ROUTES` and `PAGES`.
+3. The `GET` route of the page in `routes/admin.php` answers with `Admin\SpaController`.
+4. Tests: the API (`tests/Integration/Admin` shows how).
 
 Two things that cost an afternoon: a route parameter called `{user}` or `{server}` in the client API is taken over by `SubstituteClientBindings`
 (use another name, as `{person}` in the role members route), and in a PHPUnit process a request to the client API changes how later requests
@@ -38,5 +35,4 @@ to Blade routes with `{user}` or a refused page are answered, so a test that doe
 
 ## Trying it without a panel
 
-`node preview/server.js` has mocks of the moved pages (`/admin`, `/admin/roles`, `/admin/locations`); the others are still drawn by the mock of
-the old pages in `preview/admin.js`.
+`node preview/server.js` serves the app with a mock of the admin API (in-memory), at http://localhost:4000/admin.

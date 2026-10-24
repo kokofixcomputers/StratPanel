@@ -112,7 +112,7 @@ export default () => {
                                 </Cell>
                                 <Cell>
                                     <AdminLink
-                                        to={`/admin/servers?filter[owner_id]=${user.id}`}
+                                        to={`/admin/servers?owner_id=${user.id}`}
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {user.servers}

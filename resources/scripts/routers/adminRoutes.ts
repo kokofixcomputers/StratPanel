@@ -132,6 +132,40 @@ const NodeServersPage = lazy(
     () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeServersPage')
 );
 
+const ServersPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServersPage')
+);
+const ServerCreatePage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerCreatePage')
+);
+const ServerPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerPage')
+);
+const ServerDetailsPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerDetailsPage')
+);
+const ServerBuildPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerBuildPage')
+);
+const ServerStartupPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerStartupPage')
+);
+const ServerDatabasesPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerDatabasesPage')
+);
+const ServerMountsPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerMountsPage')
+);
+const ServerDomainsPage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerDomainsPage')
+);
+const ServerManagePage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerManagePage')
+);
+const ServerDeletePage = lazy(
+    () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServerDeletePage')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
@@ -210,6 +244,17 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin/nodes/view/:id/certificate', permissions: ['nodes.view'], component: NodeCertificatePage },
     { path: '/admin/nodes/view/:id/allocation', permissions: ['nodes.view'], component: NodeAllocationsPage },
     { path: '/admin/nodes/view/:id/servers', permissions: ['nodes.view'], component: NodeServersPage },
+    { path: '/admin/servers', permissions: ['servers.view'], component: ServersPage },
+    { path: '/admin/servers/new', permissions: ['servers.create'], component: ServerCreatePage },
+    { path: '/admin/servers/view/:id', permissions: ['servers.view'], component: ServerPage },
+    { path: '/admin/servers/view/:id/details', permissions: ['servers.view'], component: ServerDetailsPage },
+    { path: '/admin/servers/view/:id/build', permissions: ['servers.view'], component: ServerBuildPage },
+    { path: '/admin/servers/view/:id/startup', permissions: ['servers.view'], component: ServerStartupPage },
+    { path: '/admin/servers/view/:id/database', permissions: ['servers.view'], component: ServerDatabasesPage },
+    { path: '/admin/servers/view/:id/mounts', permissions: ['servers.view'], component: ServerMountsPage },
+    { path: '/admin/servers/view/:id/domains', permissions: ['servers.view'], component: ServerDomainsPage },
+    { path: '/admin/servers/view/:id/manage', permissions: ['servers.view'], component: ServerManagePage },
+    { path: '/admin/servers/view/:id/delete', permissions: ['servers.delete'], component: ServerDeletePage },
     { path: '/admin/api', permissions: ['root'], component: ApiKeysPage },
     { path: '/admin/api/new', permissions: ['root'], component: ApiKeyNewPage },
     { path: '/admin/extensions', permissions: ['extensions.view'], component: ExtensionsPage },

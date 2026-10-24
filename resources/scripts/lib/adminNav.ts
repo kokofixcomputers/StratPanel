@@ -141,7 +141,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['servers.view'],
         group: 'management',
         icon: ServerIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'users',

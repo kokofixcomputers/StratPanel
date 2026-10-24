@@ -116,9 +116,6 @@ Route::group(['prefix' => 'users'], function () {
     Route::get('/', Admin\SpaController::class)->name('admin.users')->middleware('admin.can:users.view');
     Route::get('/new', Admin\SpaController::class)->name('admin.users.new')->middleware('admin.can:users.create');
     Route::get('/view/{user:id}', Admin\SpaController::class)->name('admin.users.view')->middleware('admin.can:users.view');
-
-    // Still read by the pages that are not part of the app yet (a list of people to choose from).
-    Route::get('/accounts.json', [Admin\UserController::class, 'json'])->name('admin.users.json')->middleware('admin.can:users.view,servers.create,servers.update,roles.assign');
 });
 
 /*
@@ -130,42 +127,26 @@ Route::group(['prefix' => 'users'], function () {
 |
 */
 Route::group(['prefix' => 'servers'], function () {
-    Route::get('/', [Admin\Servers\ServerController::class, 'index'])->name('admin.servers')->middleware('admin.can:servers.view');
-    Route::get('/new', [Admin\Servers\CreateServerController::class, 'index'])->name('admin.servers.new')->middleware('admin.can:servers.create');
-    Route::get('/view/{server:id}', [Admin\Servers\ServerViewController::class, 'index'])->name('admin.servers.view')->middleware('admin.can:servers.view');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.servers')->middleware('admin.can:servers.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.servers.new')->middleware('admin.can:servers.create');
+    Route::get('/view/{server:id}', Admin\SpaController::class)->name('admin.servers.view')->middleware('admin.can:servers.view');
 
+    // Only for a server that is installed.
     Route::group(['middleware' => [ServerInstalled::class]], function () {
-        Route::get('/view/{server:id}/details', [Admin\Servers\ServerViewController::class, 'details'])->name('admin.servers.view.details')->middleware('admin.can:servers.view');
-        Route::get('/view/{server:id}/build', [Admin\Servers\ServerViewController::class, 'build'])->name('admin.servers.view.build')->middleware('admin.can:servers.view');
-        Route::get('/view/{server:id}/startup', [Admin\Servers\ServerViewController::class, 'startup'])->name('admin.servers.view.startup')->middleware('admin.can:servers.view');
-        Route::get('/view/{server:id}/database', [Admin\Servers\ServerViewController::class, 'database'])->name('admin.servers.view.database')->middleware('admin.can:servers.view');
-        Route::get('/view/{server:id}/mounts', [Admin\Servers\ServerViewController::class, 'mounts'])->name('admin.servers.view.mounts')->middleware('admin.can:servers.view');
-        Route::get('/view/{server:id}/domains', [Admin\Servers\ServerDomainsController::class, 'index'])->name('admin.servers.view.domains')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/details', Admin\SpaController::class)->name('admin.servers.view.details')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/build', Admin\SpaController::class)->name('admin.servers.view.build')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/startup', Admin\SpaController::class)->name('admin.servers.view.startup')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/database', Admin\SpaController::class)->name('admin.servers.view.database')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/mounts', Admin\SpaController::class)->name('admin.servers.view.mounts')->middleware('admin.can:servers.view');
+        Route::get('/view/{server:id}/domains', Admin\SpaController::class)->name('admin.servers.view.domains')->middleware('admin.can:servers.view');
     });
 
+    Route::get('/view/{server:id}/manage', Admin\SpaController::class)->name('admin.servers.view.manage')->middleware('admin.can:servers.view');
+    Route::get('/view/{server:id}/delete', Admin\SpaController::class)->name('admin.servers.view.delete')->middleware('admin.can:servers.delete');
+
+    // A file to download, not a page.
     Route::get('/view/{server:id}/export', Admin\Servers\ServerExportController::class)->name('admin.servers.view.export')->middleware('admin.can:servers.view');
-    Route::get('/view/{server:id}/manage', [Admin\Servers\ServerViewController::class, 'manage'])->name('admin.servers.view.manage')->middleware('admin.can:servers.view');
-    Route::get('/view/{server:id}/delete', [Admin\Servers\ServerViewController::class, 'delete'])->name('admin.servers.view.delete')->middleware('admin.can:servers.delete');
-
-    Route::post('/new', [Admin\Servers\CreateServerController::class, 'store'])->middleware('admin.can:servers.create');
-    Route::post('/view/{server:id}/build', [Admin\ServersController::class, 'updateBuild'])->middleware('admin.can:servers.build');
-    Route::post('/view/{server:id}/startup', [Admin\ServersController::class, 'saveStartup'])->middleware('admin.can:servers.startup');
-    Route::post('/view/{server:id}/database', [Admin\ServersController::class, 'newDatabase'])->middleware('admin.can:servers.databases');
-    Route::post('/view/{server:id}/mounts', [Admin\ServersController::class, 'addMount'])->name('admin.servers.view.mounts.store')->middleware('admin.can:servers.mounts');
-    Route::post('/view/{server:id}/domains', [Admin\Servers\ServerDomainsController::class, 'store'])->name('admin.servers.view.domains.store')->middleware('admin.can:servers.domains');
-    Route::post('/view/{server:id}/manage/toggle', [Admin\ServersController::class, 'toggleInstall'])->name('admin.servers.view.manage.toggle')->middleware('admin.can:servers.reinstall');
-    Route::post('/view/{server:id}/manage/suspension', [Admin\ServersController::class, 'manageSuspension'])->name('admin.servers.view.manage.suspension')->middleware('admin.can:servers.suspend');
-    Route::post('/view/{server:id}/manage/reinstall', [Admin\ServersController::class, 'reinstallServer'])->name('admin.servers.view.manage.reinstall')->middleware('admin.can:servers.reinstall');
-    Route::post('/view/{server:id}/manage/transfer', [Admin\Servers\ServerTransferController::class, 'transfer'])->name('admin.servers.view.manage.transfer')->middleware('admin.can:servers.transfer');
-    Route::post('/view/{server:id}/delete', [Admin\ServersController::class, 'delete'])->middleware('admin.can:servers.delete');
-
-    Route::patch('/view/{server:id}/details', [Admin\ServersController::class, 'setDetails'])->middleware('admin.can:servers.update');
-    Route::patch('/view/{server:id}/database', [Admin\ServersController::class, 'resetDatabasePassword'])->middleware('admin.can:servers.databases');
-
-    Route::delete('/view/{server:id}/database/{database:id}/delete', [Admin\ServersController::class, 'deleteDatabase'])->name('admin.servers.view.database.delete')->middleware('admin.can:servers.databases');
-    Route::delete('/view/{server:id}/domains/{domain}', [Admin\Servers\ServerDomainsController::class, 'destroy'])->name('admin.servers.view.domains.delete')->middleware('admin.can:servers.domains');
-    Route::delete('/view/{server:id}/mounts/{mount:id}', [Admin\ServersController::class, 'deleteMount'])
-        ->name('admin.servers.view.mounts.delete')->middleware('admin.can:servers.mounts');
 });
 
 /*

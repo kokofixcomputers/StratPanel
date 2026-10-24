@@ -33,18 +33,6 @@ class AdminAccessTest extends RoleTestCase
         }
     }
 
-    public function testTheAdminAreaHasTheThemeOfThePanel(): void
-    {
-        $this->actingAs($this->rootAdmin());
-
-        // The pages that are not part of the React app yet (Blade) have the same light and dark theme as the panel: its variables, the
-        // choice kept in the browser and a way to change it.
-        $this->page('/admin/servers')->assertOk()
-            ->assertSee('themes/pterodactyl/css/panel-theme.css', false)
-            ->assertSee('stratosphere:theme', false)
-            ->assertSee('id="admin-theme-toggle"', false);
-    }
-
     public function testARoleOpensWhatItGivesAndNothingElse(): void
     {
         $this->actingAs($this->userWith(['users.view']));
@@ -132,38 +120,6 @@ class AdminAccessTest extends RoleTestCase
     }
 
     /** Only the menu, the pages have links of their own. */
-    private function sidebar(string $html): string
-    {
-        $start = strpos($html, '<nav class="admin-nav">');
-        $end = strpos($html, '</nav>', $start);
-
-        return substr($html, $start, $end - $start);
-    }
-
-    public function testTheSidebarOnlyShowsWhatIsOpen(): void
-    {
-        $this->actingAs($this->userWith(['overview.view', 'users.view', 'servers.view']));
-        $html = $this->sidebar($this->page('/admin/servers')->assertOk()->getContent());
-
-        $this->assertStringContainsString(route('admin.users'), $html);
-        $this->assertStringContainsString(route('admin.servers'), $html);
-        $this->assertStringNotContainsString('href="' . route('admin.nodes') . '"', $html);
-        $this->assertStringNotContainsString('href="' . route('admin.roles') . '"', $html);
-        $this->assertStringNotContainsString('href="' . route('admin.extensions') . '"', $html);
-        $this->assertStringNotContainsString('Application API', $html);
-    }
-
-    public function testRootAdminsSeeTheWholeSidebar(): void
-    {
-        $this->actingAs($this->rootAdmin());
-        $html = $this->sidebar($this->page('/admin/servers')->assertOk()->getContent());
-
-        foreach (['admin.users', 'admin.servers', 'admin.nodes', 'admin.roles', 'admin.extensions', 'admin.mounts', 'admin.nests', 'admin.locations', 'admin.databases', 'admin.api.index'] as $route) {
-            $this->assertStringContainsString('href="' . route($route) . '"', $html, $route);
-        }
-        $this->assertStringContainsString('Application API', $html);
-    }
-
     public function testEachPageOfSettingsHasItsOwnData(): void
     {
         $this->actingAs($this->userWith(['settings.mail.view', 'settings.branding.view']));
