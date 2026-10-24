@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ArrowLeftIcon, CogIcon, InformationCircleIcon } from '@heroicons/react/solid';
+import {
+    ArrowLeftIcon,
+    CogIcon,
+    HashtagIcon,
+    InformationCircleIcon,
+    LightningBoltIcon,
+    LinkIcon,
+    TagIcon,
+    UserIcon,
+} from '@heroicons/react/solid';
 import AdminPage from '@/components/admin/AdminPage';
+import Fact from '@/components/admin/Fact';
 import AdminLink from '@/components/admin/AdminLink';
 import { AreaField, SelectField, Stack, TextField, ToggleField } from '@/components/admin/forms';
 import SectionCard from '@/components/elements/SectionCard';
@@ -145,37 +155,28 @@ export default () => {
                     )}
                 </SectionCard>
                 <SectionCard icon={<InformationCircleIcon className={'h-5 w-5'} />} title={'About'}>
-                    <dl className={'space-y-2 text-sm'}>
-                        <div className={'flex justify-between gap-3'}>
-                            <dt className={'text-neutral-400'}>Version</dt>
-                            <dd>{data.version}</dd>
-                        </div>
+                    <dl className={'divide-y divide-neutral-500'}>
+                        <Fact label={'Version'} icon={TagIcon}>
+                            {data.version}
+                        </Fact>
                         {data.author && (
-                            <div className={'flex justify-between gap-3'}>
-                                <dt className={'text-neutral-400'}>Author</dt>
-                                <dd>{data.author}</dd>
-                            </div>
+                            <Fact label={'Author'} icon={UserIcon}>
+                                {data.author}
+                            </Fact>
                         )}
                         {data.homepage && (
-                            <div className={'flex justify-between gap-3'}>
-                                <dt className={'text-neutral-400'}>Website</dt>
-                                <dd className={'min-w-0 truncate'}>
-                                    <a href={data.homepage} target={'_blank'} rel={'noopener noreferrer'}>
-                                        {data.homepage}
-                                    </a>
-                                </dd>
-                            </div>
+                            <Fact label={'Website'} icon={LinkIcon}>
+                                <a href={data.homepage} target={'_blank'} rel={'noopener noreferrer'}>
+                                    {data.homepage}
+                                </a>
+                            </Fact>
                         )}
-                        <div className={'flex justify-between gap-3'}>
-                            <dt className={'text-neutral-400'}>Id</dt>
-                            <dd>
-                                <code>{data.id}</code>
-                            </dd>
-                        </div>
-                        <div className={'flex justify-between gap-3'}>
-                            <dt className={'text-neutral-400'}>State</dt>
-                            <dd>{data.enabled ? 'On' : 'Off'}</dd>
-                        </div>
+                        <Fact label={'Id'} icon={HashtagIcon}>
+                            <code>{data.id}</code>
+                        </Fact>
+                        <Fact label={'State'} icon={LightningBoltIcon}>
+                            {data.enabled ? 'On' : 'Off'}
+                        </Fact>
                     </dl>
                 </SectionCard>
             </div>

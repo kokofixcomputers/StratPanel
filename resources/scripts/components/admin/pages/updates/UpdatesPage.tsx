@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { formatDistanceToNow } from 'date-fns';
-import { ArchiveIcon, CloudDownloadIcon, RefreshIcon, TrashIcon } from '@heroicons/react/solid';
+import {
+    ArchiveIcon,
+    ClockIcon,
+    CloudDownloadIcon,
+    CogIcon,
+    ServerIcon,
+    RefreshIcon,
+    TrashIcon,
+} from '@heroicons/react/solid';
+import StatCard from '@/components/admin/StatCard';
 import AdminPage from '@/components/admin/AdminPage';
 import AdminLink from '@/components/admin/AdminLink';
 import { Empty, Meter, Pill } from '@/components/admin/AdminTable';
@@ -67,22 +76,6 @@ interface Progress {
     results: UpdateResult[];
     error?: string;
 }
-
-const Stat = ({ title, value, sub, tone }: { title: string; value: string; sub: string; tone?: 'green' | 'red' }) => (
-    <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
-        <p className={'text-xs uppercase tracking-wide text-neutral-400'}>{title}</p>
-        <p
-            className={classNames('mt-1 break-all text-xl font-semibold', {
-                'text-green-600': tone === 'green',
-                'text-red-600': tone === 'red',
-                'text-neutral-50': !tone,
-            })}
-        >
-            {value}
-        </p>
-        <p className={'mt-0.5 text-xs text-neutral-400'}>{sub}</p>
-    </div>
-);
 
 /** Admin > Updates: the panel, the router and the edge of this machine, and the backups made before each update. */
 export default () => {
@@ -217,14 +210,16 @@ export default () => {
     return (
         <AdminPage title={'Updates'} subtitle={'Panel, router, edge and Wings.'}>
             <div className={'grid grid-cols-2 gap-4 lg:grid-cols-4'}>
-                <Stat
+                <StatCard
                     title={'Updater'}
+                    icon={CogIcon}
                     value={installed ? 'Ready' : 'Not installed'}
                     sub={installed ? 'Runs when you ask it to' : 'One command to set up'}
                     tone={installed ? 'green' : undefined}
                 />
-                <Stat
+                <StatCard
                     title={'Last run'}
+                    icon={ClockIcon}
                     value={!last?.finished_at ? 'Never' : lastFailed ? 'Failed' : 'Done'}
                     sub={
                         last?.finished_at
@@ -234,16 +229,18 @@ export default () => {
                     tone={last?.finished_at ? (lastFailed ? 'red' : 'green') : undefined}
                 />
                 <AdminLink to={'/admin/nodes'}>
-                    <Stat
+                    <StatCard
                         title={'Newest Wings'}
+                        icon={ServerIcon}
                         value={info.wings_latest || 'Unknown'}
                         sub={`Update the ${info.node_count} ${
                             info.node_count === 1 ? 'node' : 'nodes'
                         } from their page`}
                     />
                 </AdminLink>
-                <Stat
+                <StatCard
                     title={'Backups'}
+                    icon={ArchiveIcon}
                     value={backups === null ? '–' : String(backups.length)}
                     sub={
                         backups === null

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
+    CheckCircleIcon,
     ChipIcon,
     ClockIcon,
     CollectionIcon,
@@ -12,9 +13,12 @@ import {
     InformationCircleIcon,
     LightningBoltIcon,
     LinkIcon,
+    ServerIcon,
+    UserIcon,
     TagIcon,
     ViewGridIcon,
 } from '@heroicons/react/solid';
+import StatCard from '@/components/admin/StatCard';
 import Fact from '@/components/admin/Fact';
 import ServerFrame from '@/components/admin/pages/servers/ServerFrame';
 import AdminLink from '@/components/admin/AdminLink';
@@ -22,14 +26,6 @@ import { Pill } from '@/components/admin/AdminTable';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
 import { useServer } from '@/api/admin/servers';
-
-const Stat = ({ title, value, sub }: { title: string; value: string; sub?: string }) => (
-    <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
-        <p className={'text-xs uppercase tracking-wide text-neutral-400'}>{title}</p>
-        <p className={'mt-1 text-xl font-semibold text-neutral-50'}>{value}</p>
-        {sub && <p className={'mt-0.5 text-xs text-neutral-400'}>{sub}</p>}
-    </div>
-);
 
 const limit = (value: number, unit = ' MiB') => (value === 0 ? 'Unlimited' : `${value}${unit}`);
 
@@ -45,10 +41,14 @@ export default () => {
     return (
         <ServerFrame server={data} subtitle={data.description}>
             <div className={'grid grid-cols-2 gap-4 lg:grid-cols-4'}>
-                <Stat title={'Status'} value={state} />
-                <Stat title={'CPU limit'} value={data.cpu === 0 ? '∞' : `${data.cpu}%`} />
-                <Stat title={'Memory'} value={data.memory === 0 ? '∞' : `${data.memory} MiB`} />
-                <Stat title={'Disk space'} value={data.disk === 0 ? '∞' : `${data.disk} MiB`} />
+                <StatCard title={'Status'} icon={CheckCircleIcon} value={state} />
+                <StatCard title={'CPU limit'} icon={ChipIcon} value={data.cpu === 0 ? '∞' : `${data.cpu}%`} />
+                <StatCard
+                    title={'Memory'}
+                    icon={LightningBoltIcon}
+                    value={data.memory === 0 ? '∞' : `${data.memory} MiB`}
+                />
+                <StatCard title={'Disk space'} icon={DatabaseIcon} value={data.disk === 0 ? '∞' : `${data.disk} MiB`} />
             </div>
             <div className={'mt-4 grid gap-4 lg:grid-cols-3'}>
                 <SectionCard
@@ -109,13 +109,22 @@ export default () => {
                 </SectionCard>
                 <div className={'space-y-4'}>
                     <AdminLink to={`/admin/users/view/${data.owner.id}`} className={'block'}>
-                        <Stat title={'Server owner'} value={data.owner.username} sub={data.owner.email} />
+                        <StatCard
+                            title={'Server owner'}
+                            icon={UserIcon}
+                            value={data.owner.username}
+                            sub={data.owner.email}
+                        />
                     </AdminLink>
                     <AdminLink to={`/admin/nodes/view/${data.node.id}`} className={'block'}>
-                        <Stat title={'Node'} value={data.node.name} />
+                        <StatCard title={'Node'} icon={ServerIcon} value={data.node.name} />
                     </AdminLink>
                     {data.allocation && (
-                        <Stat title={'Connection'} value={`${data.allocation.alias}:${data.allocation.port}`} />
+                        <StatCard
+                            title={'Connection'}
+                            icon={GlobeAltIcon}
+                            value={`${data.allocation.alias}:${data.allocation.port}`}
+                        />
                     )}
                     {data.state === 'suspended' && <Pill tone={'yellow'}>Suspended</Pill>}
                 </div>

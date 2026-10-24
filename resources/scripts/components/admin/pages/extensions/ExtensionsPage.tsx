@@ -59,6 +59,11 @@ export default () => {
                         <div className={'divide-y divide-neutral-500'}>
                             {data.extensions.map((item) => (
                                 <div key={item.id} className={'flex flex-wrap items-start justify-between gap-4 py-4'}>
+                                    <PuzzleIcon
+                                        className={
+                                            'mt-0.5 h-8 w-8 flex-shrink-0 rounded-lg bg-primary-50 p-1.5 text-primary-600'
+                                        }
+                                    />
                                     <div className={'min-w-0 flex-1'}>
                                         <p className={'text-sm font-medium text-neutral-50'}>
                                             {item.name}{' '}

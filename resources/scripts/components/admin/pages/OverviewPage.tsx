@@ -3,6 +3,9 @@ import { formatDistanceToNow } from 'date-fns';
 import {
     ChipIcon,
     ClockIcon,
+    DatabaseIcon,
+    GlobeAltIcon,
+    LightningBoltIcon,
     GlobeIcon,
     ServerIcon,
     UserGroupIcon,
@@ -47,10 +50,23 @@ const Stat = ({
     </AdminLink>
 );
 
-const Capacity = ({ label, usage, note }: { label: string; usage: { percent: number; level: any }; note: string }) => (
+const Capacity = ({
+    label,
+    usage,
+    note,
+    icon: Icon,
+}: {
+    label: string;
+    usage: { percent: number; level: any };
+    note: string;
+    icon: React.ComponentType<{ className?: string }>;
+}) => (
     <div className={'mb-4 last:mb-0'}>
         <div className={'flex items-baseline justify-between text-sm'}>
-            <span className={'text-neutral-200'}>{label}</span>
+            <span className={'flex items-center gap-2 text-neutral-200'}>
+                <Icon className={'h-4 w-4 text-neutral-400'} />
+                {label}
+            </span>
             <strong className={'text-neutral-50'}>{usage.percent}%</strong>
         </div>
         <div className={'mt-1.5'}>
@@ -175,6 +191,7 @@ export default () => {
                 >
                     <Capacity
                         label={'Memory given to servers'}
+                        icon={LightningBoltIcon}
                         usage={data.capacity.memory}
                         note={`${sizeMiB(data.capacity.memory.used)} of ${sizeMiB(
                             data.capacity.memory.limit
@@ -182,6 +199,7 @@ export default () => {
                     />
                     <Capacity
                         label={'Disk given to servers'}
+                        icon={DatabaseIcon}
                         usage={data.capacity.disk}
                         note={`${sizeMiB(data.capacity.disk.used)} of ${sizeMiB(
                             data.capacity.disk.limit
@@ -189,6 +207,7 @@ export default () => {
                     />
                     <Capacity
                         label={'Ports in use'}
+                        icon={GlobeAltIcon}
                         usage={data.capacity.allocations}
                         note={`${data.capacity.allocations.used} of ${data.capacity.allocations.limit} allocations have a server`}
                     />
