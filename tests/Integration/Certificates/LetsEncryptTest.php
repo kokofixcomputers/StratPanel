@@ -616,10 +616,10 @@ class LetsEncryptTest extends CertificateTestCase
         config(['acme.enabled' => false]);
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/settings/certificates/letsencrypt', ['enabled' => '1'])->assertRedirect('/admin/settings/certificates');
+        $this->patchJson('/api/client/admin/settings/certificates/letsencrypt', ['enabled' => '1'])->assertStatus(400);
         $this->assertNull($this->stored('enabled'), 'not without agreeing');
 
-        $this->patch('/admin/settings/certificates/letsencrypt', ['enabled' => '1', 'agree' => '1', 'email' => 'admin@example.com', 'staging' => '1'])->assertRedirect();
+        $this->patchJson('/api/client/admin/settings/certificates/letsencrypt', ['enabled' => '1', 'agree' => '1', 'email' => 'admin@example.com', 'staging' => '1'])->assertOk();
         $this->assertSame('true', $this->stored('enabled'));
         $this->assertSame('admin@example.com', $this->stored('email'));
         $this->assertSame('true', $this->stored('staging'));
@@ -630,7 +630,7 @@ class LetsEncryptTest extends CertificateTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/settings/certificates/letsencrypt', ['agree' => '1'])->assertRedirect();
+        $this->patchJson('/api/client/admin/settings/certificates/letsencrypt', ['agree' => '1'])->assertOk();
 
         $this->assertSame('false', $this->stored('enabled'));
         \DB::table('settings')->where('key', 'like', 'settings::acme:%')->delete();
@@ -640,21 +640,18 @@ class LetsEncryptTest extends CertificateTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->patch('/admin/settings/certificates/letsencrypt', ['enabled' => '1', 'agree' => '1', 'email' => 'nonsense'])->assertStatus(422);
+        $this->patchJson('/api/client/admin/settings/certificates/letsencrypt', ['enabled' => '1', 'agree' => '1', 'email' => 'nonsense'])->assertStatus(422);
         $this->assertNull($this->stored('enabled'));
     }
 
     public function testThePageSaysWhetherPortEightyIsAnswered(): void
     {
         $this->actingAs($this->admin());
-        if (!defined('LARAVEL_START')) {
-            define('LARAVEL_START', microtime(true));
-        }
 
-        $this->get('/admin/settings/certificates')->assertOk()->assertSee('Port 80 is not answered');
+        $this->getJson('/api/client/admin/settings/certificates')->assertOk()->assertJsonPath('edge', null);
 
         $this->edgeIsThere();
-        $this->get('/admin/settings/certificates')->assertSee('Port 80 is answered');
+        $this->getJson('/api/client/admin/settings/certificates')->assertJsonPath('edge.http', true);
     }
 
     public function testTheListMarksCertificatesFromLetsEncrypt(): void
@@ -662,10 +659,9 @@ class LetsEncryptTest extends CertificateTestCase
         [, $certificate] = $this->issued('marked.le-test.example', 60);
         $certificate->forceFill(['renew_error' => 'rate limit'])->save();
         $this->actingAs($this->admin());
-        if (!defined('LARAVEL_START')) {
-            define('LARAVEL_START', microtime(true));
-        }
 
-        $this->get('/admin/settings/certificates')->assertOk()->assertSee("Let's Encrypt")->assertSee('Renewal failed');
+        $row = $this->getJson('/api/client/admin/settings/certificates')->assertOk()->json('certificates.0');
+        $this->assertSame('letsencrypt', $row['source']);
+        $this->assertSame('rate limit', $row['renew_error']);
     }
 }

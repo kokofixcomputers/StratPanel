@@ -58,6 +58,49 @@ const UpdatesPage = lazy(
     () => import(/* webpackChunkName: "admin-updates" */ '@/components/admin/pages/updates/UpdatesPage')
 );
 
+const SettingsGeneralPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/GeneralPage')
+);
+const SettingsAdvancedPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/AdvancedPage')
+);
+const SettingsMailPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/MailPage')
+);
+const SettingsTrashPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/TrashPage')
+);
+const SettingsPoolsPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/PoolsPage')
+);
+const SettingsCurseForgePage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/CurseForgePage')
+);
+const SettingsAuthenticationPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/AuthenticationPage')
+);
+const SettingsBrandingPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/BrandingPage')
+);
+const SettingsProvidersPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/ProvidersPage')
+);
+const SettingsProviderPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/ProviderPage')
+);
+const SettingsDomainsPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/DomainsPage')
+);
+const SettingsDomainZonePage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/DomainZonePage')
+);
+const SettingsCertificatesPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/CertificatesPage')
+);
+const SettingsCertificatePage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/CertificatePage')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
@@ -70,6 +113,54 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin/users', permissions: ['users.view'], component: UsersPage },
     { path: '/admin/users/new', permissions: ['users.create'], component: UserEditor },
     { path: '/admin/users/view/:id', permissions: ['users.view'], component: UserEditor },
+    { path: '/admin/settings', permissions: ['settings.general.view'], component: SettingsGeneralPage },
+    { path: '/admin/settings/branding', permissions: ['settings.branding.view'], component: SettingsBrandingPage },
+    {
+        path: '/admin/settings/authentication',
+        permissions: ['settings.authentication.view'],
+        component: SettingsAuthenticationPage,
+    },
+    { path: '/admin/settings/providers', permissions: ['settings.providers.view'], component: SettingsProvidersPage },
+    {
+        path: '/admin/settings/providers/new',
+        permissions: ['settings.providers.update'],
+        component: SettingsProviderPage,
+    },
+    {
+        path: '/admin/settings/providers/:id',
+        permissions: ['settings.providers.view'],
+        component: SettingsProviderPage,
+    },
+    {
+        path: '/admin/settings/curseforge',
+        permissions: ['settings.curseforge.view'],
+        component: SettingsCurseForgePage,
+    },
+    { path: '/admin/settings/domains', permissions: ['settings.domains.view'], component: SettingsDomainsPage },
+    {
+        path: '/admin/settings/domains/new',
+        permissions: ['settings.domains.update'],
+        component: SettingsDomainZonePage,
+    },
+    {
+        path: '/admin/settings/domains/zones/:id',
+        permissions: ['settings.domains.view'],
+        component: SettingsDomainZonePage,
+    },
+    { path: '/admin/settings/pools', permissions: ['settings.pools.view'], component: SettingsPoolsPage },
+    { path: '/admin/settings/trash', permissions: ['settings.trash.view'], component: SettingsTrashPage },
+    {
+        path: '/admin/settings/certificates',
+        permissions: ['settings.certificates.view'],
+        component: SettingsCertificatesPage,
+    },
+    {
+        path: '/admin/settings/certificates/:id',
+        permissions: ['settings.certificates.view'],
+        component: SettingsCertificatePage,
+    },
+    { path: '/admin/settings/mail', permissions: ['settings.mail.view'], component: SettingsMailPage },
+    { path: '/admin/settings/advanced', permissions: ['settings.advanced.view'], component: SettingsAdvancedPage },
     { path: '/admin/api', permissions: ['root'], component: ApiKeysPage },
     { path: '/admin/api/new', permissions: ['root'], component: ApiKeyNewPage },
     { path: '/admin/extensions', permissions: ['extensions.view'], component: ExtensionsPage },

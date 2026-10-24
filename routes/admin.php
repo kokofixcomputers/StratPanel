@@ -57,46 +57,23 @@ Route::group(['prefix' => 'databases'], function () {
 |
 */
 Route::group(['prefix' => 'settings'], function () {
-    Route::get('/', [Admin\Settings\IndexController::class, 'index'])->name('admin.settings')->middleware('admin.can:settings.general.view');
-    Route::get('/mail', [Admin\Settings\MailController::class, 'index'])->name('admin.settings.mail')->middleware('admin.can:settings.mail.view');
-    Route::get('/advanced', [Admin\Settings\AdvancedController::class, 'index'])->name('admin.settings.advanced')->middleware('admin.can:settings.advanced.view');
-    Route::get('/branding', [Admin\Settings\BrandingController::class, 'index'])->name('admin.settings.branding')->middleware('admin.can:settings.branding.view');
-    Route::get('/authentication', [Admin\Settings\AuthenticationController::class, 'index'])->name('admin.settings.authentication')->middleware('admin.can:settings.authentication.view');
-    Route::patch('/authentication', [Admin\Settings\AuthenticationController::class, 'update'])->middleware('admin.can:settings.authentication.update');
-    Route::get('/providers', [Admin\Settings\ProvidersController::class, 'index'])->name('admin.settings.providers')->middleware('admin.can:settings.providers.view');
-    Route::get('/providers/new', [Admin\Settings\ProvidersController::class, 'create'])->name('admin.settings.providers.new')->middleware('admin.can:settings.providers.update');
-    Route::post('/providers', [Admin\Settings\ProvidersController::class, 'store'])->name('admin.settings.providers.store')->middleware('admin.can:settings.providers.update');
-    Route::get('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'edit'])->name('admin.settings.providers.edit')->whereNumber('provider')->middleware('admin.can:settings.providers.view');
-    Route::patch('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'update'])->whereNumber('provider')->middleware('admin.can:settings.providers.update');
-    Route::delete('/providers/{provider}', [Admin\Settings\ProvidersController::class, 'destroy'])->name('admin.settings.providers.delete')->whereNumber('provider')->middleware('admin.can:settings.providers.update');
-    Route::get('/domains', [Admin\Settings\DomainsController::class, 'index'])->name('admin.settings.domains')->middleware('admin.can:settings.domains.view');
-    Route::patch('/domains', [Admin\Settings\DomainsController::class, 'update'])->middleware('admin.can:settings.domains.update');
-    Route::get('/domains/new', [Admin\Settings\DomainsController::class, 'create'])->name('admin.settings.domains.new')->middleware('admin.can:settings.domains.update');
-    Route::post('/domains/zones', [Admin\Settings\DomainsController::class, 'store'])->name('admin.settings.domains.store')->middleware('admin.can:settings.domains.update');
-    Route::get('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'edit'])->name('admin.settings.domains.edit')->whereNumber('zone')->middleware('admin.can:settings.domains.view');
-    Route::patch('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'updateZone'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
-    Route::post('/domains/zones/{zone}/test', [Admin\Settings\DomainsController::class, 'test'])->name('admin.settings.domains.test')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
-    Route::delete('/domains/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->name('admin.settings.domains.delete')->whereNumber('zone')->middleware('admin.can:settings.domains.update');
-    Route::get('/pools', [Admin\Settings\PoolsController::class, 'index'])->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
-    Route::patch('/pools', [Admin\Settings\PoolsController::class, 'update'])->middleware('admin.can:settings.pools.update');
-    Route::get('/trash', [Admin\Settings\TrashController::class, 'index'])->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
-    Route::patch('/trash', [Admin\Settings\TrashController::class, 'update'])->middleware('admin.can:settings.trash.update');
-    Route::get('/certificates', [Admin\Settings\CertificatesController::class, 'index'])->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
-    Route::post('/certificates', [Admin\Settings\CertificatesController::class, 'store'])->middleware('admin.can:settings.certificates.update');
-    Route::patch('/certificates/letsencrypt', [Admin\Settings\CertificatesController::class, 'acme'])->name('admin.settings.certificates.letsencrypt')->middleware('admin.can:settings.certificates.update');
-    Route::get('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'edit'])->name('admin.settings.certificates.edit')->whereNumber('certificate')->middleware('admin.can:settings.certificates.view');
-    Route::patch('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'update'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
-    Route::delete('/certificates/{certificate}', [Admin\Settings\CertificatesController::class, 'destroy'])->name('admin.settings.certificates.delete')->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
-    Route::get('/curseforge', [Admin\Settings\CurseForgeController::class, 'index'])->name('admin.settings.curseforge')->middleware('admin.can:settings.curseforge.view');
-    Route::post('/curseforge/test', [Admin\Settings\CurseForgeController::class, 'test'])->name('admin.settings.curseforge.test')->middleware('admin.can:settings.curseforge.update');
-
-    Route::post('/mail/test', [Admin\Settings\MailController::class, 'test'])->name('admin.settings.mail.test')->middleware('admin.can:settings.mail.update');
-
-    Route::patch('/', [Admin\Settings\IndexController::class, 'update'])->middleware('admin.can:settings.general.update');
-    Route::patch('/mail', [Admin\Settings\MailController::class, 'update'])->middleware('admin.can:settings.mail.update');
-    Route::patch('/advanced', [Admin\Settings\AdvancedController::class, 'update'])->middleware('admin.can:settings.advanced.update');
-    Route::patch('/branding', [Admin\Settings\BrandingController::class, 'update'])->middleware('admin.can:settings.branding.update');
-    Route::patch('/curseforge', [Admin\Settings\CurseForgeController::class, 'update'])->middleware('admin.can:settings.curseforge.update');
+    // Part of the React app, see Admin\SpaController; each page reads and saves its settings through the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.settings')->middleware('admin.can:settings.general.view');
+    Route::get('/mail', Admin\SpaController::class)->name('admin.settings.mail')->middleware('admin.can:settings.mail.view');
+    Route::get('/advanced', Admin\SpaController::class)->name('admin.settings.advanced')->middleware('admin.can:settings.advanced.view');
+    Route::get('/branding', Admin\SpaController::class)->name('admin.settings.branding')->middleware('admin.can:settings.branding.view');
+    Route::get('/authentication', Admin\SpaController::class)->name('admin.settings.authentication')->middleware('admin.can:settings.authentication.view');
+    Route::get('/providers', Admin\SpaController::class)->name('admin.settings.providers')->middleware('admin.can:settings.providers.view');
+    Route::get('/providers/new', Admin\SpaController::class)->name('admin.settings.providers.new')->middleware('admin.can:settings.providers.update');
+    Route::get('/providers/{provider}', Admin\SpaController::class)->name('admin.settings.providers.edit')->whereNumber('provider')->middleware('admin.can:settings.providers.view');
+    Route::get('/domains', Admin\SpaController::class)->name('admin.settings.domains')->middleware('admin.can:settings.domains.view');
+    Route::get('/domains/new', Admin\SpaController::class)->name('admin.settings.domains.new')->middleware('admin.can:settings.domains.update');
+    Route::get('/domains/zones/{zone}', Admin\SpaController::class)->name('admin.settings.domains.edit')->whereNumber('zone')->middleware('admin.can:settings.domains.view');
+    Route::get('/pools', Admin\SpaController::class)->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
+    Route::get('/trash', Admin\SpaController::class)->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
+    Route::get('/certificates', Admin\SpaController::class)->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
+    Route::get('/certificates/{certificate}', Admin\SpaController::class)->name('admin.settings.certificates.edit')->whereNumber('certificate')->middleware('admin.can:settings.certificates.view');
+    Route::get('/curseforge', Admin\SpaController::class)->name('admin.settings.curseforge')->middleware('admin.can:settings.curseforge.view');
 });
 
 /*

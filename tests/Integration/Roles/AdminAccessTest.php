@@ -95,18 +95,18 @@ class AdminAccessTest extends RoleTestCase
         $this->get('/admin/settings/providers')->assertStatus(403);
         $this->get('/admin/settings/curseforge')->assertStatus(403);
         $this->get('/admin/settings/advanced')->assertStatus(403);
-        $this->patch('/admin/settings/branding', [])->assertStatus(403);
+        $this->postJson('/api/client/admin/settings/branding', [])->assertStatus(403);
     }
 
     public function testSavingSettingsNeedsTheUpdatePermission(): void
     {
         $this->actingAs($this->userWith(['settings.authentication.view']));
-        $this->patch('/admin/settings/authentication', ['captcha' => 'none', 'registration' => '1'])->assertStatus(403);
+        $this->patchJson('/api/client/admin/settings/authentication', ['captcha' => 'none', 'registration' => '1'])->assertStatus(403);
         $this->assertNotSame('true', \DB::table('settings')->where('key', 'settings::auth:registration:enabled')->value('value'));
 
         $this->signOut();
         $this->actingAs($this->userWith(['settings.authentication.update']));
-        $this->patch('/admin/settings/authentication', ['captcha' => 'none', 'registration' => '1'])->assertRedirect();
+        $this->patchJson('/api/client/admin/settings/authentication', ['captcha' => 'none', 'registration' => '1'])->assertOk();
         $this->assertSame('true', \DB::table('settings')->where('key', 'settings::auth:registration:enabled')->value('value'));
         \DB::table('settings')->where('key', 'like', 'settings::auth:%')->delete();
     }
@@ -164,14 +164,15 @@ class AdminAccessTest extends RoleTestCase
         $this->assertStringContainsString('Application API', $html);
     }
 
-    public function testTheSettingsTabsAreThePagesOpenToYou(): void
+    public function testEachPageOfSettingsHasItsOwnData(): void
     {
         $this->actingAs($this->userWith(['settings.mail.view', 'settings.branding.view']));
-        $html = $this->page('/admin/settings/mail')->assertOk()->getContent();
 
-        $this->assertStringContainsString('href="' . route('admin.settings.branding') . '"', $html);
-        $this->assertStringNotContainsString('href="' . route('admin.settings.advanced') . '"', $html);
-        $this->assertStringNotContainsString('href="' . route('admin.settings.providers') . '"', $html);
+        $this->getJson('/api/client/admin/settings/mail')->assertOk();
+        $this->getJson('/api/client/admin/settings/branding')->assertOk();
+        $this->getJson('/api/client/admin/settings/advanced')->assertStatus(403);
+        $this->getJson('/api/client/admin/settings/providers')->assertStatus(403);
+        $this->getJson('/api/client/admin/settings/certificates')->assertStatus(403);
     }
 
     public function testLocationsAreDeletedWithTheirOwnPermission(): void

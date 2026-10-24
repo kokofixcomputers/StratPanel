@@ -349,8 +349,9 @@ class ThemeTest extends RoleTestCase
             define('LARAVEL_START', microtime(true));
         }
 
-        $this->actingAs($admin)->get('/admin/settings/branding')->assertOk()->assertSee('Console prompt')->assertSee('container@stratosphere~');
-        $this->actingAs($admin)->patch('/admin/settings/branding', ['console_prompt' => 'koko@hosting~'])->assertRedirect();
+        $this->actingAs($admin)->get('/admin/settings/branding')->assertOk()->assertSee('<div id="app"></div>', false);
+        $this->actingAs($admin)->getJson('/api/client/admin/settings/branding')->assertOk()->assertJsonPath('console_prompt', 'container@stratosphere~');
+        $this->actingAs($admin)->post('/api/client/admin/settings/branding', ['console_prompt' => 'koko@hosting~'], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('console_prompt', 'koko@hosting~');
         $this->assertSame('koko@hosting~', app(BrandingService::class)->consolePrompt());
     }
 

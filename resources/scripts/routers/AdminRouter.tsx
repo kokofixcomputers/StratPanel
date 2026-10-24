@@ -9,7 +9,7 @@ import TransitionRouter from '@/TransitionRouter';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import UiUpdateNotice from '@/components/admin/UiUpdateNotice';
 import useAdmin from '@/plugins/useAdmin';
-import { adminUrl, firstPage, PAGES } from '@/lib/adminNav';
+import { adminUrl, firstPage, PAGES, pageUrl } from '@/lib/adminNav';
 import { ADMIN_ROUTES } from '@/routers/adminRoutes';
 
 const Forbidden = () => (
@@ -43,11 +43,19 @@ export default () => {
                 <div>
                     {pages.map((page) =>
                         page.ported ? (
-                            <NavLink key={page.key} to={adminUrl(page.path)} exact={page.path === ''}>
+                            <NavLink
+                                key={page.key}
+                                to={pageUrl(page, admin.permissions, admin.root)}
+                                isActive={(_, loc) =>
+                                    page.path === ''
+                                        ? loc.pathname === '/admin'
+                                        : loc.pathname.startsWith(adminUrl(page.path))
+                                }
+                            >
                                 {page.name}
                             </NavLink>
                         ) : (
-                            <a key={page.key} href={adminUrl(page.path)}>
+                            <a key={page.key} href={pageUrl(page, admin.permissions, admin.root)}>
                                 {page.name}
                             </a>
                         )

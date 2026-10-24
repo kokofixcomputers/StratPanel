@@ -239,6 +239,40 @@ api.get('/admin/updates/status', (req, res) => res.json({ pending: false, status
 api.post('/admin/updates', (req, res) => res.status(202).json({ requested: req.body.action }));
 api.get('/admin/ui-update', (req, res) => res.json({ update: null }));
 
+
+const setStore = {
+    general: { name: 'Stratosphere', two_factor: 0, locale: 'en', languages: { en: 'English', de: 'Deutsch' } },
+    advanced: { timeout: 30, connect_timeout: 10 },
+    mail: { disabled: false, host: 'smtp.example.com', port: 587, encryption: 'tls', username: 'koko', password_saved: true, from_address: 'no-reply@example.com', from_name: 'Stratosphere' },
+    trash: { enabled: false, retention_days: 30, items: 3, bytes: 5242880 },
+    pools: { enabled: true, defaults: { memory: 4096, disk: 10240, cpu: 200, allocations: 5, backups: 5 }, own: 2 },
+    curseforge: { enabled: true, from_environment: false },
+    authentication: { captcha: 'turnstile', recaptcha_site_key: '', recaptcha_shipped: false, turnstile_site_key: '0x4AAA', turnstile_secret_saved: true, passkeys: true, registration: false, registration_password: true, providers: 1 },
+    branding: { favicon: null, console_prompt: 'container@stratosphere~', announcements: [{ id: 'a1', title: 'Maintenance', message: 'The panel restarts at midnight.', type: 'warning', enabled: true, dismissible: true, link_label: '', link_url: '' }], links: [{ label: 'Status', url: 'https://status.example.com', location: 'footer', new_tab: true }], locations: { sidebar: 'Server sidebar', navbar: 'Top bar', footer: 'Footer' }, types: ['info', 'success', 'warning', 'danger'] },
+};
+['general', 'advanced', 'mail', 'trash', 'pools', 'curseforge', 'authentication', 'branding'].forEach((key) => {
+    api.get('/admin/settings/' + key, (req, res) => res.json(setStore[key]));
+    const save = (req, res) => { if (key === 'pools') { const { enabled, ...d } = req.body; setStore.pools = { ...setStore.pools, enabled: !!enabled, defaults: Object.fromEntries(Object.entries(d).map(([k, v]) => [k, Number(v)])) }; } else if (key === 'trash') { setStore.trash = { ...setStore.trash, enabled: !!req.body.enabled, retention_days: Number(req.body.retention_days) }; } else if (key === 'curseforge') { return res.json({ ok: true, message: 'The key was saved. It works.', ...setStore.curseforge }); } else if (key === 'authentication') { return res.json({ saved: true }); } res.json(setStore[key]); };
+    api.patch('/admin/settings/' + key, save);
+});
+api.post('/admin/settings/branding', (req, res) => res.json(setStore.branding));
+api.post('/admin/settings/mail/test', (req, res) => res.json({ sent_to: 'preview@example.com' }));
+api.post('/admin/settings/curseforge/test', (req, res) => res.json({ ok: true, message: 'The key works.' }));
+const providerTypes = [{ type: 'github', name: 'GitHub', docs: null }, { type: 'google', name: 'Google', docs: null }, { type: 'oauth2', name: 'Other OAuth 2 service', docs: null }];
+const providerForm = (type, exists) => ({ id: exists ? 1 : null, type, preset: { name: type === 'github' ? 'GitHub' : 'OAuth 2', docs: null }, name: type === 'github' ? 'GitHub' : 'OAuth 2', key: exists || type !== 'oauth2' ? type : '', client_id: exists ? 'the-id' : '', secret_saved: !!exists, scopes: '', default_scopes: 'read:user user:email', enabled: true, allow_signup: true, generic: type === 'oauth2', authorize_url: '', token_url: '', userinfo_url: '', mapping: { id: 'sub', email: 'email', username: 'preferred_username', name: 'name', email_verified: 'email_verified' }, callback: 'http://localhost:4000/auth/oauth/' + (type || 'key') + '/callback' });
+api.get('/admin/settings/providers', (req, res) => res.json({ providers: [{ id: 1, name: 'GitHub', key: 'github', type: 'github', enabled: true, allow_signup: true, accounts: 4 }], types: providerTypes }));
+api.get('/admin/settings/providers/blank', (req, res) => res.json(providerForm(String(req.query.type || 'github'), false)));
+api.get('/admin/settings/providers/:id', (req, res) => res.json(providerForm('github', true)));
+api.patch('/admin/settings/providers/:id', (req, res) => res.json({ ...providerForm('github', true), name: req.body.name }));
+api.get('/admin/settings/domains', (req, res) => res.json({ custom_enabled: true, zones: [{ id: 1, name: 'Main domain', domain: 'example.com', type: 'cloudflare', enabled: true, names: 3 }], types: [{ type: 'cloudflare', name: 'Cloudflare' }], target_ip: '203.0.113.5' }));
+const zoneForm = (exists) => ({ id: exists ? 1 : null, type: 'cloudflare', provider: 'Cloudflare', help: 'The records are made without the Cloudflare proxy (grey cloud), because Minecraft is not web traffic.', name: exists ? 'Main domain' : '', domain: exists ? 'example.com' : '', ttl: 120, enabled: true, names: exists ? 3 : 0, fields: [{ key: 'api_token', label: 'API token', secret: true, required: true, help: 'Create one at dash.cloudflare.com.', value: '', saved: !!exists }, { key: 'zone_id', label: 'Zone ID', secret: false, required: false, help: 'Leave empty: it is found by the name of the domain.', value: '', saved: null }] });
+api.get('/admin/settings/domains/blank', (req, res) => res.json(zoneForm(false)));
+api.get('/admin/settings/domains/zones/:id', (req, res) => res.json(zoneForm(true)));
+api.post('/admin/settings/domains/zones/:id/test', (req, res) => res.json({ ok: true, message: 'Access works: found the zone.' }));
+const certRow = { id: 1, name: 'Main', domains: ['panel.example.com', '*.example.com'], is_default: true, enabled: true, source: 'letsencrypt', acme_method: 'dns', renew_error: null, no_chain: false, expired: false, expiring: false, days_left: 60, not_after: new Date(Date.now() + 60 * 864e5).toISOString() };
+api.get('/admin/settings/certificates', (req, res) => res.json({ certificates: [certRow, { ...certRow, id: 2, name: 'Soon', is_default: false, source: null, expiring: true, days_left: 5 }], token_configured: true, edge: { at: new Date().toISOString(), recent: true, ip: '127.0.0.1', count: 2, http: false }, acme: { enabled: true, email: 'admin@example.com', staging: false } }));
+api.get('/admin/settings/certificates/:id', (req, res) => res.json({ ...certRow, issuer: "Let's Encrypt R11", not_before: new Date().toISOString(), fingerprint: 'AB:CD:EF:01:23' }));
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -685,7 +719,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 // The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
-const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates)(\/.*)?)?\/?$/;
+const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates|settings)(\/.*)?)?\/?$/;
 app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
     PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
 );

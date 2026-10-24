@@ -316,8 +316,8 @@ class PoolsTest extends IntegrationTestCase
     {
         $admin = $this->user(['root_admin' => true]);
 
-        $this->actingAs($admin)->get('/admin/settings/pools')->assertOk()->assertSee('Resource pools');
-        $this->actingAs($admin)->patch('/admin/settings/pools', ['enabled' => '1', 'memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12])->assertRedirect();
+        $this->actingAs($admin)->get('/admin/settings/pools')->assertOk()->assertSee('<div id="app"></div>', false);
+        $this->actingAs($admin)->patchJson('/api/client/admin/settings/pools', ['enabled' => '1', 'memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12])->assertOk()->assertJsonPath('defaults.memory', 8192);
 
         (new \Pterodactyl\Providers\SettingsServiceProvider($this->app))->boot(
             $this->app['config'],

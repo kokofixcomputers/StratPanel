@@ -479,7 +479,7 @@ class NodeCertificateTest extends CertificateTestCase
         $made = $this->makeCertificate(['*.node-cert.example']);
         $this->actingAs($this->root());
 
-        $this->post('/admin/settings/certificates', ['name' => 'New wildcard', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])->assertRedirect();
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'New wildcard', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])->assertStatus(201);
 
         $this->assertCount(1, $this->wings->pushes);
         $this->assertSame($node->id, $this->wings->pushes[0]['node']);

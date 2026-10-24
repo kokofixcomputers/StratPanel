@@ -2,7 +2,6 @@
 
 namespace Pterodactyl\Tests\Integration\Certificates;
 
-use Illuminate\Http\UploadedFile;
 use Pterodactyl\Models\Role;
 use Pterodactyl\Models\Certificate;
 
@@ -35,7 +34,7 @@ class CertificatesAdminTest extends CertificateTestCase
     public function testNobodyWithoutTheRightGetsIn(): void
     {
         $this->actingAs($this->makeUser())->get('/admin/settings/certificates')->assertStatus(403);
-        $this->post('/admin/settings/certificates', ['name' => 'x'])->assertStatus(403);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'x'])->assertStatus(403);
     }
 
     public function testSeeingIsNotChanging(): void
@@ -43,11 +42,13 @@ class CertificatesAdminTest extends CertificateTestCase
         $certificate = $this->add(['a.example.com']);
         $this->actingAs($this->withRole(['settings.certificates.view']));
 
-        $this->page('/admin/settings/certificates')->assertOk()->assertSee($certificate->name);
+        $this->page('/admin/settings/certificates')->assertOk();
         $this->page('/admin/settings/certificates/' . $certificate->id)->assertOk();
-        $this->post('/admin/settings/certificates', ['name' => 'x'])->assertStatus(403);
-        $this->patch('/admin/settings/certificates/' . $certificate->id, ['name' => 'x'])->assertStatus(403);
-        $this->delete('/admin/settings/certificates/' . $certificate->id)->assertStatus(403);
+        $this->getJson('/api/client/admin/settings/certificates')->assertOk()->assertJsonPath('certificates.0.name', $certificate->name);
+        $this->getJson('/api/client/admin/settings/certificates/' . $certificate->id)->assertOk();
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'x'])->assertStatus(403);
+        $this->patchJson('/api/client/admin/settings/certificates/' . $certificate->id, ['name' => 'x'])->assertStatus(403);
+        $this->deleteJson('/api/client/admin/settings/certificates/' . $certificate->id)->assertStatus(403);
         $this->assertSame(1, Certificate::query()->count());
     }
 
@@ -59,8 +60,12 @@ class CertificatesAdminTest extends CertificateTestCase
         $soon = $this->add(['soon.example.com'], 'Soon', ['days' => 5]);
         $this->actingAs($this->root());
 
-        $this->page('/admin/settings/certificates')->assertOk()->assertSee('Main')->assertSee('panel.example.com')->assertSee('Default')
-            ->assertSee('days left')->assertSee($soon->name);
+        $json = $this->getJson('/api/client/admin/settings/certificates')->assertOk()->json('certificates');
+        $this->assertCount(2, $json);
+        $main = collect($json)->firstWhere('name', 'Main');
+        $this->assertSame(['panel.example.com', 'www.example.com'], $main['domains']);
+        $this->assertTrue($main['is_default']);
+        $this->assertTrue(collect($json)->firstWhere('name', $soon->name)['expiring']);
     }
 
     public function testNeitherPageEverShowsTheKey(): void
@@ -69,9 +74,9 @@ class CertificatesAdminTest extends CertificateTestCase
         $certificate = $this->service()->create('Secret', $made['certPem'], $made['keyPem']);
         $this->actingAs($this->root());
 
-        foreach (['/admin/settings/certificates', '/admin/settings/certificates/' . $certificate->id] as $uri) {
-            $html = $this->page($uri)->assertOk()->getContent();
-            // The form's placeholder says what to paste, none of the key itself is in the page.
+        foreach (['/api/client/admin/settings/certificates', '/api/client/admin/settings/certificates/' . $certificate->id] as $uri) {
+            $html = $this->getJson($uri)->assertOk()->getContent();
+            // None of the key itself is in the answer.
             $body = array_values(array_filter(explode("\n", $made['keyPem']), fn ($line) => $line !== '' && !str_starts_with($line, '-----')));
             foreach (array_slice($body, 2, 5) as $line) {
                 $this->assertStringNotContainsString($line, $html);
@@ -84,13 +89,13 @@ class CertificatesAdminTest extends CertificateTestCase
         $this->actingAs($this->root());
 
         config(['certificates.token' => '']);
-        $this->page('/admin/settings/certificates')->assertSee('not set up on this machine')->assertSee('panel-edge/install.sh');
+        $this->getJson('/api/client/admin/settings/certificates')->assertJsonPath('token_configured', false);
 
         config(['certificates.token' => 'edge-secret']);
-        $this->page('/admin/settings/certificates')->assertSee('has not asked for certificates yet');
+        $this->getJson('/api/client/admin/settings/certificates')->assertJsonPath('token_configured', true)->assertJsonPath('edge', null);
 
         $this->service()->edgeSeen('127.0.0.1', 2);
-        $this->page('/admin/settings/certificates')->assertSee('Connected')->assertSee('was given 2 certificates');
+        $this->getJson('/api/client/admin/settings/certificates')->assertJsonPath('edge.recent', true)->assertJsonPath('edge.count', 2)->assertJsonPath('edge.ip', '127.0.0.1');
     }
 
     // ---- adding ---------------------------------------------------------------------------------------------------------
@@ -100,8 +105,8 @@ class CertificatesAdminTest extends CertificateTestCase
         $made = $this->makeCertificate(['pasted.example.com']);
         $this->actingAs($this->root());
 
-        $this->post('/admin/settings/certificates', ['name' => 'Pasted', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])
-            ->assertRedirect('/admin/settings/certificates');
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'Pasted', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])
+            ->assertStatus(201);
 
         $certificate = Certificate::query()->firstOrFail();
         $this->assertSame('Pasted', $certificate->name);
@@ -109,16 +114,17 @@ class CertificatesAdminTest extends CertificateTestCase
         $this->assertTrue($certificate->is_default && $certificate->enabled);
     }
 
-    public function testACertificateIsAddedFromFiles(): void
+    public function testAFullChainIsAdded(): void
     {
         $chain = $this->makeChain(['filed.example.com']);
         $this->actingAs($this->root());
 
-        $this->post('/admin/settings/certificates', [
+        // The page reads the files in the browser and sends their text.
+        $this->postJson('/api/client/admin/settings/certificates', [
             'name' => 'Filed',
-            'certificate_file' => UploadedFile::fake()->createWithContent('fullchain.pem', $chain['leaf']['certPem'] . "\n" . $chain['ca']['certPem']),
-            'private_key_file' => UploadedFile::fake()->createWithContent('privkey.pem', $chain['leaf']['keyPem']),
-        ])->assertRedirect('/admin/settings/certificates');
+            'certificate' => $chain['leaf']['certPem'] . "\n" . $chain['ca']['certPem'],
+            'private_key' => $chain['leaf']['keyPem'],
+        ])->assertStatus(201)->assertJsonPath('warning', null);
 
         $this->assertSame(['filed.example.com'], Certificate::query()->firstOrFail()->domains);
         $this->assertSame(2, substr_count(Certificate::query()->firstOrFail()->certificate, 'BEGIN CERTIFICATE'));
@@ -130,7 +136,7 @@ class CertificatesAdminTest extends CertificateTestCase
         openssl_pkey_export($made['key'], $protected, 'open sesame');
         $this->actingAs($this->root());
 
-        $this->post('/admin/settings/certificates', ['name' => 'Pass', 'certificate' => $made['certPem'], 'private_key' => $protected, 'passphrase' => 'open sesame']);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'Pass', 'certificate' => $made['certPem'], 'private_key' => $protected, 'passphrase' => 'open sesame']);
 
         $this->assertSame(1, Certificate::query()->count());
         $this->assertStringNotContainsString('ENCRYPTED', Certificate::query()->firstOrFail()->private_key);
@@ -142,27 +148,13 @@ class CertificatesAdminTest extends CertificateTestCase
         $two = $this->makeCertificate(['b.example.com']);
         $this->actingAs($this->root());
 
-        $this->post('/admin/settings/certificates', ['name' => 'Mismatch', 'certificate' => $one['certPem'], 'private_key' => $two['keyPem']])->assertRedirect();
-        $this->post('/admin/settings/certificates', ['name' => 'No key', 'certificate' => $one['certPem']])->assertRedirect();
-        $this->post('/admin/settings/certificates', ['name' => 'No cert', 'private_key' => $one['keyPem']])->assertRedirect();
-        $this->post('/admin/settings/certificates', ['name' => 'Junk', 'certificate' => 'hello', 'private_key' => 'world'])->assertRedirect();
-        $this->post('/admin/settings/certificates', ['name' => '', 'certificate' => $one['certPem'], 'private_key' => $one['keyPem']])->assertStatus(422);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'Mismatch', 'certificate' => $one['certPem'], 'private_key' => $two['keyPem']])->assertStatus(400);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'No key', 'certificate' => $one['certPem']])->assertStatus(400);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'No cert', 'private_key' => $one['keyPem']])->assertStatus(400);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'Junk', 'certificate' => 'hello', 'private_key' => 'world'])->assertStatus(400);
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => '', 'certificate' => $one['certPem'], 'private_key' => $one['keyPem']])->assertStatus(422);
 
         $this->assertSame(0, Certificate::query()->count());
-    }
-
-    public function testTheKeyIsNotGivenBackInTheFormAfterAMistake(): void
-    {
-        $one = $this->makeCertificate(['a.example.com']);
-        $two = $this->makeCertificate(['b.example.com']);
-        $this->actingAs($this->root());
-
-        $this->post('/admin/settings/certificates', ['name' => 'Mismatch', 'certificate' => $one['certPem'], 'private_key' => $two['keyPem'], 'passphrase' => 'secret']);
-        $html = $this->page('/admin/settings/certificates')->getContent();
-
-        $body = array_values(array_filter(explode("\n", $two['keyPem']), fn ($line) => $line !== '' && !str_starts_with($line, '-----')));
-        $this->assertStringNotContainsString($body[3], $html);
-        $this->assertStringNotContainsString('value="secret"', $html);
     }
 
     // ---- changing -------------------------------------------------------------------------------------------------------
@@ -173,8 +165,8 @@ class CertificatesAdminTest extends CertificateTestCase
         $other = $this->add(['b.example.com'], 'Other');
         $this->actingAs($this->root());
 
-        $this->patch('/admin/settings/certificates/' . $other->id, ['name' => 'Renamed', 'enabled' => '1', 'is_default' => '1'])
-            ->assertRedirect('/admin/settings/certificates/' . $other->id);
+        $this->patchJson('/api/client/admin/settings/certificates/' . $other->id, ['name' => 'Renamed', 'enabled' => '1', 'is_default' => '1'])
+            ->assertOk()->assertJsonPath('name', 'Renamed');
 
         $this->assertSame('Renamed', $other->fresh()->name);
         $this->assertTrue($other->fresh()->is_default);
@@ -186,7 +178,7 @@ class CertificatesAdminTest extends CertificateTestCase
         $certificate = $this->add(['a.example.com']);
         $this->actingAs($this->root());
 
-        $this->patch('/admin/settings/certificates/' . $certificate->id, ['name' => $certificate->name]);
+        $this->patchJson('/api/client/admin/settings/certificates/' . $certificate->id, ['name' => $certificate->name]);
 
         $this->assertFalse($certificate->fresh()->enabled);
         $this->assertFalse($certificate->fresh()->is_default);
@@ -198,9 +190,9 @@ class CertificatesAdminTest extends CertificateTestCase
         $made = $this->makeCertificate(['renew.example.com'], ['days' => 90]);
         $this->actingAs($this->root());
 
-        $this->patch('/admin/settings/certificates/' . $certificate->id, [
+        $this->patchJson('/api/client/admin/settings/certificates/' . $certificate->id, [
             'name' => 'Renewed', 'enabled' => '1', 'is_default' => '1', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem'],
-        ])->assertRedirect();
+        ])->assertOk();
 
         $this->assertNotSame($certificate->fingerprint, $certificate->fresh()->fingerprint);
         $this->assertTrue($certificate->fresh()->not_after->gt(now()->addDays(60)));
@@ -215,7 +207,7 @@ class CertificatesAdminTest extends CertificateTestCase
         $this->actingAs($this->root());
 
         // Only the certificate, without its key.
-        $this->patch('/admin/settings/certificates/' . $certificate->id, ['name' => 'Changed', 'enabled' => '1', 'certificate' => $made['certPem']])->assertRedirect();
+        $this->patchJson('/api/client/admin/settings/certificates/' . $certificate->id, ['name' => 'Changed', 'enabled' => '1', 'certificate' => $made['certPem']])->assertStatus(400);
 
         $this->assertSame($before, $certificate->fresh()->fingerprint);
         $this->assertSame('Renewed', $certificate->fresh()->name, 'nothing of the form was applied');
@@ -227,7 +219,7 @@ class CertificatesAdminTest extends CertificateTestCase
         $second = $this->add(['b.example.com']);
         $this->actingAs($this->root());
 
-        $this->delete('/admin/settings/certificates/' . $first->id)->assertRedirect('/admin/settings/certificates');
+        $this->deleteJson('/api/client/admin/settings/certificates/' . $first->id)->assertNoContent();
 
         $this->assertNull(Certificate::query()->find($first->id));
         $this->assertTrue($second->fresh()->is_default);
@@ -240,19 +232,8 @@ class CertificatesAdminTest extends CertificateTestCase
 
         // Changing comes with seeing.
         $this->page('/admin/settings/certificates')->assertOk();
-        $this->post('/admin/settings/certificates', ['name' => 'Mine', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])->assertRedirect();
+        $this->postJson('/api/client/admin/settings/certificates', ['name' => 'Mine', 'certificate' => $made['certPem'], 'private_key' => $made['keyPem']])->assertStatus(201);
         $this->assertSame(1, Certificate::query()->count());
-    }
-
-    public function testTheTabOnlyShowsToThoseWhoMaySeeIt(): void
-    {
-        $this->actingAs($this->withRole(['settings.branding.view']));
-        $html = $this->page('/admin/settings/branding')->assertOk()->getContent();
-        $this->assertStringNotContainsString(route('admin.settings.certificates'), $html);
-
-        $this->signOut();
-        $this->actingAs($this->root());
-        $this->assertStringContainsString(route('admin.settings.certificates'), $this->page('/admin/settings/branding')->getContent());
     }
 
     private function signOut(): void

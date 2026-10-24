@@ -242,7 +242,7 @@ class ManagedDomainsTest extends ClientApiIntegrationTestCase
         $this->app->make(ManagedDomainService::class)->create($server, $server->allocation, $zone, 'play');
 
         $root = User::factory()->create(['root_admin' => true]);
-        $this->actingAs($root)->delete("/admin/settings/domains/zones/{$zone->id}")->assertRedirect('/admin/settings/domains');
+        $this->actingAs($root)->deleteJson("/api/client/admin/settings/domains/zones/{$zone->id}")->assertNoContent();
 
         $this->assertSame(0, ServerDomain::query()->count());
         $this->assertCount(1, $this->calls('DELETE', '/dns_records/'));
@@ -274,29 +274,30 @@ class ManagedDomainsTest extends ClientApiIntegrationTestCase
         $root = User::factory()->create(['root_admin' => true]);
         $this->actingAs($root);
 
-        $this->get('/admin/settings/domains')->assertOk()->assertSee('Names under your domains');
-        $this->get('/admin/settings/domains/new?type=cloudflare')->assertOk()->assertSee('API token');
+        $this->get('/admin/settings/domains')->assertOk()->assertSee('<div id="app"></div>', false);
+        $this->get('/admin/settings/domains/new?type=cloudflare')->assertOk();
+        $this->getJson('/api/client/admin/settings/domains/blank?type=cloudflare')->assertOk()->assertJsonPath('fields.0.label', 'API token');
 
-        $this->post('/admin/settings/domains/zones', [
+        $this->postJson('/api/client/admin/settings/domains/zones', [
             'type' => 'cloudflare', 'name' => 'Main', 'domain' => 'Example.com.', 'ttl' => 120, 'enabled' => '1',
             'credentials' => ['api_token' => 'secret-token', 'zone_id' => ''],
-        ])->assertRedirect();
+        ])->assertStatus(201)->assertJsonPath('ok', true);
 
         $zone = DnsZone::query()->where('domain', 'example.com')->firstOrFail();
         // The zone was found by the name, and the key is kept encrypted.
         $this->assertSame(self::ZONE_ID, $zone->credentials['zone_id']);
         $this->assertTrue($zone->enabled);
         $this->assertStringNotContainsString('secret-token', (string) \DB::table('dns_zones')->value('credentials'));
-        $this->get("/admin/settings/domains/zones/{$zone->id}")->assertOk()->assertDontSee('secret-token');
+        $this->getJson("/api/client/admin/settings/domains/zones/{$zone->id}")->assertOk()->assertDontSee('secret-token')->assertJsonPath('fields.0.saved', true);
     }
 
     public function testADomainTheTokenCannotSeeIsSwitchedOff(): void
     {
         $root = User::factory()->create(['root_admin' => true]);
-        $this->actingAs($root)->post('/admin/settings/domains/zones', [
+        $this->actingAs($root)->postJson('/api/client/admin/settings/domains/zones', [
             'type' => 'cloudflare', 'name' => 'Other', 'domain' => 'unknown.org', 'ttl' => 120, 'enabled' => '1',
             'credentials' => ['api_token' => 'secret-token'],
-        ])->assertRedirect();
+        ])->assertStatus(201)->assertJsonPath('ok', false);
 
         $this->assertFalse(DnsZone::query()->where('domain', 'unknown.org')->firstOrFail()->enabled);
     }
@@ -323,8 +324,9 @@ class ManagedDomainsTest extends ClientApiIntegrationTestCase
         $this->actingAs($user->fresh());
 
         $this->get('/admin/settings/domains')->assertOk();
-        $this->post('/admin/settings/domains/zones', ['type' => 'cloudflare', 'name' => 'x', 'domain' => 'x.com', 'ttl' => 120, 'credentials' => ['api_token' => 't']])->assertForbidden();
-        $this->patch('/admin/settings/domains', ['custom_enabled' => '0'])->assertForbidden();
+        $this->getJson('/api/client/admin/settings/domains')->assertOk();
+        $this->postJson('/api/client/admin/settings/domains/zones', ['type' => 'cloudflare', 'name' => 'x', 'domain' => 'x.com', 'ttl' => 120, 'credentials' => ['api_token' => 't']])->assertForbidden();
+        $this->patchJson('/api/client/admin/settings/domains', ['custom_enabled' => '0'])->assertForbidden();
         \DB::table('roles')->where('name', 'like', 'dom-%')->delete();
     }
 

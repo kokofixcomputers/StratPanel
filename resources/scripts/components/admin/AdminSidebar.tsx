@@ -2,7 +2,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { Link, matchPath, useLocation } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/solid';
-import { adminUrl, GROUPS, PAGES, SETTINGS_PERMISSIONS } from '@/lib/adminNav';
+import { adminUrl, GROUPS, PAGES, pageUrl } from '@/lib/adminNav';
 import useAdmin from '@/plugins/useAdmin';
 
 const link = (active: boolean) =>
@@ -38,11 +38,11 @@ export default () => {
                                 </p>
                             )}
                             {entries.map((page) => {
-                                const url = adminUrl(page.path);
+                                const url = pageUrl(page, admin.permissions, admin.root);
                                 const active =
                                     page.path === ''
                                         ? !!matchPath(pathname, { path: '/admin', exact: true })
-                                        : pathname.startsWith(url);
+                                        : pathname.startsWith(adminUrl(page.path));
                                 const Icon = page.icon;
                                 const content = (
                                     <>
@@ -72,5 +72,3 @@ export default () => {
         </aside>
     );
 };
-
-export { SETTINGS_PERMISSIONS };

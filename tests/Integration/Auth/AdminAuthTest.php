@@ -30,7 +30,7 @@ class AdminAuthTest extends AuthTestCase
 
     private function save(array $data)
     {
-        return $this->patch('/admin/settings/authentication', array_merge(['captcha' => 'none'], $data));
+        return $this->patchJson('/api/client/admin/settings/authentication', array_merge(['captcha' => 'none'], $data));
     }
 
     // ---- who may -------------------------------------------------------------------------------------------------------
@@ -39,8 +39,8 @@ class AdminAuthTest extends AuthTestCase
     {
         $this->actingAs($this->makeUser())->get('/admin/settings/authentication')->assertStatus(403);
         $this->get('/admin/settings/providers')->assertStatus(403);
-        $this->patch('/admin/settings/authentication', ['captcha' => 'none'])->assertStatus(403);
-        $this->post('/admin/settings/providers', [])->assertStatus(403);
+        $this->patchJson('/api/client/admin/settings/authentication', ['captcha' => 'none'])->assertStatus(403);
+        $this->postJson('/api/client/admin/settings/providers', [])->assertStatus(403);
         $this->assertNull($this->stored('auth:captcha:provider'));
     }
 
@@ -48,12 +48,16 @@ class AdminAuthTest extends AuthTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->page('/admin/settings/authentication')->assertOk()->assertSee('Captcha')->assertSee('Self sign up')->assertSee('Passkeys');
-        $this->page('/admin/settings/providers')->assertOk()->assertSee('GitHub')->assertSee('Discord')->assertSee('OAuth 2');
-        foreach (['github', 'google', 'discord', 'microsoft', 'gitlab', 'oauth2'] as $type) {
-            $this->page('/admin/settings/providers/new?type=' . $type)->assertOk()->assertSee('Callback address');
+        foreach (['/admin/settings/authentication', '/admin/settings/providers', '/admin/settings/providers/new?type=github'] as $uri) {
+            $this->page($uri)->assertOk()->assertSee('<div id="app"></div>', false);
         }
-        $this->get('/admin/settings/providers/new?type=nonsense')->assertRedirect('/admin/settings/providers');
+        $this->getJson('/api/client/admin/settings/authentication')->assertOk()->assertJsonPath('captcha', 'none')->assertJsonPath('registration', false)->assertJsonPath('passkeys', true);
+        $types = array_column($this->getJson('/api/client/admin/settings/providers')->assertOk()->json('types'), 'type');
+        $this->assertSame(['github', 'google', 'discord', 'microsoft', 'gitlab', 'oauth2'], $types);
+        foreach ($types as $type) {
+            $this->getJson('/api/client/admin/settings/providers/blank?type=' . $type)->assertOk()->assertJsonPath('type', $type)->assertJsonStructure(['callback']);
+        }
+        $this->getJson('/api/client/admin/settings/providers/blank?type=nonsense')->assertNotFound();
     }
 
     // ---- captcha, sign up, passkeys -------------------------------------------------------------------------------------
@@ -68,7 +72,7 @@ class AdminAuthTest extends AuthTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->save([])->assertRedirect('/admin/settings/authentication');
+        $this->save([])->assertOk();
 
         $this->assertSame('none', $this->stored('auth:captcha:provider'));
         $this->assertSame('false', $this->stored('recaptcha:enabled'));
@@ -81,7 +85,7 @@ class AdminAuthTest extends AuthTestCase
         $this->actingAs($this->admin());
 
         $this->save(['captcha' => 'turnstile', 'turnstile_site_key' => '0x4AAA-site', 'turnstile_secret_key' => '0x4AAA-secret'])
-            ->assertRedirect('/admin/settings/authentication');
+            ->assertOk();
 
         $this->assertSame('turnstile', $this->stored('auth:captcha:provider'));
         $this->assertSame('0x4AAA-site', $this->stored('auth:captcha:turnstile:site_key'));
@@ -120,11 +124,11 @@ class AdminAuthTest extends AuthTestCase
         $this->actingAs($this->admin());
         config(['auth.captcha.turnstile.site_key' => '', 'auth.captcha.turnstile.secret_key' => '']);
 
-        $this->save(['captcha' => 'turnstile', 'turnstile_site_key' => 'only-the-site-key'])->assertRedirect('/admin/settings/authentication');
+        $this->save(['captcha' => 'turnstile', 'turnstile_site_key' => 'only-the-site-key'])->assertStatus(400);
         $this->assertNull($this->stored('auth:captcha:provider'));
 
         config(['recaptcha.website_key' => '', 'recaptcha.secret_key' => '']);
-        $this->save(['captcha' => 'recaptcha'])->assertRedirect('/admin/settings/authentication');
+        $this->save(['captcha' => 'recaptcha'])->assertStatus(400);
         $this->assertNull($this->stored('auth:captcha:provider'));
     }
 
@@ -151,14 +155,14 @@ class AdminAuthTest extends AuthTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->page('/admin/settings/advanced')->assertOk()->assertDontSee('reCAPTCHA');
+        $this->getJson('/api/client/admin/settings/advanced')->assertOk()->assertJsonMissing(['captcha'])->assertJsonStructure(['timeout', 'connect_timeout']);
     }
 
     // ---- providers ------------------------------------------------------------------------------------------------------
 
     private function add(array $data = [])
     {
-        return $this->post('/admin/settings/providers', array_merge([
+        return $this->postJson('/api/client/admin/settings/providers', array_merge([
             'type' => 'github',
             'key' => 'github',
             'name' => 'GitHub',
@@ -173,7 +177,7 @@ class AdminAuthTest extends AuthTestCase
     {
         $this->actingAs($this->admin());
 
-        $this->add()->assertRedirect();
+        $this->add()->assertStatus(201);
 
         $provider = AuthProvider::query()->where('key', 'github')->firstOrFail();
         $this->assertSame('github', $provider->type);
@@ -200,7 +204,7 @@ class AdminAuthTest extends AuthTestCase
     public function testKeysAreUnique(): void
     {
         $this->actingAs($this->admin());
-        $this->add()->assertRedirect();
+        $this->add()->assertStatus(201);
 
         $this->add()->assertStatus(422)->assertJsonFragment(['source_field' => 'key']);
         $this->assertSame(1, AuthProvider::query()->count());
@@ -218,7 +222,7 @@ class AdminAuthTest extends AuthTestCase
         $this->add($generic + [
             'authorize_url' => 'https://x.test/a', 'token_url' => 'https://x.test/t', 'userinfo_url' => 'https://x.test/u',
             'map_id' => 'uid', 'map_email' => 'mail', 'map_username' => '', 'map_name' => ' ',
-        ])->assertRedirect();
+        ])->assertStatus(201);
 
         $provider = AuthProvider::query()->where('key', 'corp')->firstOrFail();
         $this->assertSame('https://x.test/t', $provider->endpoints['token_url']);
@@ -231,9 +235,9 @@ class AdminAuthTest extends AuthTestCase
         $this->add();
         $provider = AuthProvider::query()->firstOrFail();
 
-        $this->patch('/admin/settings/providers/' . $provider->id, [
+        $this->patchJson('/api/client/admin/settings/providers/' . $provider->id, [
             'name' => 'Octo', 'client_id' => 'new-id', 'client_secret' => '', 'scopes' => 'read:user',
-        ])->assertRedirect('/admin/settings/providers/' . $provider->id);
+        ])->assertOk()->assertJsonPath('name', 'Octo');
 
         $provider->refresh();
         $this->assertSame('Octo', $provider->name);
@@ -251,7 +255,7 @@ class AdminAuthTest extends AuthTestCase
         $this->add();
         $provider = AuthProvider::query()->firstOrFail();
 
-        $this->patch('/admin/settings/providers/' . $provider->id, ['name' => 'GitHub', 'client_id' => 'id', 'client_secret' => 'brand-new']);
+        $this->patchJson('/api/client/admin/settings/providers/' . $provider->id, ['name' => 'GitHub', 'client_id' => 'id', 'client_secret' => 'brand-new']);
 
         $this->assertSame('brand-new', $provider->fresh()->client_secret);
     }
@@ -262,8 +266,8 @@ class AdminAuthTest extends AuthTestCase
         $this->add();
         $provider = AuthProvider::query()->firstOrFail();
 
-        $this->page('/admin/settings/providers/' . $provider->id)->assertOk()
-            ->assertDontSee('the-secret')->assertSee('the-id')->assertSee(url('/auth/oauth/github/callback'));
+        $this->getJson('/api/client/admin/settings/providers/' . $provider->id)->assertOk()
+            ->assertDontSee('the-secret')->assertJsonPath('client_id', 'the-id')->assertJsonPath('secret_saved', true)->assertJsonPath('callback', url('/auth/oauth/github/callback'));
     }
 
     public function testRemovingAProviderRemovesWhatWasLinkedToIt(): void
@@ -274,7 +278,7 @@ class AdminAuthTest extends AuthTestCase
         $user = $this->makeUser();
         UserIdentity::query()->create(['user_id' => $user->id, 'auth_provider_id' => $provider->id, 'provider_user_id' => '1']);
 
-        $this->delete('/admin/settings/providers/' . $provider->id)->assertRedirect('/admin/settings/providers');
+        $this->deleteJson('/api/client/admin/settings/providers/' . $provider->id)->assertNoContent();
 
         $this->assertSame(0, AuthProvider::query()->count());
         $this->assertSame(0, UserIdentity::query()->count());

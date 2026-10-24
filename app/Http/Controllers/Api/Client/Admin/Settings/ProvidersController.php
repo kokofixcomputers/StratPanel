@@ -1,47 +1,53 @@
 <?php
 
-namespace Pterodactyl\Http\Controllers\Admin\Settings;
+namespace Pterodactyl\Http\Controllers\Api\Client\Admin\Settings;
 
-use Illuminate\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
-use Illuminate\Http\RedirectResponse;
-use Prologue\Alerts\AlertsMessageBag;
 use Pterodactyl\Models\AuthProvider;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Auth\OAuth\OAuthService;
 use Pterodactyl\Services\Auth\OAuth\ProviderCatalog;
 
-/**
- * Settings > Providers: the services people can sign in with (GitHub, Google, Discord, any OAuth 2 service).
- */
+/** The services people can sign in with (GitHub, Google, Discord, any OAuth 2 service), for the admin pages. */
 class ProvidersController extends Controller
 {
-    public function __construct(private AlertsMessageBag $alert, private OAuthService $oauth)
+    public function __construct(private OAuthService $oauth)
     {
     }
 
-    public function index(): View
+    public function index(): JsonResponse
     {
-        return view('admin.settings.providers', [
-            'providers' => AuthProvider::query()->withCount('identities')->orderBy('id')->get(),
-            'types' => ProviderCatalog::all(),
+        return new JsonResponse([
+            'providers' => AuthProvider::query()->withCount('identities')->orderBy('id')->get()->map(fn (AuthProvider $provider) => [
+                'id' => $provider->id,
+                'name' => $provider->name,
+                'key' => $provider->key,
+                'type' => $provider->type,
+                'enabled' => (bool) $provider->enabled,
+                'allow_signup' => (bool) $provider->allow_signup,
+                'accounts' => (int) $provider->identities_count,
+            ])->values()->all(),
+            'types' => collect(ProviderCatalog::all())->map(fn (array $type, string $key) => ['type' => $key, 'name' => $type['name'], 'docs' => $type['docs'] ?? null])->values()->all(),
         ]);
     }
 
-    public function create(Request $request): View|RedirectResponse
+    /** What a form for a new provider of a type starts with. */
+    public function blank(Request $request): JsonResponse
     {
         $type = (string) $request->query('type');
-        if (!ProviderCatalog::has($type)) {
-            return redirect()->route('admin.settings.providers');
-        }
+        abort_unless(ProviderCatalog::has($type), 404);
 
-        $provider = new AuthProvider(['type' => $type, 'key' => $type === ProviderCatalog::GENERIC ? '' : $type, 'enabled' => true, 'allow_signup' => true]);
-
-        return $this->form($provider, false);
+        return new JsonResponse($this->form(new AuthProvider(['type' => $type, 'key' => $type === ProviderCatalog::GENERIC ? '' : $type, 'enabled' => true, 'allow_signup' => true]), false));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function view(int $provider): JsonResponse
+    {
+        return new JsonResponse($this->form(AuthProvider::query()->findOrFail($provider), true));
+    }
+
+    public function store(Request $request): JsonResponse
     {
         $type = (string) $request->input('type');
         abort_unless(ProviderCatalog::has($type), 404);
@@ -49,47 +55,50 @@ class ProvidersController extends Controller
         $data = $request->validate($this->rules($type, null));
         $provider = AuthProvider::query()->create($this->attributes($request, $type, $data, null));
 
-        $this->alert->success($provider->name . ' was added. Copy the callback address below into the service and switch it on.')->flash();
-
-        return redirect()->route('admin.settings.providers.edit', $provider->id);
+        return new JsonResponse($this->form($provider, true), 201);
     }
 
-    public function edit(AuthProvider $provider): View
+    public function update(Request $request, int $provider): JsonResponse
     {
-        return $this->form($provider, true);
+        $found = AuthProvider::query()->findOrFail($provider);
+        $data = $request->validate($this->rules($found->type, $found));
+        $found->forceFill($this->attributes($request, $found->type, $data, $found))->save();
+
+        return new JsonResponse($this->form($found->refresh(), true));
     }
 
-    public function update(Request $request, AuthProvider $provider): RedirectResponse
+    public function destroy(int $provider): JsonResponse
     {
-        $data = $request->validate($this->rules($provider->type, $provider));
-        $provider->forceFill($this->attributes($request, $provider->type, $data, $provider))->save();
+        AuthProvider::query()->findOrFail($provider)->delete();
 
-        $this->alert->success($provider->name . ' was saved.')->flash();
-
-        return redirect()->route('admin.settings.providers.edit', $provider->id);
+        return new JsonResponse([], 204);
     }
 
-    public function destroy(AuthProvider $provider): RedirectResponse
-    {
-        $name = $provider->name;
-        $provider->delete();
-
-        $this->alert->success($name . ' was removed. Accounts linked to it can sign in with their password only.')->flash();
-
-        return redirect()->route('admin.settings.providers');
-    }
-
-    private function form(AuthProvider $provider, bool $exists): View
+    /** @return array<string, mixed> */
+    private function form(AuthProvider $provider, bool $exists): array
     {
         $preset = ProviderCatalog::preset($provider->type);
+        $endpoints = ProviderCatalog::endpointsOf($provider);
 
-        return view('admin.settings.provider', [
-            'provider' => $provider,
-            'exists' => $exists,
-            'preset' => $preset,
-            'endpoints' => ProviderCatalog::endpointsOf($provider),
+        return [
+            'id' => $exists ? $provider->id : null,
+            'type' => $provider->type,
+            'preset' => ['name' => $preset['name'], 'docs' => $preset['docs'] ?? null],
+            'name' => $provider->name ?: $preset['name'],
+            'key' => $provider->key,
+            'client_id' => (string) $provider->client_id,
+            'secret_saved' => $exists && (string) $provider->client_secret !== '',
+            'scopes' => (string) ($provider->scopes ?? ''),
+            'default_scopes' => $endpoints['scopes'],
+            'enabled' => (bool) $provider->enabled,
+            'allow_signup' => (bool) $provider->allow_signup,
+            'generic' => $provider->type === ProviderCatalog::GENERIC,
+            'authorize_url' => $endpoints['authorize_url'],
+            'token_url' => $endpoints['token_url'],
+            'userinfo_url' => $endpoints['userinfo_url'],
+            'mapping' => $endpoints['mapping'],
             'callback' => $exists ? $this->oauth->callbackUrl($provider) : url('/auth/oauth/' . ($provider->key ?: '<key>') . '/callback'),
-        ]);
+        ];
     }
 
     /** @return array<string, mixed> */

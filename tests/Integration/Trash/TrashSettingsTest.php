@@ -55,18 +55,19 @@ class TrashSettingsTest extends IntegrationTestCase
     {
         $this->actingAs($this->user(['root_admin' => true]));
 
-        $this->page()->assertOk()->assertSee('Keep deleted files and schedules')->assertSee('Keep for (days)');
+        $this->page()->assertOk()->assertSee('<div id="app"></div>', false);
+        $this->getJson('/api/client/admin/settings/trash')->assertOk()->assertJson(['enabled' => false, 'retention_days' => 30, 'items' => 0]);
     }
 
     public function testItIsSavedOnAndOff(): void
     {
         $this->actingAs($this->user(['root_admin' => true]));
 
-        $this->patch('/admin/settings/trash', ['enabled' => '1', 'retention_days' => '14'])->assertRedirect('/admin/settings/trash');
+        $this->patchJson('/api/client/admin/settings/trash', ['enabled' => '1', 'retention_days' => '14'])->assertOk()->assertJsonPath('retention_days', 14);
         $this->assertSame('true', $this->stored('enabled'));
         $this->assertSame('14', $this->stored('retention_days'));
 
-        $this->patch('/admin/settings/trash', ['retention_days' => '30'])->assertRedirect();
+        $this->patchJson('/api/client/admin/settings/trash', ['retention_days' => '30'])->assertOk();
         $this->assertSame('false', $this->stored('enabled'));
     }
 
@@ -75,7 +76,7 @@ class TrashSettingsTest extends IntegrationTestCase
         $this->actingAs($this->user(['root_admin' => true]));
 
         foreach (['0', '366', 'many', '', '-3', '1.5'] as $days) {
-            $this->patch('/admin/settings/trash', ['enabled' => '1', 'retention_days' => $days])->assertStatus(422);
+            $this->patchJson('/api/client/admin/settings/trash', ['enabled' => '1', 'retention_days' => $days])->assertStatus(422);
         }
         $this->assertNull($this->stored('enabled'));
     }
@@ -87,7 +88,7 @@ class TrashSettingsTest extends IntegrationTestCase
         $this->actingAs($viewer->fresh());
 
         $this->page()->assertOk();
-        $this->patch('/admin/settings/trash', ['enabled' => '1', 'retention_days' => '5'])->assertStatus(403);
+        $this->patchJson('/api/client/admin/settings/trash', ['enabled' => '1', 'retention_days' => '5'])->assertStatus(403);
         $this->assertNull($this->stored('enabled'));
     }
 

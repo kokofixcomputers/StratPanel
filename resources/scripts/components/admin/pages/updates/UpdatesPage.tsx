@@ -302,7 +302,9 @@ export default () => {
                                     <p className={'text-sm font-medium text-neutral-50'}>
                                         {progress.error
                                             ? 'Could not start'
-                                            : TITLES[kind(progress.action)] || 'Working'}
+                                            : `${TITLES[kind(progress.action)] || 'Working'}${
+                                                  progress.phase === 'done' ? (failed ? ': failed' : ': finished') : ''
+                                              }`}
                                     </p>
                                     <p className={'text-xs text-neutral-400'}>
                                         {progress.error ||

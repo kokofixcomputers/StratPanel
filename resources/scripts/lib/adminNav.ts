@@ -55,6 +55,21 @@ export const SETTINGS_PERMISSIONS = [
     'settings.advanced.view',
 ];
 
+/** The pages of Settings, in the order of the tabs. The first one is what the Settings entry of the sidebar opens. */
+export const SETTINGS_TABS: { key: string; path: string; name: string }[] = [
+    { key: 'general', path: '', name: 'General' },
+    { key: 'branding', path: '/branding', name: 'Branding' },
+    { key: 'authentication', path: '/authentication', name: 'Authentication' },
+    { key: 'providers', path: '/providers', name: 'Providers' },
+    { key: 'curseforge', path: '/curseforge', name: 'CurseForge' },
+    { key: 'domains', path: '/domains', name: 'Domains' },
+    { key: 'pools', path: '/pools', name: 'Resource pools' },
+    { key: 'trash', path: '/trash', name: 'Trash' },
+    { key: 'certificates', path: '/certificates', name: 'Certificates' },
+    { key: 'mail', path: '/mail', name: 'Mail' },
+    { key: 'advanced', path: '/advanced', name: 'Advanced' },
+];
+
 export const PAGES: AdminPageInfo[] = [
     {
         key: 'overview',
@@ -72,7 +87,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: SETTINGS_PERMISSIONS,
         group: 'main',
         icon: CogIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'api',
@@ -181,6 +196,14 @@ export const allowed = (page: Pick<AdminPageInfo, 'permissions'>, permissions: s
 
 /** The address of a page of the admin area. */
 export const adminUrl = (path = ''): string => `/admin${path}`;
+
+/** The address the sidebar opens for a page: for Settings the first tab the person may open. */
+export const pageUrl = (page: Pick<AdminPageInfo, 'key' | 'path'>, permissions: string[], root: boolean): string => {
+    if (page.key !== 'settings') return adminUrl(page.path);
+    const tab = SETTINGS_TABS.find((t) => root || permissions.includes(`settings.${t.key}.view`));
+
+    return adminUrl(`/settings${tab?.path ?? ''}`);
+};
 
 /** The first page somebody may open, for those whose roles have no overview. */
 export const firstPage = (permissions: string[], root: boolean): AdminPageInfo | undefined =>

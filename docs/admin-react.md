@@ -6,8 +6,9 @@ sidebar style as the account pages and the same theme. Pages that are not moved 
 
 ## Moved so far
 
-Overview, Roles (the list, one role, who has it), Locations, Databases, Mounts and Users (with their roles and resource pool). The rest
-(Settings, Servers, Nodes, Nests and eggs, Application API, Updates, Extensions) is still Blade.
+Overview, Roles, Locations, Databases, Mounts, Users, Application API, Extensions, Updates and all of Settings (general, branding,
+authentication, providers, CurseForge, domains, resource pools, trash, certificates, mail, advanced). The rest (Servers, Nodes, Nests and eggs)
+is still Blade.
 
 ## How a moved page works
 
