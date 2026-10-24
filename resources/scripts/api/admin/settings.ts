@@ -5,9 +5,10 @@ import http from '@/api/http';
 const base = '/api/client/admin/settings';
 
 /** What a page of Settings has now. The page keeps its own copy to edit, this is the saved one. */
-export const useSetting = <T>(path: string) =>
+export const useSetting = <T>(path: string, options: { refreshInterval?: number } = {}) =>
     useSWR<T, AxiosError>(`admin:settings:${path}`, async () => (await http.get(`${base}/${path}`)).data, {
         revalidateOnFocus: false,
+        ...options,
     });
 
 export const saveSetting = async <T = unknown>(
@@ -214,4 +215,19 @@ export interface Certificates {
     token_configured: boolean;
     edge: { at: string; recent: boolean; ip: string; count: number; http: boolean } | null;
     acme: { enabled: boolean; email: string; staging: boolean };
+    domains: DomainCertificate[];
+}
+
+export interface DomainCertificate {
+    id: number;
+    domain: string;
+    server: string | null;
+    status: string | null;
+    message: string | null;
+    covered_by: string | null;
+    expires_at: string | null;
+    can_request: boolean;
+    can_request_dns: boolean;
+    reason: string | null;
+    dns: { name: string; value: string } | null;
 }

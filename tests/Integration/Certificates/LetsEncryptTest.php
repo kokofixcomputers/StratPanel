@@ -664,4 +664,69 @@ class LetsEncryptTest extends CertificateTestCase
         $this->assertSame('letsencrypt', $row['source']);
         $this->assertSame('rate limit', $row['renew_error']);
     }
+
+    public function testTheAdminGetsACertificateForADomainThatWasAdded(): void
+    {
+        $this->edgeIsThere();
+        $domain = $this->domain('added.le-test.example');
+        $this->pointsHere($domain);
+        $this->actingAs($this->admin());
+
+        $row = collect($this->getJson('/api/client/admin/settings/certificates')->assertOk()->json('domains'))->firstWhere('domain', 'added.le-test.example');
+        $this->assertTrue($row['can_request']);
+        $this->assertNull($row['covered_by']);
+
+        $json = $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => $domain->id, 'method' => 'http'])->assertOk()->json();
+
+        $this->assertSame(['added.le-test.example'], $this->issuer->asked);
+        $this->assertSame('issued', collect($json['domains'])->firstWhere('domain', 'added.le-test.example')['status']);
+        $this->assertSame('letsencrypt', collect($json['certificates'])->first()['source']);
+    }
+
+    public function testTheAdminIsToldWhyACertificateCanNotBeGot(): void
+    {
+        $domain = $this->domain('never.le-test.example');
+        $this->actingAs($this->admin());
+
+        // The domain does not point at the panel, and panel-edge does not answer on port 80.
+        $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => $domain->id, 'method' => 'http'])->assertStatus(400);
+        $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => 999999, 'method' => 'http'])->assertStatus(422);
+        $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => $domain->id, 'method' => 'ftp'])->assertStatus(422);
+        $this->assertSame([], $this->issuer->asked);
+    }
+
+    public function testTheAdminRenewsACertificateAtOnceNotWhenItIsDue(): void
+    {
+        [, $certificate] = $this->issued('now.le-test.example', 60);
+        $before = $certificate->fingerprint;
+        $this->issuer->asked = [];
+        $this->actingAs($this->admin());
+
+        $this->postJson('/api/client/admin/settings/certificates/' . $certificate->id . '/renew')->assertOk();
+
+        $this->assertSame(['now.le-test.example'], $this->issuer->asked);
+        $this->assertNotSame($before, $certificate->fresh()->fingerprint);
+        $this->assertSame(1, Certificate::query()->count(), 'replaced, not added');
+    }
+
+    public function testAnUploadedCertificateIsNotRenewedFromLetsEncrypt(): void
+    {
+        $made = $this->makeCertificate(['own.le-test.example']);
+        $certificate = $this->certs()->create('Own', $made['certPem'], $made['keyPem']);
+        $this->actingAs($this->admin());
+
+        $this->postJson('/api/client/admin/settings/certificates/' . $certificate->id . '/renew')->assertStatus(400);
+        $this->assertSame([], $this->issuer->asked);
+    }
+
+    public function testRenewingNeedsTheUpdatePermission(): void
+    {
+        [, $certificate] = $this->issued('perm.le-test.example', 60);
+        $viewer = $this->makeUser();
+        $viewer->roles()->attach(\Pterodactyl\Models\Role::query()->create(['name' => 'le-viewer', 'permissions' => ['settings.certificates.view'], 'color' => '#000000'])->id);
+        $this->actingAs($viewer->fresh());
+
+        $this->postJson('/api/client/admin/settings/certificates/' . $certificate->id . '/renew')->assertStatus(403);
+        $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => 1, 'method' => 'http'])->assertStatus(403);
+    }
 }

@@ -14,7 +14,7 @@ import Fact from '@/components/admin/Fact';
 import SettingsFrame from '@/components/admin/pages/settings/SettingsFrame';
 import AdminLink from '@/components/admin/AdminLink';
 import { Pill } from '@/components/admin/AdminTable';
-import { Stack, TextField, ToggleField } from '@/components/admin/forms';
+import { Notice, Stack, TextField, ToggleField } from '@/components/admin/forms';
 import PemField from '@/components/admin/pages/settings/PemField';
 import { ends } from '@/components/admin/pages/settings/CertificatesPage';
 import SectionCard from '@/components/elements/SectionCard';
@@ -23,7 +23,7 @@ import { Button } from '@/components/elements/button/index';
 import { Dialog } from '@/components/elements/dialog';
 import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
-import { CertificateDetail, deleteSetting, saveSetting, useSetting } from '@/api/admin/settings';
+import { CertificateDetail, deleteSetting, postSetting, saveSetting, useSetting } from '@/api/admin/settings';
 
 /** Admin > Settings > Certificates > one certificate: what it covers, its settings, renewing it, deleting it. */
 export default () => {
@@ -53,6 +53,26 @@ export default () => {
                 setRenew({ certificate: '', private_key: '', passphrase: '' });
 
                 return mutate(fresh, false);
+            })
+            .catch((e) => clearAndAddHttpError({ key: 'admin', error: e }))
+            .then(() => setBusy(false));
+    };
+
+    const renewNow = () => {
+        clearFlashes('admin');
+        setBusy(true);
+        postSetting(`certificates/${id}/renew`)
+            .then(() => {
+                addFlash({
+                    key: 'admin',
+                    type: 'success',
+                    message:
+                        data.acme_method === 'dns'
+                            ? 'Getting a new certificate. Add the TXT record that is shown on Certificates → domains.'
+                            : "Getting a new certificate from Let's Encrypt, this takes a moment.",
+                });
+
+                return mutate();
             })
             .catch((e) => clearAndAddHttpError({ key: 'admin', error: e }))
             .then(() => setBusy(false));
@@ -112,10 +132,29 @@ export default () => {
                             </Fact>
                         </dl>
                     </SectionCard>
+                    {can && data.source === 'letsencrypt' && (
+                        <SectionCard
+                            icon={<RefreshIcon className={'h-5 w-5'} />}
+                            title={"Renew from Let's Encrypt"}
+                            description={
+                                'Gets a new certificate for this domain now, the same way it was got the first time. It is done by itself before it ends, this is for when you do not want to wait.'
+                            }
+                        >
+                            {data.renew_error && (
+                                <div className={'mb-3'}>
+                                    <Notice tone={'red'}>The last renewal failed: {data.renew_error}</Notice>
+                                </div>
+                            )}
+                            <Button onClick={renewNow} disabled={busy}>
+                                <RefreshIcon className={'-ml-1 mr-2 h-4 w-4'} />
+                                Renew now
+                            </Button>
+                        </SectionCard>
+                    )}
                     {can && (
                         <SectionCard
                             icon={<RefreshIcon className={'h-5 w-5'} />}
-                            title={'Renew'}
+                            title={'Replace with a new certificate'}
                             description={
                                 'When the certificate was renewed, add the new one here. It keeps its name, whether it is on and whether it is the default. Leave empty to change nothing.'
                             }

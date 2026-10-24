@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useHistory } from 'react-router-dom';
 import { LockClosedIcon, ServerIcon, ShieldCheckIcon } from '@heroicons/react/solid';
@@ -11,7 +11,7 @@ import { Button } from '@/components/elements/button/index';
 import PemField from '@/components/admin/pages/settings/PemField';
 import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
-import { Certificates, postSetting, saveSetting, useSetting } from '@/api/admin/settings';
+import { Certificates, DomainCertificate, postSetting, saveSetting, useSetting } from '@/api/admin/settings';
 
 export const ends = (days: number | null, expired: boolean, expiring: boolean, date: string | null) =>
     expired ? 'Expired' : expiring ? `${days} days left` : `${date?.slice(0, 10)} (${days} days)`;
@@ -20,7 +20,10 @@ export const ends = (days: number | null, expired: boolean, expiring: boolean, d
 export default () => {
     const admin = useAdmin();
     const history = useHistory();
-    const { data, mutate } = useSetting<Certificates>('certificates');
+    const [polling, setPolling] = useState(false);
+    const { data, mutate } = useSetting<Certificates>('certificates', { refreshInterval: polling ? 4000 : 0 });
+    // Asked again every few seconds while a certificate is being got.
+    useEffect(() => setPolling(!!data?.domains.some((d) => d.status === 'pending')), [data]);
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const [acme, setAcme] = useState<{ enabled: boolean; email: string; staging: boolean; agree: boolean } | null>(
         null
@@ -38,6 +41,20 @@ export default () => {
             .catch((e) => clearAndAddHttpError({ key: 'admin', error: e }))
             .then(() => setBusy(false));
     };
+
+    const ask = (domain: DomainCertificate, method: 'http' | 'dns') =>
+        run(postSetting<Certificates>('certificates/letsencrypt/issue', { domain_id: domain.id, method }), (next) => {
+            addFlash({
+                key: 'admin',
+                type: 'success',
+                message: `Getting a certificate for ${domain.domain}. ${
+                    method === 'dns'
+                        ? 'Add the TXT record that is shown, it is checked every few seconds.'
+                        : 'This takes a moment, the state of the domain shows how it goes.'
+                }`,
+            });
+            mutate(next, false);
+        });
 
     return (
         <SettingsFrame title={'Certificates'} subtitle={'Serve the panel over https with certificates you add here.'}>
@@ -118,6 +135,67 @@ export default () => {
                                 )}
                             </Stack>
                         </SectionCard>
+
+                        {data.domains.length > 0 && (
+                            <SectionCard
+                                icon={<ShieldCheckIcon className={'h-5 w-5'} />}
+                                title={'Certificates for added domains'}
+                                description={
+                                    "The domains that were added to servers. Get a free certificate from Let's Encrypt for one: over port 80 when the domain points at this panel, or with a TXT record when it does not."
+                                }
+                            >
+                                <AdminTable heads={['Domain', 'Server', 'State', null]}>
+                                    {data.domains.map((d) => (
+                                        <Row key={d.id}>
+                                            <Cell className={'font-medium text-neutral-50'}>{d.domain}</Cell>
+                                            <Cell>{d.server}</Cell>
+                                            <Cell>
+                                                {d.status === 'pending' ? (
+                                                    <Pill tone={'primary'}>Getting one...</Pill>
+                                                ) : d.status === 'issued' || d.covered_by ? (
+                                                    <Pill tone={'green'}>{d.covered_by ?? 'Has one'}</Pill>
+                                                ) : d.status === 'failed' ? (
+                                                    <span title={d.message ?? ''}>
+                                                        <Pill tone={'red'}>Failed</Pill>
+                                                    </span>
+                                                ) : (
+                                                    <Pill>None</Pill>
+                                                )}
+                                                {d.message && d.status === 'failed' && (
+                                                    <p className={'mt-1 max-w-xs text-xs text-red-600'}>{d.message}</p>
+                                                )}
+                                                {d.dns && (
+                                                    <p className={'mt-1 max-w-xs break-all text-xs text-neutral-300'}>
+                                                        Add this TXT record: <code>{d.dns.name}</code> ={' '}
+                                                        <code>{d.dns.value}</code>
+                                                    </p>
+                                                )}
+                                            </Cell>
+                                            <Cell>
+                                                {can && (
+                                                    <div className={'flex justify-end gap-1'}>
+                                                        <Button.Text
+                                                            disabled={busy || !d.can_request}
+                                                            title={d.reason ?? 'Prove the domain over port 80'}
+                                                            onClick={() => ask(d, 'http')}
+                                                        >
+                                                            Get certificate
+                                                        </Button.Text>
+                                                        <Button.Text
+                                                            disabled={busy || !d.can_request_dns}
+                                                            title={'Prove the domain with a TXT record'}
+                                                            onClick={() => ask(d, 'dns')}
+                                                        >
+                                                            By DNS
+                                                        </Button.Text>
+                                                    </div>
+                                                )}
+                                            </Cell>
+                                        </Row>
+                                    ))}
+                                </AdminTable>
+                            </SectionCard>
+                        )}
 
                         <SectionCard
                             icon={<ShieldCheckIcon className={'h-5 w-5'} />}

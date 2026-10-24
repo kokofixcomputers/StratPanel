@@ -145,6 +145,40 @@ class DomainCertificateService
         IssueDomainCertificate::dispatch($domain->id, 'dns');
     }
 
+    /**
+     * Gets a new certificate for one that came from Let's Encrypt, now and not when it is due (an admin asked). It is done for the domain
+     * the certificate was made for, the same way as the first time.
+     *
+     * @throws DisplayException
+     */
+    public function renewNow(Certificate $certificate): ServerDomain
+    {
+        if ($certificate->source !== 'letsencrypt' || $certificate->acme_domain === null) {
+            throw new DisplayException('Only a certificate that came from Let\'s Encrypt can be renewed here.');
+        }
+        if (!$this->enabled()) {
+            throw new DisplayException('Let\'s Encrypt is not turned on on this panel.');
+        }
+
+        $domain = ServerDomain::query()->where('domain', $certificate->acme_domain)->first();
+        if ($domain === null) {
+            throw new DisplayException('No server uses ' . $certificate->acme_domain . ' any more, so there is nothing to renew it for.');
+        }
+        if ($domain->certificate_status === 'pending') {
+            throw new DisplayException('A certificate is being requested for this domain already.');
+        }
+
+        $method = $certificate->acme_method === 'dns' ? 'dns' : 'http';
+        if ($method === 'http' && !$this->httpReady()) {
+            throw new DisplayException('This needs panel-edge to answer on port 80 (HTTP_LISTEN in /etc/panel-edge.env).');
+        }
+
+        $domain->forceFill(['web' => true, 'certificate_status' => 'pending', 'certificate_message' => null, 'dns_name' => null, 'dns_value' => null])->save();
+        IssueDomainCertificate::dispatch($domain->id, $method);
+
+        return $domain;
+    }
+
     /** What the job does: asks Let's Encrypt, adds what it gives as a certificate, and links it to the domain. */
     public function issue(ServerDomain $domain, string $method = 'http'): void
     {

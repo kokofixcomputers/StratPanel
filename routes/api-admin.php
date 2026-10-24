@@ -142,6 +142,8 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::get('/', [Admin\Settings\CertificatesController::class, 'index'])->middleware('admin.can:settings.certificates.view');
             Route::post('/', [Admin\Settings\CertificatesController::class, 'store'])->middleware('admin.can:settings.certificates.update');
             Route::patch('/letsencrypt', [Admin\Settings\CertificatesController::class, 'acme'])->middleware('admin.can:settings.certificates.update');
+            Route::post('/letsencrypt/issue', [Admin\Settings\CertificatesController::class, 'issue'])->middleware('admin.can:settings.certificates.update');
+            Route::post('/{certificate}/renew', [Admin\Settings\CertificatesController::class, 'renew'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
             Route::get('/{certificate}', [Admin\Settings\CertificatesController::class, 'view'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.view');
             Route::patch('/{certificate}', [Admin\Settings\CertificatesController::class, 'update'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
             Route::delete('/{certificate}', [Admin\Settings\CertificatesController::class, 'destroy'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');

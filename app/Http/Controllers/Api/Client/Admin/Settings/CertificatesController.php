@@ -5,6 +5,8 @@ namespace Pterodactyl\Http\Controllers\Api\Client\Admin\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Pterodactyl\Models\Certificate;
+use Pterodactyl\Models\ServerDomain;
+use Pterodactyl\Services\Acme\DomainCertificateService;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Certificates\CertificateException;
@@ -19,6 +21,7 @@ class CertificatesController extends Controller
         private CertificateService $certificates,
         private NodeCertificateService $nodes,
         private SettingsRepositoryInterface $settings,
+        private DomainCertificateService $acme,
     ) {
     }
 
@@ -51,6 +54,24 @@ class CertificatesController extends Controller
                 'email' => (string) config('acme.email'),
                 'staging' => (bool) config('acme.staging'),
             ],
+            // The domains that were added to servers, and what they have: a certificate can be asked for from here.
+            'domains' => ServerDomain::query()->with('server:id,name')->orderBy('domain')->get()->map(function (ServerDomain $domain) {
+                $state = $this->acme->describe($domain);
+
+                return [
+                    'id' => $domain->id,
+                    'domain' => $domain->domain,
+                    'server' => $domain->server?->name,
+                    'status' => $state['status'],
+                    'message' => $state['message'],
+                    'covered_by' => $state['covered_by'],
+                    'expires_at' => $state['expires_at'],
+                    'can_request' => $state['can_request'],
+                    'can_request_dns' => $state['can_request_dns'],
+                    'reason' => $state['reason'],
+                    'dns' => $state['dns'],
+                ];
+            })->values()->all(),
         ]);
     }
 
@@ -67,6 +88,25 @@ class CertificatesController extends Controller
         $this->settings->set('settings::acme:enabled', $enable ? 'true' : 'false');
         $this->settings->set('settings::acme:email', (string) ($data['email'] ?? ''));
         $this->settings->set('settings::acme:staging', $request->boolean('staging') ? 'true' : 'false');
+
+        return $this->index();
+    }
+
+    /** Starts getting a certificate from Let's Encrypt for a domain that was added to a server. It runs in the background, the list shows how it goes. */
+    public function issue(Request $request): JsonResponse
+    {
+        $data = $request->validate(['domain_id' => 'required|integer|exists:server_domains,id', 'method' => 'required|in:http,dns']);
+        $domain = ServerDomain::query()->findOrFail($data['domain_id']);
+
+        $data['method'] === 'dns' ? $this->acme->requestDns($domain) : $this->acme->request($domain);
+
+        return $this->index();
+    }
+
+    /** Gets a new certificate for one from Let's Encrypt now, the same way it was got the first time. */
+    public function renew(int $certificate): JsonResponse
+    {
+        $this->acme->renewNow(Certificate::query()->findOrFail($certificate));
 
         return $this->index();
     }
