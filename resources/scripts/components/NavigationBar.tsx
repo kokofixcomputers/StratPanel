@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { LogoutIcon, ViewGridIcon, AdjustmentsIcon } from '@heroicons/react/outline';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
@@ -44,6 +44,7 @@ export default () => {
     const name = useStoreState((state: ApplicationStore) => state.settings.data!.name);
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.canAccessAdmin);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const inAdmin = useLocation().pathname.startsWith('/admin');
     const navbarLinks = linksAt(useBranding().links, 'navbar');
 
     const onTriggerLogout = () => {
@@ -68,6 +69,17 @@ export default () => {
                         <PanelLogo className={'w-8 h-8 mr-2.5 object-contain'} />
                         {name}
                     </Link>
+                    {inAdmin && (
+                        <Link
+                            to={'/admin'}
+                            className={
+                                'ml-3 inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide no-underline text-primary-700'
+                            }
+                        >
+                            <AdjustmentsIcon className={'mr-1 h-3.5 w-3.5'} />
+                            Admin
+                        </Link>
+                    )}
                 </div>
                 {navbarLinks.length > 0 && (
                     <div className={'mr-2 hidden items-center space-x-1 md:flex'}>
