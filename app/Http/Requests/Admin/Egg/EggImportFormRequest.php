@@ -12,7 +12,8 @@ class EggImportFormRequest extends AdminFormRequest
             'import_file' => 'bail|required|file|max:1000|mimetypes:application/json,text/plain',
         ];
 
-        if ($this->method() !== 'PUT') {
+        // Importing into an egg that is there (a route with that egg in it) needs no nest.
+        if (!$this->route('egg')) {
             $rules['import_to_nest'] = 'bail|required|integer|exists:nests,id';
         }
 

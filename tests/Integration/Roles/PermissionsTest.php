@@ -164,7 +164,8 @@ class PermissionsTest extends RoleTestCase
         $checked = 0;
 
         foreach (Route::getRoutes() as $route) {
-            if (!str_starts_with($route->uri(), 'admin')) {
+            // The pages, and the API the pages of the admin area read and change things through.
+            if (!str_starts_with($route->uri(), 'admin') && !str_starts_with($route->uri(), 'api/client/admin')) {
                 continue;
             }
             $has = collect($route->gatherMiddleware())->contains(fn ($m) => is_string($m) && str_starts_with($m, 'admin.can:'));

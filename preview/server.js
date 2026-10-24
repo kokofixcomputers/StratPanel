@@ -273,6 +273,16 @@ const certRow = { id: 1, name: 'Main', domains: ['panel.example.com', '*.example
 api.get('/admin/settings/certificates', (req, res) => res.json({ certificates: [certRow, { ...certRow, id: 2, name: 'Soon', is_default: false, source: null, expiring: true, days_left: 5 }], token_configured: true, edge: { at: new Date().toISOString(), recent: true, ip: '127.0.0.1', count: 2, http: false }, acme: { enabled: true, email: 'admin@example.com', staging: false } }));
 api.get('/admin/settings/certificates/:id', (req, res) => res.json({ ...certRow, issuer: "Let's Encrypt R11", not_before: new Date().toISOString(), fingerprint: 'AB:CD:EF:01:23' }));
 
+
+const mockNest = { id: 1, uuid: '3c1c0f2e-aaaa-bbbb-cccc-000000000001', name: 'Minecraft', author: 'support@example.com', description: 'Minecraft - the classic game from Mojang.', servers: 2, eggs: [{ id: 1, name: 'Paper', author: 'support@example.com', description: 'High performance Spigot fork.', servers: 2 }, { id: 2, name: 'Forge', author: 'support@example.com', description: 'Forge Minecraft.', servers: 0 }] };
+api.get('/admin/nests', (req, res) => res.json({ nests: [{ id: 1, name: 'Minecraft', author: 'support@example.com', description: mockNest.description, eggs: 2, servers: 2 }] }));
+api.get('/admin/nests/lookup', (req, res) => res.json({ nests: [{ id: 1, name: 'Minecraft', author: 'support@example.com', eggs: mockNest.eggs.map(({ id, name, author }) => ({ id, name, author })) }] }));
+api.get('/admin/nests/:id', (req, res) => res.json(mockNest));
+const mockEgg = { id: 1, uuid: 'e1e1e1e1-0000-0000-0000-000000000001', author: 'support@example.com', name: 'Paper', description: 'High performance Spigot fork.', nest: { id: 1, name: 'Minecraft' }, siblings: [{ id: 2, name: 'Forge', author: 'support@example.com' }], docker_images: 'Java 21|ghcr.io/example/java:21\nghcr.io/example/java:17', force_outgoing_ip: false, startup: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}', features: ['eula', 'java_version'], config_from: null, config_stop: 'stop', config_logs: '{\n    "custom": false\n}', config_files: '{\n    "server.properties": {\n        "parser": "properties"\n    }\n}', config_startup: '{\n    "done": ")! For help, type "\n}' };
+api.get('/admin/eggs/:id', (req, res) => res.json(mockEgg));
+api.get('/admin/eggs/:id/variables', (req, res) => res.json({ id: 1, name: 'Paper', nest: { id: 1, name: 'Minecraft' }, variables: [{ id: 1, name: 'Server Jar File', description: 'The name of the server jarfile to run the server with.', env_variable: 'SERVER_JARFILE', default_value: 'server.jar', user_viewable: true, user_editable: true, rules: 'required|regex:/^([\\w\\d._-]+)(\\.jar)$/' }, { id: 2, name: 'Minecraft Version', description: '', env_variable: 'MINECRAFT_VERSION', default_value: 'latest', user_viewable: true, user_editable: false, rules: 'nullable|string|max:20' }] }));
+api.get('/admin/eggs/:id/script', (req, res) => res.json({ id: 1, name: 'Paper', nest: { id: 1, name: 'Minecraft' }, script_install: '#!/bin/ash\ncd /mnt/server\ncurl -o server.jar https://example.com/paper.jar\n', script_container: 'ghcr.io/example/installers:alpine', script_entry: 'ash', script_is_privileged: true, copy_script_from: null, copying_from: null, copy_options: [{ id: 2, name: 'Forge' }], relied_on_by: [] }));
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -719,7 +729,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 // The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
-const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates|settings)(\/.*)?)?\/?$/;
+const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates|settings|nests)(\/.*)?)?\/?$/;
 app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
     PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
 );

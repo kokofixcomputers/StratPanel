@@ -177,7 +177,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['nests.view'],
         group: 'management',
         icon: ViewGridIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'extensions',

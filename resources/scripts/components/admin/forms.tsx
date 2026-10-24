@@ -66,7 +66,15 @@ export const AreaField = ({
     maxLength,
     disabled,
     className,
-}: Common & { value: string; onChange: (value: string) => void; rows?: number; maxLength?: number }) => (
+    mono = false,
+}: Common & {
+    value: string;
+    onChange: (value: string) => void;
+    rows?: number;
+    maxLength?: number;
+    // Code or configuration: fixed width letters, and a tab key that indents.
+    mono?: boolean;
+}) => (
     <div className={className}>
         <Label htmlFor={id}>{label}</Label>
         <Textarea
@@ -75,7 +83,21 @@ export const AreaField = ({
             maxLength={maxLength}
             value={value}
             disabled={disabled}
+            spellCheck={mono ? false : undefined}
+            className={mono ? 'font-mono text-xs' : undefined}
             onChange={(e) => onChange(e.currentTarget.value)}
+            onKeyDown={
+                mono
+                    ? (e) => {
+                          if (e.key !== 'Tab' || e.shiftKey) return;
+                          e.preventDefault();
+                          const field = e.currentTarget;
+                          const at = field.selectionStart;
+                          onChange(`${value.slice(0, at)}    ${value.slice(field.selectionEnd)}`);
+                          requestAnimationFrame(() => field.setSelectionRange(at + 4, at + 4));
+                      }
+                    : undefined
+            }
         />
         <Help>{help}</Help>
     </div>

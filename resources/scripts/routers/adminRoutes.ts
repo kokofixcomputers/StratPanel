@@ -101,6 +101,16 @@ const SettingsCertificatePage = lazy(
     () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/CertificatePage')
 );
 
+const NestsPage = lazy(() => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/NestsPage'));
+const NestPage = lazy(() => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/NestPage'));
+const EggEditor = lazy(() => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/EggEditor'));
+const EggVariablesPage = lazy(
+    () => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/EggVariablesPage')
+);
+const EggScriptPage = lazy(
+    () => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/EggScriptPage')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
@@ -161,6 +171,12 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     },
     { path: '/admin/settings/mail', permissions: ['settings.mail.view'], component: SettingsMailPage },
     { path: '/admin/settings/advanced', permissions: ['settings.advanced.view'], component: SettingsAdvancedPage },
+    { path: '/admin/nests', permissions: ['nests.view'], component: NestsPage },
+    { path: '/admin/nests/view/:id', permissions: ['nests.view'], component: NestPage },
+    { path: '/admin/nests/egg/new', permissions: ['eggs.create'], component: EggEditor },
+    { path: '/admin/nests/egg/:id', permissions: ['nests.view'], component: EggEditor },
+    { path: '/admin/nests/egg/:id/variables', permissions: ['nests.view'], component: EggVariablesPage },
+    { path: '/admin/nests/egg/:id/scripts', permissions: ['nests.view'], component: EggScriptPage },
     { path: '/admin/api', permissions: ['root'], component: ApiKeysPage },
     { path: '/admin/api/new', permissions: ['root'], component: ApiKeyNewPage },
     { path: '/admin/extensions', permissions: ['extensions.view'], component: ExtensionsPage },

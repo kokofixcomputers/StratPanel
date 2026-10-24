@@ -243,28 +243,14 @@ Route::group(['prefix' => 'mounts'], function () {
 |
 */
 Route::group(['prefix' => 'nests'], function () {
-    Route::get('/', [Admin\Nests\NestController::class, 'index'])->name('admin.nests')->middleware('admin.can:nests.view');
-    Route::get('/new', [Admin\Nests\NestController::class, 'create'])->name('admin.nests.new')->middleware('admin.can:nests.create');
-    Route::get('/view/{nest:id}', [Admin\Nests\NestController::class, 'view'])->name('admin.nests.view')->middleware('admin.can:nests.view');
-    Route::get('/egg/new', [Admin\Nests\EggController::class, 'create'])->name('admin.nests.egg.new')->middleware('admin.can:eggs.create');
-    Route::get('/egg/{egg:id}', [Admin\Nests\EggController::class, 'view'])->name('admin.nests.egg.view')->middleware('admin.can:nests.view');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.nests')->middleware('admin.can:nests.view');
+    Route::get('/view/{nest:id}', Admin\SpaController::class)->name('admin.nests.view')->middleware('admin.can:nests.view');
+    Route::get('/egg/new', Admin\SpaController::class)->name('admin.nests.egg.new')->middleware('admin.can:eggs.create');
+    Route::get('/egg/{egg:id}', Admin\SpaController::class)->name('admin.nests.egg.view')->middleware('admin.can:nests.view');
+    Route::get('/egg/{egg:id}/variables', Admin\SpaController::class)->name('admin.nests.egg.variables')->middleware('admin.can:nests.view');
+    Route::get('/egg/{egg:id}/scripts', Admin\SpaController::class)->name('admin.nests.egg.scripts')->middleware('admin.can:nests.view');
+
+    // A file to download, not a page.
     Route::get('/egg/{egg:id}/export', [Admin\Nests\EggShareController::class, 'export'])->name('admin.nests.egg.export')->middleware('admin.can:eggs.export');
-    Route::get('/egg/{egg:id}/variables', [Admin\Nests\EggVariableController::class, 'view'])->name('admin.nests.egg.variables')->middleware('admin.can:nests.view');
-    Route::get('/egg/{egg:id}/scripts', [Admin\Nests\EggScriptController::class, 'index'])->name('admin.nests.egg.scripts')->middleware('admin.can:nests.view');
-
-    Route::post('/new', [Admin\Nests\NestController::class, 'store'])->middleware('admin.can:nests.create');
-    Route::post('/import', [Admin\Nests\EggShareController::class, 'import'])->name('admin.nests.egg.import')->middleware('admin.can:eggs.import');
-    Route::post('/egg/new', [Admin\Nests\EggController::class, 'store'])->middleware('admin.can:eggs.create');
-    Route::post('/egg/{egg:id}/variables', [Admin\Nests\EggVariableController::class, 'store'])->middleware('admin.can:eggs.update');
-
-    Route::put('/egg/{egg:id}', [Admin\Nests\EggShareController::class, 'update'])->middleware('admin.can:eggs.import');
-
-    Route::patch('/view/{nest:id}', [Admin\Nests\NestController::class, 'update'])->middleware('admin.can:nests.update');
-    Route::patch('/egg/{egg:id}', [Admin\Nests\EggController::class, 'update'])->middleware('admin.can:eggs.update');
-    Route::patch('/egg/{egg:id}/scripts', [Admin\Nests\EggScriptController::class, 'update'])->middleware('admin.can:eggs.update');
-    Route::patch('/egg/{egg:id}/variables/{variable:id}', [Admin\Nests\EggVariableController::class, 'update'])->name('admin.nests.egg.variables.edit')->middleware('admin.can:eggs.update');
-
-    Route::delete('/view/{nest:id}', [Admin\Nests\NestController::class, 'destroy'])->middleware('admin.can:nests.delete');
-    Route::delete('/egg/{egg:id}', [Admin\Nests\EggController::class, 'destroy'])->middleware('admin.can:eggs.delete');
-    Route::delete('/egg/{egg:id}/variables/{variable:id}', [Admin\Nests\EggVariableController::class, 'destroy'])->middleware('admin.can:eggs.update');
 });

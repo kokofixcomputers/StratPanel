@@ -147,4 +147,29 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::delete('/{certificate}', [Admin\Settings\CertificatesController::class, 'destroy'])->whereNumber('certificate')->middleware('admin.can:settings.certificates.update');
         });
     });
+
+    Route::prefix('/nests')->group(function () {
+        Route::get('/', [Admin\NestsController::class, 'index'])->middleware('admin.can:nests.view');
+        Route::get('/lookup', [Admin\NestsController::class, 'lookup'])->middleware('admin.can:nests.view,eggs.create,eggs.import');
+        Route::post('/', [Admin\NestsController::class, 'store'])->middleware('admin.can:nests.create');
+        Route::get('/{nest}', [Admin\NestsController::class, 'view'])->whereNumber('nest')->middleware('admin.can:nests.view');
+        Route::patch('/{nest}', [Admin\NestsController::class, 'update'])->whereNumber('nest')->middleware('admin.can:nests.update');
+        Route::delete('/{nest}', [Admin\NestsController::class, 'destroy'])->whereNumber('nest')->middleware('admin.can:nests.delete');
+    });
+
+    Route::prefix('/eggs')->group(function () {
+        Route::post('/', [Admin\EggsController::class, 'store'])->middleware('admin.can:eggs.create');
+        Route::post('/import', [Admin\EggsController::class, 'import'])->middleware('admin.can:eggs.import');
+        Route::get('/{egg}', [Admin\EggsController::class, 'view'])->whereNumber('egg')->middleware('admin.can:nests.view');
+        Route::patch('/{egg}', [Admin\EggsController::class, 'updateEgg'])->whereNumber('egg')->middleware('admin.can:eggs.update');
+        Route::delete('/{egg}', [Admin\EggsController::class, 'destroy'])->whereNumber('egg')->middleware('admin.can:eggs.delete');
+        // A POST because it carries a file, which PHP does not read from a PUT or a PATCH.
+        Route::post('/{egg}/import', [Admin\EggsController::class, 'updateFromFile'])->whereNumber('egg')->middleware('admin.can:eggs.import');
+        Route::get('/{egg}/variables', [Admin\EggVariablesController::class, 'index'])->whereNumber('egg')->middleware('admin.can:nests.view');
+        Route::post('/{egg}/variables', [Admin\EggVariablesController::class, 'store'])->whereNumber('egg')->middleware('admin.can:eggs.update');
+        Route::patch('/{egg}/variables/{variable}', [Admin\EggVariablesController::class, 'updateVariable'])->whereNumber(['egg', 'variable'])->middleware('admin.can:eggs.update');
+        Route::delete('/{egg}/variables/{variable}', [Admin\EggVariablesController::class, 'destroy'])->whereNumber(['egg', 'variable'])->middleware('admin.can:eggs.update');
+        Route::get('/{egg}/script', [Admin\EggVariablesController::class, 'script'])->whereNumber('egg')->middleware('admin.can:nests.view');
+        Route::patch('/{egg}/script', [Admin\EggVariablesController::class, 'updateScript'])->whereNumber('egg')->middleware('admin.can:eggs.update');
+    });
 });
