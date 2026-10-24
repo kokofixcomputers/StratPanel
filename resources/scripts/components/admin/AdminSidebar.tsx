@@ -1,7 +1,7 @@
 import React from 'react';
 import classNames from 'classnames';
 import { Link, matchPath, useLocation } from 'react-router-dom';
-import { ArrowLeftIcon } from '@heroicons/react/solid';
+import { ArrowLeftIcon, ColorSwatchIcon } from '@heroicons/react/solid';
 import { adminUrl, GROUPS, PAGES, pageUrl } from '@/lib/adminNav';
 import useAdmin from '@/plugins/useAdmin';
 
@@ -61,6 +61,13 @@ export default () => {
                                     </a>
                                 );
                             })}
+                            {group.id === 'main' && admin.can('settings.branding.update') && (
+                                // The theme editor is a page of the panel itself, not of the admin area.
+                                <Link to={'/theme-editor'} className={link(false)}>
+                                    <ColorSwatchIcon className={'h-5 w-5 flex-shrink-0'} />
+                                    <span className={'truncate'}>Theme editor</span>
+                                </Link>
+                            )}
                         </div>
                     );
                 })}

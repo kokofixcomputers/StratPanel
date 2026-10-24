@@ -1,7 +1,6 @@
 import React from 'react';
 import classNames from 'classnames';
-import { Link, NavLink } from 'react-router-dom';
-import { ColorSwatchIcon } from '@heroicons/react/solid';
+import { NavLink } from 'react-router-dom';
 import AdminPage from '@/components/admin/AdminPage';
 import useAdmin from '@/plugins/useAdmin';
 import { SETTINGS_TABS } from '@/lib/adminNav';
@@ -37,18 +36,6 @@ export default ({
                         >
                             {tab.name}
                         </NavLink>
-                        {tab.key === 'branding' && admin.can('settings.branding.update') && (
-                            // The theme editor is a page of the panel itself, not of the admin area.
-                            <Link
-                                to={'/theme-editor'}
-                                className={
-                                    'flex items-center gap-1 rounded-t-lg px-3 py-2 text-sm font-medium no-underline text-neutral-300 transition-colors hover:text-neutral-50'
-                                }
-                            >
-                                <ColorSwatchIcon className={'h-4 w-4'} />
-                                Theme editor
-                            </Link>
-                        )}
                     </React.Fragment>
                 ))}
             </nav>
