@@ -315,36 +315,80 @@ export default () => {
                                                 : '')}
                                     </p>
                                 </div>
-                                <div className={'mt-3'}>
-                                    <Meter percent={percent} level={failed ? 'danger' : 'ok'} />
-                                </div>
-                                {steps.length > 1 && (
-                                    <ol className={'mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs'}>
-                                        {steps.map((step, i) => {
-                                            const state =
-                                                progress.phase === 'done'
-                                                    ? 'done'
-                                                    : i < at
-                                                    ? 'done'
-                                                    : i === at
-                                                    ? 'now'
-                                                    : 'todo';
+                                {steps.length > 1 ? (
+                                    <div className={'mt-5 pb-1'}>
+                                        <div className={'relative h-8'}>
+                                            <div
+                                                className={'absolute inset-x-0 top-3 h-2 rounded-full bg-neutral-500'}
+                                            />
+                                            <div
+                                                className={classNames(
+                                                    'absolute left-0 top-3 h-2 rounded-full transition-all duration-500',
+                                                    failed ? 'bg-red-500' : 'bg-primary-600'
+                                                )}
+                                                style={{
+                                                    width: `${
+                                                        progress.phase === 'done'
+                                                            ? 100
+                                                            : at < 0
+                                                            ? 0
+                                                            : ((at + 0.5) / steps.length) * 100
+                                                    }%`,
+                                                }}
+                                            />
+                                            {steps.map((step, i) => {
+                                                const state =
+                                                    progress.phase === 'done'
+                                                        ? 'done'
+                                                        : i < at
+                                                        ? 'done'
+                                                        : i === at
+                                                        ? 'now'
+                                                        : 'todo';
 
-                                            return (
+                                                return (
+                                                    <span
+                                                        key={step[0]}
+                                                        className={classNames(
+                                                            'absolute top-1 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 text-2xs font-bold',
+                                                            {
+                                                                'border-primary-600 bg-primary-600 text-white':
+                                                                    state === 'done' && !failed,
+                                                                'border-red-500 bg-red-500 text-white':
+                                                                    state === 'done' && failed,
+                                                                'animate-pulse border-primary-600 bg-white text-primary-700':
+                                                                    state === 'now',
+                                                                'border-neutral-500 bg-white text-neutral-400':
+                                                                    state === 'todo',
+                                                            }
+                                                        )}
+                                                        style={{ left: `${((i + 0.5) / steps.length) * 100}%` }}
+                                                    >
+                                                        {state === 'done' ? '✓' : i + 1}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                        <ol className={'flex'}>
+                                            {steps.map((step, i) => (
                                                 <li
                                                     key={step[0]}
-                                                    className={classNames({
-                                                        'text-green-600': state === 'done',
-                                                        'font-medium text-primary-700': state === 'now',
-                                                        'text-neutral-400': state === 'todo',
+                                                    className={classNames('flex-1 text-center text-xs', {
+                                                        'font-medium text-primary-700':
+                                                            i === at && progress.phase !== 'done',
+                                                        'text-neutral-200': i < at || progress.phase === 'done',
+                                                        'text-neutral-400': i > at && progress.phase !== 'done',
                                                     })}
                                                 >
-                                                    {state === 'done' ? '✓ ' : state === 'now' ? '… ' : ''}
                                                     {step[1]}
                                                 </li>
-                                            );
-                                        })}
-                                    </ol>
+                                            ))}
+                                        </ol>
+                                    </div>
+                                ) : (
+                                    <div className={'mt-3'}>
+                                        <Meter percent={percent} level={failed ? 'danger' : 'ok'} />
+                                    </div>
                                 )}
                                 {progress.results.length > 0 && !progress.error && (
                                     <ul className={'mt-3 space-y-1 text-sm'}>
@@ -377,18 +421,6 @@ export default () => {
                                 )}
                             </div>
                         )}
-
-                        <details className={'text-xs text-neutral-300'}>
-                            <summary className={'cursor-pointer'}>How it works</summary>
-                            <p className={'mt-2'}>
-                                <b>Panel:</b> backup, maintenance mode, new files, composer and migrations, caches, back
-                                online. The page goes dark for a minute or two and comes back by itself. <b>Router</b>{' '}
-                                and <b>edge</b> are swapped for the newest build and restarted; a build that does not
-                                start is rolled back. <b>From this machine</b> uses <code>tools/*/dist</code> and only
-                                counts when root owns it (
-                                <code>chown -R root: tools/mc-router/dist tools/panel-edge/dist</code>).
-                            </p>
-                        </details>
 
                         <div className={'flex flex-wrap gap-2'}>
                             <Button
