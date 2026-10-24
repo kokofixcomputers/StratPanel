@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { ChartBarIcon, CloudDownloadIcon, InformationCircleIcon, TrashIcon } from '@heroicons/react/solid';
+import {
+    ChartBarIcon,
+    ChipIcon,
+    CloudDownloadIcon,
+    DesktopComputerIcon,
+    DocumentTextIcon,
+    ExclamationCircleIcon,
+    GlobeAltIcon,
+    InformationCircleIcon,
+    ServerIcon,
+    TagIcon,
+    TrashIcon,
+} from '@heroicons/react/solid';
+import Fact from '@/components/admin/Fact';
 import NodeFrame from '@/components/admin/pages/nodes/NodeFrame';
 import { Meter, Pill } from '@/components/admin/AdminTable';
 import { Notice } from '@/components/admin/forms';
@@ -11,13 +24,6 @@ import { Dialog } from '@/components/elements/dialog';
 import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
 import { deleteNode, updateWings, useNode, useSystemInformation } from '@/api/admin/nodes';
-
-const Fact = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className={'flex justify-between gap-4 py-2 text-sm'}>
-        <dt className={'text-neutral-400'}>{label}</dt>
-        <dd className={'text-right text-neutral-100'}>{children}</dd>
-    </div>
-);
 
 /** Admin > Nodes > one node: what Wings says, how full the node is, and deleting it. */
 export default () => {
@@ -61,7 +67,7 @@ export default () => {
                 <div className={'space-y-4 lg:col-span-2'}>
                     <SectionCard icon={<InformationCircleIcon className={'h-5 w-5'} />} title={'Information'}>
                         <dl className={'divide-y divide-neutral-500'}>
-                            <Fact label={'Daemon version'}>
+                            <Fact label={'Daemon version'} icon={TagIcon}>
                                 {system?.online ? (
                                     system.version
                                 ) : (
@@ -79,23 +85,29 @@ export default () => {
                             </Fact>
                             {system?.online && system.system && (
                                 <>
-                                    <Fact label={'System information'}>
+                                    <Fact label={'System information'} icon={DesktopComputerIcon}>
                                         {system.system.type} ({system.system.arch}) {system.system.release}
                                     </Fact>
-                                    <Fact label={'Total CPU threads'}>{system.system.cpus}</Fact>
+                                    <Fact label={'Total CPU threads'} icon={ChipIcon}>
+                                        {system.system.cpus}
+                                    </Fact>
                                 </>
                             )}
                             {system && !system.online && (
-                                <Fact label={'Error'}>
+                                <Fact label={'Error'} icon={ExclamationCircleIcon}>
                                     <span className={'text-red-600'}>{system.error}</span>
                                 </Fact>
                             )}
-                            <Fact label={'Address'}>
+                            <Fact label={'Address'} icon={GlobeAltIcon}>
                                 <code className={'text-xs'}>
                                     {data.scheme}://{data.fqdn}:{data.daemonListen}
                                 </code>
                             </Fact>
-                            {data.description && <Fact label={'Description'}>{data.description}</Fact>}
+                            {data.description && (
+                                <Fact label={'Description'} icon={DocumentTextIcon}>
+                                    {data.description}
+                                </Fact>
+                            )}
                         </dl>
                     </SectionCard>
                     {admin.can('nodes.delete') && (
@@ -131,7 +143,9 @@ export default () => {
                                 <Meter percent={data.usage[key].percent} level={data.usage[key].level} />
                             </div>
                         ))}
-                        <Fact label={'Total servers'}>{data.servers}</Fact>
+                        <Fact label={'Total servers'} icon={ServerIcon}>
+                            {data.servers}
+                        </Fact>
                     </div>
                 </SectionCard>
             </div>

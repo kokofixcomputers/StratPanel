@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useParams } from 'react-router-dom';
-import { LockClosedIcon, ServerIcon, UploadIcon } from '@heroicons/react/solid';
+import {
+    CalendarIcon,
+    FingerPrintIcon,
+    GlobeAltIcon,
+    LockClosedIcon,
+    ServerIcon,
+    UploadIcon,
+    UserCircleIcon,
+} from '@heroicons/react/solid';
+import Fact from '@/components/admin/Fact';
 import NodeFrame from '@/components/admin/pages/nodes/NodeFrame';
 import { Pill } from '@/components/admin/AdminTable';
 import { Notice, SelectField, Stack, ToggleField } from '@/components/admin/forms';
@@ -18,13 +27,6 @@ import {
     useNode,
     useNodeCertificate,
 } from '@/api/admin/nodes';
-
-const Fact = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className={'flex justify-between gap-4 py-2 text-sm'}>
-        <dt className={'text-neutral-400'}>{label}</dt>
-        <dd className={'min-w-0 break-words text-right text-neutral-100'}>{children}</dd>
-    </div>
-);
 
 const SOURCES: Record<string, string> = {
     pushed: 'the panel (this page)',
@@ -96,16 +98,18 @@ export default () => {
                         </p>
                     ) : (
                         <dl className={'divide-y divide-neutral-500'}>
-                            <Fact label={'Covers'}>{certificate.names.join(', ')}</Fact>
-                            <Fact label={'From'}>
+                            <Fact label={'Covers'} icon={GlobeAltIcon}>
+                                {certificate.names.join(', ')}
+                            </Fact>
+                            <Fact label={'From'} icon={UserCircleIcon}>
                                 {SOURCES[certificate.source] ??
                                     'a temporary certificate nothing trusts, made by the node until it gets one'}
                             </Fact>
-                            <Fact label={'Ends'}>
+                            <Fact label={'Ends'} icon={CalendarIcon}>
                                 {new Date(certificate.not_after).toLocaleString()}{' '}
                                 {new Date(certificate.not_after) < new Date() && <Pill tone={'red'}>Expired</Pill>}
                             </Fact>
-                            <Fact label={'Fingerprint'}>
+                            <Fact label={'Fingerprint'} icon={FingerPrintIcon}>
                                 <code className={'text-xs'}>{certificate.fingerprint}</code>
                             </Fact>
                         </dl>

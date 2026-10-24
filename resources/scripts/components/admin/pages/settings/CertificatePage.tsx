@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, LockClosedIcon, RefreshIcon } from '@heroicons/react/solid';
+import {
+    ArrowLeftIcon,
+    CalendarIcon,
+    ClockIcon,
+    FingerPrintIcon,
+    GlobeAltIcon,
+    LockClosedIcon,
+    OfficeBuildingIcon,
+    RefreshIcon,
+} from '@heroicons/react/solid';
+import Fact from '@/components/admin/Fact';
 import SettingsFrame from '@/components/admin/pages/settings/SettingsFrame';
 import AdminLink from '@/components/admin/AdminLink';
 import { Pill } from '@/components/admin/AdminTable';
@@ -14,13 +24,6 @@ import { Dialog } from '@/components/elements/dialog';
 import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
 import { CertificateDetail, deleteSetting, saveSetting, useSetting } from '@/api/admin/settings';
-
-const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className={'flex justify-between gap-4 py-2 text-sm'}>
-        <dt className={'text-neutral-400'}>{label}</dt>
-        <dd className={'min-w-0 break-words text-right text-neutral-100'}>{children}</dd>
-    </div>
-);
 
 /** Admin > Settings > Certificates > one certificate: what it covers, its settings, renewing it, deleting it. */
 export default () => {
@@ -87,22 +90,26 @@ export default () => {
                 <div className={'space-y-4 lg:col-span-2'}>
                     <SectionCard icon={<LockClosedIcon className={'h-5 w-5'} />} title={'Certificate'}>
                         <dl className={'divide-y divide-neutral-500'}>
-                            <Row label={'Covers'}>{data.domains.join(', ')}</Row>
-                            <Row label={'Issued by'}>{data.issuer || 'unknown'}</Row>
-                            <Row label={'Valid from'}>
+                            <Fact label={'Covers'} icon={GlobeAltIcon}>
+                                {data.domains.join(', ')}
+                            </Fact>
+                            <Fact label={'Issued by'} icon={OfficeBuildingIcon}>
+                                {data.issuer || 'unknown'}
+                            </Fact>
+                            <Fact label={'Valid from'} icon={ClockIcon}>
                                 {data.not_before ? new Date(data.not_before).toLocaleString() : ''}
-                            </Row>
-                            <Row label={'Ends'}>
+                            </Fact>
+                            <Fact label={'Ends'} icon={CalendarIcon}>
                                 {data.not_after ? new Date(data.not_after).toLocaleString() : ''}{' '}
                                 {(data.expired || data.expiring) && (
                                     <Pill tone={data.expired ? 'red' : 'yellow'}>
                                         {ends(data.days_left, data.expired, data.expiring, data.not_after)}
                                     </Pill>
                                 )}
-                            </Row>
-                            <Row label={'Fingerprint'}>
+                            </Fact>
+                            <Fact label={'Fingerprint'} icon={FingerPrintIcon}>
                                 <code className={'text-xs'}>{data.fingerprint}</code>
-                            </Row>
+                            </Fact>
                         </dl>
                     </SectionCard>
                     {can && (

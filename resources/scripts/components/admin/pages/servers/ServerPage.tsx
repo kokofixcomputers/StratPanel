@@ -1,19 +1,27 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { InformationCircleIcon } from '@heroicons/react/solid';
+import {
+    ChipIcon,
+    ClockIcon,
+    CollectionIcon,
+    CubeIcon,
+    DatabaseIcon,
+    FingerPrintIcon,
+    GlobeAltIcon,
+    HashtagIcon,
+    InformationCircleIcon,
+    LightningBoltIcon,
+    LinkIcon,
+    TagIcon,
+    ViewGridIcon,
+} from '@heroicons/react/solid';
+import Fact from '@/components/admin/Fact';
 import ServerFrame from '@/components/admin/pages/servers/ServerFrame';
 import AdminLink from '@/components/admin/AdminLink';
 import { Pill } from '@/components/admin/AdminTable';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
 import { useServer } from '@/api/admin/servers';
-
-const Fact = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className={'flex justify-between gap-4 py-2 text-sm'}>
-        <dt className={'text-neutral-400'}>{label}</dt>
-        <dd className={'min-w-0 break-words text-right text-neutral-100'}>{children}</dd>
-    </div>
-);
 
 const Stat = ({ title, value, sub }: { title: string; value: string; sub?: string }) => (
     <div className={'rounded-xl border border-neutral-500 bg-white p-4 shadow-md'}>
@@ -49,32 +57,46 @@ export default () => {
                     title={'Information'}
                 >
                     <dl className={'divide-y divide-neutral-500'}>
-                        <Fact label={'Internal identifier'}>{data.id}</Fact>
-                        <Fact label={'External identifier'}>{data.external_id ?? 'Not set'}</Fact>
-                        <Fact label={'UUID / Docker container ID'}>
+                        <Fact label={'Internal identifier'} icon={HashtagIcon}>
+                            {data.id}
+                        </Fact>
+                        <Fact label={'External identifier'} icon={LinkIcon}>
+                            {data.external_id ?? 'Not set'}
+                        </Fact>
+                        <Fact label={'UUID / Docker container ID'} icon={FingerPrintIcon}>
                             <code className={'text-xs'}>{data.uuid}</code>
                         </Fact>
-                        <Fact label={'Current egg'}>
+                        <Fact label={'Current egg'} icon={CubeIcon}>
                             <AdminLink to={`/admin/nests/view/${data.nest.id}`}>{data.nest.name}</AdminLink> ::{' '}
                             <AdminLink to={`/admin/nests/egg/${data.egg.id}`}>{data.egg.name}</AdminLink>
                         </Fact>
-                        <Fact label={'Server name'}>{data.name}</Fact>
-                        <Fact label={'CPU limit'}>{limit(data.cpu, '%').replace('Unlimited', 'Unlimited')}</Fact>
-                        <Fact label={'CPU pinning'}>{data.threads || 'Not set'}</Fact>
-                        <Fact label={'Memory / swap'}>
+                        <Fact label={'Server name'} icon={TagIcon}>
+                            {data.name}
+                        </Fact>
+                        <Fact label={'CPU limit'} icon={ChipIcon}>
+                            {limit(data.cpu, '%').replace('Unlimited', 'Unlimited')}
+                        </Fact>
+                        <Fact label={'CPU pinning'} icon={ViewGridIcon}>
+                            {data.threads || 'Not set'}
+                        </Fact>
+                        <Fact label={'Memory / swap'} icon={LightningBoltIcon}>
                             {limit(data.memory)} /{' '}
                             {data.swap === 0 ? 'Not set' : data.swap === -1 ? 'Unlimited' : `${data.swap} MiB`}
                         </Fact>
-                        <Fact label={'Disk space'}>{limit(data.disk)}</Fact>
-                        <Fact label={'Block IO weight'}>{data.io}</Fact>
-                        <Fact label={'Default connection'}>
+                        <Fact label={'Disk space'} icon={DatabaseIcon}>
+                            {limit(data.disk)}
+                        </Fact>
+                        <Fact label={'Block IO weight'} icon={ClockIcon}>
+                            {data.io}
+                        </Fact>
+                        <Fact label={'Default connection'} icon={GlobeAltIcon}>
                             {data.allocation && (
                                 <code className={'text-xs'}>
                                     {data.allocation.ip}:{data.allocation.port}
                                 </code>
                             )}
                         </Fact>
-                        <Fact label={'Connection alias'}>
+                        <Fact label={'Connection alias'} icon={CollectionIcon}>
                             {data.allocation?.has_alias ? (
                                 <code className={'text-xs'}>
                                     {data.allocation.alias}:{data.allocation.port}
