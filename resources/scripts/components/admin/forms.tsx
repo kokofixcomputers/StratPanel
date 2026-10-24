@@ -256,3 +256,53 @@ export const CheckList = ({
         </div>
     );
 };
+
+/** A row of joined choices where one is on, in the tint the rest of the app uses for what is chosen. */
+export function SegmentedSwitch<T extends string | number>({
+    value,
+    options,
+    onChange,
+    label,
+    disabled = false,
+    className,
+}: {
+    value: T;
+    options: { value: T; label: string }[];
+    onChange: (value: T) => void;
+    label: string;
+    disabled?: boolean;
+    className?: string;
+}) {
+    return (
+        <div
+            role={'radiogroup'}
+            aria-label={label}
+            className={classNames('inline-flex rounded-lg border border-neutral-500 p-0.5', className)}
+        >
+            {options.map((option) => {
+                const on = option.value === value;
+
+                return (
+                    <button
+                        key={String(option.value)}
+                        type={'button'}
+                        role={'radio'}
+                        aria-checked={on}
+                        disabled={disabled}
+                        onClick={() => onChange(option.value)}
+                        className={classNames(
+                            'flex-1 whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                            {
+                                'bg-primary-50 text-primary-700 shadow-sm': on,
+                                'text-neutral-300 hover:bg-neutral-600': !on && !disabled,
+                                'text-neutral-400': !on && disabled,
+                            }
+                        )}
+                    >
+                        {option.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}

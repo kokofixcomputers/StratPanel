@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import classNames from 'classnames';
 import { useHistory } from 'react-router-dom';
 import { KeyIcon } from '@heroicons/react/solid';
 import AdminPage from '@/components/admin/AdminPage';
 import { AdminTable, Cell, Row } from '@/components/admin/AdminTable';
-import { Notice, TextField } from '@/components/admin/forms';
+import { Notice, SegmentedSwitch, TextField } from '@/components/admin/forms';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
@@ -66,42 +65,16 @@ export default () => {
                             <Row key={resource}>
                                 <Cell className={'font-medium'}>{label(resource)}</Cell>
                                 <Cell>
-                                    <div
-                                        role={'radiogroup'}
-                                        aria-label={label(resource)}
-                                        className={
-                                            'ml-auto flex w-full max-w-xs overflow-hidden rounded-lg border border-neutral-500'
-                                        }
-                                    >
-                                        {(
-                                            [
-                                                ['none', 'None'],
-                                                ['read', 'Read'],
-                                                ['write', 'Read & write'],
-                                            ] as [Level, string][]
-                                        ).map(([option, text]) => (
-                                            <button
-                                                key={option}
-                                                type={'button'}
-                                                role={'radio'}
-                                                aria-checked={level(resource) === option}
-                                                onClick={() => setChosen({ ...chosen, [resource]: option })}
-                                                className={classNames(
-                                                    'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
-                                                    {
-                                                        'bg-neutral-500 text-neutral-50':
-                                                            level(resource) === option && option === 'none',
-                                                        'bg-primary-600 text-white':
-                                                            level(resource) === option && option !== 'none',
-                                                        'text-neutral-300 hover:bg-neutral-600':
-                                                            level(resource) !== option,
-                                                    }
-                                                )}
-                                            >
-                                                {text}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <SegmentedSwitch
+                                        label={label(resource)}
+                                        value={level(resource)}
+                                        options={[
+                                            { value: 'none', label: 'None' },
+                                            { value: 'read', label: 'Read' },
+                                            { value: 'write', label: 'Read & write' },
+                                        ]}
+                                        onChange={(option) => setChosen({ ...chosen, [resource]: option })}
+                                    />
                                 </Cell>
                             </Row>
                         ))}

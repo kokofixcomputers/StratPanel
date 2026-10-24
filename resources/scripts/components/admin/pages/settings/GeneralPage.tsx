@@ -1,7 +1,7 @@
 import React from 'react';
 import { CogIcon } from '@heroicons/react/solid';
 import SettingsFrame from '@/components/admin/pages/settings/SettingsFrame';
-import { Columns, SelectField, TextField } from '@/components/admin/forms';
+import { Columns, SegmentedSwitch, SelectField, TextField } from '@/components/admin/forms';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
@@ -50,28 +50,13 @@ export default () => {
                             <p className={'mb-1 text-sm font-medium text-neutral-200'}>
                                 Require 2-factor authentication
                             </p>
-                            <div
-                                className={'flex overflow-hidden rounded-lg border border-neutral-500'}
-                                role={'radiogroup'}
-                            >
-                                {LEVELS.map((level) => (
-                                    <button
-                                        key={level.value}
-                                        type={'button'}
-                                        role={'radio'}
-                                        aria-checked={values.two_factor === level.value}
-                                        disabled={!can}
-                                        onClick={() => set({ two_factor: level.value })}
-                                        className={
-                                            values.two_factor === level.value
-                                                ? 'flex-1 bg-primary-600 px-3 py-2 text-sm text-white'
-                                                : 'flex-1 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-600'
-                                        }
-                                    >
-                                        {level.label}
-                                    </button>
-                                ))}
-                            </div>
+                            <SegmentedSwitch
+                                label={'Require 2-factor authentication'}
+                                value={values.two_factor}
+                                disabled={!can}
+                                options={LEVELS}
+                                onChange={(two_factor) => set({ two_factor })}
+                            />
                             <p className={'input-help'}>
                                 Anybody in the chosen group has to have 2-factor authentication enabled to use the
                                 panel.
