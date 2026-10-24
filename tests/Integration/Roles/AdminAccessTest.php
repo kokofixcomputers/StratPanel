@@ -39,7 +39,7 @@ class AdminAccessTest extends RoleTestCase
 
         // The pages that are not part of the React app yet (Blade) have the same light and dark theme as the panel: its variables, the
         // choice kept in the browser and a way to change it.
-        $this->page('/admin/nodes')->assertOk()
+        $this->page('/admin/servers')->assertOk()
             ->assertSee('themes/pterodactyl/css/panel-theme.css', false)
             ->assertSee('stratosphere:theme', false)
             ->assertSee('id="admin-theme-toggle"', false);
@@ -142,12 +142,12 @@ class AdminAccessTest extends RoleTestCase
 
     public function testTheSidebarOnlyShowsWhatIsOpen(): void
     {
-        $this->actingAs($this->userWith(['overview.view', 'users.view', 'nodes.view']));
-        $html = $this->sidebar($this->page('/admin/nodes')->assertOk()->getContent());
+        $this->actingAs($this->userWith(['overview.view', 'users.view', 'servers.view']));
+        $html = $this->sidebar($this->page('/admin/servers')->assertOk()->getContent());
 
         $this->assertStringContainsString(route('admin.users'), $html);
-        $this->assertStringContainsString(route('admin.nodes'), $html);
-        $this->assertStringNotContainsString('href="' . route('admin.servers') . '"', $html);
+        $this->assertStringContainsString(route('admin.servers'), $html);
+        $this->assertStringNotContainsString('href="' . route('admin.nodes') . '"', $html);
         $this->assertStringNotContainsString('href="' . route('admin.roles') . '"', $html);
         $this->assertStringNotContainsString('href="' . route('admin.extensions') . '"', $html);
         $this->assertStringNotContainsString('Application API', $html);
@@ -156,7 +156,7 @@ class AdminAccessTest extends RoleTestCase
     public function testRootAdminsSeeTheWholeSidebar(): void
     {
         $this->actingAs($this->rootAdmin());
-        $html = $this->sidebar($this->page('/admin/nodes')->assertOk()->getContent());
+        $html = $this->sidebar($this->page('/admin/servers')->assertOk()->getContent());
 
         foreach (['admin.users', 'admin.servers', 'admin.nodes', 'admin.roles', 'admin.extensions', 'admin.mounts', 'admin.nests', 'admin.locations', 'admin.databases', 'admin.api.index'] as $route) {
             $this->assertStringContainsString('href="' . route($route) . '"', $html, $route);

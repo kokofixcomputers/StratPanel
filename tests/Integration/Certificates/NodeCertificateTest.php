@@ -372,8 +372,13 @@ class NodeCertificateTest extends CertificateTestCase
         ]];
         $this->actingAs($this->root());
 
-        $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk()
-            ->assertSee('What the node has')->assertSee('temporary certificate')->assertSee('Wild')->assertSee('Enable https on this node');
+        $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk()->assertSee('<div id="app"></div>', false);
+        $json = $this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->assertOk()->json();
+        $this->assertTrue($json['live']['present']);
+        $this->assertSame('self-signed', $json['live']['certificate']['source']);
+        $this->assertSame(['Wild'], array_column($json['certificates'], 'name'));
+        $this->assertTrue($json['certificates'][0]['covers']);
+        $this->assertSame('Wild', $json['candidate']['name']);
     }
 
     public function testThePageWorksAfterACertificateWasGivenToTheNode(): void
@@ -384,11 +389,11 @@ class NodeCertificateTest extends CertificateTestCase
         $this->nodes()->push($node, $certificate);
         $this->actingAs($this->root());
 
-        // The date of the push is shown as "x minutes ago" and the error, once there was one, as text.
-        $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk()->assertSee('Last given a certificate');
+        $this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->assertOk()->assertJsonPath('assigned.name', 'Wild');
+        $this->assertNotNull($this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->json('node.pushed_at'));
 
         $node->forceFill(['certificate_error' => 'it broke'])->save();
-        $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk()->assertSee('it broke');
+        $this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->assertOk()->assertJsonPath('node.error', 'it broke');
     }
 
     public function testThePageSaysWhenTheNodeCanNotBeAsked(): void
@@ -397,7 +402,7 @@ class NodeCertificateTest extends CertificateTestCase
         $this->wings->liveError = 'connection refused';
         $this->actingAs($this->root());
 
-        $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk()->assertSee('could not be asked');
+        $this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->assertOk()->assertJsonPath('live.present', false)->assertJsonStructure(['live' => ['error']]);
     }
 
     public function testTheChoiceIsSaved(): void
@@ -406,14 +411,14 @@ class NodeCertificateTest extends CertificateTestCase
         $node = $this->node();
         $this->actingAs($this->root());
 
-        $this->patch('/admin/nodes/view/' . $node->id . '/certificate', ['certificate' => (string) $certificate->id])->assertRedirect();
+        $this->patchJson('/api/client/admin/nodes/' . $node->id . '/certificate', ['certificate' => (string) $certificate->id])->assertOk();
         $this->assertSame($certificate->id, $node->fresh()->certificate_id);
 
-        $this->patch('/admin/nodes/view/' . $node->id . '/certificate', ['certificate' => 'auto'])->assertRedirect();
+        $this->patchJson('/api/client/admin/nodes/' . $node->id . '/certificate', ['certificate' => 'auto'])->assertOk();
         $this->assertNull($node->fresh()->certificate_id);
         $this->assertTrue($node->fresh()->certificate_auto);
 
-        $this->patch('/admin/nodes/view/' . $node->id . '/certificate', ['certificate' => ''])->assertRedirect();
+        $this->patchJson('/api/client/admin/nodes/' . $node->id . '/certificate', ['certificate' => ''])->assertOk();
         $this->assertFalse($node->fresh()->certificate_auto);
     }
 
@@ -424,10 +429,10 @@ class NodeCertificateTest extends CertificateTestCase
         $this->nodes()->choose($node, $certificate->id, false);
         $this->actingAs($this->root());
 
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/push')->assertRedirect()->assertSessionHas('needs_confirmation');
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/push')->assertStatus(400)->assertJsonPath('needs_confirmation', true);
         $this->assertSame([], $this->wings->pushes);
 
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/push', ['confirm' => '1'])->assertRedirect();
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/push', ['confirm' => '1'])->assertOk();
         $this->assertCount(1, $this->wings->pushes);
     }
 
@@ -438,7 +443,7 @@ class NodeCertificateTest extends CertificateTestCase
         $this->nodes()->choose($node, $certificate->id, false);
         $this->actingAs($this->root());
 
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/enable', ['confirm' => '1'])->assertRedirect();
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/enable', ['confirm' => '1'])->assertOk();
 
         $this->assertSame('https', $node->fresh()->scheme);
     }
@@ -448,8 +453,8 @@ class NodeCertificateTest extends CertificateTestCase
         $node = $this->node();
         $this->actingAs($this->root());
 
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/push', ['confirm' => '1'])->assertRedirect();
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/enable', ['confirm' => '1'])->assertRedirect();
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/push', ['confirm' => '1'])->assertStatus(400);
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/enable', ['confirm' => '1'])->assertStatus(400);
 
         $this->assertSame([], $this->wings->pushes);
         $this->assertSame('http', $node->fresh()->scheme);
@@ -466,9 +471,10 @@ class NodeCertificateTest extends CertificateTestCase
         $this->actingAs($viewer->fresh());
 
         $this->page('/admin/nodes/view/' . $node->id . '/certificate')->assertOk();
-        $this->patch('/admin/nodes/view/' . $node->id . '/certificate', ['certificate' => 'auto'])->assertStatus(403);
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/push')->assertStatus(403);
-        $this->post('/admin/nodes/view/' . $node->id . '/certificate/enable')->assertStatus(403);
+        $this->getJson('/api/client/admin/nodes/' . $node->id . '/certificate')->assertOk();
+        $this->patchJson('/api/client/admin/nodes/' . $node->id . '/certificate', ['certificate' => 'auto'])->assertStatus(403);
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/push')->assertStatus(403);
+        $this->postJson('/api/client/admin/nodes/' . $node->id . '/certificate/enable')->assertStatus(403);
         $this->assertSame([], $this->wings->pushes);
     }
 

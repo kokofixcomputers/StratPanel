@@ -172,4 +172,31 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
         Route::get('/{egg}/script', [Admin\EggVariablesController::class, 'script'])->whereNumber('egg')->middleware('admin.can:nests.view');
         Route::patch('/{egg}/script', [Admin\EggVariablesController::class, 'updateScript'])->whereNumber('egg')->middleware('admin.can:eggs.update');
     });
+
+    Route::prefix('/nodes')->group(function () {
+        Route::get('/', [Admin\NodesController::class, 'index'])->middleware('admin.can:nodes.view');
+        Route::get('/form', [Admin\NodesController::class, 'form'])->middleware('admin.can:nodes.create,nodes.update');
+        Route::post('/', [Admin\NodesController::class, 'store'])->middleware('admin.can:nodes.create');
+        Route::post('/update', [Admin\NodesController::class, 'updateAllWings'])->middleware('admin.can:nodes.software');
+        Route::get('/{node}', [Admin\NodesController::class, 'view'])->whereNumber('node')->middleware('admin.can:nodes.view');
+        Route::patch('/{node}', [Admin\NodesController::class, 'updateNode'])->whereNumber('node')->middleware('admin.can:nodes.update');
+        Route::delete('/{node}', [Admin\NodesController::class, 'destroy'])->whereNumber('node')->middleware('admin.can:nodes.delete');
+        Route::get('/{node}/system-information', [Admin\NodesController::class, 'systemInformation'])->whereNumber('node')->middleware('admin.can:nodes.view');
+        Route::post('/{node}/update', [Admin\NodesController::class, 'updateWings'])->whereNumber('node')->middleware('admin.can:nodes.software');
+        Route::get('/{node}/configuration', [Admin\NodesController::class, 'configuration'])->whereNumber('node')->middleware('admin.can:nodes.configuration');
+        Route::post('/{node}/configuration/token', [Admin\NodesController::class, 'token'])->whereNumber('node')->middleware('admin.can:nodes.configuration');
+
+        Route::get('/{node}/allocations', [Admin\NodeAllocationsController::class, 'index'])->whereNumber('node')->middleware('admin.can:nodes.view');
+        Route::post('/{node}/allocations', [Admin\NodeAllocationsController::class, 'store'])->whereNumber('node')->middleware('admin.can:nodes.allocations');
+        Route::delete('/{node}/allocations', [Admin\NodeAllocationsController::class, 'destroyMany'])->whereNumber('node')->middleware('admin.can:nodes.allocations');
+        Route::post('/{node}/allocations/alias', [Admin\NodeAllocationsController::class, 'setAlias'])->whereNumber('node')->middleware('admin.can:nodes.allocations');
+        Route::post('/{node}/allocations/remove-block', [Admin\NodeAllocationsController::class, 'destroyBlock'])->whereNumber('node')->middleware('admin.can:nodes.allocations');
+        Route::delete('/{node}/allocations/{allocation}', [Admin\NodeAllocationsController::class, 'destroy'])->whereNumber(['node', 'allocation'])->middleware('admin.can:nodes.allocations');
+        Route::get('/{node}/servers', [Admin\NodeAllocationsController::class, 'servers'])->whereNumber('node')->middleware('admin.can:nodes.view');
+
+        Route::get('/{node}/certificate', [Admin\NodeCertificateController::class, 'view'])->whereNumber('node')->middleware('admin.can:nodes.view');
+        Route::patch('/{node}/certificate', [Admin\NodeCertificateController::class, 'update'])->whereNumber('node')->middleware('admin.can:nodes.certificate');
+        Route::post('/{node}/certificate/push', [Admin\NodeCertificateController::class, 'push'])->whereNumber('node')->middleware('admin.can:nodes.certificate');
+        Route::post('/{node}/certificate/enable', [Admin\NodeCertificateController::class, 'enableHttps'])->whereNumber('node')->middleware('admin.can:nodes.certificate');
+    });
 });

@@ -16,7 +16,7 @@ class NodeAutoDeployControllerTest extends HttpTestCase
         $node = Node::factory()->for(Location::factory())->create();
 
         $response = $this->actingAs(User::factory()->admin()->create())
-            ->postJson(route('admin.nodes.view.configuration.token', ['node' => $node]));
+            ->postJson('/api/client/admin/nodes/' . $node->id . '/configuration/token');
 
         $response->assertOk();
         $response->assertJsonPath('node', $node->id);

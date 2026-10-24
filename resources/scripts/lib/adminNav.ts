@@ -132,7 +132,7 @@ export const PAGES: AdminPageInfo[] = [
         permissions: ['nodes.view'],
         group: 'infrastructure',
         icon: ChipIcon,
-        ported: false,
+        ported: true,
     },
     {
         key: 'servers',

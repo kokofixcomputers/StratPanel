@@ -283,6 +283,20 @@ api.get('/admin/eggs/:id', (req, res) => res.json(mockEgg));
 api.get('/admin/eggs/:id/variables', (req, res) => res.json({ id: 1, name: 'Paper', nest: { id: 1, name: 'Minecraft' }, variables: [{ id: 1, name: 'Server Jar File', description: 'The name of the server jarfile to run the server with.', env_variable: 'SERVER_JARFILE', default_value: 'server.jar', user_viewable: true, user_editable: true, rules: 'required|regex:/^([\\w\\d._-]+)(\\.jar)$/' }, { id: 2, name: 'Minecraft Version', description: '', env_variable: 'MINECRAFT_VERSION', default_value: 'latest', user_viewable: true, user_editable: false, rules: 'nullable|string|max:20' }] }));
 api.get('/admin/eggs/:id/script', (req, res) => res.json({ id: 1, name: 'Paper', nest: { id: 1, name: 'Minecraft' }, script_install: '#!/bin/ash\ncd /mnt/server\ncurl -o server.jar https://example.com/paper.jar\n', script_container: 'ghcr.io/example/installers:alpine', script_entry: 'ash', script_is_privileged: true, copy_script_from: null, copying_from: null, copy_options: [{ id: 2, name: 'Forge' }], relied_on_by: [] }));
 
+
+const mockNodeInfo = (n) => ({ id: n.id, uuid: 'n' + n.id, name: n.name, description: 'A node', location: { id: 1, short: 'eu', long: 'Europe' }, location_id: 1, public: true, fqdn: n.fqdn, scheme: 'https', behind_proxy: false, maintenance_mode: n.id === 2, cpu_burst_enabled: true, cpu_burst_percent: 100, memory: 32768, memory_overallocate: 0, disk: 512000, disk_overallocate: 0, upload_size: 100, daemonListen: 8080, daemonSFTP: 2022, daemonBase: '/var/lib/pterodactyl/volumes', servers: n.servers, usage: { memory: { value: 20480, max: 32768, percent: 62.5, level: 'ok' }, disk: { value: 400000, max: 512000, percent: 78.1, level: 'warning' } }, wings_latest: '1.12.0' });
+const mockNodes = [{ id: 1, name: 'Frankfurt 1', fqdn: 'fra1.example.com', servers: 5 }, { id: 2, name: 'Helsinki 1', fqdn: 'hel1.example.com', servers: 0 }];
+api.get('/admin/nodes', (req, res) => res.json({ nodes: mockNodes.map((n) => ({ id: n.id, name: n.name, location: 'eu', memory: 32768, disk: 512000, servers: n.servers, secure: true, public: true, maintenance: n.id === 2 })), pagination: { total: 2, count: 2, per_page: 25, current_page: 1, total_pages: 1 }, wings_latest: '1.12.0' }));
+api.get('/admin/nodes/form', (req, res) => res.json({ locations: [{ id: 1, short: 'eu', long: 'Europe' }, { id: 2, short: 'us', long: 'United States' }], secure: false }));
+api.get('/admin/nodes/:id', (req, res) => res.json(mockNodeInfo(mockNodes.find((n) => n.id === Number(req.params.id)) || mockNodes[0])));
+api.get('/admin/nodes/:id/system-information', (req, res) => (Number(req.params.id) === 2 ? res.json({ online: false, error: 'Could not establish a connection to the machine running this server.' }) : res.json({ online: true, version: 'v1.11.9', system: { type: 'Linux', arch: 'amd64', release: '6.8.0', cpus: 16 } })));
+api.get('/admin/nodes/:id/configuration', (req, res) => res.json({ yaml: 'debug: false\nuuid: n1\ntoken_id: abcdef\ntoken: ********\napi:\n  host: 0.0.0.0\n  port: 8080\n', panel_url: 'http://localhost:4000', insecure: true }));
+api.post('/admin/nodes/:id/configuration/token', (req, res) => res.json({ node: 1, token: 'ptla_abc123def456' }));
+const mockAllocs = Array.from({ length: 6 }, (_, i) => ({ id: i + 1, ip: '203.0.113.5', ip_alias: i === 0 ? 'play.example.com' : null, port: 25565 + i, server: i < 2 ? { id: 1, name: 'My server' } : null }));
+api.get('/admin/nodes/:id/allocations', (req, res) => res.json({ allocations: mockAllocs, pagination: { total: 6, count: 6, per_page: 50, current_page: 1, total_pages: 1 }, ips: ['203.0.113.5'] }));
+api.get('/admin/nodes/:id/servers', (req, res) => res.json({ servers: [{ id: 1, uuid_short: '7f3c1d52', name: 'My server', owner: { id: 1, username: 'preview' }, nest: 'Minecraft', egg: 'Paper' }], pagination: { total: 1, count: 1, per_page: 25, current_page: 1, total_pages: 1 } }));
+api.get('/admin/nodes/:id/certificate', (req, res) => res.json({ node: { id: 1, fqdn: 'fra1.example.com', scheme: 'https', port: 8080, certificate_id: null, certificate_auto: true, pushed_at: new Date(Date.now() - 3600e3).toISOString(), error: null }, certificates: [{ id: 1, name: 'Wildcard', domains: ['*.example.com'], covers: true }], candidate: { id: 1, name: 'Wildcard' }, assigned: { id: 1, name: 'Wildcard', fingerprint: 'AB:CD' }, live: { present: true, certificate: { fingerprint: 'AB:CD', names: ['*.example.com'], source: 'pushed', not_after: new Date(Date.now() + 40 * 864e5).toISOString(), not_before: new Date().toISOString() } } }));
+
 api.post('/self-service', (req, res) => res.status(201).json({ object: 'server', attributes: serverAttrs(), meta: { is_server_owner: true, user_permissions: ['*'] } }));
 // The theme editor: kept in memory, a reload shows what was saved.
 let themeSaved = { config: null, css: '', attributes: {} };
@@ -729,7 +743,7 @@ mountCurseForgeImages(app);
 app.use('/js', express.static(path.join(root, 'public/js')));
 app.use('/favicons', express.static(path.join(root, 'public/favicons')));
 // The admin pages that are part of the app are the app; the others are still drawn by the mock of the old pages (admin.js).
-const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates|settings|nests)(\/.*)?)?\/?$/;
+const PORTED_ADMIN = /^\/admin(\/(roles|locations|databases|mounts|users|api|extensions|updates|settings|nests|nodes)(\/.*)?)?\/?$/;
 app.get(/^\/admin(\/.*)?$/, (req, res, next) =>
     PORTED_ADMIN.test(req.path) ? next() : res.send(renderAdmin(req.path.replace(/\/$/, '') || '/admin'))
 );

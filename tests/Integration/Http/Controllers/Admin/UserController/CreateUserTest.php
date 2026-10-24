@@ -10,11 +10,12 @@ class CreateUserTest extends HttpTestCase
     public function testNonAdminCannotAccessEndpoint(): void
     {
         $this->actingAs(User::factory()->create())
-            ->post('/admin/users/new', [
+            ->postJson('/api/client/admin/users', [
                 'email' => 'test@example.com',
                 'username' => 'testuser',
                 'name_first' => 'Test',
                 'name_last' => 'User',
+                'language' => 'en',
             ])
             ->assertForbidden();
     }
@@ -24,14 +25,15 @@ class CreateUserTest extends HttpTestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
-            ->post('/admin/users/new', [
+            ->postJson('/api/client/admin/users', [
                 'email' => 'created.admin@example.com',
                 'username' => 'createdadmin',
                 'name_first' => 'Created',
                 'name_last' => 'Admin',
+                'language' => 'en',
                 'root_admin' => 1,
             ])
-            ->assertSessionHasNoErrors();
+            ->assertStatus(201);
 
         /** @var User $created */
         $created = User::query()->where('username', 'createdadmin')->firstOrFail();

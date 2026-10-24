@@ -177,32 +177,15 @@ Route::group(['prefix' => 'servers'], function () {
 |
 */
 Route::group(['prefix' => 'nodes'], function () {
-    Route::get('/', [Admin\Nodes\NodeController::class, 'index'])->name('admin.nodes')->middleware('admin.can:nodes.view');
-    Route::get('/new', [Admin\NodesController::class, 'create'])->name('admin.nodes.new')->middleware('admin.can:nodes.create');
-    Route::get('/view/{node:id}', [Admin\Nodes\NodeViewController::class, 'index'])->name('admin.nodes.view')->middleware('admin.can:nodes.view');
-    Route::get('/view/{node:id}/settings', [Admin\Nodes\NodeViewController::class, 'settings'])->name('admin.nodes.view.settings')->middleware('admin.can:nodes.view');
-    Route::get('/view/{node:id}/configuration', [Admin\Nodes\NodeViewController::class, 'configuration'])->name('admin.nodes.view.configuration')->middleware('admin.can:nodes.configuration');
-    Route::get('/view/{node:id}/allocation', [Admin\Nodes\NodeViewController::class, 'allocations'])->name('admin.nodes.view.allocation')->middleware('admin.can:nodes.view');
-    Route::get('/view/{node:id}/servers', [Admin\Nodes\NodeViewController::class, 'servers'])->name('admin.nodes.view.servers')->middleware('admin.can:nodes.view');
-    Route::get('/view/{node:id}/system-information', Admin\Nodes\SystemInformationController::class)->middleware('admin.can:nodes.view');
-
-    Route::get('/view/{node:id}/certificate', [Admin\Nodes\NodeCertificateController::class, 'index'])->name('admin.nodes.view.certificate')->middleware('admin.can:nodes.view');
-    Route::patch('/view/{node:id}/certificate', [Admin\Nodes\NodeCertificateController::class, 'update'])->middleware('admin.can:nodes.certificate');
-    Route::post('/view/{node:id}/certificate/push', [Admin\Nodes\NodeCertificateController::class, 'push'])->name('admin.nodes.view.certificate.push')->middleware('admin.can:nodes.certificate');
-    Route::post('/view/{node:id}/certificate/enable', [Admin\Nodes\NodeCertificateController::class, 'enableHttps'])->name('admin.nodes.view.certificate.enable')->middleware('admin.can:nodes.certificate');
-    Route::post('/update', [Admin\Nodes\NodeUpdateController::class, 'all'])->name('admin.nodes.update')->middleware('admin.can:nodes.software');
-    Route::post('/view/{node:id}/update', [Admin\Nodes\NodeUpdateController::class, 'node'])->name('admin.nodes.view.update')->middleware('admin.can:nodes.software');
-    Route::post('/new', [Admin\NodesController::class, 'store'])->middleware('admin.can:nodes.create');
-    Route::post('/view/{node:id}/allocation', [Admin\NodesController::class, 'createAllocation'])->middleware('admin.can:nodes.allocations');
-    Route::post('/view/{node:id}/allocation/remove', [Admin\NodesController::class, 'allocationRemoveBlock'])->name('admin.nodes.view.allocation.removeBlock')->middleware('admin.can:nodes.allocations');
-    Route::post('/view/{node:id}/allocation/alias', [Admin\NodesController::class, 'allocationSetAlias'])->name('admin.nodes.view.allocation.setAlias')->middleware('admin.can:nodes.allocations');
-    Route::post('/view/{node:id}/settings/token', Admin\NodeAutoDeployController::class)->name('admin.nodes.view.configuration.token')->middleware('admin.can:nodes.configuration');
-
-    Route::patch('/view/{node:id}/settings', [Admin\NodesController::class, 'updateSettings'])->middleware('admin.can:nodes.update');
-
-    Route::delete('/view/{node:id}/delete', [Admin\NodesController::class, 'delete'])->name('admin.nodes.view.delete')->middleware('admin.can:nodes.delete');
-    Route::delete('/view/{node:id}/allocation/remove/{allocation:id}', [Admin\NodesController::class, 'allocationRemoveSingle'])->name('admin.nodes.view.allocation.removeSingle')->middleware('admin.can:nodes.allocations');
-    Route::delete('/view/{node:id}/allocations', [Admin\NodesController::class, 'allocationRemoveMultiple'])->name('admin.nodes.view.allocation.removeMultiple')->middleware('admin.can:nodes.allocations');
+    // Part of the React app, see Admin\SpaController; the data comes from the admin API.
+    Route::get('/', Admin\SpaController::class)->name('admin.nodes')->middleware('admin.can:nodes.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.nodes.new')->middleware('admin.can:nodes.create');
+    Route::get('/view/{node:id}', Admin\SpaController::class)->name('admin.nodes.view')->middleware('admin.can:nodes.view');
+    Route::get('/view/{node:id}/settings', Admin\SpaController::class)->name('admin.nodes.view.settings')->middleware('admin.can:nodes.view');
+    Route::get('/view/{node:id}/configuration', Admin\SpaController::class)->name('admin.nodes.view.configuration')->middleware('admin.can:nodes.configuration');
+    Route::get('/view/{node:id}/allocation', Admin\SpaController::class)->name('admin.nodes.view.allocation')->middleware('admin.can:nodes.view');
+    Route::get('/view/{node:id}/servers', Admin\SpaController::class)->name('admin.nodes.view.servers')->middleware('admin.can:nodes.view');
+    Route::get('/view/{node:id}/certificate', Admin\SpaController::class)->name('admin.nodes.view.certificate')->middleware('admin.can:nodes.view');
 });
 
 /*

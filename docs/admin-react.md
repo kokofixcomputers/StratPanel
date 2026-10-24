@@ -8,7 +8,8 @@ sidebar style as the account pages and the same theme. Pages that are not moved 
 
 Overview, Roles, Locations, Databases, Mounts, Users, Application API, Extensions, Updates and all of Settings (general, branding,
 authentication, providers, CurseForge, domains, resource pools, trash, certificates, mail, advanced). Nests and eggs (with their variables and install
-script). The rest (Servers, Nodes) is still Blade.
+script). Nodes (about, settings, configuration, certificate,
+allocations, servers). The rest (Servers) is still Blade.
 
 ## How a moved page works
 

@@ -111,6 +111,27 @@ const EggScriptPage = lazy(
     () => import(/* webpackChunkName: "admin-nests" */ '@/components/admin/pages/nests/EggScriptPage')
 );
 
+const NodesPage = lazy(() => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodesPage'));
+const NodeCreatePage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeCreatePage')
+);
+const NodePage = lazy(() => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodePage'));
+const NodeSettingsPage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeSettingsPage')
+);
+const NodeConfigurationPage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeConfigurationPage')
+);
+const NodeCertificatePage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeCertificatePage')
+);
+const NodeAllocationsPage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeAllocationsPage')
+);
+const NodeServersPage = lazy(
+    () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeServersPage')
+);
+
 export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin', permissions: ['overview.view'], component: OverviewPage },
     { path: '/admin/roles', permissions: ['roles.view'], component: RolesPage },
@@ -177,6 +198,18 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin/nests/egg/:id', permissions: ['nests.view'], component: EggEditor },
     { path: '/admin/nests/egg/:id/variables', permissions: ['nests.view'], component: EggVariablesPage },
     { path: '/admin/nests/egg/:id/scripts', permissions: ['nests.view'], component: EggScriptPage },
+    { path: '/admin/nodes', permissions: ['nodes.view'], component: NodesPage },
+    { path: '/admin/nodes/new', permissions: ['nodes.create'], component: NodeCreatePage },
+    { path: '/admin/nodes/view/:id', permissions: ['nodes.view'], component: NodePage },
+    { path: '/admin/nodes/view/:id/settings', permissions: ['nodes.view'], component: NodeSettingsPage },
+    {
+        path: '/admin/nodes/view/:id/configuration',
+        permissions: ['nodes.configuration'],
+        component: NodeConfigurationPage,
+    },
+    { path: '/admin/nodes/view/:id/certificate', permissions: ['nodes.view'], component: NodeCertificatePage },
+    { path: '/admin/nodes/view/:id/allocation', permissions: ['nodes.view'], component: NodeAllocationsPage },
+    { path: '/admin/nodes/view/:id/servers', permissions: ['nodes.view'], component: NodeServersPage },
     { path: '/admin/api', permissions: ['root'], component: ApiKeysPage },
     { path: '/admin/api/new', permissions: ['root'], component: ApiKeyNewPage },
     { path: '/admin/extensions', permissions: ['extensions.view'], component: ExtensionsPage },

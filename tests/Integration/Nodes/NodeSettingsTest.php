@@ -68,7 +68,7 @@ class NodeSettingsTest extends IntegrationTestCase
         $node = $this->node();
         $root = User::factory()->create(['root_admin' => true]);
 
-        $this->actingAs($root)->patch("/admin/nodes/view/{$node->id}/settings", [
+        $this->actingAs($root)->patchJson("/api/client/admin/nodes/{$node->id}", [
             'name' => 'Renamed node',
             'description' => 'x',
             'location_id' => $node->location_id,
@@ -87,7 +87,7 @@ class NodeSettingsTest extends IntegrationTestCase
             'daemonListen' => 8080,
             'cpu_burst_enabled' => 0,
             'cpu_burst_percent' => 60,
-        ])->assertRedirect();
+        ])->assertOk()->assertJsonPath('name', 'Renamed node')->assertJsonPath('cpu_burst_percent', 60);
 
         $fresh = $node->fresh();
         $this->assertSame('Renamed node', $fresh->name);
@@ -103,21 +103,22 @@ class NodeSettingsTest extends IntegrationTestCase
         $root = User::factory()->create(['root_admin' => true]);
 
         foreach ([0, 101, -3] as $bad) {
-            $this->actingAs($root)->patch("/admin/nodes/view/{$node->id}/settings", [
+            $this->actingAs($root)->patchJson("/api/client/admin/nodes/{$node->id}", [
                 'name' => $node->name, 'location_id' => $node->location_id, 'fqdn' => $node->fqdn, 'scheme' => 'http',
                 'memory' => $node->memory, 'memory_overallocate' => 0, 'disk' => $node->disk, 'disk_overallocate' => 0,
                 'daemonSFTP' => 2022, 'daemonListen' => 8080, 'cpu_burst_enabled' => 1, 'cpu_burst_percent' => $bad,
-            ])->assertStatus(422)->assertSee('cpu_burst_percent');
+            ])->assertStatus(422)->assertJsonFragment(['source_field' => 'cpu_burst_percent']);
         }
         $this->assertSame(100, $node->fresh()->cpu_burst_percent);
     }
 
-    public function testTheSettingsPageShowsTheBurstSetting(): void
+    public function testTheNodeSaysItsBurstSetting(): void
     {
         $node = $this->node(['cpu_burst_percent' => 55]);
         $root = User::factory()->create(['root_admin' => true]);
 
-        $this->actingAs($root)->get("/admin/nodes/view/{$node->id}/settings")->assertOk()->assertSee('CPU Burst')->assertSee('value="55"', false);
+        $this->actingAs($root)->get("/admin/nodes/view/{$node->id}/settings")->assertOk()->assertSee('<div id="app"></div>', false);
+        $this->actingAs($root)->getJson("/api/client/admin/nodes/{$node->id}")->assertOk()->assertJsonPath('cpu_burst_percent', 55)->assertJsonPath('cpu_burst_enabled', true);
     }
 
     public function testTheServiceKeepsItsOwnName(): void

@@ -10,14 +10,14 @@ class DeleteUserTest extends HttpTestCase
     public function testNonAdminCannotAccessEndpoint(): void
     {
         $this->actingAs(User::factory()->create())
-            ->delete(route('admin.users.delete', ['user' => User::factory()->create()]))
+            ->deleteJson('/api/client/admin/users/' . User::factory()->create()->id)
             ->assertForbidden();
     }
 
     public function testCannotDeleteSelf(): void
     {
         $this->actingAs($user = User::factory()->admin()->create())
-            ->delete(route('admin.users.delete', ['user' => $user]))
+            ->deleteJson('/api/client/admin/users/' . $user->id)
             ->assertBadRequest()
             ->assertJsonPath('errors.0.detail', __('admin/user.exceptions.delete_self'));
 
@@ -29,8 +29,8 @@ class DeleteUserTest extends HttpTestCase
         $user = User::factory()->create();
 
         $this->actingAs(User::factory()->admin()->create())
-            ->delete(route('admin.users.delete', ['user' => $user]))
-            ->assertRedirectToRoute('admin.users');
+            ->deleteJson('/api/client/admin/users/' . $user->id)
+            ->assertNoContent();
 
         $this->assertModelMissing($user);
     }

@@ -160,8 +160,8 @@ class UpdatesTest extends IntegrationTestCase
     {
         $node = $this->node('Who');
 
-        $this->as($this->user(['nodes.view', 'nodes.update']))->post('/admin/nodes/view/' . $node->id . '/update')->assertStatus(403);
-        $this->post('/admin/nodes/update')->assertStatus(403);
+        $this->as($this->user(['nodes.view', 'nodes.update']))->postJson('/api/client/admin/nodes/' . $node->id . '/update')->assertStatus(403);
+        $this->postJson('/api/client/admin/nodes/update')->assertStatus(403);
         $this->assertSame([], $this->wings->updated);
     }
 
@@ -170,7 +170,7 @@ class UpdatesTest extends IntegrationTestCase
         $node = $this->node('Who');
         $this->wings->answers[$node->id] = ['from' => 'a', 'to' => 'b', 'updated' => true];
 
-        $this->as($this->user(['nodes.view', 'nodes.software']))->post('/admin/nodes/view/' . $node->id . '/update')->assertOk()->assertJson(['status' => 'updated']);
+        $this->as($this->user(['nodes.view', 'nodes.software']))->postJson('/api/client/admin/nodes/' . $node->id . '/update')->assertOk()->assertJson(['status' => 'updated']);
         $this->assertSame([$node->id], $this->wings->updated);
     }
 
@@ -179,7 +179,7 @@ class UpdatesTest extends IntegrationTestCase
         $node = $this->node('Fail');
         $this->wings->answers[$node->id] = 'unreachable';
 
-        $this->as($this->user([], true))->post('/admin/nodes/view/' . $node->id . '/update')->assertStatus(502)->assertJson(['status' => 'failed']);
+        $this->as($this->user([], true))->postJson('/api/client/admin/nodes/' . $node->id . '/update')->assertStatus(502)->assertJson(['status' => 'failed']);
     }
 
     public function testUpdateAllReturnsEveryNode(): void
@@ -189,7 +189,7 @@ class UpdatesTest extends IntegrationTestCase
         $this->wings->answers[$a->id] = ['from' => 'a', 'to' => 'b', 'updated' => true];
         $this->wings->answers[$b->id] = 'unreachable';
 
-        $ids = collect($this->as($this->user(['nodes.software']))->post('/admin/nodes/update')->assertOk()->json('results'))->pluck('node');
+        $ids = collect($this->as($this->user(['nodes.software']))->postJson('/api/client/admin/nodes/update')->assertOk()->json('results'))->pluck('node');
 
         $this->assertTrue($ids->contains($a->id) && $ids->contains($b->id));
     }
