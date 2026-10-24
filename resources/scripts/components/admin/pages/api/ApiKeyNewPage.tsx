@@ -61,22 +61,48 @@ export default () => {
                         <Button.Text onClick={() => all('write')}>Read &amp; write all</Button.Text>
                         <Button.Text onClick={() => all('none')}>None all</Button.Text>
                     </div>
-                    <AdminTable heads={['Resource', 'Read', 'Read & write', 'None']}>
+                    <AdminTable heads={['Resource', 'Access']}>
                         {data.resources.map((resource) => (
                             <Row key={resource}>
                                 <Cell className={'font-medium'}>{label(resource)}</Cell>
-                                {(['read', 'write', 'none'] as Level[]).map((option) => (
-                                    <Cell key={option} className={classNames('text-center')}>
-                                        <input
-                                            type={'radio'}
-                                            className={'form-input'}
-                                            name={`level-${resource}`}
-                                            aria-label={`${label(resource)} ${option}`}
-                                            checked={level(resource) === option}
-                                            onChange={() => setChosen({ ...chosen, [resource]: option })}
-                                        />
-                                    </Cell>
-                                ))}
+                                <Cell>
+                                    <div
+                                        role={'radiogroup'}
+                                        aria-label={label(resource)}
+                                        className={
+                                            'ml-auto flex w-full max-w-xs overflow-hidden rounded-lg border border-neutral-500'
+                                        }
+                                    >
+                                        {(
+                                            [
+                                                ['none', 'None'],
+                                                ['read', 'Read'],
+                                                ['write', 'Read & write'],
+                                            ] as [Level, string][]
+                                        ).map(([option, text]) => (
+                                            <button
+                                                key={option}
+                                                type={'button'}
+                                                role={'radio'}
+                                                aria-checked={level(resource) === option}
+                                                onClick={() => setChosen({ ...chosen, [resource]: option })}
+                                                className={classNames(
+                                                    'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                                                    {
+                                                        'bg-neutral-500 text-neutral-50':
+                                                            level(resource) === option && option === 'none',
+                                                        'bg-primary-600 text-white':
+                                                            level(resource) === option && option !== 'none',
+                                                        'text-neutral-300 hover:bg-neutral-600':
+                                                            level(resource) !== option,
+                                                    }
+                                                )}
+                                            >
+                                                {text}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Cell>
                             </Row>
                         ))}
                     </AdminTable>
