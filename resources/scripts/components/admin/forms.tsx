@@ -291,7 +291,7 @@ export function SegmentedSwitch<T extends string | number>({
                         disabled={disabled}
                         onClick={() => onChange(option.value)}
                         className={classNames(
-                            'flex-1 whitespace-nowrap rounded-md px-4 py-2 text-[15px] font-medium transition-colors',
+                            'flex-1 whitespace-nowrap rounded-md px-3.5 py-1.5 text-[13px] font-medium transition-colors',
                             {
                                 'bg-primary-50 text-primary-700 shadow-sm': on,
                                 'text-neutral-300 hover:bg-neutral-600': !on && !disabled,
