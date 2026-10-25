@@ -159,6 +159,13 @@ Route::group([
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });
 
+    Route::group(['prefix' => '/split'], function () {
+        Route::get('/', [Client\Servers\SplitController::class, 'index']);
+        Route::post('/', [Client\Servers\SplitController::class, 'store']);
+        Route::put('/', [Client\Servers\SplitController::class, 'update']);
+        Route::delete('/{part}', [Client\Servers\SplitController::class, 'delete']);
+    });
+
     Route::group(['prefix' => '/trash'], function () {
         Route::get('/', [Client\Servers\TrashController::class, 'index']);
         Route::delete('/', [Client\Servers\TrashController::class, 'empty']);

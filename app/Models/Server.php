@@ -334,6 +334,26 @@ class Server extends Model implements Identifiable
     }
 
     /**
+     * The server this one was split off, whose memory, disk and CPU it shares (see ServerSplitService).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_server_id');
+    }
+
+    /**
+     * The servers that were split off this one.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Server, $this>
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_server_id')->orderBy('id');
+    }
+
+    /**
      * The domains that lead to this server (the Minecraft router sends them to an allocation).
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\ServerDomain, $this>

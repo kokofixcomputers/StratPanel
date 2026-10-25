@@ -72,7 +72,7 @@ const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', server_owner: true, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -654,6 +654,35 @@ api.get('/account/passkeys', (req, res) => res.json({ enabled: true, data: mockP
 api.delete('/account/passkeys/:id', (req, res) => {
     mockPasskeys = mockPasskeys.filter((k) => String(k.id) !== req.params.id);
     res.status(204).end();
+});
+
+// Splitting the server into parts that share its resources.
+let mockParts = [
+    { uuid: SHORT, name: 'kokotest', is_root: true, memory: 3072, disk: 8192, cpu: 150 },
+    { uuid: 'aa11bb22', name: 'Lobby', is_root: false, memory: 1024, disk: 2048, cpu: 50 },
+];
+const splitState = () => ({
+    root: SHORT, current: SHORT, can_manage: true, splittable: true, is_part: false, max_parts: 9,
+    minimum: { memory: 512, disk: 1024, cpu: 50 },
+    total: ['memory', 'disk', 'cpu'].reduce((o, k) => ({ ...o, [k]: mockParts.reduce((n, p) => n + p[k], 0) }), {}),
+    parts: mockParts,
+});
+api.get('/servers/:id/split', (req, res) => res.json(splitState()));
+api.post('/servers/:id/split', (req, res) => {
+    const { name, memory, disk, cpu } = req.body;
+    mockParts[0] = { ...mockParts[0], memory: mockParts[0].memory - memory, disk: mockParts[0].disk - disk, cpu: mockParts[0].cpu - cpu };
+    mockParts.push({ uuid: Math.random().toString(16).slice(2, 10), name, is_root: false, memory, disk, cpu });
+    res.status(201).json(splitState());
+});
+api.put('/servers/:id/split', (req, res) => {
+    req.body.parts.forEach((p) => { const m = mockParts.find((x) => x.uuid === p.uuid); if (m) Object.assign(m, { memory: p.memory, disk: p.disk, cpu: p.cpu }); });
+    res.json(splitState());
+});
+api.delete('/servers/:id/split/:part', (req, res) => {
+    const gone = mockParts.find((p) => p.uuid === req.params.part);
+    mockParts = mockParts.filter((p) => p !== gone);
+    mockParts[0] = { ...mockParts[0], memory: mockParts[0].memory + gone.memory, disk: mockParts[0].disk + gone.disk, cpu: mockParts[0].cpu + gone.cpu };
+    res.json(splitState());
 });
 
 // The trash bin of the server.

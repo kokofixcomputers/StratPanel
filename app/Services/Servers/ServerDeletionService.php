@@ -56,6 +56,11 @@ class ServerDeletionService
             Log::warning($exception);
         }
 
+        // A server that was split off another one gives what it had back.
+        if ($server->parent_server_id) {
+            app(ServerSplitService::class)->giveBack($server);
+        }
+
         // Names under the domains of the admin take their DNS records with them (the rows go with the server).
         $managed = app(\Pterodactyl\Services\Domains\ManagedDomainService::class);
         \Pterodactyl\Models\ServerDomain::query()->with('zone')->where('server_id', $server->id)->whereNotNull('dns_zone_id')->get()

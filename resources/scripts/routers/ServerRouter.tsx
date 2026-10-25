@@ -36,6 +36,7 @@ export default () => {
 
     // Whoever may open every server also gets past a server that is installing or suspended, and may jump to it in the admin area.
     const rootAdmin = useStoreState((state) => state.user.data!.canAccessAllServers);
+    const isOwner = ServerContext.useStoreState((state) => !!state.server.data?.isOwner);
     const trashEnabled = ServerContext.useStoreState((state) => !!state.server.data?.trash.enabled);
     const adminArea = useStoreState((state) => state.user.data!.canAccessAdmin);
     const [error, setError] = useState('');
@@ -135,6 +136,8 @@ export default () => {
                                     .filter((route) => !!route.name)
                                     // The trash bin is on the menu while it is on.
                                     .filter((route) => route.path !== '/trash' || trashEnabled)
+                                    // Only the owner of the server splits it.
+                                    .filter((route) => route.path !== '/split' || isOwner)
                                     // Proxies have no player list of their own to manage.
                                     .filter(
                                         (route) => !(isProxy && (route.path === '/players' || route.path === '/tools'))
@@ -177,6 +180,7 @@ export default () => {
                                         (route) =>
                                             !!route.name &&
                                             (route.path !== '/trash' || trashEnabled) &&
+                                            (route.path !== '/split' || isOwner) &&
                                             !(isProxy && (route.path === '/players' || route.path === '/tools'))
                                     )
                                     .map((route) => ({

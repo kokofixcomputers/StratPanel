@@ -14,6 +14,7 @@ import PlayersContainer from '@/components/server/players/PlayersContainer';
 import ContentContainer from '@/components/server/content/ContentContainer';
 import WorldsContainer from '@/components/server/worlds/WorldsContainer';
 import ProjectPage from '@/components/server/content/ProjectPage';
+import SplitContainer from '@/components/server/split/SplitContainer';
 import TrashContainer from '@/components/server/trash/TrashContainer';
 import ImporterContainer from '@/components/server/importer/ImporterContainer';
 import ToolsContainer from '@/components/server/tools/ToolsContainer';
@@ -210,6 +211,13 @@ export default {
             permission: 'allocation.*',
             name: 'Domains',
             component: DomainsContainer,
+        },
+        {
+            // Only on the menu for the owner of the server, see ServerRouter.
+            path: '/split',
+            permission: null,
+            name: 'Split',
+            component: SplitContainer,
         },
         {
             // Only on the menu while the trash bin is on, see ServerRouter.
