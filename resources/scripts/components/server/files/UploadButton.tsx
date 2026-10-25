@@ -23,6 +23,48 @@ function isFileOrDirectory(event: DragEvent): boolean {
     return event.dataTransfer.types.some((value) => value.toLowerCase() === 'files');
 }
 
+interface Item {
+    file: File;
+    // The folder the file goes in, relative to the open directory ('' for the directory itself).
+    folder: string;
+}
+
+const readEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
+    new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+
+// readEntries gives a limited batch at a time, so it is called until it returns nothing.
+async function walk(entry: FileSystemEntry, folder: string, out: Item[]): Promise<void> {
+    if (entry.isFile) {
+        const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject));
+        out.push({ file, folder });
+        return;
+    }
+
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    const path = folder ? `${folder}/${entry.name}` : entry.name;
+    for (;;) {
+        const batch = await readEntries(reader);
+        if (!batch.length) break;
+        for (const child of batch) await walk(child, path, out);
+    }
+}
+
+// The entries have to be taken from the event before anything is awaited, the browser empties it afterwards.
+async function collectDropped(data: DataTransfer): Promise<Item[]> {
+    const entries = Array.from(data.items || [])
+        .map((item) => (item.kind === 'file' && item.webkitGetAsEntry ? item.webkitGetAsEntry() : null))
+        .filter((entry): entry is FileSystemEntry => !!entry);
+
+    if (!entries.length) {
+        return Array.from(data.files).map((file) => ({ file, folder: '' }));
+    }
+
+    const out: Item[] = [];
+    for (const entry of entries) await walk(entry, '', out);
+
+    return out;
+}
+
 export default ({ className }: WithClassname) => {
     const fileUploadInput = useRef<HTMLInputElement>(null);
 
@@ -30,7 +72,7 @@ export default ({ className }: WithClassname) => {
     const timeouts = useSignal<NodeJS.Timeout[]>([]);
 
     const { mutate } = useFileManagerSwr();
-    const { addError, clearAndAddHttpError } = useFlashKey('files');
+    const { clearAndAddHttpError } = useFlashKey('files');
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const directory = ServerContext.useStoreState((state) => state.files.directory);
@@ -62,17 +104,16 @@ export default ({ className }: WithClassname) => {
         setUploadProgress({ name, loaded: data.loaded });
     };
 
-    const onFileSubmission = (files: FileList) => {
+    const onFileSubmission = (list: Item[]) => {
         clearAndAddHttpError();
-        const list = Array.from(files);
-        if (list.some((file) => !file.type && (!file.size || file.size === 4096))) {
-            return addError('Folder uploads are not supported.', 'Error');
-        }
+        if (!list.length) return;
 
-        const uploads = list.map((file) => {
+        const uploads = list.map(({ file, folder }) => {
             const controller = new AbortController();
+            const name = folder ? `${folder}/${file.name}` : file.name;
+            const target = folder ? `${directory.replace(/\/+$/, '')}/${folder}` : directory;
             pushFileUpload({
-                name: file.name,
+                name,
                 data: { abort: controller, loaded: 0, total: file.size },
             });
 
@@ -85,11 +126,11 @@ export default ({ className }: WithClassname) => {
                             {
                                 signal: controller.signal,
                                 headers: { 'Content-Type': 'multipart/form-data' },
-                                params: { directory },
-                                onUploadProgress: (data) => onUploadProgress(data, file.name),
+                                params: { directory: target },
+                                onUploadProgress: (data) => onUploadProgress(data, name),
                             }
                         )
-                        .then(() => timeouts.value.push(setTimeout(() => removeFileUpload(file.name), 500)))
+                        .then(() => timeouts.value.push(setTimeout(() => removeFileUpload(name), 500)))
                 );
         });
 
@@ -115,7 +156,9 @@ export default ({ className }: WithClassname) => {
                             visible.value = false;
                             if (!e.dataTransfer?.files.length) return;
 
-                            onFileSubmission(e.dataTransfer.files);
+                            collectDropped(e.dataTransfer)
+                                .then(onFileSubmission)
+                                .catch((error) => clearAndAddHttpError(error));
                         }}
                     >
                         <div className={'w-full flex items-center justify-center pointer-events-none'}>
@@ -126,7 +169,7 @@ export default ({ className }: WithClassname) => {
                             >
                                 <CloudUploadIcon className={'w-10 h-10 flex-shrink-0 text-primary-600'} />
                                 <p className={'font-header flex-1 text-lg text-neutral-50 text-center'}>
-                                    Drag and drop files to upload.
+                                    Drag and drop files or folders to upload.
                                 </p>
                             </div>
                         </div>
@@ -140,7 +183,7 @@ export default ({ className }: WithClassname) => {
                 onChange={(e) => {
                     if (!e.currentTarget.files) return;
 
-                    onFileSubmission(e.currentTarget.files);
+                    onFileSubmission(Array.from(e.currentTarget.files).map((file) => ({ file, folder: '' })));
                     if (fileUploadInput.current) {
                         fileUploadInput.current.files = null;
                     }
