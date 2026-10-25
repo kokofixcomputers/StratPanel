@@ -14,7 +14,7 @@ use Pterodactyl\Services\Certificates\CertificateService;
 use Pterodactyl\Services\Nodes\NodeCertificateService;
 use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface;
 
-/** The certificates the panel is served with over https (by panel-edge, see tools/panel-edge), for the admin pages. */
+/** The certificates the panel is served with over https (by the edge, see tools/stratnet/edge), for the admin pages. */
 class CertificatesController extends Controller
 {
     public function __construct(

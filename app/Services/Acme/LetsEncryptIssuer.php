@@ -6,7 +6,7 @@ use Pterodactyl\Models\AcmeChallenge;
 use skoerfgen\ACMECert\ACME_Exception;
 
 /**
- * Gets a certificate from Let's Encrypt with the http-01 challenge: Let's Encrypt asks the domain over http (port 80, which panel-edge
+ * Gets a certificate from Let's Encrypt with the http-01 challenge: Let's Encrypt asks the domain over http (port 80, which the edge
  * answers by passing it to the panel) for a token the panel put in the database, and when it gets the right answer it signs.
  */
 class LetsEncryptIssuer implements AcmeIssuer

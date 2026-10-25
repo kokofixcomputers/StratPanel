@@ -5,21 +5,12 @@ set -euo pipefail
 
 VERSION="${1:-}"
 
-echo "Building the Minecraft router..."
+echo "Building stratosphere-net (the Minecraft router and the https edge of the panel)..."
 (
-  cd tools/mc-router
+  cd tools/stratnet
   go test ./...
   for arch in amd64 arm64; do
-    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "dist/mc-router-linux-$arch" .
-  done
-)
-
-echo "Building panel-edge (https for the panel)..."
-(
-  cd tools/panel-edge
-  go test ./...
-  for arch in amd64 arm64; do
-    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "dist/panel-edge-linux-$arch" .
+    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags "-s -w" -o "dist/stratosphere-net-linux-$arch" .
   done
 )
 

@@ -250,7 +250,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Lets users point their own domain at a server. The domain only needs an A record that points at
-    | the machine running the Minecraft router (tools/mc-router), which reads the address a player typed
+    | the machine running the Minecraft router (tools/stratnet/router), which reads the address a player typed
     | and forwards the connection to the matching allocation.
     */
 

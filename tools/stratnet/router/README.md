@@ -1,11 +1,13 @@
-# mc-router
+# The router (part of stratosphere-net)
+
+One of the two parts of `stratosphere-net`, the program in `tools/stratnet` (the other one is [the edge](../edge/README.md)). They share one binary, one service (`stratosphere-net`) and one settings file (`/etc/stratosphere-net.env`); `ENABLE_ROUTER` switches this part on or off, and the router settings there start with `ROUTER_` (`ROUTER_TOKEN`, `ROUTER_LISTEN`, `ROUTER_REFRESH`, `ROUTER_PANEL_URL`).
 
 Custom domains for Minecraft servers on your panel. A player types `play.example.com` (default port), the router
 reads the address from the first packet of the connection and forwards the player to the matching server allocation.
 The domain owner only needs an **A record** pointing at the machine this runs on.
 
 ```
-player ── play.example.com:25565 ──▶ mc-router ──▶ node-ip:allocation-port (the server)
+player ── play.example.com:25565 ──▶ router ──▶ node-ip:allocation-port (the server)
 ```
 
 ## Quick install (recommended)
@@ -17,7 +19,7 @@ cd /var/www/pterodactyl
 sudo php artisan p:router:install
 ```
 
-(`sudo bash tools/mc-router/install.sh` does exactly the same thing.) That's all. It installs the right binary for your CPU, creates the secret shared with the panel, runs the database
+(`sudo bash tools/stratnet/install.sh router` does exactly the same thing.) That's all. It installs the right binary for your CPU, creates the secret shared with the panel, runs the database
 migration, starts the service and opens the port in ufw. After that, users add an A record pointing at the machine and
 add the domain in a server's **Domains** tab.
 
@@ -35,15 +37,7 @@ add the domain in a server's **Domains** tab.
    sudo php artisan config:clear
    ```
 
-2. Install the binary (use `mc-router-linux-arm64` on ARM machines), the config and the service:
-
-   ```bash
-   sudo install -m 755 dist/mc-router-linux-amd64 /usr/local/bin/mc-router
-   sudo cp mc-router.env.example /etc/mc-router.env && sudo nano /etc/mc-router.env
-   sudo cp mc-router.service /etc/systemd/system/mc-router.service
-   sudo systemctl daemon-reload && sudo systemctl enable --now mc-router
-   sudo journalctl -u mc-router -f
-   ```
+2. Run `sudo bash tools/stratnet/install.sh router` (it installs the binary for your CPU, `/etc/stratosphere-net.env` and the service). Logs: `sudo journalctl -u stratosphere-net -f`. An older `mc-router` install is moved over by it.
 
 3. Open port 25565 in the firewall. **Nothing else may listen on 25565 on this machine**, if one of your own servers
    uses that port, give it another one.
@@ -57,7 +51,7 @@ add the domain in a server's **Domains** tab.
   when they try to join. The router asks the panel why, so the message is specific: the server is off, starting up,
   shutting down, suspended or still being installed. Suspended and installing servers are never connected to. If the
   panel cannot be reached the player is simply told the server is off. The wording can be changed with `OFFLINE_MOTD`,
-  `STARTING_MOTD`, `STOPPING_MOTD`, `SUSPENDED_MOTD` and `INSTALLING_MOTD` (see `mc-router.env.example`).
+  `STARTING_MOTD`, `STOPPING_MOTD`, `SUSPENDED_MOTD` and `INSTALLING_MOTD` (see `stratosphere-net.env.example`).
 - The panel can replace the wording per server: an extension (the sample Offline MOTD, for one) adds a `notice` with a label and a
   message to the answer of `/api/router/state`, and the router shows that instead of its own wording. Suspended and installing
   servers always keep the router's wording, and waking a sleeping server on join comes first.

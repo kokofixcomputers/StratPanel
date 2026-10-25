@@ -9,7 +9,7 @@ server's **Settings** page (Auto Sleep). Turning it off again forgets everything
 - **On or off** (off by default).
 - **How long nobody has been online** before the server sleeps: 5, 10, 15 (default), 30 minutes, 1, 2 or 4 hours.
 - **Wake it when a player tries to join** (on by default). This needs the server to have a domain on the Minecraft router (see
-  `tools/mc-router`), because a stopped server has nothing that could notice a player. Without it the server is started from the
+  `tools/stratnet/router`), because a stopped server has nothing that could notice a player. Without it the server is started from the
   panel, and the Settings page says so.
 
 Changing it needs the **`settings.auto-sleep`** permission (owners and admins have it, subusers only when it is given to them).
@@ -38,7 +38,7 @@ The sleep and wake are in the activity log of the server.
 
 ## Settings of the router
 
-The messages can be changed with `SLEEPING_MOTD` and `WAKING_MOTD` in `/etc/mc-router.env`, see `tools/mc-router/README.md`. The
+The messages can be changed with `SLEEPING_MOTD` and `WAKING_MOTD` in `/etc/stratosphere-net.env`, see `tools/stratnet/router/README.md`. The
 router has to be updated for waking to work (`sudo php artisan p:router:install` again installs the new one).
 
 ## Limits

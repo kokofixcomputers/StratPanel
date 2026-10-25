@@ -1,11 +1,11 @@
-// panel-edge serves the panel over HTTPS with the certificates that were added in the panel (Admin > Settings > Certificates).
+// Package edge serves the panel over HTTPS with the certificates that were added in the panel (Admin > Settings > Certificates).
 //
 // PHP can not terminate TLS by itself, the web server does. This small program is that: it listens on the HTTPS port, picks the
 // certificate that belongs to the domain the browser asked for (SNI, wildcards included), and passes the request on to the web server
 // that runs the panel (nginx on port 80 for example), with the X-Forwarded-* headers that tell the panel the visitor used https.
 // The certificates are fetched from the panel with a secret that is only for this, and are checked again every minute, so a
 // certificate that is added, replaced or removed in the panel is in use within a minute and nothing has to be restarted.
-package main
+package edge
 
 import (
 	"context"
@@ -21,11 +21,9 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -226,8 +224,11 @@ type config struct {
 	HTTPListen string
 }
 
+// Getenv is where the settings are read from, see the router's.
+var Getenv = os.Getenv
+
 func env(name, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+	if value := strings.TrimSpace(Getenv(name)); value != "" {
 		return value
 	}
 
@@ -240,7 +241,7 @@ func loadConfig() (config, error) {
 		Token:    env("EDGE_TOKEN", ""),
 		Listen:   env("LISTEN", ":443"),
 		Backend:  env("BACKEND", "http://127.0.0.1:80"),
-		State:    env("STATE_FILE", "/var/lib/panel-edge/certificates.json"),
+		State:    env("STATE_FILE", "/var/lib/stratosphere-net/certificates.json"),
 
 		HTTPListen: env("HTTP_LISTEN", ""),
 	}
@@ -383,14 +384,22 @@ func tlsConfig(s *store) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS12, GetCertificate: s.getCertificate}
 }
 
-func main() {
+// Enabled says whether the edge has what it needs to run: the panel and its secret.
+func Enabled() bool {
+	_, err := loadConfig()
+
+	return err == nil
+}
+
+// Run is the edge: it listens until the context ends. An error is a reason it could not start or that it stopped.
+func Run(ctx context.Context) error {
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	handler, err := newProxy(cfg.Backend, cfg.HSTS)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	s := newStore()
@@ -400,9 +409,6 @@ func main() {
 		// The first refresh must not be told "nothing changed" by an old tag, it asks again with what the panel has.
 		s.etag = ""
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	client := &http.Client{Timeout: 20 * time.Second}
 	refresh(ctx, client, cfg, s)
@@ -435,7 +441,7 @@ func main() {
 			_ = plain.Shutdown(shutdown)
 		}()
 		go func() {
-			log.Printf("panel-edge listening on %s for http (redirects to https where there is a certificate)", cfg.HTTPListen)
+			log.Printf("edge listening on %s for http (redirects to https where there is a certificate)", cfg.HTTPListen)
 			if err := plain.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				log.Printf("http on %s stopped: %v", cfg.HTTPListen, err)
 			}
@@ -457,10 +463,12 @@ func main() {
 		_ = server.Shutdown(shutdown)
 	}()
 
-	log.Printf("panel-edge listening on %s, passing requests to %s", cfg.Listen, cfg.Backend)
+	log.Printf("edge listening on %s, passing requests to %s", cfg.Listen, cfg.Backend)
 	if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 // edge decides where a request goes: the domain of a server that is served over the web goes to its allocation, everything else to the

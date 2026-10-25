@@ -8,7 +8,7 @@ return [
     |
     | Set under Admin > Settings > Certificates. When on, the Domains tab of a server gets a button that gets a free certificate from
     | Let's Encrypt for the domain, with nothing to set up by hand: the panel answers the challenge, adds the certificate under
-    | Certificates and renews it before it ends. It needs panel-edge listening on port 80 (the challenge is answered over http).
+    | Certificates and renews it before it ends. It needs the edge listening on port 80 (the challenge is answered over http).
     */
     'enabled' => false,
 

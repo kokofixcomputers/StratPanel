@@ -28,7 +28,7 @@ configuration, installs the systemd service if there is none, and starts Wings.
 
 ## The panel, router and edge on the panel machine
 
-**Admin > Updates** (root admins only) can update the panel itself, and `mc-router` and `panel-edge` (it restarts their services):
+**Admin > Updates** (root admins only) can update the panel itself, and `stratosphere-net` (the router and the edge in one program; it restarts the service):
 
 * **Update the panel**: downloads `panel.tar.gz` (latest release or nightly, your choice) and does what `tools/update-panel.sh` does, as root:
   backs up the current files (`/var/backups/stratosphere`, the last three are kept), `php artisan down`, extracts the archive over the panel,
@@ -38,8 +38,10 @@ configuration, installs the systemd service if there is none, and starts Wings.
   in place (the result says so). The panel always comes out of maintenance mode. The page shows the maintenance screen for a minute or two
   and picks up the result by itself.
 
+* **Older installs:** the separate `mc-router` and `panel-edge` services are moved into `stratosphere-net` (settings copied into `/etc/stratosphere-net.env`, old units removed, rolled back if anything fails) by `tools/stratnet/install.sh` or by the first router/edge update after the updater itself was updated.
+
 * **Update router and edge only**: the same download, but only the two binaries are taken out of it.
-* **Update from the files on this machine**: uses `tools/mc-router/dist` and `tools/panel-edge/dist` of the panel, so what you extracted last.
+* **Update from the files on this machine**: uses `tools/stratnet/dist` of the panel, so what you extracted last.
 * The download is `PANEL_TAR_URL` (the latest release) or, with *Nightly* chosen, `PANEL_TAR_NIGHTLY_URL`
   (`.../releases/download/nightly/panel.tar.gz`).
 
@@ -58,11 +60,11 @@ and shown on the page. While it works the status says which step it is at (`down
 
 **Backups.** Every panel update first saves the panel files to `/var/backups/stratosphere` (the last three are kept). The Backups box on the Updates page lists them (the updater writes `storage/app/updates/backups.json`, because that folder is root's), and can **restore** one or **delete** it. A restore saves the current files first as `panel-backup-...-before.tar.gz` (never pruned by a restore), puts the chosen files back, runs composer, clears caches and restarts the queue worker. **The database is not rolled back**: a backup from before a migration may not work with the newer database.
 
-Because the web user owns the panel files, a hacked panel could replace the binaries in `tools/*/dist` and have root run them. For that reason
+Because the web user owns the panel files, a hacked panel could replace the binaries in `tools/stratnet/dist` and have root run them. For that reason
 **the files on this machine are only used when they do not belong to the web user**: run this once after extracting the panel,
 
 ```bash
-sudo chown -R root: tools/mc-router/dist tools/panel-edge/dist
+sudo chown -R root: tools/stratnet/dist
 ```
 
 The download does not have this limit, it comes from the release, not from a folder the panel can write to. (`ALLOW_WEB_OWNED=1` in

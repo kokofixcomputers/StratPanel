@@ -1,0 +1,23 @@
+[Unit]
+Description=Stratosphere net (the Minecraft router for custom domains and the https edge of the panel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/stratosphere-net.env
+ExecStart=/usr/local/bin/stratosphere-net
+Restart=always
+RestartSec=3
+# Needed to listen on the default Minecraft port (25565, the router doesn't need it) and on 443 and 80 (the edge) when not running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+DynamicUser=yes
+# The last certificates of the edge are kept here (private keys: only this service can read it).
+StateDirectory=stratosphere-net
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

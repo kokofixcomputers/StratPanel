@@ -1,9 +1,9 @@
-// mc-router sends Minecraft Java connections to the right server based on the address the player typed.
+// Package router sends Minecraft Java connections to the right server based on the address the player typed.
 //
 // Players connect to a custom domain on the default port 25565. The first packet of every Minecraft connection (the
 // handshake) contains that domain, so the router reads it, looks it up in the list of domains the panel knows about,
 // and forwards the connection to the matching allocation. Nothing but an A record is needed for the domain.
-package main
+package router
 
 import (
 	"bufio"
@@ -19,11 +19,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -84,8 +82,12 @@ type router struct {
 	states  map[string]cachedState
 }
 
+// Getenv is where the settings are read from. The program sets it so that the router and the edge can each have their own LISTEN
+// and REFRESH in the same environment file (see main.go); the tests use the real environment.
+var Getenv = os.Getenv
+
 func envOr(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
+	if value := Getenv(key); value != "" {
 		return value
 	}
 
@@ -105,11 +107,11 @@ func loadConfig() config {
 
 	return config{
 		Listen:        envOr("LISTEN", ":25565"),
-		PanelURL:      strings.TrimRight(os.Getenv("PANEL_URL"), "/"),
-		Token:         os.Getenv("ROUTER_TOKEN"),
-		MappingFile:   os.Getenv("MAPPING_FILE"),
+		PanelURL:      strings.TrimRight(Getenv("PANEL_URL"), "/"),
+		Token:         Getenv("ROUTER_TOKEN"),
+		MappingFile:   Getenv("MAPPING_FILE"),
 		Refresh:       refresh,
-		ProxyProtocol: os.Getenv("PROXY_PROTOCOL") == "1",
+		ProxyProtocol: Getenv("PROXY_PROTOCOL") == "1",
 		UnknownMOTD:   motdOr("UNKNOWN_MOTD", "§cNo server is set up for this address."),
 		OfflineMOTD:   motdOr("OFFLINE_MOTD", "§eThis server is off.\n§7Come back once it has been started."),
 		StartingMOTD:  motdOr("STARTING_MOTD", "§aThis server is starting...\n§7See you soon!"),
@@ -637,36 +639,42 @@ func (r *router) handle(client net.Conn) {
 	<-done
 }
 
-func main() {
+// Enabled says whether the router has what it needs to run: the panel and its secret, or a fixed list of domains.
+func Enabled() bool {
+	cfg := loadConfig()
+
+	return cfg.MappingFile != "" || (cfg.PanelURL != "" && cfg.Token != "")
+}
+
+// Run is the router: it listens until the context ends. An error is a reason it could not start.
+func Run(ctx context.Context) error {
 	cfg := loadConfig()
 	if cfg.MappingFile == "" && (cfg.PanelURL == "" || cfg.Token == "") {
-		log.Fatal("set PANEL_URL and ROUTER_TOKEN (or MAPPING_FILE for a static list)")
+		return errors.New("set PANEL_URL and ROUTER_TOKEN (or MAPPING_FILE for a static list)")
 	}
 
 	r := &router{cfg: cfg, routes: map[string]route{}}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	if err := r.refresh(ctx); err != nil {
-		log.Printf("could not load domains yet, will keep retrying: %v", err)
+		log.Printf("router: could not load domains yet, will keep retrying: %v", err)
 	}
 	go r.poll(ctx)
 
 	listener, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	go func() {
 		<-ctx.Done()
 		_ = listener.Close()
 	}()
 
-	log.Printf("mc-router (sleep and wake, panel notices) listening on %s", cfg.Listen)
+	log.Printf("router (sleep and wake, panel notices) listening on %s", cfg.Listen)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			if ctx.Err() != nil {
-				return
+				return nil
 			}
 			continue
 		}

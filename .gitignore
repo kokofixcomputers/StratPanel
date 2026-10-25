@@ -40,8 +40,7 @@ result
 /panel-ui.tar.gz
 /panel.tar.gz
 .serena
-/tools/mc-router/dist
-/tools/panel-edge/dist
+/tools/stratnet/dist
 /public/tools
 /.cache
 /public/branding

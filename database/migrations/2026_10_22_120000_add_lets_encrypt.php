@@ -9,7 +9,7 @@ return new class () extends Migration {
      * Run the migrations.
      *
      * Free certificates from Let's Encrypt for the domains of servers: the answers to the challenges it asks, where a certificate came
-     * from, and which domains are served over the web (http and https) by panel-edge.
+     * from, and which domains are served over the web (http and https) by the edge.
      */
     public function up(): void
     {
@@ -28,7 +28,7 @@ return new class () extends Migration {
         });
 
         Schema::table('server_domains', function (Blueprint $table) {
-            // Served over the web by panel-edge: http (with a redirect to https once there is a certificate) and https, to the allocation.
+            // Served over the web by the edge: http (with a redirect to https once there is a certificate) and https, to the allocation.
             $table->boolean('web')->default(false);
             $table->unsignedInteger('certificate_id')->nullable();
             // none, pending, issued or failed (what asking Let's Encrypt came to).

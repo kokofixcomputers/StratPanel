@@ -57,7 +57,7 @@ class LetsEncryptTest extends CertificateTestCase
         return $this->app->make(\Pterodactyl\Services\Certificates\CertificateService::class);
     }
 
-    /** panel-edge is there and answers on port 80. */
+    /** The edge is there and answers on port 80. */
     private function edgeIsThere(array $features = ['http']): void
     {
         $this->certs()->edgeSeen('127.0.0.1', 0, $features);
@@ -688,7 +688,7 @@ class LetsEncryptTest extends CertificateTestCase
         $domain = $this->domain('never.le-test.example');
         $this->actingAs($this->admin());
 
-        // The domain does not point at the panel, and panel-edge does not answer on port 80.
+        // The domain does not point at the panel, and the edge does not answer on port 80.
         $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => $domain->id, 'method' => 'http'])->assertStatus(400);
         $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => 999999, 'method' => 'http'])->assertStatus(422);
         $this->postJson('/api/client/admin/settings/certificates/letsencrypt/issue', ['domain_id' => $domain->id, 'method' => 'ftp'])->assertStatus(422);

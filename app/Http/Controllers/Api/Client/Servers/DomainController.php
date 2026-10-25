@@ -159,7 +159,7 @@ class DomainController extends ClientApiController
             'dns_ok' => $domain->pointsAtRouter($target),
             // What the domain leads to as the panel sees it, and what it should lead to: for when it does not match yet.
             'dns' => ['resolves_to' => $domain->resolvedAddresses(), 'expected' => ServerDomain::routerAddresses($target)],
-            // Served over the web (http, and https once there is a certificate) by panel-edge, and the state of that certificate.
+            // Served over the web (http, and https once there is a certificate) by the edge, and the state of that certificate.
             'https' => app(DomainCertificateService::class)->describe($domain),
             'created_at' => $domain->created_at?->toAtomString(),
         ];

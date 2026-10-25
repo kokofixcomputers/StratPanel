@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Runs as root when the panel asks for it (see stratosphere-updater.path): puts the newest router (mc-router) and edge (panel-edge) in
-# place and restarts them, and can update the panel itself. The panel can ask for exactly these things, written as one word in
+# Runs as root when the panel asks for it (see stratosphere-updater.path): puts the newest stratosphere-net (the router and the edge in one program) in
+# place and restarts it (and moves a machine that still has the old mc-router and panel-edge to it), and can update the panel itself. The panel can ask for exactly these things, written as one word in
 # $PANEL_DIR/storage/app/updates/request:
 #   local             use the binaries in $PANEL_DIR/tools/*/dist
 #   download          fetch the panel.tar.gz of the latest release first and use the binaries in it
 #   download-nightly  the same with the nightly build
-#   panel             update the panel from the panel.tar.gz of the latest release (the steps of tools/update-panel.sh), then the router and edge
+#   panel             update the panel from the panel.tar.gz of the latest release (the steps of tools/update-panel.sh), then stratosphere-net
 #   panel-nightly     the same with the nightly build
 # Nothing else the panel writes is used: the address to download from and the paths are from /etc/stratosphere-updater.env.
 set -uo pipefail
@@ -114,15 +114,15 @@ case "$ACTION" in
     mkdir "$TMP/x"
     # Only the binaries are taken out of the archive, nothing else of it is touched. Each one on its own: an older archive may not have
     # all of them, and tar fails when a pattern finds nothing.
-    for tool in mc-router panel-edge; do
-      tar -xzf "$TMP/panel.tar.gz" -C "$TMP/x" --wildcards "*tools/$tool/dist/*" 2> /dev/null || true
+    for pattern in "*tools/stratnet/dist/*" "*tools/stratnet/stratosphere-net.service" "*tools/stratnet/migrate-legacy.sh"; do
+      tar -xzf "$TMP/panel.tar.gz" -C "$TMP/x" --wildcards "$pattern" 2> /dev/null || true
     done
     tar -xzf "$TMP/panel.tar.gz" -C "$TMP/x" --wildcards "*tools/updater/*" 2> /dev/null || true
     FOUND="$(find "$TMP/x" -type d -path '*tools/*/dist' | head -n1)"
     if [ -n "$FOUND" ]; then
       SRC="$(dirname "$(dirname "$FOUND")")"
     elif [ "${ACTION#panel}" = "$ACTION" ]; then
-      note download failed "the archive has no router or edge binaries"
+      note download failed "the archive has no stratosphere-net binary"
       exit 0
     else
       SRC="$TMP/x/tools"
@@ -139,29 +139,58 @@ if [ -z "$ARCH" ]; then
   exit 0
 fi
 
-update() { # name
-  local name="$1" built="$SRC/$1/dist/$1-linux-$ARCH" target="$BIN_DIR/$1"
+# Files the panel's own user can replace would let a hacked panel run code as root, so those are only used from the download.
+refuse_web_owned() { # file name
+  if [ "$ACTION" = local ] && [ "${ALLOW_WEB_OWNED:-0}" != 1 ]; then
+    local owner
+    owner="$(stat -c %U "$1" 2> /dev/null || stat -f %Su "$1")"
+    if [ "$owner" = "$WEB_USER" ]; then
+      note "$2" failed "$1 belongs to $WEB_USER. Run: chown -R root: $SRC/stratnet (or use the download)"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+# Puts the new stratosphere-net in place, or moves the old mc-router and panel-edge to it.
+update_net() {
+  local name=stratosphere-net built="$SRC/stratnet/dist/stratosphere-net-linux-$ARCH" target="$BIN_DIR/stratosphere-net"
+  local legacy=0
   if ! $UNIT_EXISTS "$name" > /dev/null 2>&1; then
-    note "$name" missing "not installed on this machine"
-    return
+    # Machines made before the two were one program: move them to it, with their settings.
+    if $UNIT_EXISTS mc-router > /dev/null 2>&1 || $UNIT_EXISTS panel-edge > /dev/null 2>&1; then
+      legacy=1
+    else
+      note "$name" missing "not installed on this machine"
+      return
+    fi
   fi
   if [ ! -f "$built" ]; then
     if [ "$ACTION" = local ]; then
       note "$name" failed "no build at $built"
     else
-      note "$name" failed "this download has no $name build (it is older than $name), try the nightly"
+      note "$name" failed "this download has no $name build, try the nightly"
     fi
     return
   fi
-  # Files the panel's own user can replace would let a hacked panel run code as root, so those are only used from the download.
-  if [ "$ACTION" = local ] && [ "${ALLOW_WEB_OWNED:-0}" != 1 ]; then
-    local owner
-    owner="$(stat -c %U "$built" 2> /dev/null || stat -f %Su "$built")"
-    if [ "$owner" = "$WEB_USER" ]; then
-      note "$name" failed "$built belongs to $WEB_USER. Run: chown -R root: $SRC/$name/dist (or use the download)"
+  refuse_web_owned "$built" "$name" && return
+
+  if [ "$legacy" = 1 ]; then
+    local unit="$SRC/stratnet/stratosphere-net.service" script="$SRC/stratnet/migrate-legacy.sh" out
+    if [ ! -f "$unit" ] || [ ! -f "$script" ]; then
+      note "$name" failed "this download cannot move mc-router and panel-edge to $name (the files for it are missing)"
       return
     fi
+    refuse_web_owned "$script" "$name" && return
+    if out="$(BIN_DIR="$BIN_DIR" SETTLE="$SETTLE" bash "$script" "$built" "$unit" 2>&1)"; then
+      note "$name" updated "mc-router and panel-edge were moved to $name"
+    else
+      note "$name" failed "the move to $name failed, the old programs run again ($(printf '%s' "$out" | tail -n 1))"
+    fi
+    return
   fi
+
   if cmp -s "$built" "$target"; then
     note "$name" current "already the newest build"
     return
@@ -337,6 +366,5 @@ case "$ACTION" in
 esac
 
 progress tools
-update mc-router
-update panel-edge
+update_net
 exit 0

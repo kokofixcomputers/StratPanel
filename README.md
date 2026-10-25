@@ -126,7 +126,7 @@ cd /var/www/pterodactyl
 sudo php artisan p:router:install
 ```
 
-Make sure nothing else on that machine uses port 25565. See [tools/mc-router](tools/mc-router/README.md) for details.
+Make sure nothing else on that machine uses port 25565. See [tools/stratnet/router](tools/stratnet/router/README.md) for details.
 Set `PTERODACTYL_DOMAINS_TARGET_IP` in `.env` if your panel is reached through an internal address.
 
 ## Development
@@ -141,7 +141,7 @@ yarn build:production
 `yarn preview` runs the real frontend against an in-memory mock of the panel API and a fake Wings console, so you can
 work on the UI without PHP, a database or Wings. Add `PREVIEW_PROXY=1` to preview a Velocity server.
 
-The router in `tools/mc-router` is a small Go program (`go test ./...`, `go build`).
+The router in `tools/stratnet/router` is a small Go program (`go test ./...`, `go build`).
 
 ## Credits
 

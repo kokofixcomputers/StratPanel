@@ -20,9 +20,9 @@ class InstallRouterCommand extends Command
             return self::FAILURE;
         }
 
-        $script = base_path('tools/mc-router/install.sh');
+        $script = base_path('tools/stratnet/install.sh');
         if (!is_file($script)) {
-            $this->error('Could not find tools/mc-router/install.sh, make sure the panel files are complete.');
+            $this->error('Could not find tools/stratnet/install.sh, make sure the panel files are complete.');
 
             return self::FAILURE;
         }
@@ -31,7 +31,7 @@ class InstallRouterCommand extends Command
         $owner = function_exists('posix_getpwuid') ? (posix_getpwuid((int) fileowner(storage_path())) ?: []) : [];
 
         $process = new Process(
-            ['bash', $script],
+            ['bash', $script, 'router'],
             base_path(),
             ['PANEL_DIR' => base_path(), 'WEB_USER' => $owner['name'] ?? 'www-data']
         );

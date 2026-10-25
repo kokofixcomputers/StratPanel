@@ -2,7 +2,7 @@
 # Builds panel.tar.gz (and panel-ui.tar.gz) in the repository root from this checkout, with the same contents as
 # .github/scripts/package.sh. That script deletes directories in place and is meant for CI, this one only reads.
 # Run it after the frontend is built (webpack --mode production) and, if the helper plugin or the tools changed,
-# after they were built too: public/helper, public/tools and tools/mc-router/dist are taken as they are.
+# after they were built too: public/helper, public/tools and tools/stratnet/dist are taken as they are.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -13,7 +13,7 @@ trap 'rm -f "$LIST"' EXIT
 # needed on a server.
 {
   git ls-files --cached --others --exclude-standard
-  find public/assets public/themes public/helper public/tools tools/mc-router/dist tools/panel-edge/dist dist/extensions -type f 2>/dev/null
+  find public/assets public/themes public/helper public/tools tools/stratnet/dist dist/extensions -type f 2>/dev/null
 } | sort -u | grep -v -E '^(node_modules|tests|preview|helper-plugin|helper-mod|docs|\.serena|CONTRIBUTING\.md|flake\.lock|flake\.nix|phpunit\.xml|shell\.nix|panel(-ui)?\.tar\.gz)(/|$)' \
   | grep -v -E '(^|/)(\._[^/]*|\.DS_Store)$' \
   | grep -E '^([^.]|\.editorconfig$|\.env\.example$|\.eslintignore$|\.eslintrc\.js$|\.gitignore$|\.prettierrc\.json$)' \

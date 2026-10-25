@@ -14,7 +14,7 @@ use Pterodactyl\Repositories\Wings\DaemonServerRepository;
 
 /**
  * Auto sleep: a server that nobody has been on for a while is stopped to give back its memory, and started again when a
- * player tries to join through the router (see tools/mc-router). It is off for every server until the owner turns it on.
+ * player tries to join through the router (see tools/stratnet/router). It is off for every server until the owner turns it on.
  *
  * Once a minute {@see check} looks at every server that has it on. The players are counted by asking the server itself, the way
  * the server list of the game does, so nothing has to be installed on it.

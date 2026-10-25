@@ -196,7 +196,7 @@ export default () => {
                                 onChange={(name) => setValues({ ...values, name })}
                             />
                             <ToggleField
-                                label={'On: panel-edge uses it'}
+                                label={'On: the edge uses it'}
                                 checked={values.enabled}
                                 disabled={!can}
                                 onChange={(enabled) => setValues({ ...values, enabled })}

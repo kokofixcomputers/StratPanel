@@ -38,4 +38,4 @@ systemctl enable --now stratosphere-updater.path
 echo
 echo "Done. The panel can now update the router and the edge: Admin > Updates."
 echo "To use the files on this machine (not only the download), the binaries must not belong to $WEB_USER:"
-echo "  sudo chown -R root: $PANEL_DIR/tools/mc-router/dist $PANEL_DIR/tools/panel-edge/dist"
+echo "  sudo chown -R root: $PANEL_DIR/tools/stratnet"

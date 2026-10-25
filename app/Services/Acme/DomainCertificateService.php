@@ -30,7 +30,7 @@ class DomainCertificateService
         return (bool) config('acme.enabled');
     }
 
-    /** Whether panel-edge answers on port 80 (it asked for its certificates lately and said it does): without it nothing can be proven. */
+    /** Whether the edge answers on port 80 (it asked for its certificates lately and said it does): without it nothing can be proven. */
     public function httpReady(): bool
     {
         $edge = $this->certificates->lastEdge();
@@ -57,7 +57,7 @@ class DomainCertificateService
         if (!$this->enabled()) {
             $reason = 'Let\'s Encrypt is not turned on on this panel.';
         } elseif (!$this->httpReady()) {
-            $reason = 'The panel is not set up to answer on port 80 (panel-edge with HTTP_LISTEN), which Let\'s Encrypt needs.';
+            $reason = 'The panel is not set up to answer on port 80 (the edge with HTTP_LISTEN), which Let\'s Encrypt needs.';
         }
 
         $expiring = $certificate !== null && $certificate->acme_method === 'dns' && $certificate->not_after?->lt(now()->addDays((int) config('acme.renew_days', 30)));
@@ -91,7 +91,7 @@ class DomainCertificateService
             throw new DisplayException('Let\'s Encrypt is not turned on on this panel.');
         }
         if (!$this->httpReady()) {
-            throw new DisplayException('This needs panel-edge to answer on port 80. Ask the admin to set it up (HTTP_LISTEN in /etc/panel-edge.env).');
+            throw new DisplayException('This needs the edge to answer on port 80. Ask the admin to set it up (HTTP_LISTEN in /etc/stratosphere-net.env).');
         }
         if ($domain->certificate_status === 'pending') {
             throw new DisplayException('A certificate is being requested for this domain already.');
@@ -177,7 +177,7 @@ class DomainCertificateService
 
         $method = $certificate->acme_method === 'dns' ? 'dns' : 'http';
         if ($method === 'http' && !$this->httpReady()) {
-            throw new DisplayException('This needs panel-edge to answer on port 80 (HTTP_LISTEN in /etc/panel-edge.env).');
+            throw new DisplayException('This needs the edge to answer on port 80 (HTTP_LISTEN in /etc/stratosphere-net.env).');
         }
 
         $domain->forceFill(['web' => true, 'certificate_status' => 'pending', 'certificate_message' => null, 'dns_name' => null, 'dns_value' => null])->save();

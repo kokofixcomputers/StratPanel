@@ -50,7 +50,7 @@ final class AdminDestinations
         ['settings.providers.update', 'admin.settings.providers.new', 'Add a sign-in provider', 'action', 'new oauth github discord'],
         ['root', 'admin.updates', 'Update the panel', 'action', 'update upgrade install nightly release restart'],
         ['root', 'admin.updates', 'Restore a panel backup', 'action', 'undo rollback revert restore backups'],
-        ['root', 'admin.updates', 'Update the router and edge', 'action', 'update mc-router panel-edge'],
+        ['root', 'admin.updates', 'Update the router and edge', 'action', 'update router edge stratosphere-net'],
         ['nodes.view', 'admin.nodes', 'Update Wings on a node', 'action', 'update upgrade wings daemon'],
     ];
 

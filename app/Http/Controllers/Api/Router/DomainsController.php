@@ -15,7 +15,7 @@ class DomainsController extends Controller
 
     /**
      * Returns every domain together with the address it has to be proxied to. This is read by the Minecraft router
-     * (see tools/mc-router) and is protected by a shared secret instead of a user account.
+     * (see tools/stratnet/router) and is protected by a shared secret instead of a user account.
      */
     public function __invoke(Request $request): JsonResponse
     {

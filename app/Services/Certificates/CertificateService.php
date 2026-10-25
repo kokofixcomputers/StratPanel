@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Certificates for serving the panel over https: checking what an admin uploaded, keeping it, and giving it to panel-edge (the program
- * that serves the https requests). The private key is stored encrypted, and only ever leaves the panel to panel-edge.
+ * Certificates for serving the panel over https: checking what an admin uploaded, keeping it, and giving it to the edge (the program
+ * that serves the https requests). The private key is stored encrypted, and only ever leaves the panel to the edge.
  */
 class CertificateService
 {
@@ -171,7 +171,7 @@ class CertificateService
         $next?->forceFill(['is_default' => true])->save();
     }
 
-    // ---- what panel-edge gets ---------------------------------------------------------------------------------------------
+    // ---- what the edge gets ---------------------------------------------------------------------------------------------
 
     public function tokenConfigured(): bool
     {
@@ -179,7 +179,7 @@ class CertificateService
     }
 
     /**
-     * The certificates that are on, with their keys, for panel-edge. Expired ones are included: a visitor is better told by their
+     * The certificates that are on, with their keys, for the edge. Expired ones are included: a visitor is better told by their
      * browser that a certificate expired than that nothing could be set up.
      *
      * @return array{etag: string, certificates: list<array<string, mixed>>, sites: list<array{domain: string, target: string, status: string|null}>}
@@ -205,7 +205,7 @@ class CertificateService
     }
 
     /**
-     * The domains of servers that are served over the web (http and https) and where each one leads: panel-edge passes their requests to
+     * The domains of servers that are served over the web (http and https) and where each one leads: the edge passes their requests to
      * the allocation. A domain that is not served over the web is left to the panel, as before.
      *
      * @return list<array{domain: string, target: string, status: string|null}>
@@ -227,7 +227,7 @@ class CertificateService
             })->values()->all();
     }
 
-    /** Notes that panel-edge asked, so the admin page can say whether it is connected. */
+    /** Notes that the edge asked, so the admin page can say whether it is connected. */
     public function edgeSeen(string $ip, int $count, array $features = []): void
     {
         Cache::forever(self::EDGE_CACHE, ['at' => now()->getTimestamp(), 'ip' => $ip, 'count' => $count, 'features' => array_values($features)]);

@@ -104,30 +104,30 @@ export default () => {
                         <SectionCard icon={<ServerIcon className={'h-5 w-5'} />} title={'How it is served'}>
                             <Stack>
                                 <p className={'text-sm text-neutral-200'}>
-                                    The panel itself (PHP) can not do https, so a small program next to it does:
-                                    panel-edge listens on port 443, picks the certificate that belongs to the name the
-                                    visitor used (wildcards too), and passes the request on to the web server of the
-                                    panel. It asks the panel for the certificates every minute, so what you add, replace
-                                    or delete here is in use within a minute and nothing has to be restarted.
+                                    The panel itself (PHP) can not do https, so a small program next to it does: the
+                                    edge listens on port 443, picks the certificate that belongs to the name the visitor
+                                    used (wildcards too), and passes the request on to the web server of the panel. It
+                                    asks the panel for the certificates every minute, so what you add, replace or delete
+                                    here is in use within a minute and nothing has to be restarted.
                                 </p>
                                 {!data.token_configured ? (
                                     <Notice>
                                         It is not set up on this machine. Run{' '}
-                                        <code>sudo bash tools/panel-edge/install.sh</code> in the folder of the panel,
-                                        it installs the program, makes the secret (PTERODACTYL_CERTIFICATES_TOKEN) and
-                                        starts it.
+                                        <code>sudo bash tools/stratnet/install.sh edge</code> in the folder of the
+                                        panel, it installs the program, makes the secret
+                                        (PTERODACTYL_CERTIFICATES_TOKEN) and starts it.
                                     </Notice>
                                 ) : data.edge === null ? (
                                     <Notice>
-                                        The secret is set but panel-edge has not asked for certificates yet. Is it
-                                        running? <code>systemctl status panel-edge</code>
+                                        The secret is set but the edge has not asked for certificates yet. Is it
+                                        running? <code>systemctl status stratosphere-net</code>
                                     </Notice>
                                 ) : (
                                     <p className={'text-sm text-neutral-200'}>
                                         <Pill tone={data.edge.recent ? 'green' : 'red'}>
                                             {data.edge.recent ? 'Connected' : 'Not seen lately'}
                                         </Pill>{' '}
-                                        panel-edge last asked{' '}
+                                        the edge last asked{' '}
                                         {formatDistanceToNow(new Date(data.edge.at), { addSuffix: true })} (from{' '}
                                         {data.edge.ip}) and was given {data.edge.count}{' '}
                                         {data.edge.count === 1 ? 'certificate' : 'certificates'}.
@@ -237,12 +237,12 @@ export default () => {
                                     onChange={(staging) => setAcme({ ...acme, staging })}
                                 />
                                 {data.edge?.http ? (
-                                    <p className={'text-xs text-neutral-400'}>Port 80 is answered by panel-edge.</p>
+                                    <p className={'text-xs text-neutral-400'}>Port 80 is answered by the edge.</p>
                                 ) : (
                                     <Notice>
-                                        Port 80 is not answered by panel-edge. Set <code>HTTP_LISTEN=:80</code> in{' '}
-                                        <code>/etc/panel-edge.env</code> (the web server has to move off port 80, see
-                                        tools/panel-edge/README.md).
+                                        Port 80 is not answered by the edge. Set <code>HTTP_LISTEN=:80</code> in{' '}
+                                        <code>/etc/stratosphere-net.env</code> (the web server has to move off port 80,
+                                        see tools/stratnet/edge/README.md).
                                     </Notice>
                                 )}
                             </Stack>

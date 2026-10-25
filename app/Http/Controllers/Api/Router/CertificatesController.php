@@ -9,7 +9,7 @@ use Illuminate\Routing\Controller;
 use Pterodactyl\Services\Certificates\CertificateService;
 
 /**
- * The certificates, with their private keys, for panel-edge. This has a secret of its own (not the one of the Minecraft router, which
+ * The certificates, with their private keys, for the edge. This has a secret of its own (not the one of the Minecraft router, which
  * can run on another machine): the keys are given to whoever has this one, and to nobody else.
  */
 class CertificatesController extends Controller
@@ -30,7 +30,7 @@ class CertificatesController extends Controller
         $list = $this->certificates->forEdge();
         $this->certificates->edgeSeen((string) $request->ip(), count($list['certificates']), array_filter(array_map('trim', explode(',', (string) $request->header('X-Edge-Features')))));
 
-        // panel-edge asks every minute, it only needs the keys again when something changed.
+        // The edge asks every minute, it only needs the keys again when something changed.
         if ($request->header('If-None-Match') === $list['etag']) {
             return (new Response('', 304))->header('ETag', $list['etag'])->header('Cache-Control', 'no-store');
         }
