@@ -618,6 +618,7 @@ api.get('/servers/:id/startup', (req, res) => res.json({ object: 'list', data: v
 // The panel's CurseForge endpoints, answered from made-up data, see preview/curseforge.js. PREVIEW_CURSEFORGE=off turns it off.
 const mountCurseForgeImages = require('./curseforge')(api, mockWrites, express);
 
+api.get('/servers/:id/automodpack', (req, res) => res.json({ fingerprint: 'b35f8f1ba870aaa58c48d0974877c4438934029a0c7b6e7d9483e0f5c729f834', found_at: new Date().toISOString() }));
 api.get('/servers/:id/settings/auto-sleep', (req, res) => res.json(sleepAttrs()));
 api.put('/servers/:id/settings/auto-sleep', (req, res) => {
     const { enabled, idle_minutes: idle, wake_on_join: wake } = req.body || {};

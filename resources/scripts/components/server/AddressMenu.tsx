@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import classNames from 'classnames';
 import copy from 'copy-to-clipboard';
-import { CheckIcon, ChevronDownIcon, ClipboardCopyIcon, GlobeAltIcon, ServerIcon } from '@heroicons/react/solid';
+import {
+    CheckIcon,
+    ChevronDownIcon,
+    ClipboardCopyIcon,
+    FingerPrintIcon,
+    GlobeAltIcon,
+    ServerIcon,
+} from '@heroicons/react/solid';
 import DropdownMenu from '@/components/elements/DropdownMenu';
 import Sensitive from '@/components/elements/Sensitive';
 import { ConnectionAddress } from '@/lib/connection';
+import { ServerContext } from '@/state/server';
+import { useAutomodpack } from '@/api/server/automodpack';
 
 const Row = ({ entry }: { entry: ConnectionAddress }) => {
     const [copied, setCopied] = useState(false);
@@ -55,12 +64,54 @@ const Row = ({ entry }: { entry: ConnectionAddress }) => {
     );
 };
 
+/** The fingerprint AutoModpack hosts with: a player compares it with what their game shows the first time they join. */
+const Fingerprint = ({ value }: { value: string }) => {
+    const [copied, setCopied] = useState(false);
+    useEffect(() => {
+        if (!copied) return undefined;
+        const timer = setTimeout(() => setCopied(false), 1500);
+
+        return () => clearTimeout(timer);
+    }, [copied]);
+
+    return (
+        <button
+            type={'button'}
+            title={'Copy the fingerprint'}
+            onClick={(e) => {
+                e.stopPropagation();
+                copy(value);
+                setCopied(true);
+            }}
+            className={
+                'flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm text-neutral-200 transition-colors hover:bg-neutral-600 hover:text-neutral-50'
+            }
+        >
+            <FingerPrintIcon className={'mt-0.5 h-4 w-4 flex-shrink-0 text-primary-600'} />
+            <span className={'min-w-0 flex-1 break-all font-mono text-2xs leading-4'}>{value}</span>
+            {copied ? (
+                <span className={'flex items-center gap-1 text-2xs font-medium text-green-600'}>
+                    <CheckIcon className={'h-3.5 w-3.5'} />
+                    Copied
+                </span>
+            ) : (
+                <ClipboardCopyIcon className={'mt-0.5 h-4 w-4 flex-shrink-0 text-neutral-400'} />
+            )}
+        </button>
+    );
+};
+
 /**
  * A small down arrow that opens a list of every address a server can be reached at, domains first, then the IP addresses. A click on one
  * copies it. Nothing is drawn when there is only one address, there is nothing to choose from.
  */
 export default ({ addresses, className }: { addresses: ConnectionAddress[]; className?: string }) => {
-    if (addresses.length < 2) return null;
+    const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const { data: automodpack } = useAutomodpack(uuid);
+    const fingerprint = automodpack?.fingerprint ?? null;
+
+    // With one address and no fingerprint there is nothing to choose from or to show.
+    if (addresses.length < 2 && !fingerprint) return null;
 
     const domains = addresses.filter((a) => a.kind === 'domain');
     const ips = addresses.filter((a) => a.kind === 'ip');
@@ -110,6 +161,17 @@ export default ({ addresses, className }: { addresses: ConnectionAddress[]; clas
                         {ips.map((entry) => (
                             <Row key={entry.address} entry={entry} />
                         ))}
+                    </>
+                )}
+                {fingerprint && (
+                    <>
+                        <p className={'px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-wide text-neutral-400'}>
+                            AutoModpack fingerprint
+                        </p>
+                        <Fingerprint value={fingerprint} />
+                        <p className={'px-3 pb-1 text-2xs text-neutral-400'}>
+                            Players check that their game shows the same one the first time they join.
+                        </p>
                     </>
                 )}
             </div>

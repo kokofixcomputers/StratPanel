@@ -215,6 +215,8 @@ Route::group([
         });
     });
 
+    Route::get('/automodpack', [Client\Servers\AutomodpackController::class, 'index'])->middleware('throttle:20,1');
+
     Route::group(['prefix' => '/domains'], function () {
         Route::get('/', [Client\Servers\DomainController::class, 'index']);
         Route::post('/', [Client\Servers\DomainController::class, 'store']);

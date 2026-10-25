@@ -7,6 +7,7 @@ import { Unicode11Addon } from 'xterm-addon-unicode11';
 import { ScrollDownHelperAddon } from '@/plugins/XtermScrollDownHelperAddon';
 import SpinnerOverlay from '@/components/elements/SpinnerOverlay';
 import { ServerContext } from '@/state/server';
+import { FINGERPRINT_LINE, refreshAutomodpack } from '@/api/server/automodpack';
 import { usePermissions } from '@/plugins/usePermissions';
 import { theme as th } from 'twin.macro';
 import useEventListener from '@/plugins/useEventListener';
@@ -211,6 +212,7 @@ export default () => {
         }
 
         const plain = stripAnsi(text);
+        if (FINGERPRINT_LINE.test(plain)) refreshAutomodpack(serverUuid);
         const { state, start, belongs } = nextChunk(chunkState.current, plain);
         chunkState.current = state;
 
