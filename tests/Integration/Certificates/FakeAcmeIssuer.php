@@ -33,6 +33,22 @@ class FakeAcmeIssuer implements AcmeIssuer
         return $this->made($domain);
     }
 
+    public function obtainDnsNames(array $names, callable $present): array
+    {
+        $this->asked[] = implode(' + ', $names) . ' (dns)';
+        if ($this->fail !== null) {
+            throw new \RuntimeException($this->fail);
+        }
+        foreach ($names as $name) {
+            $record = '_acme-challenge.' . ltrim($name, '*.');
+            $value = 'txt-value-for-' . $name;
+            $this->presented[] = ['name' => $record, 'value' => $value];
+            $present($record, $value);
+        }
+
+        return $this->madeFor($names);
+    }
+
     public function obtain(string $domain): array
     {
         $this->asked[] = $domain;
@@ -41,6 +57,14 @@ class FakeAcmeIssuer implements AcmeIssuer
         }
 
         return $this->made($domain);
+    }
+
+    /** @param list<string> $names */
+    private function madeFor(array $names): array
+    {
+        $chain = $this->makeChain($names, $this->days);
+
+        return ['chain' => $chain['leaf']['certPem'] . "\n" . $chain['ca']['certPem'], 'key' => $chain['leaf']['keyPem']];
     }
 
     private function made(string $domain): array

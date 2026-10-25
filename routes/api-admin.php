@@ -134,6 +134,7 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::post('/zones', [Admin\Settings\DomainsController::class, 'store'])->middleware('admin.can:settings.domains.update');
             Route::get('/zones/{zone}', [Admin\Settings\DomainsController::class, 'view'])->whereNumber('zone')->middleware('admin.can:settings.domains.view');
             Route::patch('/zones/{zone}', [Admin\Settings\DomainsController::class, 'updateZone'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
+            Route::post('/zones/{zone}/certificate', [Admin\Settings\DomainsController::class, 'requestCertificate'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
             Route::post('/zones/{zone}/test', [Admin\Settings\DomainsController::class, 'test'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
             Route::delete('/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
         });

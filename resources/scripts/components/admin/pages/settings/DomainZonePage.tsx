@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, GlobeAltIcon } from '@heroicons/react/solid';
+import { ArrowLeftIcon, GlobeAltIcon, ShieldCheckIcon } from '@heroicons/react/solid';
 import SettingsFrame from '@/components/admin/pages/settings/SettingsFrame';
 import AdminLink from '@/components/admin/AdminLink';
+import { Pill } from '@/components/admin/AdminTable';
 import { Columns, Notice, Stack, TextField, ToggleField } from '@/components/admin/forms';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
@@ -11,7 +12,7 @@ import { Dialog } from '@/components/elements/dialog';
 import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
 import http from '@/api/http';
-import { deleteSetting, postSetting, saveSetting, ZoneForm } from '@/api/admin/settings';
+import { deleteSetting, postSetting, saveSetting, ZoneCertificate, ZoneForm } from '@/api/admin/settings';
 
 interface Verdict {
     ok: boolean;
@@ -32,6 +33,22 @@ export default () => {
     const [deleting, setDeleting] = useState(false);
     const exists = !!id;
     const can = admin.can('settings.domains.update');
+    const pending = form?.certificate?.status === 'pending';
+
+    // Asked again every few seconds while the certificate is being got.
+    useEffect(() => {
+        if (!pending || !id) return;
+        const timer = setInterval(
+            () =>
+                http
+                    .get(`/api/client/admin/settings/domains/zones/${id}`)
+                    .then(({ data }) => setForm(data))
+                    .catch(() => undefined),
+            4000
+        );
+
+        return () => clearInterval(timer);
+    }, [pending, id]);
 
     const fill = (z: ZoneForm) => {
         setForm(z);
@@ -177,6 +194,75 @@ export default () => {
                     </div>
                 )}
             </SectionCard>
+
+            {exists && form.certificate && (
+                <SectionCard
+                    className={'mt-4'}
+                    icon={<ShieldCheckIcon className={'h-5 w-5'} />}
+                    title={"Certificate from Let's Encrypt"}
+                    description={`A free certificate for ${form.domain} and everything under it (*.${form.domain}). The panel adds the TXT records that prove the domain at ${form.provider} itself and removes them again, nothing has to be done by hand. It renews itself before it ends.`}
+                    badge={
+                        form.certificate.status === 'pending' ? (
+                            <Pill tone={'primary'}>Getting one...</Pill>
+                        ) : form.certificate.certificate ? (
+                            <Pill
+                                tone={
+                                    form.certificate.certificate.expired
+                                        ? 'red'
+                                        : form.certificate.certificate.expiring
+                                        ? 'yellow'
+                                        : 'green'
+                                }
+                            >
+                                {form.certificate.certificate.expired
+                                    ? 'Expired'
+                                    : `${form.certificate.certificate.days_left} days left`}
+                            </Pill>
+                        ) : undefined
+                    }
+                >
+                    {form.certificate.status === 'failed' && form.certificate.message && (
+                        <div className={'mb-3'}>
+                            <Notice tone={'red'}>It did not work: {form.certificate.message}</Notice>
+                        </div>
+                    )}
+                    {form.certificate.certificate && (
+                        <p className={'mb-3 text-sm text-neutral-200'}>
+                            <AdminLink
+                                to={`/admin/settings/certificates/${form.certificate.certificate.id}`}
+                                className={'font-medium'}
+                            >
+                                {form.certificate.certificate.name}
+                            </AdminLink>
+                            {form.certificate.certificate.not_after &&
+                                ` ends ${new Date(form.certificate.certificate.not_after).toLocaleDateString()}`}
+                        </p>
+                    )}
+                    {can && (
+                        <Button
+                            disabled={busy || !form.certificate.can_request}
+                            onClick={() =>
+                                run(postSetting<ZoneCertificate>(`domains/zones/${id}/certificate`), (state) => {
+                                    addFlash({
+                                        key: 'admin',
+                                        type: 'success',
+                                        message: `Getting a certificate for ${form.domain} and *.${form.domain}. This takes a minute or two, it shows here when it is done.`,
+                                    });
+                                    setForm({ ...form, certificate: state });
+                                })
+                            }
+                        >
+                            <ShieldCheckIcon className={'-ml-1 mr-2 h-4 w-4'} />
+                            {form.certificate.certificate ? 'Renew now' : 'Get a certificate'}
+                        </Button>
+                    )}
+                    {!form.certificate.can_request && form.certificate.status !== 'pending' && (
+                        <p className={'mt-2 text-xs text-neutral-400'}>
+                            Turn on Let&apos;s Encrypt under Settings → Certificates first.
+                        </p>
+                    )}
+                </SectionCard>
+            )}
             <Dialog.Confirm
                 open={deleting}
                 title={`Remove ${form.domain}?`}

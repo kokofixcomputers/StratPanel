@@ -32,6 +32,13 @@ interface DnsProvider
     public function createARecord(DnsZone $zone, string $name, string $ip, int $ttl): string;
 
     /**
+     * Adds a TXT record (the proof of a domain for a certificate) and returns the id the provider gave it.
+     *
+     * @throws DnsException
+     */
+    public function createTxtRecord(DnsZone $zone, string $name, string $value, int $ttl): string;
+
+    /**
      * Removes a record. A record that is already gone is fine.
      *
      * @throws DnsException

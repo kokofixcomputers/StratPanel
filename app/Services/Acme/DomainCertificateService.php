@@ -151,13 +151,20 @@ class DomainCertificateService
      *
      * @throws DisplayException
      */
-    public function renewNow(Certificate $certificate): ServerDomain
+    public function renewNow(Certificate $certificate): ?ServerDomain
     {
         if ($certificate->source !== 'letsencrypt' || $certificate->acme_domain === null) {
             throw new DisplayException('Only a certificate that came from Let\'s Encrypt can be renewed here.');
         }
         if (!$this->enabled()) {
             throw new DisplayException('Let\'s Encrypt is not turned on on this panel.');
+        }
+        if ($certificate->acme_method === ZoneCertificateService::METHOD) {
+            $zone = \Pterodactyl\Models\DnsZone::query()->where('domain', $certificate->acme_domain)->first()
+                ?? throw new DisplayException('The domain ' . $certificate->acme_domain . ' is not one of the domains of the settings any more.');
+            app(ZoneCertificateService::class)->request($zone);
+
+            return null;
         }
 
         $domain = ServerDomain::query()->where('domain', $certificate->acme_domain)->first();
@@ -245,7 +252,7 @@ class DomainCertificateService
         $renewed = $failed = 0;
 
         Certificate::query()->where('source', 'letsencrypt')->where('enabled', true)
-            ->where(fn ($q) => $q->whereNull('acme_method')->orWhere('acme_method', '!=', 'dns'))
+            ->where(fn ($q) => $q->whereNull('acme_method')->orWhereNotIn('acme_method', ['dns', ZoneCertificateService::METHOD]))
             ->where('not_after', '<', now()->addDays((int) config('acme.renew_days', 30)))
             ->each(function (Certificate $certificate) use (&$renewed, &$failed) {
                 if (!$this->enabled() || !ServerDomain::query()->where('domain', $certificate->acme_domain)->where('web', true)->exists()) {
@@ -268,7 +275,10 @@ class DomainCertificateService
             $this->syncNodes();
         }
 
-        return ['renewed' => $renewed, 'failed' => $failed];
+        // The certificates of the domains of the admin renew themselves too, through the DNS provider.
+        $zones = app(ZoneCertificateService::class)->renewDue();
+
+        return ['renewed' => $renewed + $zones['renewed'], 'failed' => $failed + $zones['failed']];
     }
 
     private function syncNodes(): void

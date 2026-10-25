@@ -25,4 +25,16 @@ interface AcmeIssuer
      * @throws \Throwable with a reason that is fit to show to the person who asked
      */
     public function obtainDns(string $domain, callable $present): array;
+
+    /**
+     * One certificate for several names (a domain and its wildcard), all proven with the dns challenge. The names of a wildcard start with
+     * "*.". The callable is called once for each name, with its own TXT record.
+     *
+     * @param  list<string>  $names
+     * @param  callable(string, string): void  $present
+     * @return array{chain: string, key: string}
+     *
+     * @throws \Throwable with a reason that is fit to show to the person who asked
+     */
+    public function obtainDnsNames(array $names, callable $present): array;
 }

@@ -11,6 +11,7 @@ use Pterodactyl\Services\Dns\DnsException;
 use Pterodactyl\Services\Dns\DnsProviders;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Domains\ManagedDomainService;
+use Pterodactyl\Services\Acme\ZoneCertificateService;
 use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface;
 
 /**
@@ -21,7 +22,7 @@ class DomainsController extends Controller
 {
     public const DOMAIN_REGEX = '/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/';
 
-    public function __construct(private SettingsRepositoryInterface $settings, private ManagedDomainService $managed)
+    public function __construct(private SettingsRepositoryInterface $settings, private ManagedDomainService $managed, private ZoneCertificateService $certificates)
     {
     }
 
@@ -36,6 +37,7 @@ class DomainsController extends Controller
                 'type' => $zone->type,
                 'enabled' => (bool) $zone->enabled,
                 'names' => (int) $zone->domains_count,
+                'certificate' => $this->certificateState($zone),
             ])->values()->all(),
             'types' => collect(DnsProviders::types())->map(fn (array $type, string $key) => ['type' => $key, 'name' => $type['name']])->values()->all(),
             'target_ip' => ServerDomain::routerTargetIp(),
@@ -131,6 +133,37 @@ class DomainsController extends Controller
         ]);
     }
 
+    /** Starts getting a certificate for the domain and everything under it from Let's Encrypt (or a new one when there is one). */
+    public function requestCertificate(int $zone): JsonResponse
+    {
+        $found = DnsZone::query()->findOrFail($zone);
+        $this->certificates->request($found);
+
+        return new JsonResponse($this->certificateState($found));
+    }
+
+    /** @return array<string, mixed> */
+    private function certificateState(DnsZone $zone): array
+    {
+        $state = $this->certificates->state($zone);
+        $certificate = $state['certificate'];
+
+        return [
+            'status' => $state['status'],
+            'message' => $state['message'],
+            'can_request' => $state['can_request'],
+            'certificate' => $certificate === null ? null : [
+                'id' => $certificate->id,
+                'name' => $certificate->name,
+                'not_after' => $certificate->not_after?->toIso8601String(),
+                'days_left' => $certificate->daysLeft(),
+                'expiring' => $certificate->isExpiring(),
+                'expired' => $certificate->isExpired(),
+                'renew_error' => $certificate->renew_error,
+            ],
+        ];
+    }
+
     /** Removes the domain and every name under it (and their DNS records). */
     public function destroy(int $zone): JsonResponse
     {
@@ -176,6 +209,7 @@ class DomainsController extends Controller
             'ttl' => (int) ($zone->ttl ?? 120),
             'enabled' => (bool) $zone->enabled,
             'names' => $exists ? $zone->domains()->count() : 0,
+            'certificate' => $exists ? $this->certificateState($zone) : null,
             // A secret is never sent back, only whether one is saved.
             'fields' => collect($type['fields'])->map(fn (array $field, string $key) => [
                 'key' => $key,

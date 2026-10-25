@@ -76,7 +76,7 @@ export default () => {
                                 the panel makes the DNS record.
                             </Empty>
                         ) : (
-                            <AdminTable heads={['Domain', 'DNS provider', 'Status', 'Names']}>
+                            <AdminTable heads={['Domain', 'DNS provider', 'Status', 'Names', 'Certificate']}>
                                 {data.zones.map((zone) => (
                                     <Row
                                         key={zone.id}
@@ -93,6 +93,29 @@ export default () => {
                                             </Pill>
                                         </Cell>
                                         <Cell>{zone.names}</Cell>
+                                        <Cell>
+                                            {zone.certificate.status === 'pending' ? (
+                                                <Pill tone={'primary'}>Getting one...</Pill>
+                                            ) : zone.certificate.certificate ? (
+                                                <Pill
+                                                    tone={
+                                                        zone.certificate.certificate.expired
+                                                            ? 'red'
+                                                            : zone.certificate.certificate.expiring
+                                                            ? 'yellow'
+                                                            : 'green'
+                                                    }
+                                                >
+                                                    {zone.certificate.certificate.expired
+                                                        ? 'Expired'
+                                                        : `${zone.certificate.certificate.days_left} days`}
+                                                </Pill>
+                                            ) : zone.certificate.status === 'failed' ? (
+                                                <Pill tone={'red'}>Failed</Pill>
+                                            ) : (
+                                                <Pill>None</Pill>
+                                            )}
+                                        </Cell>
                                     </Row>
                                 ))}
                             </AdminTable>

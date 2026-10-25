@@ -72,6 +72,20 @@ class CloudflareProvider implements DnsProvider
         return (string) ($record['id'] ?? throw new DnsException('Cloudflare did not say which record it made.'));
     }
 
+    public function createTxtRecord(DnsZone $zone, string $name, string $value, int $ttl): string
+    {
+        $response = $this->http($this->token($zone))->post(self::BASE . "/zones/{$this->zoneId($zone)}/dns_records", [
+            'type' => 'TXT',
+            'name' => $name,
+            'content' => $value,
+            'ttl' => max(60, $ttl),
+            'comment' => 'Made by the panel to prove the domain to Let\'s Encrypt',
+        ]);
+        $record = $this->result($response);
+
+        return (string) ($record['id'] ?? throw new DnsException('Cloudflare did not say which record it made.'));
+    }
+
     public function deleteRecord(DnsZone $zone, string $recordId): void
     {
         $response = $this->http($this->token($zone))->delete(self::BASE . "/zones/{$this->zoneId($zone)}/dns_records/{$recordId}");

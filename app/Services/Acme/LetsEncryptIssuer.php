@@ -37,11 +37,21 @@ class LetsEncryptIssuer implements AcmeIssuer
 
     public function obtainDns(string $domain, callable $present): array
     {
+        return $this->obtainDnsNames([$domain], $present);
+    }
+
+    public function obtainDnsNames(array $names, callable $present): array
+    {
         try {
             $client = $this->account->client();
             $key = $client->generateECKey('P-256');
 
-            $chain = $client->getCertificateChain($key, [$domain => ['challenge' => 'dns-01']], function (array $challenge) use ($present) {
+            $config = [];
+            foreach ($names as $name) {
+                $config[$name] = ['challenge' => 'dns-01'];
+            }
+
+            $chain = $client->getCertificateChain($key, $config, function (array $challenge) use ($present) {
                 // The library waits for this call: it asks Let's Encrypt to look only after it returns.
                 $present($challenge['key'], $challenge['value']);
 

@@ -149,7 +149,23 @@ export interface ProviderForm {
     callback: string;
 }
 
+export interface ZoneCertificate {
+    status: 'pending' | 'failed' | 'issued' | null;
+    message: string | null;
+    can_request: boolean;
+    certificate: {
+        id: number;
+        name: string;
+        not_after: string | null;
+        days_left: number | null;
+        expiring: boolean;
+        expired: boolean;
+        renew_error: string | null;
+    } | null;
+}
+
 export interface ZoneRow {
+    certificate: ZoneCertificate;
     id: number;
     name: string;
     domain: string;
@@ -178,6 +194,7 @@ export interface ZoneForm {
     ttl: number;
     enabled: boolean;
     names: number;
+    certificate: ZoneCertificate | null;
     fields: ZoneField[];
 }
 
