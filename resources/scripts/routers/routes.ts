@@ -1,6 +1,7 @@
 import React, { lazy } from 'react';
 import ServerConsole from '@/components/server/console/ServerConsoleContainer';
 import DatabasesContainer from '@/components/server/databases/DatabasesContainer';
+import DatabaseDataContainer from '@/components/server/databases/DatabaseDataContainer';
 import ScheduleContainer from '@/components/server/schedules/ScheduleContainer';
 import UsersContainer from '@/components/server/users/UsersContainer';
 import BackupContainer from '@/components/server/backups/BackupContainer';
@@ -167,6 +168,12 @@ export default {
             permission: 'database.*',
             name: 'Databases',
             component: DatabasesContainer,
+        },
+        {
+            path: '/databases/:databaseId',
+            permission: 'database.view_password',
+            name: undefined,
+            component: DatabaseDataContainer,
         },
         {
             path: '/schedules',

@@ -149,6 +149,12 @@ Route::group([
         Route::get('/', [Client\Servers\DatabaseController::class, 'index']);
         Route::middleware([ResourceLimit::Database->middleware()])
             ->post('/', [Client\Servers\DatabaseController::class, 'store']);
+        Route::get('/sizes', [Client\Servers\DatabaseDataController::class, 'sizes']);
+        Route::get('/{database}/tables', [Client\Servers\DatabaseDataController::class, 'tables']);
+        Route::get('/{database}/tables/{table}', [Client\Servers\DatabaseDataController::class, 'rows']);
+        Route::post('/{database}/tables/{table}', [Client\Servers\DatabaseDataController::class, 'insert']);
+        Route::patch('/{database}/tables/{table}', [Client\Servers\DatabaseDataController::class, 'update']);
+        Route::delete('/{database}/tables/{table}', [Client\Servers\DatabaseDataController::class, 'delete']);
         Route::post('/{database}/rotate-password', [Client\Servers\DatabaseController::class, 'rotatePassword']);
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });

@@ -14,6 +14,7 @@ import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHe
 import Fade from '@/components/elements/Fade';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { useDeepMemoize } from '@/plugins/useDeepMemoize';
+import { useDatabaseSizes } from '@/api/server/databases/data';
 
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
@@ -38,6 +39,7 @@ export default () => {
             .then(() => setLoading(false));
     }, []);
 
+    const { data: sizes } = useDatabaseSizes(uuid, databases.length > 0);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
 
     return (
@@ -59,7 +61,9 @@ export default () => {
                 <Fade timeout={150}>
                     <>
                         {databases.length > 0 ? (
-                            databases.map((database) => <DatabaseRow key={database.id} database={database} />)
+                            databases.map((database) => (
+                                <DatabaseRow key={database.id} database={database} size={sizes?.[database.id]} />
+                            ))
                         ) : (
                             <EmptyState>
                                 {databaseLimit > 0

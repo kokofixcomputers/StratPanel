@@ -576,6 +576,15 @@ app.post('/mock-upload', express.raw({ type: '*/*', limit: '5mb' }), (req, res) 
 app.get('/mock-icon', (req, res) => res.type('png').send(mockIcon));
 api.get('/servers/:id/files/upload', (req, res) => res.json({ attributes: { url: '/mock-upload' } }));
 
+
+let dbRows = [{ id: '1', name: 'Ann', note: 'hello', avatar: { binary: 2048 } }, { id: '2', name: 'Bob', note: null, avatar: null }, { id: '3', name: 'Cy', note: { cut: 'long text '.repeat(40), length: 5000 }, avatar: null }];
+const dbColumns = [{ name: 'id', type: 'int(11)', data_type: 'int', nullable: false, key: 'PRI', extra: 'auto_increment', default: null, binary: false, generated: false }, { name: 'name', type: 'varchar(40)', data_type: 'varchar', nullable: false, key: '', extra: '', default: null, binary: false, generated: false }, { name: 'note', type: 'text', data_type: 'text', nullable: true, key: '', extra: '', default: null, binary: false, generated: false }, { name: 'avatar', type: 'blob', data_type: 'blob', nullable: true, key: '', extra: '', default: null, binary: true, generated: false }];
+api.get('/servers/:id/databases/sizes', (req, res) => res.json({ sizes: { a1: { bytes: 7340032, tables: 2 } } }));
+api.get('/servers/:id/databases/:db/tables', (req, res) => res.json({ tables: [{ name: 'people', rows: 3, bytes: 16384, engine: 'InnoDB' }, { name: 'logs', rows: 1200, bytes: 7323648, engine: 'InnoDB' }], bytes: 7340032 }));
+api.get('/servers/:id/databases/:db/tables/:table', (req, res) => res.json({ table: req.params.table, columns: dbColumns, primary: ['id'], editable: true, rows: dbRows, pagination: { total: dbRows.length, count: dbRows.length, per_page: 25, current_page: 1, total_pages: 1 } }));
+api.post('/servers/:id/databases/:db/tables/:table', (req, res) => { dbRows.push({ id: String(dbRows.length + 1), name: req.body.values.name ?? '', note: req.body.values.note ?? null, avatar: null }); res.status(201).json({}); });
+api.patch('/servers/:id/databases/:db/tables/:table', (req, res) => { const r = dbRows.find((x) => x.id === req.body.key.id); Object.assign(r, req.body.values); res.json({}); });
+api.delete('/servers/:id/databases/:db/tables/:table', (req, res) => { dbRows = dbRows.filter((x) => x.id !== req.body.key.id); res.status(204).end(); });
 api.get('/servers/:id/databases', (req, res) => res.json({ object: 'list', data: state.databases.map((d) => item('server_database', { ...d, relationships: { password: item('database_password', { password: d.password }) } })) }));
 api.post('/servers/:id/databases', (req, res) => {
     const d = { id: `d${state.nextId++}`, name: `s11868_${req.body.database}`, username: `u11868_${Math.random().toString(36).slice(2, 12)}`, connections_from: req.body.remote || '%', host: { address: 'db1.example.com', port: 3306 }, password: 'pa55-w0rd-preview' };

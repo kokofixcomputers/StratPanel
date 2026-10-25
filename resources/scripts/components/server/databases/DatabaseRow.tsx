@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { DatabaseIcon, EyeIcon, TrashIcon } from '@heroicons/react/outline';
+import { DatabaseIcon, EyeIcon, TableIcon, TrashIcon } from '@heroicons/react/outline';
+import { Link } from 'react-router-dom';
+import { DatabaseSize, sizeText } from '@/api/server/databases/data';
 import Modal from '@/components/elements/Modal';
 import Sensitive, { useHiddenClass } from '@/components/elements/Sensitive';
 import { Form, Formik, FormikHelpers } from 'formik';
@@ -22,11 +24,14 @@ import CopyOnClick from '@/components/elements/CopyOnClick';
 
 interface Props {
     database: ServerDatabase;
+    // How big it is, once the panel has asked the database server.
+    size?: DatabaseSize;
     className?: string;
 }
 
-export default ({ database, className }: Props) => {
+export default ({ database, size, className }: Props) => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const serverId = ServerContext.useStoreState((state) => state.server.data!.id);
     const { addError, clearFlashes } = useFlash();
     const [visible, setVisible] = useState(false);
     const [connectionVisible, setConnectionVisible] = useState(false);
@@ -175,7 +180,28 @@ export default ({ database, className }: Props) => {
                         </p>
                     </CopyOnClick>
                 </div>
+                {size && (
+                    <div css={tw`ml-8 hidden md:block`}>
+                        <p css={tw`text-2xs text-neutral-400 uppercase tracking-wide select-none`}>Size</p>
+                        <p
+                            css={tw`mt-1 text-sm font-medium text-neutral-100`}
+                            title={`${size.bytes.toLocaleString()} bytes`}
+                        >
+                            {sizeText(size.bytes)}
+                            <span css={tw`ml-1 text-xs font-normal text-neutral-400`}>
+                                {size.tables} {size.tables === 1 ? 'table' : 'tables'}
+                            </span>
+                        </p>
+                    </div>
+                )}
                 <div css={tw`ml-8 flex items-center space-x-2`}>
+                    <Can action={'database.view_password'}>
+                        <Link to={`/server/${serverId}/databases/${database.id}`} title={'Browse and edit the data'}>
+                            <Button isSecondary size={'xsmall'} css={tw`!p-2`}>
+                                <TableIcon css={tw`w-4 h-4`} />
+                            </Button>
+                        </Link>
+                    </Can>
                     <Button isSecondary size={'xsmall'} css={tw`!p-2`} onClick={() => setConnectionVisible(true)}>
                         <EyeIcon css={tw`w-4 h-4`} />
                     </Button>
