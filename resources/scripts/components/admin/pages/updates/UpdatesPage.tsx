@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import { formatDistanceToNow } from 'date-fns';
 import {
     ArchiveIcon,
+    CheckIcon,
     ClockIcon,
     CloudDownloadIcon,
     CogIcon,
@@ -361,7 +362,11 @@ export default () => {
                                                         )}
                                                         style={{ left: `${((i + 0.5) / steps.length) * 100}%` }}
                                                     >
-                                                        {state === 'done' ? <CheckIcon className={'h-3.5 w-3.5'} /> : i + 1}
+                                                        {state === 'done' ? (
+                                                            <CheckIcon className={'h-3.5 w-3.5'} />
+                                                        ) : (
+                                                            i + 1
+                                                        )}
                                                     </span>
                                                 );
                                             })}

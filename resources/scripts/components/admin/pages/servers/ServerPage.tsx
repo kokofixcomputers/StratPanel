@@ -42,13 +42,17 @@ export default () => {
         <ServerFrame server={data} subtitle={data.description}>
             <div className={'grid grid-cols-2 gap-4 lg:grid-cols-4'}>
                 <StatCard title={'Status'} icon={CheckCircleIcon} value={state} />
-                <StatCard title={'CPU limit'} icon={ChipIcon} value={data.cpu === 0 ? '∞' : `${data.cpu}%`} />
+                <StatCard title={'CPU limit'} icon={ChipIcon} value={data.cpu === 0 ? 'Unlimited' : `${data.cpu}%`} />
                 <StatCard
                     title={'Memory'}
                     icon={LightningBoltIcon}
-                    value={data.memory === 0 ? '∞' : `${data.memory} MiB`}
+                    value={data.memory === 0 ? 'Unlimited' : `${data.memory} MiB`}
                 />
-                <StatCard title={'Disk space'} icon={DatabaseIcon} value={data.disk === 0 ? '∞' : `${data.disk} MiB`} />
+                <StatCard
+                    title={'Disk space'}
+                    icon={DatabaseIcon}
+                    value={data.disk === 0 ? 'Unlimited' : `${data.disk} MiB`}
+                />
             </div>
             <div className={'mt-4 grid gap-4 lg:grid-cols-3'}>
                 <SectionCard
