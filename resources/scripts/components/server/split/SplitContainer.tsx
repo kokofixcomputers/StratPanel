@@ -13,7 +13,8 @@ import { Button } from '@/components/elements/button/index';
 import { Dialog } from '@/components/elements/dialog';
 import { ServerContext } from '@/state/server';
 import useFlash from '@/plugins/useFlash';
-import { divideServer, removePart, Share, splitServer, SplitPart, useSplit } from '@/api/server/split';
+import SplitOffModal from '@/components/server/split/SplitOffModal';
+import { divideServer, removePart, Share, SplitPart, useSplit } from '@/api/server/split';
 import { Draft, formatAmount, isDirty, mostFor, Resource, RESOURCES, setShare, toDraft } from '@/lib/split';
 
 const LABELS: Record<Resource, string> = { memory: 'Memory', disk: 'Disk space', cpu: 'CPU' };
@@ -29,6 +30,8 @@ export default () => {
     const { data, error, mutate } = useSplit();
     const [draft, setDraft] = useState<Draft>({});
     const [saving, setSaving] = useState(false);
+    // The modal that asks what the new part runs.
+    const [choosing, setChoosing] = useState(false);
     const [removing, setRemoving] = useState<SplitPart | null>(null);
     const [name, setName] = useState('');
     const [share, setNewShare] = useState<Share>({ memory: 1024, disk: 2048, cpu: 50 });
@@ -47,6 +50,8 @@ export default () => {
     const ready = !!data && parts.every((part) => !!draft[part.uuid]);
     const dirty = ready && isDirty(draft, parts);
     const rootPart = parts.find((part) => part.isRoot);
+    // A part that was just made has no draft for a moment, what the panel says is its share until the draft is made.
+    const shareOf = (part: SplitPart): Share => draft[part.uuid] ?? part;
 
     const run = (action: Promise<any>, done: string) => {
         clearFlashes('split');
@@ -78,7 +83,7 @@ export default () => {
         run(removePart(uuid, part.uuid), `${part.name} was deleted, its resources went back to ${rootPart?.name}.`);
     };
 
-    if (!data || !ready) {
+    if (!data) {
         return (
             <ServerContentBlock title={'Split'}>
                 <PageHeader title={'Split'} />
@@ -160,8 +165,8 @@ export default () => {
                                         <div
                                             key={part.uuid}
                                             className={color(index)}
-                                            style={{ width: `${(draft[part.uuid][key] / data.total[key]) * 100}%` }}
-                                            title={`${part.name}: ${formatAmount(key, draft[part.uuid][key])}`}
+                                            style={{ width: `${(shareOf(part)[key] / data.total[key]) * 100}%` }}
+                                            title={`${part.name}: ${formatAmount(key, shareOf(part)[key])}`}
                                         />
                                     ))}
                                 </div>
@@ -203,13 +208,13 @@ export default () => {
                                     </Button.Danger>
                                 )}
                             </div>
-                            {part.isRoot || !data.canManage ? (
+                            {part.isRoot || !data.canManage || !draft[part.uuid] ? (
                                 <div css={tw`grid gap-2 text-sm text-neutral-300 sm:grid-cols-3`}>
                                     {RESOURCES.map((key) => (
                                         <p key={key}>
                                             {LABELS[key]}:{' '}
                                             <span css={tw`font-semibold text-neutral-50`}>
-                                                {formatAmount(key, draft[part.uuid][key])}
+                                                {formatAmount(key, shareOf(part)[key])}
                                             </span>
                                         </p>
                                     ))}
@@ -220,14 +225,14 @@ export default () => {
                                         <Slider
                                             key={key}
                                             label={LABELS[key]}
-                                            value={draft[part.uuid][key]}
+                                            value={shareOf(part)[key]}
                                             min={data.minimum[key]}
                                             max={Math.max(
                                                 data.minimum[key] + STEPS[key],
                                                 mostFor(draft, root, part.uuid, key, data.minimum)
                                             )}
                                             step={STEPS[key]}
-                                            display={formatAmount(key, draft[part.uuid][key])}
+                                            display={formatAmount(key, shareOf(part)[key])}
                                             hint={`${rootPart?.name} keeps ${formatAmount(key, draft[root][key])}`}
                                             onChange={(value) =>
                                                 setDraft((now) =>
@@ -242,6 +247,18 @@ export default () => {
                     ))}
                 </>
             )}
+            <SplitOffModal
+                open={choosing}
+                uuid={uuid}
+                name={name.trim()}
+                share={{ memory: fitted('memory'), disk: fitted('disk'), cpu: fitted('cpu') }}
+                parts={parts.map((part) => part.uuid)}
+                onClose={() => {
+                    setChoosing(false);
+                    setName('');
+                }}
+                onSplit={(state) => mutate(state, false)}
+            />
             {canAdd && (
                 <>
                     <ListHeader icon={<PlusIcon css={tw`h-6 w-6`} />} title={'Split off a part'} css={tw`mt-6`} />
@@ -292,16 +309,7 @@ export default () => {
                                     <Button
                                         type={'button'}
                                         disabled={saving || name.trim().length === 0}
-                                        onClick={() =>
-                                            run(
-                                                splitServer(uuid, name.trim(), {
-                                                    memory: fitted('memory'),
-                                                    disk: fitted('disk'),
-                                                    cpu: fitted('cpu'),
-                                                }),
-                                                `${name.trim()} was split off.`
-                                            ).then(() => setName(''))
-                                        }
+                                        onClick={() => setChoosing(true)}
                                     >
                                         <PlusIcon css={tw`mr-1 h-4 w-4`} /> Split off
                                     </Button>
