@@ -7,7 +7,7 @@ import setSelectedDockerImage from '@/api/server/setSelectedDockerImage';
 import { Websocket } from '@/plugins/Websocket';
 import { writeMarker } from '@/components/server/versions/detectCurrent';
 import { installHelperPlugin, wantsHelper } from '@/lib/helperPlugin';
-import { Build, CLEANUP_PATHS, InstallStep, ModLoader, Software, VersionInfo } from '@/lib/mcjars';
+import { Build, CLEANUP_PATHS, InstallStep, isMinecraftVersion, ModLoader, Software, VersionInfo } from '@/lib/mcjars';
 
 export type StepState = 'pending' | 'running' | 'done' | 'skipped' | 'failed';
 
@@ -161,7 +161,14 @@ export default async (ctx: Context): Promise<void> => {
             const editable = (name: string) => variables.find((v) => v.env_variable === name && v.is_editable);
             await Promise.all([
                 ...['MC_VERSION', 'MINECRAFT_VERSION', 'VERSION']
-                    .filter(editable)
+                    // A proxy's own version (3.4.0), or the version of a limbo server (1.2), is not the Minecraft version: the variables
+                    // would say the wrong game version and the Content page would look for it.
+                    .filter(
+                        (name) =>
+                            editable(name) &&
+                            ctx.software.type !== 'NANOLIMBO' &&
+                            (name === 'VERSION' || isMinecraftVersion(ctx.version.id))
+                    )
                     .map((name) => updateStartupVariable(ctx.uuid, name, ctx.version.id).catch(() => undefined)),
                 editable('SERVER_JARFILE')
                     ? updateStartupVariable(ctx.uuid, 'SERVER_JARFILE', 'server.jar').catch(() => undefined)

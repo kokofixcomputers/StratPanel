@@ -113,8 +113,10 @@ export default (detectedVersion: string) => {
             const next = params.toString();
             if (next === location.search.replace(/^\?/, '')) return;
 
-            // A filter changed on the page of a project means the results of that filter, so it goes to the list.
-            const pathname = location.pathname.replace(/\/project\/[^/]+\/?$/, '');
+            // A filter changed on the page of a project means the results of that filter, so it goes to the list. The platform and the version
+            // are what the project is installed for, so changing only those stays on the page.
+            const staysOnProject = Object.keys(patch).every((key) => key === 'loader' || key === 'version');
+            const pathname = staysOnProject ? location.pathname : location.pathname.replace(/\/project\/[^/]+\/?$/, '');
             const target = { pathname, search: next ? `?${next}` : '' };
             if (mode === 'push' || pathname !== location.pathname) history.push(target);
             else history.replace(target);

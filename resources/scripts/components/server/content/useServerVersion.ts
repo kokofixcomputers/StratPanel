@@ -1,4 +1,5 @@
 import { ServerContext } from '@/state/server';
+import { isMinecraftVersion } from '@/lib/mcjars';
 
 /** The Minecraft version the egg variables of the server say it runs, empty when they do not say. */
 export default (): string =>
@@ -7,6 +8,6 @@ export default (): string =>
             state.server.data!.variables.find(
                 (v) =>
                     ['MC_VERSION', 'MINECRAFT_VERSION', 'VERSION'].includes(v.envVariable) &&
-                    /^\d+\.\d+/.test(v.serverValue || '')
+                    isMinecraftVersion(v.serverValue || '')
             )?.serverValue || ''
     );

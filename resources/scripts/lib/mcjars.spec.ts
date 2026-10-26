@@ -1,4 +1,4 @@
-import { iconFor, SOFTWARE, loaderOfBuild, loadersOfBuilds } from '@/lib/mcjars';
+import { iconFor, isMinecraftVersion, SOFTWARE, loaderOfBuild, loadersOfBuilds } from '@/lib/mcjars';
 
 describe('SOFTWARE', () => {
     it('has the hybrid servers, one of each', () => {
@@ -51,5 +51,15 @@ describe('the mod loader of a build (Arclight)', () => {
 
     it('is only asked for by Arclight', () => {
         expect(SOFTWARE.filter((software) => software.loaders).map((software) => software.type)).toEqual(['ARCLIGHT']);
+    });
+});
+
+describe('isMinecraftVersion', () => {
+    it('knows a Minecraft version from the version of other software', () => {
+        ['1.21.1', '1.8', '26.1', '26.1.2', '27.3'].forEach((v) => expect(isMinecraftVersion(v)).toBe(true));
+        // Velocity, NanoLimbo and the like have versions of their own.
+        ['3.4.0-SNAPSHOT', '3.3.0', '2.0', '0.9', 'latest', ''].forEach((v) =>
+            expect(isMinecraftVersion(v)).toBe(false)
+        );
     });
 });

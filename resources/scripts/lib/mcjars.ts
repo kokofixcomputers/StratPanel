@@ -67,6 +67,12 @@ export const SOFTWARE: Software[] = [
 // MCJars names the icon of LooHP Limbo with an underscore.
 const ICONS: Partial<Record<SoftwareType, string>> = { LOOHPLIMBO: 'loohp_limbo' };
 
+/**
+ * Whether a version is one of Minecraft: 1.x, or 26 and up (the numbering since 2026). The versions of software such as Velocity
+ * (3.4.0-SNAPSHOT) or NanoLimbo (1.2) are their own and must not be taken for the version of the game.
+ */
+export const isMinecraftVersion = (version: string): boolean => /^(1\.\d+|(2[6-9]|[3-9]\d)\.\d+)/.test(version);
+
 export const iconFor = (type: SoftwareType) => `https://s3.mcjars.app/icons/${ICONS[type] ?? type.toLowerCase()}.png`;
 
 export type InstallStep =
