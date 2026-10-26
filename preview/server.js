@@ -72,7 +72,7 @@ const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', server_owner: true, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', server_owner: true, split: { part_of: null, parts: 1 }, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -104,7 +104,7 @@ const app = express();
 app.use(express.json());
 
 const api = express.Router();
-const otherServer = (name, uuid, port) => ({ ...serverAttrs(), name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
+const otherServer = (name, uuid, port) => ({ ...serverAttrs(), split: name === 'Lobby' ? { part_of: { identifier: SHORT, name: 'kokotest' }, parts: 0 } : { part_of: null, parts: 0 }, name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
 const dashServers = () => [
     item('server', { ...serverAttrs(), server_owner: true }),
     item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true }),

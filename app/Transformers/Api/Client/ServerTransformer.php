@@ -96,6 +96,14 @@ class ServerTransformer extends BaseClientTransformer
                 'enabled' => (bool) $server->autoSleep?->enabled,
                 'sleeping' => (bool) ($server->autoSleep?->enabled && $server->autoSleep?->slept_at),
             ],
+            // Whether this server was split off another one (see ServerSplitService), and into how many servers it was split itself.
+            'split' => [
+                'part_of' => $server->parent ? [
+                    'identifier' => config('pterodactyl.features.new_server_identifiers') ? $server->parent->identifier : $server->parent->uuidShort,
+                    'name' => $server->parent->name,
+                ] : null,
+                'parts' => (int) ($server->getAttribute('children_count') ?? $server->children()->count()),
+            ],
             // Whether deleted files and schedules are kept for a while, and for how long.
             'trash' => [
                 'enabled' => (bool) config('trash.enabled', false),

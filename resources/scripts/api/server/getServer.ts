@@ -46,6 +46,8 @@ export interface Server {
     autoSleep: { enabled: boolean; sleeping: boolean };
     // Whether deleted files and schedules are kept in a trash bin for a while, and for how many days.
     trash: { enabled: boolean; retentionDays: number };
+    // Whether the server was split off another one (the one it came from), and how many servers were split off it.
+    split: { partOf: { id: string; name: string } | null; parts: number };
     sftpDetails: {
         ip: string;
         port: number;
@@ -96,6 +98,10 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     },
     autoSleep: { enabled: !!data.auto_sleep?.enabled, sleeping: !!data.auto_sleep?.sleeping },
     trash: { enabled: !!data.trash?.enabled, retentionDays: data.trash?.retention_days ?? 30 },
+    split: {
+        partOf: data.split?.part_of ? { id: data.split.part_of.identifier, name: data.split.part_of.name } : null,
+        parts: data.split?.parts ?? 0,
+    },
     invocation: data.invocation,
     dockerImage: data.docker_image,
     sftpDetails: {

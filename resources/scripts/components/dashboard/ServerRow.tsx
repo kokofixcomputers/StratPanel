@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faServer } from '@fortawesome/free-solid-svg-icons';
-import { PlayIcon, RefreshIcon, StarIcon as StarSolid, StopIcon } from '@heroicons/react/solid';
+import { PlayIcon, RefreshIcon, ScaleIcon, StarIcon as StarSolid, StopIcon } from '@heroicons/react/solid';
 import { CheckIcon, FolderAddIcon, FolderIcon, StarIcon } from '@heroicons/react/outline';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -510,6 +510,19 @@ export default ({
                             </>
                         )}
                     </div>
+                    {(server.split.partOf || server.split.parts > 0) && (
+                        <p
+                            css={tw`mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-primary-600/40 bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700`}
+                            title={'A server whose memory, disk and CPU are shared, see Split in the server menu'}
+                        >
+                            <ScaleIcon css={tw`h-3.5 w-3.5 flex-shrink-0`} />
+                            <span css={tw`truncate`}>
+                                {server.split.partOf
+                                    ? `Split from ${server.split.partOf.name}`
+                                    : `Split into ${server.split.parts + 1} servers`}
+                            </span>
+                        </p>
+                    )}
                     {address && show.address && (
                         <p css={tw`text-xs font-mono text-neutral-400 truncate mt-0.5`}>
                             <Sensitive>{address}</Sensitive>

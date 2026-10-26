@@ -204,4 +204,18 @@ class SplitTest extends IntegrationTestCase
             ->assertSee('allocations', false);
         $this->assertSame(ResourcePool::MINIMUM['memory'], 512);
     }
+
+    public function testTheServerListSaysWhichServersAreSplit(): void
+    {
+        $user = User::factory()->create();
+        $server = $this->serverFor($user);
+        $this->actingAs($user);
+        $this->postJson($this->url($server), ['name' => $this->n('Lobby'), 'memory' => 1024, 'disk' => 2048, 'cpu' => 50])->assertStatus(201);
+
+        $rows = collect($this->getJson('/api/client')->assertOk()->json('data'))->pluck('attributes', 'attributes.name');
+        $this->assertSame(['part_of' => null, 'parts' => 1], $rows[$server->name]['split']);
+        $part = $rows[$this->n('Lobby')]['split'];
+        $this->assertSame($server->name, $part['part_of']['name']);
+        $this->assertSame(0, $part['parts']);
+    }
 }
