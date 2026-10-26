@@ -490,7 +490,7 @@ read-timeout = 30000
 haproxy-protocol = false
 tcp-fast-open = false
 log-player-connections = true
-`, '/forwarding.secret': 'aB3dE5gH7jK9' } : {}),
+`, '/forwarding.secret': 'aB3dE5gH7jK9', '/config/paper-global.yml': 'proxies:\n  bungee-cord:\n    online-mode: true\n  proxy-protocol: false\n  velocity:\n    enabled: false\n    online-mode: true\n    secret: \'\'\n', '/server.properties': 'online-mode=true\nmotd=A Minecraft Server\n' } : {}),
     '/server.properties': ['#Minecraft server properties', 'accepts-transfers=false', 'allow-flight=false', 'broadcast-console-to-ops=true', 'broadcast-rcon-to-ops=true', 'bug-report-link=', 'chat-spam-threshold-seconds=10', 'difficulty=normal', 'enable-command-block=false', 'gamemode=survival', 'hardcore=false', 'level-name=world', 'max-players=20', 'motd=A Minecraft Server', 'online-mode=true', 'pvp=true', 'server-port=26614', 'simulation-distance=10', 'spawn-protection=16', 'view-distance=10', 'white-list=false', ''].join('\n'),
     '/pterodactyl.json': JSON.stringify({ software: process.env.PREVIEW_PROXY ? 'VELOCITY' : 'FABRIC', name: process.env.PREVIEW_PROXY ? 'Velocity' : 'Fabric', minecraftVersion: '1.21.4', build: '0.16.9', java: 21, mods: {
         AANobbMI: { kind: 'mod', projectId: 'AANobbMI', slug: 'sodium', title: 'Sodium', icon: 'https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp', versionId: 'oldversion', versionNumber: '0.5.0', file: 'sodium-fabric-0.5.0.jar', directory: '/mods', loaders: ['fabric'], gameVersion: '1.21.4', installedAt: '2026-09-01T10:00:00Z' },

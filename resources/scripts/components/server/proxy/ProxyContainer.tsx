@@ -310,6 +310,17 @@ export default () => {
             .then(() => setSaving(false));
     };
 
+    // The secret the backends are given. A proxy that has not made its forwarding.secret yet gets one.
+    const ensureSecret = async (): Promise<string> => {
+        if (secret) return secret;
+
+        const next = randomSecret();
+        await saveFileContents(uuid, SECRET_FILE, next);
+        setSecret(next);
+
+        return next;
+    };
+
     const regenerateSecret = () => {
         const next = randomSecret();
         saveFileContents(uuid, SECRET_FILE, next)
@@ -459,6 +470,8 @@ export default () => {
                     existing={config.servers}
                     onClose={() => setPicking(false)}
                     onAdd={(added) => update({ servers: [...config.servers, ...added] })}
+                    ensureSecret={ensureSecret}
+                    forwardingMode={mode}
                 />
             </Card>
 
