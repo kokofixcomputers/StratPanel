@@ -19,6 +19,7 @@ final class AdminNavigation
         ['settings.domains.view', 'admin.settings.domains'],
         ['settings.pools.view', 'admin.settings.pools'],
         ['settings.trash.view', 'admin.settings.trash'],
+        ['settings.backups.view', 'admin.settings.backups'],
         ['settings.certificates.view', 'admin.settings.certificates'],
         ['settings.mail.view', 'admin.settings.mail'],
         ['settings.advanced.view', 'admin.settings.advanced'],

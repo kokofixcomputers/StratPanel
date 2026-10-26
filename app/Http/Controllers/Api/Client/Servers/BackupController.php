@@ -9,7 +9,9 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Permission;
 use Illuminate\Auth\Access\AuthorizationException;
+use Pterodactyl\Models\BackupCopy;
 use Pterodactyl\Services\Backups\DeleteBackupService;
+use Pterodactyl\Services\Backups\External\BackupCopyService;
 use Pterodactyl\Services\Backups\DownloadLinkService;
 use Pterodactyl\Repositories\Eloquent\BackupRepository;
 use Pterodactyl\Services\Backups\InitiateBackupService;
@@ -31,6 +33,7 @@ class BackupController extends ClientApiController
         private InitiateBackupService $initiateBackupService,
         private DownloadLinkService $downloadLinkService,
         private BackupRepository $repository,
+        private BackupCopyService $copies,
     ) {
         parent::__construct();
     }
@@ -49,7 +52,7 @@ class BackupController extends ClientApiController
 
         $limit = min($request->query('per_page') ?? 20, 50);
 
-        return $this->fractal->collection($server->backups()->paginate($limit))
+        return $this->fractal->collection($server->backups()->with('copies.destination')->paginate($limit))
             ->transformWith($this->getTransformer(BackupTransformer::class))
             ->addMeta([
                 'backup_count' => $this->repository->getNonFailedBackups($server)->count(),
@@ -174,7 +177,9 @@ class BackupController extends ClientApiController
             throw new BadRequestHttpException('The backup requested references an unknown disk driver type and cannot be downloaded.');
         }
 
-        $url = $this->downloadLinkService->handle($backup, $request->user());
+        // From a copy outside the node when one was asked for, or when the node does not have the file any more.
+        $copy = $this->chosenCopy($request, $backup);
+        $url = $copy ? $this->copies->downloadUrl($copy) : $this->downloadLinkService->handle($backup, $request->user());
 
         Activity::event('server:backup.download')->subject($backup)->property('name', $backup->name)->log();
 
@@ -214,7 +219,13 @@ class BackupController extends ClientApiController
         $log->transaction(function () use ($backup, $server, $request) {
             // If the backup is for an S3 file we need to generate a unique Download link for
             // it that will allow Wings to actually access the file.
-            if ($backup->disk === Backup::ADAPTER_AWS_S3) {
+            $adapter = null;
+            $copy = $this->chosenCopy($request, $backup);
+            if ($copy) {
+                // A copy outside the node is read from a link, the way an S3 backup is.
+                $url = $this->copies->downloadUrl($copy);
+                $adapter = Backup::ADAPTER_AWS_S3;
+            } elseif ($backup->disk === Backup::ADAPTER_AWS_S3) {
                 $url = $this->downloadLinkService->handle($backup, $request->user());
             }
 
@@ -222,9 +233,40 @@ class BackupController extends ClientApiController
             // actions against it via the Panel API.
             $server->update(['status' => Server::STATUS_RESTORING_BACKUP]);
 
-            $this->daemonRepository->setServer($server)->restore($backup, $url ?? null, $request->input('truncate'));
+            $daemon = $this->daemonRepository->setServer($server);
+            $adapter ? $daemon->restore($backup, $url ?? null, $request->input('truncate'), $adapter) : $daemon->restore($backup, $url ?? null, $request->input('truncate'));
         });
 
         return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * The copy outside the node that a request asks for (`copy`, the id of a destination), or the first one that is stored when the
+     * node does not have the file any more. Null means the file on the node.
+     *
+     * @throws BadRequestHttpException
+     */
+    private function chosenCopy(Request $request, Backup $backup): ?BackupCopy
+    {
+        $wanted = $request->input('copy', $request->query('copy'));
+        $query = $backup->copies()->where('status', BackupCopy::STORED);
+        if ($wanted !== null && $wanted !== '' && $wanted !== 'local') {
+            $copy = (clone $query)->where('destination_id', (int) $wanted)->first();
+            if (!$copy) {
+                throw new BadRequestHttpException('That backup has no stored copy there.');
+            }
+
+            return $copy;
+        }
+        if ($backup->local_removed) {
+            $copy = $query->first();
+            if (!$copy) {
+                throw new BadRequestHttpException('The backup is not on the node any more and has no stored copy.');
+            }
+
+            return $copy;
+        }
+
+        return null;
     }
 }

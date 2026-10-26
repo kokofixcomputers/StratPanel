@@ -148,6 +148,8 @@ final class PermissionRegistry
                 'settings.authentication.update' => 'Change the captcha, passkey and sign up settings',
                 'settings.providers.view' => 'See sign in providers',
                 'settings.providers.update' => 'Add, change and remove sign in providers',
+                'settings.backups.view' => 'See where backups are kept outside the node, and how much of it (never the keys and passwords)',
+                'settings.backups.update' => 'Add, change and remove the places backups are copied to, with their keys and passwords',
                 'settings.certificates.view' => 'See the certificates the panel is served with (never their private keys)',
                 'settings.certificates.update' => 'Add, replace and delete certificates and their private keys',
                 'settings.domains.view' => 'See how people get a domain, and the domains of the panel (never their DNS keys)',

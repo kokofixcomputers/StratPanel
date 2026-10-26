@@ -71,6 +71,7 @@ Route::group(['prefix' => 'settings'], function () {
     Route::get('/domains/zones/{zone}', Admin\SpaController::class)->name('admin.settings.domains.edit')->whereNumber('zone')->middleware('admin.can:settings.domains.view');
     Route::get('/pools', Admin\SpaController::class)->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
     Route::get('/trash', Admin\SpaController::class)->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
+    Route::get('/backups', Admin\SpaController::class)->name('admin.settings.backups')->middleware('admin.can:settings.backups.view');
     Route::get('/certificates', Admin\SpaController::class)->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
     Route::get('/certificates/{certificate}', Admin\SpaController::class)->name('admin.settings.certificates.edit')->whereNumber('certificate')->middleware('admin.can:settings.certificates.view');
     Route::get('/curseforge', Admin\SpaController::class)->name('admin.settings.curseforge')->middleware('admin.can:settings.curseforge.view');

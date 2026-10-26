@@ -38,8 +38,19 @@ class DeleteBackupService
             throw new BackupLockedException();
         }
 
+        // The copies outside the node go too (a destination that can not be reached is logged, the file there stays).
+        $copies = app(\Pterodactyl\Services\Backups\External\BackupCopyService::class);
+        $backup->copies()->get()->each(fn ($copy) => $copies->forget($copy, true));
+
         if ($backup->disk === Backup::ADAPTER_AWS_S3) {
             $this->deleteFromS3($backup);
+
+            return;
+        }
+
+        // The file is not on the node any more, there is nothing to ask the node to delete.
+        if ($backup->local_removed) {
+            $backup->delete();
 
             return;
         }

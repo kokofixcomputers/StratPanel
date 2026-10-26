@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property string|null $checksum
  * @property int $bytes
  * @property string|null $upload_id
+ * @property bool $local_removed
  * @property \Carbon\CarbonImmutable|null $completed_at
  * @property \Carbon\CarbonImmutable $created_at
  * @property \Carbon\CarbonImmutable $updated_at
@@ -48,6 +49,7 @@ class Backup extends Model implements Identifiable
         'id' => 'int',
         'is_successful' => 'bool',
         'is_locked' => 'bool',
+        'local_removed' => 'bool',
         'ignored_files' => 'array',
         'bytes' => 'int',
         'completed_at' => 'datetime',
@@ -59,6 +61,7 @@ class Backup extends Model implements Identifiable
         'checksum' => null,
         'bytes' => 0,
         'upload_id' => null,
+        'local_removed' => false,
     ];
 
     protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
@@ -82,5 +85,15 @@ class Backup extends Model implements Identifiable
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    /**
+     * The copies in the destinations outside the node.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\BackupCopy, $this>
+     */
+    public function copies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BackupCopy::class);
     }
 }

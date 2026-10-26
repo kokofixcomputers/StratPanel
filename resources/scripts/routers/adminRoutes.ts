@@ -94,6 +94,9 @@ const SettingsDomainsPage = lazy(
 const SettingsDomainZonePage = lazy(
     () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/DomainZonePage')
 );
+const SettingsBackupsPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/BackupsPage')
+);
 const SettingsCertificatesPage = lazy(
     () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/CertificatesPage')
 );
@@ -214,6 +217,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     },
     { path: '/admin/settings/pools', permissions: ['settings.pools.view'], component: SettingsPoolsPage },
     { path: '/admin/settings/trash', permissions: ['settings.trash.view'], component: SettingsTrashPage },
+    { path: '/admin/settings/backups', permissions: ['settings.backups.view'], component: SettingsBackupsPage },
     {
         path: '/admin/settings/certificates',
         permissions: ['settings.certificates.view'],

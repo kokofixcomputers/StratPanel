@@ -40,8 +40,8 @@ const state = {
     ],
     allocations: [{ id: 1, ip: '10.0.0.4', ip_alias: 'play.example.com', port: 26614, notes: null, is_default: true }],
     backups: [
-        { uuid: 'b1', is_successful: true, is_locked: false, name: 'Nightly backup', ignored_files: '', checksum: 'sha1:9f2c1e0a77', bytes: 48392011, created_at: now(), completed_at: now() },
-        { uuid: 'b2', is_successful: true, is_locked: true, name: 'Before modpack update', ignored_files: '', checksum: 'sha1:11a8c3b2d9', bytes: 120930112, created_at: '2026-09-28T10:00:00Z', completed_at: '2026-09-28T10:01:12Z' },
+        { uuid: 'b1', is_successful: true, is_locked: false, name: 'Nightly backup', ignored_files: '', checksum: 'sha1:9f2c1e0a77', bytes: 48392011, local: true, copies: [{ destination: 1, name: 'Offsite S3', type: 's3', status: 'stored', bytes: 48392011 }, { destination: 2, name: 'NAS', type: 'webdav', status: 'uploading', bytes: 0 }], created_at: now(), completed_at: now() },
+        { uuid: 'b2', is_successful: true, is_locked: true, name: 'Before modpack update', ignored_files: '', checksum: 'sha1:11a8c3b2d9', bytes: 120930112, local: false, copies: [{ destination: 1, name: 'Offsite S3', type: 's3', status: 'stored', bytes: 120930112 }, { destination: 2, name: 'NAS', type: 'webdav', status: 'failed', bytes: 0 }], created_at: '2026-09-28T10:00:00Z', completed_at: '2026-09-28T10:01:12Z' },
     ],
     schedules: [
         { id: 1, name: 'Restart nightly', cron: { day_of_week: '*', month: '*', day_of_month: '*', hour: '4', minute: '0' }, is_active: true, is_processing: false, only_when_online: false, last_run_at: '2026-10-01T04:00:00Z', next_run_at: '2026-10-03T04:00:00Z', created_at: now(), updated_at: now(),
@@ -655,6 +655,18 @@ api.delete('/account/passkeys/:id', (req, res) => {
     mockPasskeys = mockPasskeys.filter((k) => String(k.id) !== req.params.id);
     res.status(204).end();
 });
+
+// Where copies of backups are kept outside the node.
+let mockDestinations = [
+    { id: 1, name: 'Offsite S3', type: 's3', config: { bucket: 'mc-backups', region: 'eu-central-1', endpoint: 'https://s3.example.com', key: 'AKIA123', prefix: 'panel', has_secret: true }, enabled: true, auto_copy: true, delete_local: true, keep_last: 7, keep_days: 30, max_gb: 50, stats: { stored: 14, working: 0, failed: 0, bytes: 3221225472 } },
+    { id: 2, name: 'NAS', type: 'webdav', config: { url: 'https://nas.example.com/dav/backups', username: 'panel', has_password: true }, enabled: true, auto_copy: true, delete_local: false, keep_last: null, keep_days: null, max_gb: 200, stats: { stored: 3, working: 1, failed: 2, bytes: 524288000 } },
+];
+api.get('/admin/settings/backups', (req, res) => res.json({ destinations: mockDestinations, types: ['s3', 'webdav', 'folder'], backups: 17 }));
+api.post('/admin/settings/backups/test', (req, res) => res.json(req.body.type === 'folder' ? { ok: false, message: 'Could not write to /mnt/backups, does the panel have the right to write there?' } : { ok: true, message: 'It works: a file was written, read back and deleted.' }));
+api.post('/admin/settings/backups', (req, res) => { const d = { id: Date.now(), ...req.body, config: Object.fromEntries(Object.entries(req.body.config || {}).filter(([k]) => !['secret', 'password'].includes(k))), stats: { stored: 0, working: 0, failed: 0, bytes: 0 } }; mockDestinations.push(d); res.status(201).json(d); });
+api.patch('/admin/settings/backups/:id', (req, res) => { mockDestinations = mockDestinations.map((d) => (d.id === Number(req.params.id) ? { ...d, ...req.body, config: { ...d.config, ...req.body.config } } : d)); res.json({}); });
+api.delete('/admin/settings/backups/:id', (req, res) => { mockDestinations = mockDestinations.filter((d) => d.id !== Number(req.params.id)); res.status(204).end(); });
+api.post('/admin/settings/backups/:id/:action', (req, res) => res.json({ queued: 3, deleted: 2 }));
 
 // Splitting the server into parts that share its resources.
 let mockParts = [

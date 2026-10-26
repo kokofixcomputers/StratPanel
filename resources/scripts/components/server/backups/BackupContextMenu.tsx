@@ -19,6 +19,7 @@ import getServerBackups from '@/api/swr/getServerBackups';
 import { ServerBackup } from '@/api/server/types';
 import { ServerContext } from '@/state/server';
 import Input from '@/components/elements/Input';
+import Select from '@/components/elements/Select';
 import { restoreServerBackup } from '@/api/server/backups';
 import http, { httpErrorToHuman } from '@/api/http';
 import { Dialog } from '@/components/elements/dialog';
@@ -33,13 +34,20 @@ export default ({ backup }: Props) => {
     const [modal, setModal] = useState('');
     const [loading, setLoading] = useState(false);
     const [truncate, setTruncate] = useState(false);
+    // Where the file is read from: the node (undefined) or the copy in a destination.
+    const stored = backup.copies.filter((copy) => copy.status === 'stored');
+    const [source, setSource] = useState<number | undefined>(undefined);
+    const sources = [...(backup.isLocal ? [undefined] : []), ...stored.map((copy) => copy.destination)];
+    const chosen = source ?? (backup.isLocal ? undefined : sources[0]);
+    const sourceName = (id: number | undefined) =>
+        id === undefined ? 'the node' : stored.find((copy) => copy.destination === id)?.name ?? 'a copy';
     const { clearFlashes, clearAndAddHttpError } = useFlash();
     const { mutate } = getServerBackups();
 
-    const doDownload = () => {
+    const doDownload = (from?: number) => {
         setLoading(true);
         clearFlashes('backups');
-        getBackupDownloadUrl(uuid, backup.uuid)
+        getBackupDownloadUrl(uuid, backup.uuid, from)
             .then((url) => {
                 // @ts-expect-error this is valid
                 window.location = url;
@@ -76,7 +84,7 @@ export default ({ backup }: Props) => {
     const doRestorationAction = () => {
         setLoading(true);
         clearFlashes('backups');
-        restoreServerBackup(uuid, backup.uuid, truncate)
+        restoreServerBackup(uuid, backup.uuid, truncate, chosen)
             .then(() =>
                 setServerFromState((s) => ({
                     ...s,
@@ -138,6 +146,26 @@ export default ({ backup }: Props) => {
                     Your server will be stopped. You will not be able to control the power state, access the file
                     manager, or create additional backups until completed.
                 </p>
+                {sources.length > 1 && (
+                    <div css={tw`mt-4`}>
+                        <label htmlFor={'restore_source'} css={tw`block text-sm mb-1 text-neutral-200`}>
+                            Restore from
+                        </label>
+                        <Select
+                            id={'restore_source'}
+                            value={chosen === undefined ? '' : String(chosen)}
+                            onChange={(e) =>
+                                setSource(e.currentTarget.value === '' ? undefined : Number(e.currentTarget.value))
+                            }
+                        >
+                            {sources.map((id) => (
+                                <option key={id ?? 'node'} value={id === undefined ? '' : String(id)}>
+                                    {id === undefined ? 'The node' : sourceName(id)}
+                                </option>
+                            ))}
+                        </Select>
+                    </div>
+                )}
                 <p css={tw`mt-4 -mb-2 bg-neutral-600 p-3 rounded-lg`}>
                     <label htmlFor={'restore_truncate'} css={tw`text-base flex items-center cursor-pointer`}>
                         <Input
@@ -175,10 +203,19 @@ export default ({ backup }: Props) => {
                 >
                     <div css={tw`text-sm`}>
                         <Can action={'backup.download'}>
-                            <DropdownButtonRow onClick={doDownload}>
-                                <FontAwesomeIcon fixedWidth icon={faCloudDownloadAlt} css={tw`text-xs`} />
-                                <span css={tw`ml-2`}>Download</span>
-                            </DropdownButtonRow>
+                            {sources.length > 1 ? (
+                                sources.map((id) => (
+                                    <DropdownButtonRow key={id ?? 'node'} onClick={() => doDownload(id)}>
+                                        <FontAwesomeIcon fixedWidth icon={faCloudDownloadAlt} css={tw`text-xs`} />
+                                        <span css={tw`ml-2`}>Download from {sourceName(id)}</span>
+                                    </DropdownButtonRow>
+                                ))
+                            ) : (
+                                <DropdownButtonRow onClick={() => doDownload()}>
+                                    <FontAwesomeIcon fixedWidth icon={faCloudDownloadAlt} css={tw`text-xs`} />
+                                    <span css={tw`ml-2`}>Download</span>
+                                </DropdownButtonRow>
+                            )}
                         </Can>
                         <Can action={'backup.restore'}>
                             <DropdownButtonRow onClick={() => setModal('restore')}>

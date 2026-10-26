@@ -77,6 +77,11 @@ class BackupStatusController extends Controller
             }
         });
 
+        // A complete backup is copied to the destinations outside the node, in the background.
+        if ($model->is_successful) {
+            app(\Pterodactyl\Services\Backups\External\BackupCopyService::class)->queueNew($model);
+        }
+
         return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);
     }
 

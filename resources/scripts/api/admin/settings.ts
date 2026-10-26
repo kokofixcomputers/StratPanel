@@ -248,3 +248,27 @@ export interface DomainCertificate {
     reason: string | null;
     dns: { name: string; value: string } | null;
 }
+
+export type BackupDestinationType = 's3' | 'webdav' | 'folder';
+
+export interface BackupDestination {
+    id: number;
+    name: string;
+    type: BackupDestinationType;
+    // What it is set up with; a secret is never given back, only that there is one (has_secret, has_password).
+    config: Record<string, string | boolean | undefined>;
+    enabled: boolean;
+    auto_copy: boolean;
+    delete_local: boolean;
+    keep_last: number | null;
+    keep_days: number | null;
+    max_gb: number | null;
+    stats: { stored: number; working: number; failed: number; bytes: number };
+}
+
+export interface BackupDestinations {
+    destinations: BackupDestination[];
+    types: BackupDestinationType[];
+    // How many complete backups there are, for "copy the ones from before".
+    backups: number;
+}

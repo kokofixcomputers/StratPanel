@@ -57,7 +57,7 @@ class DaemonBackupRepository extends DaemonRepository
      *
      * @throws DaemonConnectionException
      */
-    public function restore(Backup $backup, ?string $url = null, bool $truncate = false): ResponseInterface
+    public function restore(Backup $backup, ?string $url = null, bool $truncate = false, ?string $adapter = null): ResponseInterface
     {
         Assert::isInstanceOf($this->server, Server::class);
 
@@ -66,7 +66,8 @@ class DaemonBackupRepository extends DaemonRepository
                 sprintf('/api/servers/%s/backup/%s/restore', $this->server->uuid, $backup->uuid),
                 [
                     'json' => [
-                        'adapter' => $backup->disk,
+                        // A file that is read from a link (S3, or a copy outside the node) is restored the way an S3 backup is.
+                        'adapter' => $adapter ?? $backup->disk,
                         'truncate_directory' => $truncate,
                         'download_url' => $url ?? '',
                     ],

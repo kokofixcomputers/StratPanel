@@ -139,6 +139,17 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::delete('/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
         });
 
+        Route::prefix('/backups')->group(function () {
+            Route::get('/', [Admin\Settings\BackupsController::class, 'index'])->middleware('admin.can:settings.backups.view');
+            Route::post('/', [Admin\Settings\BackupsController::class, 'store'])->middleware('admin.can:settings.backups.update');
+            Route::post('/test', [Admin\Settings\BackupsController::class, 'test'])->middleware('admin.can:settings.backups.update');
+            Route::patch('/{destination}', [Admin\Settings\BackupsController::class, 'update'])->whereNumber('destination')->middleware('admin.can:settings.backups.update');
+            Route::delete('/{destination}', [Admin\Settings\BackupsController::class, 'destroy'])->whereNumber('destination')->middleware('admin.can:settings.backups.update');
+            Route::post('/{destination}/backfill', [Admin\Settings\BackupsController::class, 'backfill'])->whereNumber('destination')->middleware('admin.can:settings.backups.update');
+            Route::post('/{destination}/prune', [Admin\Settings\BackupsController::class, 'prune'])->whereNumber('destination')->middleware('admin.can:settings.backups.update');
+            Route::post('/{destination}/retry', [Admin\Settings\BackupsController::class, 'retry'])->whereNumber('destination')->middleware('admin.can:settings.backups.update');
+        });
+
         Route::prefix('/certificates')->group(function () {
             Route::get('/', [Admin\Settings\CertificatesController::class, 'index'])->middleware('admin.can:settings.certificates.view');
             Route::post('/', [Admin\Settings\CertificatesController::class, 'store'])->middleware('admin.can:settings.certificates.update');

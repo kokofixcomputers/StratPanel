@@ -44,6 +44,8 @@ class Kernel extends ConsoleKernel
         $schedule->command(\Pterodactyl\Console\Commands\Node\RenewCertificatesCommand::class)->twiceDaily(3, 15)->withoutOverlapping();
         // Whatever has been in a trash bin for longer than it is kept.
         $schedule->command(\Pterodactyl\Console\Commands\Server\PurgeTrashCommand::class)->hourly()->withoutOverlapping();
+        // What the destinations of backups outside the node keep.
+        $schedule->command(\Pterodactyl\Console\Commands\Backup\PruneExternalBackupsCommand::class)->hourly()->withoutOverlapping();
 
         if (config('backups.prune_age')) {
             // Every 30 minutes, run the backup pruning command so that any abandoned backups can be deleted.

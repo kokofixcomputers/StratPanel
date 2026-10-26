@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArchiveIcon, DotsHorizontalIcon, LockClosedIcon } from '@heroicons/react/solid';
+import { ArchiveIcon, CloudUploadIcon, DotsHorizontalIcon, LockClosedIcon } from '@heroicons/react/solid';
 import { format, formatDistanceToNow } from 'date-fns';
 import Spinner from '@/components/elements/Spinner';
 import { bytesToString } from '@/lib/formatters';
@@ -76,7 +76,44 @@ export default ({ backup, className }: Props) => {
                             </span>
                         )}
                     </div>
-                    <p css={tw`mt-1 md:mt-0 text-xs text-neutral-400 font-mono truncate`}>{backup.checksum}</p>
+                    {backup.completedAt !== null &&
+                    backup.isSuccessful &&
+                    (backup.copies.length > 0 || !backup.isLocal) ? (
+                        <div css={tw`flex flex-wrap items-center gap-1.5`}>
+                            {backup.isLocal ? (
+                                <span css={tw`rounded-full bg-neutral-600 px-2 py-px text-2xs text-neutral-300`}>
+                                    On the node
+                                </span>
+                            ) : (
+                                <span css={tw`rounded-full bg-yellow-50 px-2 py-px text-2xs text-yellow-700`}>
+                                    Only in copies
+                                </span>
+                            )}
+                            {backup.copies.map((copy) => (
+                                <span
+                                    key={copy.destination}
+                                    title={copy.status}
+                                    css={[
+                                        tw`inline-flex items-center rounded-full px-2 py-px text-2xs`,
+                                        copy.status === 'stored' && tw`bg-green-50 text-green-700`,
+                                        copy.status === 'failed' && tw`bg-red-50 text-red-700`,
+                                        (copy.status === 'pending' || copy.status === 'uploading') &&
+                                            tw`bg-primary-50 text-primary-700`,
+                                    ]}
+                                >
+                                    <CloudUploadIcon css={tw`mr-1 h-3 w-3`} />
+                                    {copy.name}
+                                    {copy.status === 'failed'
+                                        ? ' (failed)'
+                                        : copy.status === 'stored'
+                                        ? ''
+                                        : ' (copying)'}
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <p css={tw`mt-1 md:mt-0 text-xs text-neutral-400 font-mono truncate`}>{backup.checksum}</p>
+                    )}
                 </div>
             </div>
             <div css={tw`flex-1 md:flex-none md:w-48 mt-4 md:mt-0 md:ml-8 md:text-center`}>
