@@ -8,6 +8,7 @@ import {
     ArrowRightIcon,
     CheckCircleIcon,
     CheckIcon,
+    ChevronDownIcon,
     XCircleIcon,
 } from '@heroicons/react/solid';
 import PageContentBlock from '@/components/elements/PageContentBlock';
@@ -104,6 +105,7 @@ export default () => {
 
     const [specs, setSpecs] = useState<Specs | null>(null);
     const [editingSpecs, setEditingSpecs] = useState(false);
+    const [advanced, setAdvanced] = useState(false);
     const [nodeId, setNodeId] = useState<number | null>(null);
     const [pings, setPings] = useState<Record<number, number | null | undefined>>({});
 
@@ -286,7 +288,9 @@ export default () => {
                                   config.pool.remaining.cpu
                               }% CPU and ${config.pool.remaining.allocations} allocations and ${
                                   config.pool.remaining.backups
-                              } backups are left. Delete a server to get its share back.`
+                              } backups and ${
+                                  config.pool.remaining.databases
+                              } databases are left. Delete a server to get its share back.`
                             : config && config.maxServers > 0 && config.owned >= config.maxServers
                             ? `You already have ${config.owned} of ${config.maxServers} servers allowed on your account.`
                             : 'Creating servers is not enabled on this panel.'}
@@ -586,20 +590,14 @@ export default () => {
                                 </Button>
                             </div>
                             {specs && !editingSpecs && (
-                                <dl
-                                    css={tw`mt-3 grid gap-3`}
-                                    className={config.pool ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-3'}
-                                >
+                                <dl css={tw`mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3`}>
                                     {[
                                         ['Memory', bytesToString(mbToBytes(specs.memory))],
                                         ['Disk', bytesToString(mbToBytes(specs.disk))],
                                         ['CPU', `${specs.cpu}%`],
-                                        ...(config.pool
-                                            ? [
-                                                  ['Allocations', String(specs.allocations ?? 1)],
-                                                  ['Backups', String(specs.backups ?? 0)],
-                                              ]
-                                            : []),
+                                        ['Allocations', String(specs.allocations ?? 1)],
+                                        ['Backups', String(specs.backups ?? 0)],
+                                        ['Databases', String(specs.databases ?? 0)],
                                     ].map(([label, value]) => (
                                         <div
                                             key={label}
@@ -643,36 +641,6 @@ export default () => {
                                         hint={`up to ${config.max.cpu}%, 100% is one core`}
                                         onChange={(cpu) => setSpecs({ ...specs, cpu })}
                                     />
-                                    {config.pool && (
-                                        <Slider
-                                            label={'Allocations'}
-                                            value={specs.allocations ?? 1}
-                                            min={1}
-                                            max={Math.max(1, config.max.allocations ?? 1)}
-                                            step={1}
-                                            display={String(specs.allocations ?? 1)}
-                                            hint={`ports for the server, up to ${Math.max(
-                                                1,
-                                                config.max.allocations ?? 1
-                                            )}`}
-                                            onChange={(allocations) => setSpecs({ ...specs, allocations })}
-                                        />
-                                    )}
-                                    {config.pool && (
-                                        <Slider
-                                            label={'Backups'}
-                                            value={specs.backups ?? 0}
-                                            min={0}
-                                            max={Math.max(0, config.max.backups ?? 0)}
-                                            step={1}
-                                            display={String(specs.backups ?? 0)}
-                                            hint={`backups the server may keep, up to ${Math.max(
-                                                0,
-                                                config.max.backups ?? 0
-                                            )}`}
-                                            onChange={(backups) => setSpecs({ ...specs, backups })}
-                                        />
-                                    )}
                                     <Button
                                         type={'button'}
                                         isSecondary
@@ -683,12 +651,80 @@ export default () => {
                                     </Button>
                                 </div>
                             )}
+                            {specs && (
+                                <div css={tw`mt-4`}>
+                                    <button
+                                        type={'button'}
+                                        aria-expanded={advanced}
+                                        onClick={() => setAdvanced((v) => !v)}
+                                        css={tw`flex w-full items-center justify-between rounded-xl border border-neutral-500 bg-neutral-900 px-4 py-3 text-left text-sm font-semibold text-neutral-50`}
+                                    >
+                                        <span>
+                                            Advanced
+                                            <span css={tw`ml-2 font-normal text-neutral-400`}>
+                                                allocations, backups and databases
+                                            </span>
+                                        </span>
+                                        <ChevronDownIcon
+                                            css={[
+                                                tw`h-5 w-5 text-neutral-400 transition-transform`,
+                                                advanced && tw`rotate-180`,
+                                            ]}
+                                        />
+                                    </button>
+                                    {advanced && (
+                                        <div
+                                            css={tw`mt-2 space-y-6 rounded-xl border border-neutral-500 bg-neutral-900 p-5`}
+                                        >
+                                            <Slider
+                                                label={'Allocations'}
+                                                value={specs.allocations ?? 1}
+                                                min={1}
+                                                max={Math.max(1, config.max.allocations ?? 1)}
+                                                step={1}
+                                                display={String(specs.allocations ?? 1)}
+                                                hint={`ports for the server, up to ${Math.max(
+                                                    1,
+                                                    config.max.allocations ?? 1
+                                                )}`}
+                                                onChange={(allocations) => setSpecs({ ...specs, allocations })}
+                                            />
+                                            <Slider
+                                                label={'Backups'}
+                                                value={specs.backups ?? 0}
+                                                min={0}
+                                                max={Math.max(0, config.max.backups ?? 0)}
+                                                step={1}
+                                                display={String(specs.backups ?? 0)}
+                                                hint={`backups the server may keep, up to ${Math.max(
+                                                    0,
+                                                    config.max.backups ?? 0
+                                                )}`}
+                                                onChange={(backups) => setSpecs({ ...specs, backups })}
+                                            />
+                                            <Slider
+                                                label={'Databases'}
+                                                value={specs.databases ?? 0}
+                                                min={0}
+                                                max={Math.max(0, config.max.databases ?? 0)}
+                                                step={1}
+                                                display={String(specs.databases ?? 0)}
+                                                hint={`databases the server may have, up to ${Math.max(
+                                                    0,
+                                                    config.max.databases ?? 0
+                                                )}`}
+                                                onChange={(databases) => setSpecs({ ...specs, databases })}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {specs && config.pool && (
                                 <div css={tw`mt-4 rounded-xl border border-neutral-500 bg-neutral-900 p-4`}>
                                     <p css={tw`text-sm font-semibold text-neutral-50`}>
                                         Left in your pool after this server
                                     </p>
-                                    <dl css={tw`mt-3 grid grid-cols-2 sm:grid-cols-5 gap-3`}>
+                                    <dl css={tw`mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3`}>
                                         {(() => {
                                             const after = poolAfter(config.pool.remaining, specs);
                                             const limits = config.pool.limits;
@@ -714,6 +750,12 @@ export default () => {
                                                     (v: number) => String(v),
                                                 ],
                                                 ['Backups', after.backups, limits.backups, (v: number) => String(v)],
+                                                [
+                                                    'Databases',
+                                                    after.databases,
+                                                    limits.databases,
+                                                    (v: number) => String(v),
+                                                ],
                                             ].map(([label, left, total, format]) => (
                                                 <div key={label as string}>
                                                     <dt css={tw`text-2xs uppercase tracking-wide text-neutral-400`}>

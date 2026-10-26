@@ -157,6 +157,7 @@ class UsersController extends Controller
             'cpu' => 'nullable|integer|between:0,100000',
             'allocations' => 'nullable|integer|between:0,1000',
             'backups' => 'nullable|integer|between:0,10000',
+            'databases' => 'nullable|integer|between:0,1000',
         ]);
 
         $before = [];

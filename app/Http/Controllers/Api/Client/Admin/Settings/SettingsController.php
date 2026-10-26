@@ -219,6 +219,7 @@ class SettingsController extends Controller
             'cpu' => 'required|integer|between:0,100000',
             'allocations' => 'required|integer|between:0,1000',
             'backups' => 'required|integer|between:0,10000',
+            'databases' => 'required|integer|between:0,1000',
         ]);
 
         $this->put('pterodactyl:pools:enabled', $this->flag($request, 'enabled'));

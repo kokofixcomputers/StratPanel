@@ -12,6 +12,7 @@ export interface ServerShare {
     cpu: number;
     allocations: number;
     backups: number;
+    databases: number;
 }
 
 /** What the account may spend on servers and how its servers use it (memory and disk in MB, CPU in percent). */

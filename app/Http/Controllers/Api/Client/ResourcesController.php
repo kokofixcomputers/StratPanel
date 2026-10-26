@@ -23,7 +23,7 @@ class ResourcesController extends ClientApiController
         $user = $request->user();
         $applies = $this->pools->appliesTo($user);
 
-        $servers = Server::query()->where('owner_id', $user->id)->orderBy('name')->get(['id', 'uuid', 'uuidShort', 'name', 'memory', 'disk', 'cpu', 'backup_limit']);
+        $servers = Server::query()->where('owner_id', $user->id)->orderBy('name')->get(['id', 'uuid', 'uuidShort', 'name', 'memory', 'disk', 'cpu', 'backup_limit', 'database_limit']);
         $counts = Allocation::query()->whereIn('server_id', $servers->pluck('id'))->selectRaw('server_id, COUNT(*) as total')->groupBy('server_id')->pluck('total', 'server_id');
 
         return [
@@ -43,6 +43,7 @@ class ResourcesController extends ClientApiController
                     'cpu' => (int) $server->cpu,
                     'allocations' => (int) ($counts[$server->id] ?? 0),
                     'backups' => (int) $server->backup_limit,
+                    'databases' => (int) $server->database_limit,
                 ])->values()->all(),
             ],
         ];

@@ -221,6 +221,9 @@ return [
         // and a web map need.
         'allocations' => (int) env('PTERODACTYL_SELF_SERVICE_ALLOCATIONS', 4),
         'backups' => (int) env('PTERODACTYL_SELF_SERVICE_BACKUPS', 2),
+        // The most databases and backups a person may pick for a server in the advanced options of the create page (without resource pools).
+        'max_databases' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_DATABASES', 3),
+        'max_backups' => (int) env('PTERODACTYL_SELF_SERVICE_MAX_BACKUPS', 5),
     ],
 
     /*
@@ -242,6 +245,8 @@ return [
         'allocations' => (int) env('PTERODACTYL_POOLS_ALLOCATIONS', 5),
         // How many backups the servers of a person may keep in total (the backup limits of their servers added up).
         'backups' => (int) env('PTERODACTYL_POOLS_BACKUPS', 5),
+        // How many databases the servers of a person may have in total (the database limits of their servers added up).
+        'databases' => (int) env('PTERODACTYL_POOLS_DATABASES', 2),
     ],
 
     /*

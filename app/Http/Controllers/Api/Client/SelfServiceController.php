@@ -48,7 +48,7 @@ class SelfServiceController extends ClientApiController
         // With resource pools the servers are paid from the pool, not counted: what is left decides what can be picked.
         $pooled = $this->pools->appliesTo($request->user());
         $remaining = $pooled ? $this->pools->remaining($request->user()) : null;
-        $start = ['memory' => (int) $config['memory'], 'disk' => (int) $config['disk'], 'cpu' => (int) $config['cpu'], 'allocations' => 2, 'backups' => (int) $config['backups']];
+        $start = ['memory' => (int) $config['memory'], 'disk' => (int) $config['disk'], 'cpu' => (int) $config['cpu'], 'allocations' => 2, 'backups' => (int) $config['backups'], 'databases' => (int) $config['databases']];
         if ($pooled) {
             $start = $this->pools->fit($request->user(), $start);
         }
@@ -85,6 +85,7 @@ class SelfServiceController extends ClientApiController
                     // How many allocations the server starts with: two without a pool, one at least.
                     'allocations' => $start['allocations'],
                     'backups' => $start['backups'],
+                    'databases' => $start['databases'],
                 ],
                 'nodes' => $this->availableNodes()->map(function (Node $node) {
                     $memoryLimit = $node->memory * (1 + ($node->memory_overallocate / 100));
@@ -108,8 +109,10 @@ class SelfServiceController extends ClientApiController
                     'memory' => $ceiling['memory'],
                     'disk' => $ceiling['disk'],
                     'cpu' => $ceiling['cpu'],
-                    'allocations' => $pooled ? max(1, $remaining['allocations']) : 2,
-                    'backups' => $pooled ? $remaining['backups'] : (int) $config['backups'],
+                    'allocations' => $pooled ? max(1, $remaining['allocations']) : $this->ceilings($request->user(), $config)['allocations'],
+                    // Without a pool the advanced options go up to what the panel allows (admins who may create servers have more room).
+                    'backups' => $pooled ? $remaining['backups'] : $this->ceilings($request->user(), $config)['backups'],
+                    'databases' => $pooled ? $remaining['databases'] : $this->ceilings($request->user(), $config)['databases'],
                 ],
             ],
         ];
@@ -157,16 +160,32 @@ class SelfServiceController extends ClientApiController
         $cpu = (int) $request->input('cpu', $config['cpu']);
         $allocations = $pooled ? max(1, (int) $request->input('allocations', 2)) : 2;
         $backups = (int) $config['backups'];
+        $databases = (int) $config['databases'];
+        if (!$pooled) {
+            // The advanced options: what was asked for, up to what the panel allows.
+            $ceilings = $this->ceilings($user, $config);
+            if ($request->has('backups')) {
+                $backups = min(max(0, (int) $request->input('backups')), $ceilings['backups']);
+            }
+            if ($request->has('databases')) {
+                $databases = min(max(0, (int) $request->input('databases')), $ceilings['databases']);
+            }
+            if ($request->has('allocations')) {
+                $allocations = min(max(1, (int) $request->input('allocations')), $ceilings['allocations']);
+            }
+        }
         if ($pooled) {
             // What was not asked for is the usual size, cut down to what is left; what was asked for has to fit as it is.
             $backups = (int) $request->input('backups', $config['backups']);
-            $usual = $this->pools->fit($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups]);
+            $databases = (int) $request->input('databases', $config['databases']);
+            $usual = $this->pools->fit($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups, 'databases' => $databases]);
             $memory = $request->has('memory') ? $memory : $usual['memory'];
             $disk = $request->has('disk') ? $disk : $usual['disk'];
             $cpu = $request->has('cpu') ? $cpu : $usual['cpu'];
             $allocations = $request->has('allocations') ? $allocations : max(1, $usual['allocations']);
             $backups = $request->has('backups') ? $backups : $usual['backups'];
-            $this->pools->check($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups]);
+            $databases = $request->has('databases') ? $databases : $usual['databases'];
+            $this->pools->check($user, ['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu, 'allocations' => $allocations, 'backups' => $backups, 'databases' => $databases]);
             foreach (['memory' => $memory, 'disk' => $disk, 'cpu' => $cpu] as $resource => $value) {
                 if ($value < ResourcePool::MINIMUM[$resource]) {
                     throw new DisplayException('Your resource pool has too little ' . $resource . ' left to make another server.');
@@ -211,10 +230,10 @@ class SelfServiceController extends ClientApiController
             'threads' => null,
             'skip_scripts' => $skipScripts,
             'oom_disabled' => true,
-            'database_limit' => (int) $config['databases'],
+            'database_limit' => $databases,
             // At least the two allocations a server starts with, the setting is how many it may have in total. With a pool it is the whole pool
             // of the person: how many they really get is decided by what is left of it (see NetworkAllocationController).
-            'allocation_limit' => $pooled ? max($allocations, $this->pools->limits($user)['allocations']) : max(2, (int) $config['allocations']),
+            'allocation_limit' => $pooled ? max($allocations, $this->pools->limits($user)['allocations']) : max($allocations, 2, (int) $config['allocations']),
             'backup_limit' => $backups,
             'start_on_completion' => false,
         ], $placement), $deployment);
@@ -237,6 +256,26 @@ class SelfServiceController extends ClientApiController
         return $this->fractal->item($server)
             ->transformWith($this->getTransformer(ServerTransformer::class))
             ->respond(201);
+    }
+
+    /**
+     * The most a person without a pool may pick in the advanced options of the create page. Whoever may create servers in the admin
+     * area has plenty of room, everybody else gets what the panel allows.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array{allocations: int, backups: int, databases: int}
+     */
+    private function ceilings(\Pterodactyl\Models\User $user, array $config): array
+    {
+        if ($user->hasPermission('servers.create')) {
+            return ['allocations' => 20, 'backups' => 100, 'databases' => 20];
+        }
+
+        return [
+            'allocations' => max(2, (int) $config['allocations']),
+            'backups' => max((int) $config['backups'], (int) ($config['max_backups'] ?? 0)),
+            'databases' => max((int) $config['databases'], (int) ($config['max_databases'] ?? 0)),
+        ];
     }
 
     /**

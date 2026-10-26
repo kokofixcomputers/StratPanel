@@ -67,6 +67,7 @@ export interface PoolNumbers {
     cpu: number;
     allocations: number;
     backups: number;
+    databases: number;
 }
 
 export interface Pools {

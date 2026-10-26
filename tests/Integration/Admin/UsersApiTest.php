@@ -74,7 +74,7 @@ class UsersApiTest extends RoleTestCase
         $this->assertTrue($roles['Mine']['assignable']);
         $this->assertFalse($roles['Theirs']['assignable'], 'a role that holds more than the giver can not be given');
         $this->assertArrayHasKey('en', $json['languages']);
-        $this->assertSame(['memory', 'disk', 'cpu', 'allocations', 'backups'], array_keys($json['pool']['limits']));
+        $this->assertSame(['memory', 'disk', 'cpu', 'allocations', 'backups', 'databases'], array_keys($json['pool']['limits']));
         $this->assertNull($json['pool']['own']['memory']);
     }
 

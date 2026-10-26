@@ -15,6 +15,7 @@ const FIELDS: { key: keyof PoolNumbers; label: string }[] = [
     { key: 'cpu', label: 'CPU (%)' },
     { key: 'allocations', label: 'Allocations' },
     { key: 'backups', label: 'Backups' },
+    { key: 'databases', label: 'Databases' },
 ];
 
 /** What a person may spend on the servers they make themselves; an empty field is the default of the panel. */
@@ -37,6 +38,7 @@ export default ({
         cpu: '',
         allocations: '',
         backups: '',
+        databases: '',
     });
     const [busy, setBusy] = useState(false);
 

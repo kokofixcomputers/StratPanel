@@ -87,10 +87,10 @@ class PoolsTest extends IntegrationTestCase
     public function testEverybodyHasTheDefaultsUntilTheyAreGivenAPool(): void
     {
         $user = $this->user();
-        $this->assertSame(['memory' => 4096, 'disk' => 10240, 'cpu' => 200, 'allocations' => 5, 'backups' => 5], $this->pool()->limits($user));
+        $this->assertSame(['memory' => 4096, 'disk' => 10240, 'cpu' => 200, 'allocations' => 5, 'backups' => 5, 'databases' => 0], $this->pool()->limits($user));
 
         $user->forceFill(['pool_memory' => 8192, 'pool_allocations' => 0])->save();
-        $this->assertSame(['memory' => 8192, 'disk' => 10240, 'cpu' => 200, 'allocations' => 0, 'backups' => 5], $this->pool()->limits($user->fresh()));
+        $this->assertSame(['memory' => 8192, 'disk' => 10240, 'cpu' => 200, 'allocations' => 0, 'backups' => 5, 'databases' => 0], $this->pool()->limits($user->fresh()));
     }
 
     public function testWhatTheServersUseIsCountedFromTheServers(): void
@@ -100,8 +100,8 @@ class PoolsTest extends IntegrationTestCase
         $this->spend($user, 512, 1024, 50, 1, 1);
         $this->spend($this->user(), 4096, 4096, 100, 3);
 
-        $this->assertSame(['memory' => 1536, 'disk' => 3072, 'cpu' => 100, 'allocations' => 3, 'backups' => 3], $this->pool()->used($user));
-        $this->assertSame(['memory' => 2560, 'disk' => 7168, 'cpu' => 100, 'allocations' => 2, 'backups' => 2], $this->pool()->remaining($user));
+        $this->assertSame(['memory' => 1536, 'disk' => 3072, 'cpu' => 100, 'allocations' => 3, 'backups' => 3, 'databases' => 0], $this->pool()->used($user));
+        $this->assertSame(['memory' => 2560, 'disk' => 7168, 'cpu' => 100, 'allocations' => 2, 'backups' => 2, 'databases' => 0], $this->pool()->remaining($user));
         $this->assertTrue($this->pool()->canCreate($user));
     }
 
@@ -143,7 +143,7 @@ class PoolsTest extends IntegrationTestCase
         $user = $this->user();
         $this->spend($user, 3584, 9216, 150, 4, 4);
 
-        $this->assertSame(['memory' => 512, 'disk' => 1024, 'cpu' => 50, 'allocations' => 1, 'backups' => 1], $this->pool()->fit($user, ['memory' => 2048, 'disk' => 5120, 'cpu' => 100, 'allocations' => 2, 'backups' => 2]));
+        $this->assertSame(['memory' => 512, 'disk' => 1024, 'cpu' => 50, 'allocations' => 1, 'backups' => 1, 'databases' => 0], $this->pool()->fit($user, ['memory' => 2048, 'disk' => 5120, 'cpu' => 100, 'allocations' => 2, 'backups' => 2, 'databases' => 1]));
     }
 
     public function testAdminsWhoCreateServersAreNotLimited(): void
@@ -165,7 +165,7 @@ class PoolsTest extends IntegrationTestCase
         $attributes = $this->actingAs($user)->getJson('/api/client/self-service')->assertOk()->json('attributes');
 
         $this->assertTrue($attributes['can_create']);
-        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 100, 'allocations' => 2, 'backups' => 5], $attributes['pool']['remaining']);
+        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 100, 'allocations' => 2, 'backups' => 5, 'databases' => 0], $attributes['pool']['remaining']);
         $this->assertSame(1024, $attributes['max']['memory']);
         $this->assertSame(2048, $attributes['max']['disk']);
         $this->assertSame(100, $attributes['max']['cpu']);
@@ -222,7 +222,7 @@ class PoolsTest extends IntegrationTestCase
         $this->assertSame(3, $server->allocations()->count());
         $this->assertSame(5, $server->allocation_limit, 'it may grow up to the whole pool of its owner');
         $this->assertSame(2, $server->backup_limit, 'the backups asked for are its backup limit');
-        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 100, 'allocations' => 3, 'backups' => 2], $this->pool()->used($user));
+        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 100, 'allocations' => 3, 'backups' => 2, 'databases' => 0], $this->pool()->used($user));
 
         // The second one is made from what is left.
         $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Second', 'memory' => 3072, 'disk' => 8192, 'cpu' => 100, 'allocations' => 2, 'backups' => 3, 'node_id' => $node->id])->assertStatus(201);
@@ -238,9 +238,60 @@ class PoolsTest extends IntegrationTestCase
         $node = $this->node();
         $user = $this->user();
 
-        $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Old way', 'allocations' => 5, 'node_id' => $node->id])->assertStatus(201);
+        $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Old way', 'node_id' => $node->id])->assertStatus(201);
 
         $this->assertSame(2, Server::query()->where('owner_id', $user->id)->firstOrFail()->allocations()->count());
+    }
+
+    public function testTheAdvancedOptionsWorkWithoutPoolsUpToWhatThePanelAllows(): void
+    {
+        config(['pterodactyl.pools.enabled' => false, 'pterodactyl.self_service.allocations' => 4, 'pterodactyl.self_service.max_databases' => 3, 'pterodactyl.self_service.max_backups' => 5]);
+        $node = $this->node();
+        $user = $this->user();
+
+        $max = $this->actingAs($user)->getJson('/api/client/self-service')->json('attributes.max');
+        $this->assertSame([4, 5, 3], [$max['allocations'], $max['backups'], $max['databases']]);
+
+        $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Wanting', 'allocations' => 9, 'backups' => 50, 'databases' => 2, 'node_id' => $node->id])->assertStatus(201);
+
+        $server = Server::query()->where('owner_id', $user->id)->firstOrFail();
+        $this->assertSame(4, $server->allocations()->count());
+        $this->assertSame(5, (int) $server->backup_limit);
+        $this->assertSame(2, (int) $server->database_limit);
+    }
+
+    public function testAdminsAreNotHeldToTheAdvancedLimits(): void
+    {
+        config(['pterodactyl.pools.enabled' => false]);
+        $node = $this->node();
+        $admin = $this->user(['root_admin' => true]);
+
+        $max = $this->actingAs($admin)->getJson('/api/client/self-service')->json('attributes.max');
+        $this->assertSame([20, 100, 20], [$max['allocations'], $max['backups'], $max['databases']]);
+
+        $this->actingAs($admin)->postJson('/api/client/self-service', ['name' => 'Big', 'allocations' => 6, 'backups' => 30, 'databases' => 8, 'node_id' => $node->id])->assertStatus(201);
+
+        $server = Server::query()->where('owner_id', $admin->id)->firstOrFail();
+        $this->assertSame(6, $server->allocations()->count());
+        $this->assertSame([30, 8], [(int) $server->backup_limit, (int) $server->database_limit]);
+    }
+
+    public function testDatabasesAreAResourceToo(): void
+    {
+        $node = $this->node();
+        $user = $this->user(['pool_databases' => 3]);
+        $this->spend($user, 1024, 1024, 50)->forceFill(['database_limit' => 2])->save();
+
+        $attributes = $this->actingAs($user)->getJson('/api/client/self-service')->json('attributes');
+        $this->assertSame(1, $attributes['max']['databases']);
+        $this->assertSame(2, $attributes['pool']['used']['databases']);
+
+        $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Data', 'databases' => 2, 'node_id' => $node->id])
+            ->assertStatus(400)->assertSee('Your resource pool has 1 of 3 databases left, this needs 2.');
+
+        // A server made without asking for a number gets what fits.
+        $this->actingAs($user)->postJson('/api/client/self-service', ['name' => 'Plain', 'memory' => 512, 'disk' => 1024, 'cpu' => 50, 'node_id' => $node->id])->assertStatus(201);
+        $this->assertSame(1, Server::query()->where('owner_id', $user->id)->where('name', 'Plain')->firstOrFail()->database_limit);
     }
 
     public function testBackupsAreAResourceToo(): void
@@ -273,12 +324,12 @@ class PoolsTest extends IntegrationTestCase
 
         $this->assertTrue($attributes['enabled']);
         $this->assertTrue($attributes['limited']);
-        $this->assertSame(['memory' => 4096, 'disk' => 10240, 'cpu' => 200, 'allocations' => 5, 'backups' => 5], $attributes['limits']);
-        $this->assertSame(['memory' => 1536, 'disk' => 3072, 'cpu' => 150, 'allocations' => 3, 'backups' => 1], $attributes['used']);
-        $this->assertSame(['memory' => 2560, 'disk' => 7168, 'cpu' => 50, 'allocations' => 2, 'backups' => 4], $attributes['remaining']);
+        $this->assertSame(['memory' => 4096, 'disk' => 10240, 'cpu' => 200, 'allocations' => 5, 'backups' => 5, 'databases' => 0], $attributes['limits']);
+        $this->assertSame(['memory' => 1536, 'disk' => 3072, 'cpu' => 150, 'allocations' => 3, 'backups' => 1, 'databases' => 0], $attributes['used']);
+        $this->assertSame(['memory' => 2560, 'disk' => 7168, 'cpu' => 50, 'allocations' => 2, 'backups' => 4, 'databases' => 0], $attributes['remaining']);
         $this->assertCount(2, $attributes['servers']);
         $row = collect($attributes['servers'])->firstWhere('identifier', $one->uuidShort);
-        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 50, 'allocations' => 2, 'backups' => 1], collect($row)->only(['memory', 'disk', 'cpu', 'allocations', 'backups'])->all());
+        $this->assertSame(['memory' => 1024, 'disk' => 2048, 'cpu' => 50, 'allocations' => 2, 'backups' => 1, 'databases' => 0], collect($row)->only(['memory', 'disk', 'cpu', 'allocations', 'backups', 'databases'])->all());
     }
 
     public function testTheAccountOfAnAdminOrWithoutPoolsHasNoLimit(): void
@@ -317,7 +368,7 @@ class PoolsTest extends IntegrationTestCase
         $admin = $this->user(['root_admin' => true]);
 
         $this->actingAs($admin)->get('/admin/settings/pools')->assertOk()->assertSee('<div id="app"></div>', false);
-        $this->actingAs($admin)->patchJson('/api/client/admin/settings/pools', ['enabled' => '1', 'memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12])->assertOk()->assertJsonPath('defaults.memory', 8192);
+        $this->actingAs($admin)->patchJson('/api/client/admin/settings/pools', ['enabled' => '1', 'memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12, 'databases' => 3])->assertOk()->assertJsonPath('defaults.memory', 8192);
 
         (new \Pterodactyl\Providers\SettingsServiceProvider($this->app))->boot(
             $this->app['config'],
@@ -326,7 +377,7 @@ class PoolsTest extends IntegrationTestCase
             $this->app->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)
         );
         $this->assertTrue($this->pool()->enabled());
-        $this->assertSame(['memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12], $this->pool()->defaults());
+        $this->assertSame(['memory' => 8192, 'disk' => 20480, 'cpu' => 400, 'allocations' => 8, 'backups' => 12, 'databases' => 3], $this->pool()->defaults());
 
         // Settings stay in the database between tests.
         $settings = $this->app->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class);

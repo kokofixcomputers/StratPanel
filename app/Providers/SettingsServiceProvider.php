@@ -36,6 +36,7 @@ class SettingsServiceProvider extends ServiceProvider
         'pterodactyl:pools:disk',
         'pterodactyl:pools:allocations',
         'pterodactyl:pools:backups',
+        'pterodactyl:pools:databases',
         'trash:retention_days',
         'auth:passkeys:enabled',
         'auth:registration:enabled',

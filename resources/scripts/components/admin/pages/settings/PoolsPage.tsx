@@ -16,9 +16,14 @@ interface Values {
     cpu: string;
     allocations: string;
     backups: string;
+    databases: string;
 }
 
-const FIELDS: { key: 'memory' | 'disk' | 'cpu' | 'allocations' | 'backups'; label: string; help: string }[] = [
+const FIELDS: {
+    key: 'memory' | 'disk' | 'cpu' | 'allocations' | 'backups' | 'databases';
+    label: string;
+    help: string;
+}[] = [
     { key: 'memory', label: 'Memory (MB)', help: '4096 is 4 GB.' },
     { key: 'disk', label: 'Disk space (MB)', help: '10240 is 10 GB.' },
     { key: 'cpu', label: 'CPU (%)', help: '100% is one core, 200% is two.' },
@@ -27,6 +32,11 @@ const FIELDS: { key: 'memory' | 'disk' | 'cpu' | 'allocations' | 'backups'; labe
         key: 'backups',
         label: 'Backups',
         help: 'How many backups the servers of a person may keep in total (their backup limits added up).',
+    },
+    {
+        key: 'databases',
+        label: 'Databases',
+        help: 'How many databases the servers of a person may have in total (their database limits added up).',
     },
 ];
 
@@ -42,6 +52,7 @@ export default () => {
             cpu: String(d.defaults.cpu),
             allocations: String(d.defaults.allocations),
             backups: String(d.defaults.backups),
+            databases: String(d.defaults.databases),
         }),
         'Resource pool settings were saved.'
     );
@@ -61,7 +72,7 @@ export default () => {
                             <ToggleField
                                 label={'Pay the servers people create from a resource pool'}
                                 help={
-                                    'Off by default. When it is on, the servers people create for themselves (the "Create a server" page) are paid from a pool: so much memory, disk space, CPU, allocations and backups in total. They can make as many servers as fit, and the wizard shows what is left after the server they are making. The limit on the number of servers no longer applies. Everybody has the defaults below, unless you give a person their own pool on their user page.'
+                                    'Off by default. When it is on, the servers people create for themselves (the "Create a server" page) are paid from a pool: so much memory, disk space, CPU, allocations, backups and databases in total. They can make as many servers as fit, and the wizard shows what is left after the server they are making. The limit on the number of servers no longer applies. Everybody has the defaults below, unless you give a person their own pool on their user page.'
                                 }
                                 checked={values.enabled}
                                 disabled={!can}

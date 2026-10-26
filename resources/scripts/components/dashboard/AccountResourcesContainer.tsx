@@ -17,6 +17,7 @@ const ROWS: { key: keyof PoolAmounts; label: string; format: (value: number) => 
     { key: 'cpu', label: 'CPU', format: (v) => `${v}% (${(v / 100).toFixed(1)} cores)` },
     { key: 'allocations', label: 'Allocations', format: (v) => String(v) },
     { key: 'backups', label: 'Backups', format: (v) => String(v) },
+    { key: 'databases', label: 'Databases', format: (v) => String(v) },
 ];
 
 /** Account > Resources: what you may spend on servers, what is used and what is left. */
