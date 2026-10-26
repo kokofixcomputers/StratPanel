@@ -25,7 +25,7 @@
     "startup": "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true $( [[  ! -f unix_args.txt ]] && printf %s \"-jar {{SERVER_JARFILE}}\" || printf %s \"@unix_args.txt\" )",
     "config": {
         "files": "{\n    \"server.properties\": {\n        \"parser\": \"properties\",\n        \"find\": {\n            \"server-ip\": \"0.0.0.0\",\n            \"server-port\": \"{{server.build.default.port}}\",\n            \"query.port\": \"{{server.build.default.port}}\"\n        }\n    }\n}",
-        "startup": "{\n    \"done\": [\n        \")! For help, type \",\n        \"Listening on \",\n        \"regex:Done \\\\(\\\\d+([.,]\\\\d+)?s\\\\)!\"\n    ]\n}",
+        "startup": "{\n    \"done\": [\n        \")! For help, type \",\n        \"Listening on \",\n        \"Limbo server listening on \",\n        \"regex:Done \\\\(\\\\d+([.,]\\\\d+)?s\\\\)!\"\n    ]\n}",
         "logs": "{}",
         "stop": "^C"
     },
