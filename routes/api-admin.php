@@ -139,6 +139,12 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::delete('/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
         });
 
+        Route::prefix('/tunnels')->group(function () {
+            Route::get('/', [Admin\Settings\TunnelsController::class, 'index'])->middleware('admin.can:settings.tunnels.view');
+            Route::patch('/', [Admin\Settings\TunnelsController::class, 'update'])->middleware('admin.can:settings.tunnels.update');
+            Route::delete('/{tunnel}', [Admin\Settings\TunnelsController::class, 'destroy'])->whereNumber('tunnel')->middleware('admin.can:settings.tunnels.update');
+        });
+
         Route::prefix('/backups')->group(function () {
             Route::get('/', [Admin\Settings\BackupsController::class, 'index'])->middleware('admin.can:settings.backups.view');
             Route::post('/', [Admin\Settings\BackupsController::class, 'store'])->middleware('admin.can:settings.backups.update');

@@ -136,6 +136,12 @@ class NetworkAllocationController extends ClientApiController
             throw new DisplayException('You cannot delete the primary allocation for this server.');
         }
 
+        // A port that is not the server's any more does not stay open to the internet.
+        $tunnel = \Pterodactyl\Models\Tunnel::query()->where('allocation_id', $allocation->id)->first();
+        if ($tunnel) {
+            app(\Pterodactyl\Services\Tunnels\TunnelService::class)->close($tunnel);
+        }
+
         Allocation::query()->where('id', $allocation->id)->update([
             'notes' => null,
             'server_id' => null,

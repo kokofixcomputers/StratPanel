@@ -72,7 +72,7 @@ const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', server_owner: true, split: { part_of: null, parts: 1 }, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', server_owner: true, tunnels: [], split: { part_of: null, parts: 1 }, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -655,6 +655,23 @@ api.delete('/account/passkeys/:id', (req, res) => {
     mockPasskeys = mockPasskeys.filter((k) => String(k.id) !== req.params.id);
     res.status(204).end();
 });
+
+// Opening ports of the server to the internet through a tunnel (ngrok).
+let mockTunnel = null;
+const tunnelState = () => ({
+    enabled: true, max: 1,
+    allocations: [{ id: 1, ip: '10.0.0.4', port: 26614, is_primary: true, tunnel: mockTunnel }, { id: 2, ip: '10.0.0.4', port: 26615, is_primary: false, tunnel: null }],
+});
+api.get('/servers/:id/tunnels', (req, res) => res.json(tunnelState()));
+api.post('/servers/:id/tunnels', (req, res) => {
+    mockTunnel = { id: 1, status: 'pending', address: null, error: null };
+    setTimeout(() => { mockTunnel = { id: 1, status: 'active', address: '0.tcp.eu.ngrok.io:14321', error: null }; }, 4000);
+    res.status(201).json(tunnelState());
+});
+api.delete('/servers/:id/tunnels/:tunnel', (req, res) => { mockTunnel = null; res.json(tunnelState()); });
+api.get('/admin/settings/tunnels', (req, res) => res.json({ enabled: true, token_set: true, max: 1, nodes: [{ id: 1, name: 'Frankfurt-1', has_token: false }, { id: 2, name: 'Dallas-1', has_token: true }], tunnels: [{ id: 1, server: 'kokotest', node: 'Frankfurt-1', port: 26614, status: 'active', address: '0.tcp.eu.ngrok.io:14321', error: null }, { id: 2, server: 'Lobby', node: 'Dallas-1', port: 25580, status: 'failed', address: null, error: 'authentication failed: the authtoken is not valid' }] }));
+api.patch('/admin/settings/tunnels', (req, res, next) => { req.method = 'GET'; api.handle(req, res, next); });
+api.delete('/admin/settings/tunnels/:id', (req, res) => res.status(204).end());
 
 // Where copies of backups are kept outside the node.
 let mockDestinations = [

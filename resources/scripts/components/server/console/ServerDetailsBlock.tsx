@@ -73,8 +73,12 @@ const ServerDetailsBlock = ({ className }: { className?: string }) => {
 
     const domains = ServerContext.useStoreState((state) => state.server.data!.domains);
     const allocations = ServerContext.useStoreState((state) => state.server.data!.allocations);
+    const tunnels = ServerContext.useStoreState((state) => state.server.data!.tunnels);
     // A domain when the server has one, the IP address when not, and a list of all of them behind the arrow.
-    const addresses = useMemo(() => connectionAddresses({ domains, allocations }), [domains, allocations]);
+    const addresses = useMemo(
+        () => connectionAddresses({ domains, tunnels, allocations }),
+        [domains, tunnels, allocations]
+    );
     const allocation = addresses[0]?.address ?? 'n/a';
 
     useEffect(() => {

@@ -107,7 +107,11 @@ export default ({
     }, [uuid, status, playersUrl]);
     const domains = ServerContext.useStoreState((state) => state.server.data!.domains);
     const allocations = ServerContext.useStoreState((state) => state.server.data!.allocations);
-    const addresses = useMemo(() => connectionAddresses({ domains, allocations }), [domains, allocations]);
+    const tunnels = ServerContext.useStoreState((state) => state.server.data!.tunnels);
+    const addresses = useMemo(
+        () => connectionAddresses({ domains, tunnels, allocations }),
+        [domains, tunnels, allocations]
+    );
     // A domain when the server has one, else the default allocation.
     const address = addresses[0]?.address ?? null;
     const customLinks = linksAt(useBranding().links, 'sidebar');

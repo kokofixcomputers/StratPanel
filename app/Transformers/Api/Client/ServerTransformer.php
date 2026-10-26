@@ -96,6 +96,8 @@ class ServerTransformer extends BaseClientTransformer
                 'enabled' => (bool) $server->autoSleep?->enabled,
                 'sleeping' => (bool) ($server->autoSleep?->enabled && $server->autoSleep?->slept_at),
             ],
+            // The ports that are open to the internet through a tunnel, and where players connect (see TunnelService).
+            'tunnels' => $server->tunnels->where('status', 'active')->map(fn ($tunnel) => ['allocation_id' => $tunnel->allocation_id, 'address' => $tunnel->address])->values()->all(),
             // Whether this server was split off another one (see ServerSplitService), and into how many servers it was split itself.
             'split' => [
                 'part_of' => $server->parent ? [

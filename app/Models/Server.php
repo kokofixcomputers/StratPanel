@@ -334,6 +334,16 @@ class Server extends Model implements Identifiable
     }
 
     /**
+     * The ports of this server that are open to the internet through a tunnel.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\Pterodactyl\Models\Tunnel, $this>
+     */
+    public function tunnels(): HasMany
+    {
+        return $this->hasMany(Tunnel::class);
+    }
+
+    /**
      * The server this one was split off, whose memory, disk and CPU it shares (see ServerSplitService).
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>

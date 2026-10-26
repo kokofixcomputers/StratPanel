@@ -136,6 +136,10 @@ return [
             'primary' => 'Set :allocation as the primary server allocation',
             'delete' => 'Deleted the :allocation allocation',
         ],
+        'tunnel' => [
+            'open' => 'Opened :allocation to the internet through a tunnel',
+            'close' => 'Closed a tunnel of the server',
+        ],
         'trash' => [
             'restore' => 'Recovered :name from the trash bin',
             'delete' => 'Deleted :name from the trash bin for good',

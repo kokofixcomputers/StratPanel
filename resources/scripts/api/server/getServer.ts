@@ -48,6 +48,8 @@ export interface Server {
     trash: { enabled: boolean; retentionDays: number };
     // Whether the server was split off another one (the one it came from), and how many servers were split off it.
     split: { partOf: { id: string; name: string } | null; parts: number };
+    // Where players connect through a tunnel, for the ports that are open to the internet.
+    tunnels: { allocationId: number; address: string }[];
     sftpDetails: {
         ip: string;
         port: number;
@@ -98,6 +100,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
     },
     autoSleep: { enabled: !!data.auto_sleep?.enabled, sleeping: !!data.auto_sleep?.sleeping },
     trash: { enabled: !!data.trash?.enabled, retentionDays: data.trash?.retention_days ?? 30 },
+    tunnels: (data.tunnels || []).map((t: any) => ({ allocationId: t.allocation_id, address: t.address })),
     split: {
         partOf: data.split?.part_of ? { id: data.split.part_of.identifier, name: data.split.part_of.name } : null,
         parts: data.split?.parts ?? 0,

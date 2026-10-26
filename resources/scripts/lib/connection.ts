@@ -6,7 +6,7 @@ import { ip as formatIp } from '@/lib/formatters';
 
 export interface ConnectionAddress {
     address: string;
-    kind: 'domain' | 'ip';
+    kind: 'domain' | 'tunnel' | 'ip';
     // The default allocation, which is the one the server uses for itself.
     primary: boolean;
 }
@@ -18,7 +18,12 @@ interface Allocation {
     isDefault: boolean;
 }
 
-export const connectionAddresses = (server: { domains?: string[]; allocations: Allocation[] }): ConnectionAddress[] => {
+export const connectionAddresses = (server: {
+    domains?: string[];
+    // Where players connect through a tunnel (ngrok), for the ports that are open to the internet.
+    tunnels?: { address: string }[];
+    allocations: Allocation[];
+}): ConnectionAddress[] => {
     const seen = new Set<string>();
     const out: ConnectionAddress[] = [];
     const add = (entry: ConnectionAddress) => {
@@ -28,6 +33,7 @@ export const connectionAddresses = (server: { domains?: string[]; allocations: A
     };
 
     (server.domains ?? []).forEach((domain) => add({ address: domain, kind: 'domain', primary: false }));
+    (server.tunnels ?? []).forEach((tunnel) => add({ address: tunnel.address, kind: 'tunnel', primary: false }));
 
     // The default allocation first. A name of an allocation (its alias) is a domain of the host, the raw IP address follows it.
     [...server.allocations]
@@ -43,5 +49,8 @@ export const connectionAddresses = (server: { domains?: string[]; allocations: A
 };
 
 /** The address to show by itself: a domain when there is one, else the default allocation. Null when the server has nothing. */
-export const primaryAddress = (server: { domains?: string[]; allocations: Allocation[] }): string | null =>
-    connectionAddresses(server)[0]?.address ?? null;
+export const primaryAddress = (server: {
+    domains?: string[];
+    tunnels?: { address: string }[];
+    allocations: Allocation[];
+}): string | null => connectionAddresses(server)[0]?.address ?? null;

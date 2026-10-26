@@ -56,6 +56,9 @@ class ServerDeletionService
             Log::warning($exception);
         }
 
+        // Its tunnels go with it, the node closes them.
+        $hadTunnels = $server->tunnels()->exists();
+
         // A server that was split off another one gives what it had back.
         if ($server->parent_server_id) {
             app(ServerSplitService::class)->giveBack($server);
@@ -93,5 +96,9 @@ class ServerDeletionService
 
             $server->delete();
         });
+
+        if ($hadTunnels) {
+            app(\Pterodactyl\Services\Tunnels\TunnelService::class)->syncNode($server->node);
+        }
     }
 }

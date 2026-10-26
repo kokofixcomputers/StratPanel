@@ -273,3 +273,22 @@ export interface BackupDestinations {
     // How many complete backups there are, for "copy the ones from before".
     backups: number;
 }
+
+export interface TunnelRow {
+    id: number;
+    server: string | null;
+    node: string | null;
+    port: number | null;
+    status: 'pending' | 'active' | 'failed';
+    address: string | null;
+    error: string | null;
+}
+
+export interface Tunnels {
+    enabled: boolean;
+    // Whether a token is saved, it is never given back.
+    token_set: boolean;
+    max: number;
+    nodes: { id: number; name: string; has_token: boolean }[];
+    tunnels: TunnelRow[];
+}

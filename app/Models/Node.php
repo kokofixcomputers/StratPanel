@@ -69,12 +69,13 @@ class Node extends Model implements Identifiable
     /**
      * The attributes excluded from the model's JSON form.
      */
-    protected $hidden = ['daemon_token_id', 'daemon_token'];
+    protected $hidden = ['daemon_token_id', 'daemon_token', 'tunnel_token'];
 
     /**
      * Cast values to correct type.
      */
     protected $casts = [
+        'tunnel_token' => 'encrypted',
         'location_id' => 'integer',
         'memory' => 'integer',
         'disk' => 'integer',

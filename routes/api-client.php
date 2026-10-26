@@ -159,6 +159,12 @@ Route::group([
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });
 
+    Route::group(['prefix' => '/tunnels'], function () {
+        Route::get('/', [Client\Servers\TunnelController::class, 'index']);
+        Route::post('/', [Client\Servers\TunnelController::class, 'store']);
+        Route::delete('/{tunnel}', [Client\Servers\TunnelController::class, 'delete'])->whereNumber('tunnel');
+    });
+
     Route::group(['prefix' => '/split'], function () {
         Route::get('/', [Client\Servers\SplitController::class, 'index']);
         Route::post('/', [Client\Servers\SplitController::class, 'store']);

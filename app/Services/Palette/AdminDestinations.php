@@ -36,6 +36,7 @@ final class AdminDestinations
         ['settings.domains.view', 'admin.settings.domains', 'Settings: Domains', 'page', 'subdomain dns cloudflare custom domain zones'],
         ['settings.pools.view', 'admin.settings.pools', 'Settings: Resource pools', 'page', 'quota limits memory ram cpu disk allocations servers users create'],
         ['settings.trash.view', 'admin.settings.trash', 'Settings: Trash bin', 'page', 'deleted files retention'],
+        ['settings.tunnels.view', 'admin.settings.tunnels', 'Settings: Tunnels', 'page', 'ngrok port forwarding expose server internet'],
         ['settings.backups.view', 'admin.settings.backups', 'Settings: Backups', 'page', 'external s3 webdav offsite storage retention copies'],
         ['settings.certificates.view', 'admin.settings.certificates', 'Settings: Certificates', 'page', 'https ssl tls lets encrypt'],
         ['settings.mail.view', 'admin.settings.mail', 'Settings: Mail', 'page', 'smtp email'],

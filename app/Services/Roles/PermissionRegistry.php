@@ -148,6 +148,8 @@ final class PermissionRegistry
                 'settings.authentication.update' => 'Change the captcha, passkey and sign up settings',
                 'settings.providers.view' => 'See sign in providers',
                 'settings.providers.update' => 'Add, change and remove sign in providers',
+                'settings.tunnels.view' => 'See whether servers can be opened to the internet through ngrok, and which tunnels are open (never the tokens)',
+                'settings.tunnels.update' => 'Turn tunnels on, set the ngrok tokens, and close tunnels',
                 'settings.backups.view' => 'See where backups are kept outside the node, and how much of it (never the keys and passwords)',
                 'settings.backups.update' => 'Add, change and remove the places backups are copied to, with their keys and passwords',
                 'settings.certificates.view' => 'See the certificates the panel is served with (never their private keys)',
