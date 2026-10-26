@@ -16,7 +16,9 @@ export type SoftwareType =
     | 'MOHIST'
     | 'YOUER'
     | 'ARCLIGHT'
-    | 'MAGMA';
+    | 'MAGMA'
+    | 'NANOLIMBO'
+    | 'LOOHPLIMBO';
 
 export interface Software {
     type: SoftwareType;
@@ -50,9 +52,22 @@ export const SOFTWARE: Software[] = [
         description: 'A Bukkit server built with Mixins, for mods and plugins on Fabric, Forge or NeoForge.',
         loaders: true,
     },
+    {
+        type: 'NANOLIMBO',
+        name: 'NanoLimbo',
+        description: 'A tiny limbo server for waiting rooms and fallbacks, it takes any Minecraft version.',
+    },
+    {
+        type: 'LOOHPLIMBO',
+        name: 'LooHP Limbo',
+        description: 'A standalone limbo server with a world and plugins, for lobbies and queues.',
+    },
 ];
 
-export const iconFor = (type: SoftwareType) => `https://s3.mcjars.app/icons/${type.toLowerCase()}.png`;
+// MCJars names the icon of LooHP Limbo with an underscore.
+const ICONS: Partial<Record<SoftwareType, string>> = { LOOHPLIMBO: 'loohp_limbo' };
+
+export const iconFor = (type: SoftwareType) => `https://s3.mcjars.app/icons/${ICONS[type] ?? type.toLowerCase()}.png`;
 
 export type InstallStep =
     | { type: 'download'; url: string; file: string; size?: number }
