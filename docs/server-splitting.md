@@ -2,8 +2,8 @@
 
 The owner of a server can split it into several servers that share its memory, disk space and CPU: **Split** under *More* in the server menu.
 
-* Every part is a server of its own, on the same node, with its own port, files, console and power buttons. It starts with the same software
-  (egg, image, startup command and variables) as the first server, and it appears on the dashboard like any server.
+* Every part is a server of its own, on the same node, with its own port, files, console and power buttons. It is made from the egg the creation wizard
+  uses (the Java egg), with the software and version picked in a modal when it is split off, and it appears on the dashboard like any server.
 * The parts share one total. The first server keeps what the others do not have, so moving a slider on a part takes from (or gives to) the
   first server. Moving resources from one part to another is lowering one and raising the other. **Save** applies it; the new limits are sent
   to Wings straight away, a running server picks them up on its next start where Wings needs that.

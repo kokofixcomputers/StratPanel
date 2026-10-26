@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Exceptions\DisplayException;
 use Pterodactyl\Models\Objects\DeploymentObject;
 use Pterodactyl\Services\Pools\ResourcePool;
+use Pterodactyl\Services\Servers\SelfServiceEgg;
 use Pterodactyl\Services\Servers\ServerCreationService;
 use Pterodactyl\Services\Deployment\AllocationSelectionService;
 use Pterodactyl\Services\Allocations\FindAssignableAllocationService;
@@ -269,57 +270,15 @@ class SelfServiceController extends ClientApiController
         return $request->user()->hasPermission('servers.create') ? 0 : (int) config('pterodactyl.self_service.max_servers');
     }
 
-    /**
-     * Picks the docker image with the highest Java version, falling back to the first one listed.
-     *
-     * @param array<string, string> $images
-     */
-    private function newestJavaImage(array $images): string
-    {
-        $best = null;
-        $bestVersion = -1;
-        foreach ($images as $image) {
-            if (preg_match('/java[_:-]?(\d+)/i', (string) $image, $matches) && (int) $matches[1] > $bestVersion) {
-                $bestVersion = (int) $matches[1];
-                $best = $image;
-            }
-        }
-
-        return $best ?? (string) (reset($images) ?: '');
-    }
-
-    /**
-     * Finds the egg new servers are created from. A plain "Java" egg is preferred, the Versions tab installs the
-     * actual software afterwards so any Minecraft egg also works as the starting point.
-     *
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     */
+    /** @throws \Pterodactyl\Exceptions\DisplayException */
     private function resolveEgg(mixed $configured): Egg
     {
-        $query = Egg::query()->with('variables');
+        return app(SelfServiceEgg::class)->resolve($configured);
+    }
 
-        if (!empty($configured)) {
-            $egg = (clone $query)->find((int) $configured);
-            if (!is_null($egg)) {
-                return $egg;
-            }
-        }
-
-        foreach (['Java', 'Paper', 'Vanilla'] as $name) {
-            $egg = (clone $query)->where('name', 'like', "%$name%")->first();
-            if (!is_null($egg)) {
-                return $egg;
-            }
-        }
-
-        $egg = (clone $query)->whereHas('nest', function ($nest) {
-            $nest->where('name', 'like', '%Minecraft%');
-        })->first();
-
-        if (is_null($egg)) {
-            throw new DisplayException('No Minecraft egg is available to create a server with, ask an administrator to import one.');
-        }
-
-        return $egg;
+    /** @param array<string, string> $images */
+    private function newestJavaImage(array $images): string
+    {
+        return app(SelfServiceEgg::class)->newestJavaImage($images);
     }
 }

@@ -29,6 +29,7 @@ class ServerSplitService
         private BuildModificationService $buildService,
         private AllocationSelectionService $allocations,
         private ResourcePool $pools,
+        private SelfServiceEgg $eggs,
     ) {
     }
 
@@ -107,10 +108,13 @@ class ServerSplitService
             throw new DisplayException('The node has no free port for another part.');
         }
 
-        $root->loadMissing('egg');
+        // A part starts from the egg the creation wizard uses, not the one of the server it is split off: the software is chosen when it is made
+        // and installed on it afterwards, the same way.
+        $config = config('pterodactyl.self_service');
+        $egg = $this->eggs->resolve($config['egg'] ?? null);
         $environment = [];
-        foreach ($root->variables as $variable) {
-            $environment[$variable->env_variable] = $variable->server_value ?? $variable->default_value;
+        foreach ($egg->variables as $variable) {
+            $environment[$variable->env_variable] = $variable->default_value;
         }
 
         $child = $this->creationService->handle([
@@ -120,10 +124,10 @@ class ServerSplitService
             'owner_id' => $root->owner_id,
             'node_id' => $root->node_id,
             'allocation_id' => $allocation->id,
-            'egg_id' => $root->egg_id,
-            'nest_id' => $root->nest_id,
-            'image' => $root->image,
-            'startup' => $root->startup,
+            'egg_id' => $egg->id,
+            'nest_id' => $egg->nest_id,
+            'image' => $this->eggs->newestJavaImage($egg->docker_images ?? []),
+            'startup' => $egg->startup,
             'environment' => $environment,
             'memory' => $share['memory'],
             'swap' => 0,
@@ -131,8 +135,8 @@ class ServerSplitService
             'io' => $root->io,
             'cpu' => $share['cpu'],
             'threads' => null,
-            // The software is put in place the way it is on the root: a plain Java egg has nothing to install.
-            'skip_scripts' => (bool) preg_match('/^java/i', (string) $root->egg?->name),
+            // A plain Java egg has nothing to install, the software is put in place by the Versions tab.
+            'skip_scripts' => (bool) ($config['skip_scripts'] ?? preg_match('/^java/i', $egg->name)),
             'oom_disabled' => (bool) $root->oom_disabled,
             'database_limit' => 0,
             'allocation_limit' => 1,

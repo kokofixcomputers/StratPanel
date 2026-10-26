@@ -106,6 +106,26 @@ class SplitTest extends IntegrationTestCase
         $this->getJson($this->url($child))->assertOk()->assertJsonPath('root', $server->uuidShort)->assertJsonPath('is_part', true)->assertJsonCount(2, 'parts');
     }
 
+    public function testAPartIsMadeFromTheEggOfTheCreationWizardNotTheOneOfTheFirstServer(): void
+    {
+        $user = User::factory()->create();
+        $paper = Egg::factory()->create([
+            'nest_id' => $this->egg->nest_id, 'name' => 'Paper', 'author' => 'test@example.com', 'docker_images' => ['Java 8' => 'ghcr.io/example/java_8', 'Java 21' => 'ghcr.io/example/java_21'],
+            'config_stop' => '^C', 'config_startup' => '{}', 'config_logs' => '{}', 'config_files' => '{}', 'startup' => 'java -jar paper.jar',
+        ]);
+        $server = $this->createServerModel(['owner_id' => $user->id, 'memory' => 4096, 'disk' => 10240, 'cpu' => 200, 'egg_id' => $paper->id, 'nest_id' => $paper->nest_id]);
+        Allocation::factory()->times(2)->create(['node_id' => $server->node_id]);
+        config(['pterodactyl.self_service.egg' => $this->egg->id]);
+        $this->actingAs($user);
+
+        $this->postJson($this->url($server), ['name' => $this->n('Lobby'), 'memory' => 1024, 'disk' => 2048, 'cpu' => 50])->assertStatus(201);
+
+        $child = Server::query()->where('name', $this->n('Lobby'))->firstOrFail();
+        $this->assertSame($this->egg->id, $child->egg_id);
+        $this->assertSame('ghcr.io/example/java_21', $child->image);
+        $this->assertSame($this->egg->startup, $child->startup);
+    }
+
     public function testTheFirstServerCanNotBeLeftWithTooLittle(): void
     {
         $user = User::factory()->create();
