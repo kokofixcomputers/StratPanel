@@ -4,7 +4,7 @@
  */
 import getFileContents from '@/api/server/files/getFileContents';
 import saveFileContents from '@/api/server/files/saveFileContents';
-import { serializeProperties } from '@/lib/minecraft';
+import { parseProperties, serializeProperties } from '@/lib/minecraft';
 import { httpErrorToHuman } from '@/api/http';
 
 export const PAPER_GLOBAL = '/config/paper-global.yml';
@@ -91,9 +91,22 @@ export const setPaperVelocity = (yaml: string, secret: string): string => {
     return lines.join(newline);
 };
 
-export type BackendState = 'paper' | 'other' | 'unknown';
+/** LooHP Limbo keeps its Velocity settings in server.properties: velocity-modern and the secret in forwarding-secrets. */
+export const setLimboVelocity = (properties: string, secret: string): string =>
+    serializeProperties(properties, { 'velocity-modern': 'true', 'forwarding-secrets': secret });
 
-/** Whether a server can be set up: it has config/paper-global.yml, which only Paper and its forks make. */
+/** Whether a server.properties is the one of LooHP Limbo, which no other server has the velocity-modern key in. */
+export const isLimboProperties = (properties: string): boolean =>
+    parseProperties(properties).some((line) => line.key === 'velocity-modern');
+
+export type BackendState = 'paper' | 'limbo' | 'other' | 'unknown';
+
+const missing = (e: any): boolean => e?.response?.status === 404 || e?.response?.status === 400;
+
+/**
+ * What kind of server it is, as far as setting it up for a proxy goes: Paper (and its forks) has config/paper-global.yml, LooHP Limbo has
+ * velocity-modern in its server.properties.
+ */
 export const detectBackend = async (uuid: string): Promise<BackendState> => {
     try {
         await getFileContents(uuid, PAPER_GLOBAL);
@@ -101,7 +114,13 @@ export const detectBackend = async (uuid: string): Promise<BackendState> => {
         return 'paper';
     } catch (e: any) {
         // The file is not there (404, or the node says so): another kind of server. Anything else is not known.
-        return e?.response?.status === 404 || e?.response?.status === 400 ? 'other' : 'unknown';
+        if (!missing(e)) return 'unknown';
+    }
+
+    try {
+        return isLimboProperties(await getFileContents(uuid, SERVER_PROPERTIES)) ? 'limbo' : 'other';
+    } catch (e: any) {
+        return missing(e) ? 'other' : 'unknown';
     }
 };
 
@@ -110,14 +129,35 @@ export interface BackendResult {
     message: string;
 }
 
-/** Turns online mode off in server.properties and sets up the forwarding secret in paper-global.yml. The server needs a restart after. */
+/**
+ * Sets a server up for the proxy: Paper gets online mode off in server.properties and the secret in paper-global.yml, LooHP Limbo gets
+ * velocity-modern and the secret in server.properties. The server needs a restart after.
+ */
 export const configureBackend = async (uuid: string, secret: string): Promise<BackendResult> => {
     try {
+        const kind = await detectBackend(uuid);
+        if (kind === 'limbo') {
+            await saveFileContents(
+                uuid,
+                SERVER_PROPERTIES,
+                setLimboVelocity(await getFileContents(uuid, SERVER_PROPERTIES), secret)
+            );
+
+            return {
+                ok: true,
+                message:
+                    'Velocity is turned on in server.properties with the forwarding secret. Restart it for this to apply.',
+            };
+        }
+
         let paper: string;
         try {
             paper = await getFileContents(uuid, PAPER_GLOBAL);
         } catch (e) {
-            return { ok: false, message: 'It has no config/paper-global.yml, so it is not Paper or a fork of it.' };
+            return {
+                ok: false,
+                message: 'It is not Paper (no config/paper-global.yml) or LooHP Limbo, set it up by hand.',
+            };
         }
 
         let properties = '';

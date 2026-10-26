@@ -117,7 +117,7 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
         setChosen([]);
         Promise.all(picked.map(async (s) => [s.uuid, await detectBackend(s.uuid)] as const)).then((found) => {
             setKinds(Object.fromEntries(found));
-            setChosen(found.filter(([, kind]) => kind === 'paper').map(([uuid]) => uuid));
+            setChosen(found.filter(([, kind]) => kind === 'paper' || kind === 'limbo').map(([uuid]) => uuid));
         });
     };
 
@@ -164,7 +164,7 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
                     <div className={'max-h-72 space-y-2 overflow-y-auto'}>
                         {picked.map((server) => {
                             const kind = kinds[server.uuid];
-                            const can = kind === 'paper' || kind === 'unknown';
+                            const can = kind === 'paper' || kind === 'limbo' || kind === 'unknown';
 
                             return (
                                 <label
@@ -189,8 +189,10 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
                                                 ? 'Looking...'
                                                 : kind === 'paper'
                                                 ? 'Paper: online mode off, velocity forwarding on'
+                                                : kind === 'limbo'
+                                                ? 'LooHP Limbo: velocity-modern on, secret set'
                                                 : kind === 'other'
-                                                ? 'Not Paper (no config/paper-global.yml), set it up by hand'
+                                                ? 'Not Paper or LooHP Limbo, set it up by hand'
                                                 : 'Could not look at its files, it may still work'}
                                         </span>
                                     </span>
@@ -205,9 +207,11 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
                         </p>
                     )}
                     <p className={'mt-3 text-xs text-neutral-300'}>
-                        server.properties gets <span className={'font-mono'}>online-mode=false</span> and
-                        config/paper-global.yml gets velocity enabled with the secret of this proxy. Nothing else is
-                        changed. The servers need a restart afterwards.
+                        Paper: server.properties gets <span className={'font-mono'}>online-mode=false</span> and
+                        config/paper-global.yml gets velocity enabled with the secret of this proxy. LooHP Limbo:
+                        server.properties gets <span className={'font-mono'}>velocity-modern=true</span> and the secret
+                        in <span className={'font-mono'}>forwarding-secrets</span>. Nothing else is changed. The servers
+                        need a restart afterwards.
                     </p>
                     <Dialog.Footer>
                         <Button.Text disabled={working} onClick={() => finish(false)}>

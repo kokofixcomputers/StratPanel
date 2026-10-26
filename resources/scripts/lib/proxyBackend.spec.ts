@@ -1,4 +1,4 @@
-import { setPaperVelocity, yamlText } from '@/lib/proxyBackend';
+import { isLimboProperties, setLimboVelocity, setPaperVelocity, yamlText } from '@/lib/proxyBackend';
 
 const paper = `# Paper global configuration
 _version: 29
@@ -59,5 +59,18 @@ describe('lib/proxyBackend', function () {
         expect(yamlText('12345')).toBe("'12345'");
         expect(yamlText('true')).toBe("'true'");
         expect(yamlText("it's")).toBe("'it''s'");
+    });
+
+    it('sets LooHP Limbo up in its server.properties', function () {
+        const limbo = 'server-port=25565\nvelocity-modern=false\nforwarding-secrets=\nbungeecord=false\n';
+
+        expect(isLimboProperties(limbo)).toBe(true);
+        expect(isLimboProperties('online-mode=true\nmotd=A Minecraft Server\n')).toBe(false);
+        expect(setLimboVelocity(limbo, 'Ui4MjRMJU5LT')).toBe(
+            'server-port=25565\nvelocity-modern=true\nforwarding-secrets=Ui4MjRMJU5LT\nbungeecord=false\n'
+        );
+        expect(setLimboVelocity('server-port=25565\n', 'abc')).toBe(
+            'server-port=25565\nvelocity-modern=true\nforwarding-secrets=abc\n'
+        );
     });
 });
