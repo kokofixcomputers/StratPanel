@@ -26,6 +26,8 @@ import Input, { Textarea } from '@/components/elements/Input';
 import Select from '@/components/elements/Select';
 import Label from '@/components/elements/Label';
 import { Button } from '@/components/elements/button/index';
+import MotdBuilder from '@/components/server/properties/MotdBuilder';
+import { builderToMini, miniToBuilder } from '@/lib/proxyMotd';
 import AddServersDialog from '@/components/server/proxy/AddServersDialog';
 import useFlash from '@/plugins/useFlash';
 import saveFileContents from '@/api/server/files/saveFileContents';
@@ -210,6 +212,8 @@ export default () => {
     const [showSecret, setShowSecret] = useState(false);
     const [saving, setSaving] = useState(false);
     const [picking, setPicking] = useState(false);
+    // The message uses tags the builder lacks and the person chose the builder anyway.
+    const [motdRaw, setMotdRaw] = useState(false);
 
     const load = () =>
         Promise.all([readOptionalFile(uuid, FILE), readOptionalFile(uuid, SECRET_FILE)]).then(
@@ -335,6 +339,7 @@ export default () => {
             .catch((error) => addFlash({ key: 'proxy', type: 'error', message: httpErrorToHuman(error) }));
     };
 
+    const motd = miniToBuilder(typeof config.root.motd === 'string' ? (config.root.motd as string) : '');
     const str = (key: string, fallback = '') =>
         typeof config.root[key] === 'string' ? (config.root[key] as string) : fallback;
     const bool = (source: Record<string, TomlValue>, key: string, fallback = false) =>
@@ -475,6 +480,31 @@ export default () => {
                 />
             </Card>
 
+            <div css={tw`mb-4`}>
+                {motd.exact || motdRaw ? (
+                    <MotdBuilder
+                        value={motd.value}
+                        maxPlayers={num(config.root, 'show-max-players', 500)}
+                        onChange={(encoded) => setRoot('motd', builderToMini(encoded))}
+                    />
+                ) : (
+                    <Card title={'Message of the day'}>
+                        <p css={tw`mb-3 text-sm text-neutral-300`}>
+                            This message uses MiniMessage tags the builder can not show (a gradient, for example). Edit
+                            it here, or open it in the builder, which drops those tags.
+                        </p>
+                        <Textarea
+                            rows={2}
+                            value={str('motd')}
+                            onChange={(e) => setRoot('motd', e.currentTarget.value)}
+                        />
+                        <Button css={tw`mt-3`} variant={Button.Variants.Secondary} onClick={() => setMotdRaw(true)}>
+                            Open in the builder
+                        </Button>
+                    </Card>
+                )}
+            </div>
+
             <div css={tw`grid gap-4 lg:grid-cols-2`}>
                 <Card title={'General'}>
                     <div css={tw`space-y-4`}>
@@ -489,17 +519,6 @@ export default () => {
                             <p css={tw`mt-1.5 text-xs text-neutral-400`}>
                                 The port must match your server allocation, otherwise nobody can connect. The panel
                                 keeps it in sync automatically on every start when the Java egg is used.
-                            </p>
-                        </div>
-                        <div>
-                            <Label>Message of the day</Label>
-                            <Textarea
-                                rows={2}
-                                value={str('motd')}
-                                onChange={(e) => setRoot('motd', e.currentTarget.value)}
-                            />
-                            <p css={tw`mt-1.5 text-xs text-neutral-400`}>
-                                Supports MiniMessage, like &lt;green&gt;Welcome!
                             </p>
                         </div>
                         <div>

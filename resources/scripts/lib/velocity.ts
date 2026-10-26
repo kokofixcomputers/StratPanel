@@ -36,7 +36,7 @@ const readString = (text: string, start: number): [string, number] => {
     while (i < text.length && text[i] !== '"') {
         if (text[i] === '\\' && i + 1 < text.length) {
             const next = text[i + 1];
-            out += next === 'n' ? '\n' : next === 't' ? '\t' : next;
+            out += next === 'n' ? '\n' : next === 't' ? '\t' : next === 'r' ? '\r' : next;
             i += 2;
         } else {
             out += text[i++];
@@ -187,7 +187,13 @@ export const parseVelocity = (text: string): ProxyConfig => {
 
 // ---- writer -----------------------------------------------------------------------------------
 
-export const tomlString = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+export const tomlString = (value: string) =>
+    `"${value
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')}"`;
 
 const bareKey = (key: string) => (/^[\w-]+$/.test(key) ? key : tomlString(key));
 

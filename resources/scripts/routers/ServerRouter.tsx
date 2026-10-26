@@ -30,6 +30,9 @@ import { getServerPages, useExtensionRegistry } from '@/lib/extensions';
 import { ExtensionBoundary } from '@/components/elements/ExtensionSlot';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
+// The pages of a server that a proxy has no use for.
+const PROXY_HIDDEN = ['/players', '/tools', '/worlds'];
+
 export default () => {
     const match = useRouteMatch<{ id: string }>();
     const location = useLocation();
@@ -138,10 +141,8 @@ export default () => {
                                     .filter((route) => route.path !== '/trash' || trashEnabled)
                                     // Only the owner of the server splits it.
                                     .filter((route) => route.path !== '/split' || isOwner)
-                                    // Proxies have no player list of their own to manage.
-                                    .filter(
-                                        (route) => !(isProxy && (route.path === '/players' || route.path === '/tools'))
-                                    )
+                                    // Proxies have no player list, tools or world of their own to manage.
+                                    .filter((route) => !(isProxy && PROXY_HIDDEN.includes(route.path)))
                                     .map((route) =>
                                         route.permission ? (
                                             <Can key={route.path} action={route.permission} matchAny>
@@ -181,7 +182,7 @@ export default () => {
                                             !!route.name &&
                                             (route.path !== '/trash' || trashEnabled) &&
                                             (route.path !== '/split' || isOwner) &&
-                                            !(isProxy && (route.path === '/players' || route.path === '/tools'))
+                                            !(isProxy && PROXY_HIDDEN.includes(route.path))
                                     )
                                     .map((route) => ({
                                         path: route.path,
