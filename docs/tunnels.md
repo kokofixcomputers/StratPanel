@@ -1,4 +1,4 @@
-# Tunnels (ngrok, Pinggy, playit.gg)
+# Tunnels (ngrok, Pinggy, playit.gg, QuickExpose)
 
 Servers can be played from the internet without forwarding a port on the router: **Admin > Settings > Tunnels** turns it on and picks the
 service, and the owner of a server opens one of its ports with one click on the **Network** tab.
@@ -7,6 +7,7 @@ service, and the owner of a server opens one of its ports with one click on the 
 |---|---|---|---|
 | **ngrok** | The ngrok agent built into Wings | Authtoken (required) | TCP tunnels need an account with a verified payment method. One agent online per free account: give each node its own token. |
 | **Pinggy** | An SSH connection made by Wings (`<token>+tcp@a.pinggy.io`); the host key of the first connection is kept in `<root_directory>/.tunnels` and has to stay the same | Pinggy token (optional) | Check what your Pinggy plan allows for TCP tunnels. |
+| **QuickExpose** | Wings registers a name with a QuickExpose relay that you run and carries the players it sends (the protocol of the QuickExpose mod, `server/` of its repository) | None. The **backend URL** is the address of your relay: `qe.example.com`, or `host:control:tunnel:play` for ports other than 7000, 7001 and 25565. There is no default, you have to give it | Address players use: `<name>.<your domain>:25565`. The name is two words, the same for a tunnel every time unless taken. The relay does not pass the real IP of players on, the server sees the node. |
 | **playit.gg** | Wings makes a `minecraft-java` tunnel on your account through the API of playit.gg, and runs `playitd --secret <key>` while a tunnel is open | Agent secret key (required) | Install the `playit` package (it has `playitd`) on every node. |
 
 Changing the service closes every tunnel and opens them again through the new one.
@@ -46,7 +47,7 @@ minutes, which opens a tunnel that failed or went away; every few seconds it loo
 
 * Minecraft Java (TCP) is what is tunnelled. Bedrock (UDP) and voice chat plugins that need UDP are not, with any of the services.
 * Players connect through ngrok, so there is a little extra delay, and the bandwidth and terms of the ngrok plan apply.
-* Tested with fakes only: the panel side with a fake node, the node side with a fake ngrok, a fake Pinggy (an SSH server) and a fake playit.gg API. Not tried against ngrok, Pinggy or playit.gg themselves; the Pinggy address is read from what it prints on the session, and the playit.gg calls follow its open source agent.
+* Tested with fakes only: the panel side with a fake node, the node side with a fake ngrok, a fake Pinggy (an SSH server), a fake playit.gg API and a fake QuickExpose relay (QuickExpose was also tried by hand against the real relay program). Not tried against ngrok, Pinggy or playit.gg themselves; the Pinggy address is read from what it prints on the session, and the playit.gg calls follow its open source agent.
 
 Code: `app/Services/Tunnels/TunnelService.php`, `TunnelController`, `Api/Remote/TunnelsController`, `TunnelBar.tsx`, `TunnelsPage.tsx`; tests in
 `tests/Integration/Tunnels` and `tunnel/*_test.go` of Wings.

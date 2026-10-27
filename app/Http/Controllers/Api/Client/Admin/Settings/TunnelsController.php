@@ -21,6 +21,7 @@ class TunnelsController extends Controller
         return new JsonResponse([
             'enabled' => $this->tunnels->switchedOn(),
             'provider' => $this->tunnels->provider(),
+            'backend' => $this->tunnels->backend(),
             'providers' => collect(TunnelService::PROVIDERS)->map(fn ($info, $id) => ['id' => $id] + $info)->values()->all(),
             'token_set' => $this->tunnels->token() !== null,
             'max' => $this->tunnels->maxPerServer(),
@@ -46,6 +47,8 @@ class TunnelsController extends Controller
         $data = $request->validate([
             'max' => 'required|integer|between:1,50',
             'provider' => 'required|in:' . implode(',', array_keys(TunnelService::PROVIDERS)),
+            // The address of the relay: it is needed for QuickExpose, which has no default one.
+            'backend' => ['nullable', 'string', 'max:255', 'regex:' . TunnelService::BACKEND_PATTERN, 'required_if:provider,quickexpose'],
             'token' => 'nullable|string|max:500',
             'clear_token' => 'nullable|boolean',
             'node_tokens' => 'nullable|array',
@@ -56,6 +59,7 @@ class TunnelsController extends Controller
 
         $this->tunnels->setEnabled($request->boolean('enabled'));
         $this->tunnels->setProvider($data['provider']);
+        $this->tunnels->setBackend($data['backend'] ?? null);
         $this->tunnels->setMaxPerServer((int) $data['max']);
         if ($request->boolean('clear_token')) {
             $this->tunnels->setToken(null);

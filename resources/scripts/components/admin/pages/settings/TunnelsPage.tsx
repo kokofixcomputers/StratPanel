@@ -13,6 +13,7 @@ import { deleteSetting, saveSetting, Tunnels, useSetting } from '@/api/admin/set
 interface Form {
     enabled: boolean;
     provider: string;
+    backend: string;
     token: string;
     clear_token: boolean;
     max: string;
@@ -33,6 +34,7 @@ const TOKEN_HELP: Record<string, React.ReactNode> = {
             allows for TCP tunnels.
         </>
     ),
+    quickexpose: null,
     playit: (
         <>
             The secret key of an agent, from playit.gg (Agents). The playit package, which has <code>playitd</code>, has
@@ -44,6 +46,7 @@ const TOKEN_HELP: Record<string, React.ReactNode> = {
 const NODE_HELP: Record<string, string> = {
     ngrok: 'A free ngrok account lets one agent be online at a time. A node with its own account (and so its own token) opens tunnels next to the other nodes; a node without one uses the token above.',
     pinggy: 'A node with its own Pinggy token uses it, a node without one uses the token above.',
+    quickexpose: '',
     playit: 'A node with its own agent secret key uses it, a node without one uses the key above. Every agent has its own tunnels on the account.',
 };
 
@@ -55,12 +58,14 @@ export default () => {
     const { addFlash, clearFlashes, clearAndAddHttpError } = useFlash();
     const [form, setForm] = useState<Form | null>(null);
     const [busy, setBusy] = useState(false);
+    const current = data?.providers.find((p) => p.id === form?.provider);
 
     useEffect(() => {
         if (data && !form)
             setForm({
                 enabled: data.enabled,
                 provider: data.provider,
+                backend: data.backend,
                 token: '',
                 clear_token: false,
                 max: String(data.max),
@@ -90,6 +95,7 @@ export default () => {
             saveSetting('tunnels', {
                 enabled: form.enabled,
                 provider: form.provider,
+                backend: form.backend,
                 token: form.token,
                 clear_token: form.clear_token,
                 max: Number(form.max) || 1,
@@ -135,23 +141,43 @@ export default () => {
                                     }
                                     onChange={(provider) => set({ provider })}
                                 />
-                                <TextField
-                                    id={'tunnel-token'}
-                                    type={'password'}
-                                    label={data.providers.find((p) => p.id === form.provider)?.token ?? 'Token'}
-                                    value={form.token}
-                                    autoComplete={'new-password'}
-                                    disabled={!can}
-                                    placeholder={data.token_set ? 'Saved, leave empty to keep it' : ''}
-                                    help={TOKEN_HELP[form.provider]}
-                                    onChange={(token) => set({ token, clear_token: false })}
-                                />
-                                {data.token_set && can && (
-                                    <ToggleField
-                                        label={'Remove the saved token'}
-                                        checked={form.clear_token}
-                                        onChange={(clear_token) => set({ clear_token, token: '' })}
+                                {current?.backend ? (
+                                    <TextField
+                                        id={'tunnel-backend'}
+                                        label={'Backend URL'}
+                                        value={form.backend}
+                                        disabled={!can}
+                                        placeholder={'qe.example.com'}
+                                        help={
+                                            <>
+                                                The address of your QuickExpose relay. There is no default: the relay is
+                                                yours to run. <code>host</code> for the usual ports, or{' '}
+                                                <code>host:control:tunnel:play</code> (default 7000, 7001 and 25565).
+                                            </>
+                                        }
+                                        onChange={(backend) => set({ backend })}
                                     />
+                                ) : (
+                                    <>
+                                        <TextField
+                                            id={'tunnel-token'}
+                                            type={'password'}
+                                            label={current?.token ?? 'Token'}
+                                            value={form.token}
+                                            autoComplete={'new-password'}
+                                            disabled={!can}
+                                            placeholder={data.token_set ? 'Saved, leave empty to keep it' : ''}
+                                            help={TOKEN_HELP[form.provider]}
+                                            onChange={(token) => set({ token, clear_token: false })}
+                                        />
+                                        {data.token_set && can && (
+                                            <ToggleField
+                                                label={'Remove the saved token'}
+                                                checked={form.clear_token}
+                                                onChange={(clear_token) => set({ clear_token, token: '' })}
+                                            />
+                                        )}
+                                    </>
                                 )}
                                 <Columns>
                                     <TextField
@@ -180,24 +206,28 @@ export default () => {
                                 </div>
                             )}
                         </SectionCard>
-                        <SectionCard icon={<ServerIcon className={'h-5 w-5'} />} title={'Tokens of nodes'}>
-                            <p className={'mb-4 text-sm text-neutral-300'}>{NODE_HELP[form.provider]}</p>
-                            <Stack>
-                                {data.nodes.map((node) => (
-                                    <TextField
-                                        key={node.id}
-                                        id={`tunnel-node-${node.id}`}
-                                        type={'password'}
-                                        label={node.name}
-                                        value={form.nodes[node.id] ?? ''}
-                                        autoComplete={'new-password'}
-                                        disabled={!can}
-                                        placeholder={node.has_token ? 'Its own token is saved' : 'Uses the token above'}
-                                        onChange={(token) => set({ nodes: { ...form.nodes, [node.id]: token } })}
-                                    />
-                                ))}
-                            </Stack>
-                        </SectionCard>
+                        {!current?.backend && (
+                            <SectionCard icon={<ServerIcon className={'h-5 w-5'} />} title={'Tokens of nodes'}>
+                                <p className={'mb-4 text-sm text-neutral-300'}>{NODE_HELP[form.provider]}</p>
+                                <Stack>
+                                    {data.nodes.map((node) => (
+                                        <TextField
+                                            key={node.id}
+                                            id={`tunnel-node-${node.id}`}
+                                            type={'password'}
+                                            label={node.name}
+                                            value={form.nodes[node.id] ?? ''}
+                                            autoComplete={'new-password'}
+                                            disabled={!can}
+                                            placeholder={
+                                                node.has_token ? 'Its own token is saved' : 'Uses the token above'
+                                            }
+                                            onChange={(token) => set({ nodes: { ...form.nodes, [node.id]: token } })}
+                                        />
+                                    ))}
+                                </Stack>
+                            </SectionCard>
+                        )}
                         <SectionCard icon={<GlobeAltIcon className={'h-5 w-5'} />} title={'Open tunnels'}>
                             {data.tunnels.length === 0 ? (
                                 <Empty>No tunnels are open.</Empty>
@@ -252,7 +282,9 @@ export default () => {
                                 {form.provider === 'pinggy' &&
                                     'The node opens the tunnel: Wings connects to Pinggy over SSH, nothing is installed on the machine.'}
                                 {form.provider === 'playit' &&
-                                    'The node makes the tunnel on your playit.gg account and runs playitd while a tunnel is open: install the playit package on every node.'}{' '}
+                                    'The node makes the tunnel on your playit.gg account and runs playitd while a tunnel is open: install the playit package on every node.'}
+                                {form.provider === 'quickexpose' &&
+                                    'The node registers a name with your QuickExpose relay and carries the players it sends. Players connect to name.your-domain. The relay does not tell the server the real address of players, so they all look like the node.'}{' '}
                                 Nodes need the Stratosphere Wings of this release.
                             </li>
                             <li>

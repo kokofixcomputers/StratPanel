@@ -15,7 +15,7 @@ use Pterodactyl\Repositories\Wings\DaemonTunnelRepository;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 
 /**
- * Ports of servers that are opened to the internet through a tunnel service (ngrok, Pinggy or playit.gg), so a server can be played without forwarding a port on
+ * Ports of servers that are opened to the internet through a tunnel service (ngrok, Pinggy, playit.gg or a QuickExpose relay), so a server can be played without forwarding a port on
  * the router. An admin turns it on, picks the service and gives its token (Settings > Tunnels); the owner of a server opens a tunnel for one of
  * its allocations on the Network tab. The panel only keeps what is wanted: the node (Wings, which has the ngrok agent built in) asks for it,
  * opens the tunnels and reports the public address back.
@@ -26,16 +26,22 @@ class TunnelService
     private const TOKEN = 'settings::tunnels:token';
     private const MAX = 'settings::tunnels:max';
     private const PROVIDER = 'settings::tunnels:provider';
+    private const BACKEND = 'settings::tunnels:backend';
 
     /**
      * The services a tunnel can go through, and what each needs. The node does the work (see Wings, tunnel/): ngrok with the agent that is
      * built in, Pinggy over SSH, playit.gg with its API and the playitd daemon.
      */
     public const PROVIDERS = [
-        'ngrok' => ['name' => 'ngrok', 'token' => 'ngrok authtoken', 'required' => true, 'udp' => false],
-        'pinggy' => ['name' => 'Pinggy', 'token' => 'Pinggy token', 'required' => false, 'udp' => false],
-        'playit' => ['name' => 'playit.gg', 'token' => 'playit.gg agent secret key', 'required' => true, 'udp' => true],
+        'ngrok' => ['name' => 'ngrok', 'token' => 'ngrok authtoken', 'required' => true, 'backend' => false],
+        'pinggy' => ['name' => 'Pinggy', 'token' => 'Pinggy token', 'required' => false, 'backend' => false],
+        'playit' => ['name' => 'playit.gg', 'token' => 'playit.gg agent secret key', 'required' => true, 'backend' => false],
+        // A relay of the QuickExpose mod that the admin runs: it has no accounts, and no default: the admin gives its address.
+        'quickexpose' => ['name' => 'QuickExpose', 'token' => null, 'required' => false, 'backend' => true],
     ];
+
+    /** What a backend address looks like: host, or host:control:tunnel:play, with a scheme in front that is not needed. */
+    public const BACKEND_PATTERN = '/^(?:[a-z][a-z0-9+.-]*:\/\/)?[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{0,5}){0,3}\/?$/';
 
     public function __construct(
         private SettingsRepositoryInterface $settings,
@@ -46,10 +52,30 @@ class TunnelService
 
     // ---- what the admin set -----------------------------------------------------------------------------------------
 
-    /** Whether people may open tunnels: an admin turned it on and the service has what it needs (a token, except for the free plan of Pinggy). */
+    /** Whether people may open tunnels: an admin turned it on and the service has what it needs (a token, except for the free plan of Pinggy; a backend for QuickExpose). */
     public function enabled(): bool
     {
-        return $this->switchedOn() && ($this->token() !== null || !self::PROVIDERS[$this->provider()]['required']);
+        if (!$this->switchedOn()) {
+            return false;
+        }
+        $info = self::PROVIDERS[$this->provider()];
+        if ($info['backend']) {
+            return $this->backend() !== '';
+        }
+
+        return $this->token() !== null || !$info['required'];
+    }
+
+    /** The address of the relay, for the services that are run by the admin (QuickExpose). Never has a default. */
+    public function backend(): string
+    {
+        return trim((string) $this->settings->get(self::BACKEND, ''));
+    }
+
+    public function setBackend(?string $backend): void
+    {
+        $backend = trim((string) $backend);
+        $backend === '' ? $this->settings->forget(self::BACKEND) : $this->settings->set(self::BACKEND, $backend);
     }
 
     /** The service the tunnels go through. */
@@ -169,7 +195,8 @@ class TunnelService
 
         return [
             'provider' => $this->provider(),
-            'token' => $this->enabled() ? $this->tokenFor($node) : null,
+            'backend' => self::PROVIDERS[$this->provider()]['backend'] ? $this->backend() : null,
+            'token' => $this->enabled() && self::PROVIDERS[$this->provider()]['token'] !== null ? $this->tokenFor($node) : null,
             'tunnels' => $this->enabled() ? $tunnels->map(fn (Tunnel $tunnel) => [
                 'id' => $tunnel->id,
                 'ip' => $tunnel->allocation->ip,

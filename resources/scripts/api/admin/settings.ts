@@ -285,17 +285,21 @@ export interface TunnelRow {
 }
 
 export interface TunnelProvider {
-    id: 'ngrok' | 'pinggy' | 'playit';
+    id: 'ngrok' | 'pinggy' | 'playit' | 'quickexpose';
     name: string;
-    // What the token of the service is called, and whether the service works without one.
-    token: string;
+    // What the token of the service is called (null: it has none), and whether the service works without one.
+    token: string | null;
     required: boolean;
+    // The service is run by the admin and has an address of its own to give (QuickExpose).
+    backend: boolean;
 }
 
 export interface Tunnels {
     enabled: boolean;
     provider: TunnelProvider['id'];
     providers: TunnelProvider[];
+    // The address of the relay, for the services that are run by the admin.
+    backend: string;
     // Whether a token is saved, it is never given back.
     token_set: boolean;
     max: number;

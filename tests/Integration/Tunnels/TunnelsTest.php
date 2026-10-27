@@ -283,7 +283,7 @@ class TunnelsTest extends IntegrationTestCase
         $this->actingAs(User::factory()->create(['root_admin' => true]));
         $this->daemon->shouldReceive('sync');
         $response = $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'playit', 'max' => 1])->assertOk()->assertJsonPath('provider', 'playit');
-        $this->assertSame(['ngrok', 'pinggy', 'playit'], collect($response->json('providers'))->pluck('id')->all());
+        $this->assertSame(['ngrok', 'pinggy', 'playit', 'quickexpose'], collect($response->json('providers'))->pluck('id')->all());
         $this->assertSame('playit', $service->configFor($node)['provider']);
         $this->assertSame('the-token', $service->configFor($node)['token']);
 
@@ -309,5 +309,49 @@ class TunnelsTest extends IntegrationTestCase
 
         $service->setProvider('playit');
         $this->assertFalse($service->enabled(), 'playit.gg needs its secret key');
+    }
+
+    public function testQuickExposeHasNoDefaultBackendAndNoToken(): void
+    {
+        $service = $this->app->make(TunnelService::class);
+        $service->setEnabled(true);
+        $service->setProvider('quickexpose');
+        $this->assertFalse($service->enabled(), 'without a backend there is nothing to open tunnels through');
+        $this->assertSame('', $service->backend());
+
+        $this->actingAs(User::factory()->create(['root_admin' => true]));
+        $this->daemon->shouldReceive('sync');
+
+        // The backend is needed, and has to look like an address.
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'quickexpose', 'max' => 1])->assertStatus(422)->assertSee('backend field is required', false);
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'quickexpose', 'backend' => 'not an address', 'max' => 1])->assertStatus(422);
+        foreach (['qe.example.com', 'qe://qe.example.com', 'qe.example.com:7000:7001:25565', '10.0.0.9:7100'] as $backend) {
+            $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'quickexpose', 'backend' => $backend, 'max' => 1])
+                ->assertOk()->assertJsonPath('backend', $backend);
+        }
+
+        $this->assertTrue($service->enabled());
+        [, $server] = $this->account();
+        $node = Node::query()->findOrFail($server->node_id);
+        $config = $service->configFor($node);
+        $this->assertSame(['quickexpose', '10.0.0.9:7100', null], [$config['provider'], $config['backend'], $config['token']]);
+
+        // Other services do not get a backend, and do not need one.
+        $service->setProvider('ngrok');
+        $this->assertNull($service->configFor($node)['backend']);
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'pinggy', 'max' => 1])->assertOk();
+    }
+
+    public function testAPlayerCanOpenATunnelThroughQuickExpose(): void
+    {
+        $service = $this->app->make(TunnelService::class);
+        $service->setEnabled(true);
+        $service->setProvider('quickexpose');
+        $service->setBackend('qe.example.com');
+        [$user, $server] = $this->account();
+        $this->daemon->expects('sync')->once();
+
+        $this->actingAs($user)->postJson($this->url($server), ['allocation_id' => $server->allocation_id])->assertStatus(201)
+            ->assertJsonPath('enabled', true)->assertJsonPath('allocations.0.tunnel.status', 'pending');
     }
 }
