@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { GlobeAltIcon, InformationCircleIcon, ServerIcon } from '@heroicons/react/solid';
 import SettingsFrame from '@/components/admin/pages/settings/SettingsFrame';
 import { AdminTable, Cell, Empty, Pill, Row } from '@/components/admin/AdminTable';
-import { Columns, Notice, Stack, TextField, ToggleField } from '@/components/admin/forms';
+import { Columns, Notice, SelectField, Stack, TextField, ToggleField } from '@/components/admin/forms';
 import SectionCard from '@/components/elements/SectionCard';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
@@ -12,6 +12,7 @@ import { deleteSetting, saveSetting, Tunnels, useSetting } from '@/api/admin/set
 
 interface Form {
     enabled: boolean;
+    provider: string;
     token: string;
     clear_token: boolean;
     max: string;
@@ -19,7 +20,34 @@ interface Form {
     nodes: Record<number, string>;
 }
 
-/** Admin > Settings > Tunnels: opening servers to the internet through ngrok, without port forwarding. */
+const TOKEN_HELP: Record<string, React.ReactNode> = {
+    ngrok: (
+        <>
+            From dashboard.ngrok.com, under Your Authtoken. TCP tunnels need an ngrok account with a verified payment
+            method, the free plan works once that is set.
+        </>
+    ),
+    pinggy: (
+        <>
+            From dashboard.pinggy.io. It can stay empty to use Pinggy without an account, check what your Pinggy plan
+            allows for TCP tunnels.
+        </>
+    ),
+    playit: (
+        <>
+            The secret key of an agent, from playit.gg (Agents). The playit package, which has <code>playitd</code>, has
+            to be installed on every node that opens tunnels.
+        </>
+    ),
+};
+
+const NODE_HELP: Record<string, string> = {
+    ngrok: 'A free ngrok account lets one agent be online at a time. A node with its own account (and so its own token) opens tunnels next to the other nodes; a node without one uses the token above.',
+    pinggy: 'A node with its own Pinggy token uses it, a node without one uses the token above.',
+    playit: 'A node with its own agent secret key uses it, a node without one uses the key above. Every agent has its own tunnels on the account.',
+};
+
+/** Admin > Settings > Tunnels: opening servers to the internet through ngrok, Pinggy or playit.gg, without port forwarding. */
 export default () => {
     const admin = useAdmin();
     const can = admin.can('settings.tunnels.update');
@@ -30,7 +58,14 @@ export default () => {
 
     useEffect(() => {
         if (data && !form)
-            setForm({ enabled: data.enabled, token: '', clear_token: false, max: String(data.max), nodes: {} });
+            setForm({
+                enabled: data.enabled,
+                provider: data.provider,
+                token: '',
+                clear_token: false,
+                max: String(data.max),
+                nodes: {},
+            });
     }, [data]);
 
     const set = (changes: Partial<Form>) => setForm((f) => (f ? { ...f, ...changes } : f));
@@ -54,6 +89,7 @@ export default () => {
         run(
             saveSetting('tunnels', {
                 enabled: form.enabled,
+                provider: form.provider,
                 token: form.token,
                 clear_token: form.clear_token,
                 max: Number(form.max) || 1,
@@ -68,14 +104,16 @@ export default () => {
     return (
         <SettingsFrame
             title={'Tunnels'}
-            subtitle={'Let people open their servers to the internet through ngrok, without port forwarding.'}
+            subtitle={
+                'Let people open their servers to the internet through ngrok, Pinggy or playit.gg, without port forwarding.'
+            }
         >
             {!data || !form ? (
                 <Spinner size={'large'} centered />
             ) : (
                 <div className={'grid gap-4 lg:grid-cols-3'}>
                     <div className={'space-y-4 lg:col-span-2'}>
-                        <SectionCard icon={<GlobeAltIcon className={'h-5 w-5'} />} title={'ngrok'}>
+                        <SectionCard icon={<GlobeAltIcon className={'h-5 w-5'} />} title={'Tunnel service'}>
                             <Stack>
                                 <ToggleField
                                     label={'Let people open tunnels'}
@@ -86,21 +124,26 @@ export default () => {
                                     disabled={!can}
                                     onChange={(enabled) => set({ enabled })}
                                 />
+                                <SelectField
+                                    id={'tunnel-provider'}
+                                    label={'Service'}
+                                    value={form.provider}
+                                    disabled={!can}
+                                    choices={data.providers.map((p) => ({ value: p.id, label: p.name }))}
+                                    help={
+                                        'Changing it closes every tunnel and opens them again through the new service, with its token.'
+                                    }
+                                    onChange={(provider) => set({ provider })}
+                                />
                                 <TextField
                                     id={'tunnel-token'}
                                     type={'password'}
-                                    label={'ngrok authtoken'}
+                                    label={data.providers.find((p) => p.id === form.provider)?.token ?? 'Token'}
                                     value={form.token}
                                     autoComplete={'new-password'}
                                     disabled={!can}
                                     placeholder={data.token_set ? 'Saved, leave empty to keep it' : ''}
-                                    help={
-                                        <>
-                                            From dashboard.ngrok.com, under Your Authtoken. It is stored encrypted and
-                                            never shown again. TCP tunnels need an ngrok account with a verified payment
-                                            method, the free plan works once that is set.
-                                        </>
-                                    }
+                                    help={TOKEN_HELP[form.provider]}
                                     onChange={(token) => set({ token, clear_token: false })}
                                 />
                                 {data.token_set && can && (
@@ -122,11 +165,13 @@ export default () => {
                                     />
                                 </Columns>
                             </Stack>
-                            {data.token_set === false && form.enabled && (
-                                <div className={'mt-4'}>
-                                    <Notice>Tunnels stay off until a token is saved.</Notice>
-                                </div>
-                            )}
+                            {data.token_set === false &&
+                                form.enabled &&
+                                data.providers.find((p) => p.id === form.provider)?.required && (
+                                    <div className={'mt-4'}>
+                                        <Notice>Tunnels stay off until a token is saved.</Notice>
+                                    </div>
+                                )}
                             {can && (
                                 <div className={'mt-6 flex justify-end'}>
                                     <Button disabled={busy} onClick={save}>
@@ -136,11 +181,7 @@ export default () => {
                             )}
                         </SectionCard>
                         <SectionCard icon={<ServerIcon className={'h-5 w-5'} />} title={'Tokens of nodes'}>
-                            <p className={'mb-4 text-sm text-neutral-300'}>
-                                A free ngrok account lets one agent be online at a time. A node with its own account
-                                (and so its own token) opens tunnels next to the other nodes; a node without one uses
-                                the token above.
-                            </p>
+                            <p className={'mb-4 text-sm text-neutral-300'}>{NODE_HELP[form.provider]}</p>
                             <Stack>
                                 {data.nodes.map((node) => (
                                     <TextField
@@ -204,19 +245,24 @@ export default () => {
                     <SectionCard icon={<InformationCircleIcon className={'h-5 w-5'} />} title={'Good to know'}>
                         <ul className={'list-disc space-y-2 pl-4 text-sm text-neutral-200'}>
                             <li>
-                                The node opens the tunnel: Wings has the ngrok agent built in, nothing is installed on
-                                the machine. Nodes need the Stratosphere Wings of this release.
+                                {form.provider === 'ngrok' &&
+                                    'The node opens the tunnel: Wings has the ngrok agent built in, nothing is installed on the machine.'}
+                                {form.provider === 'pinggy' &&
+                                    'The node opens the tunnel: Wings connects to Pinggy over SSH, nothing is installed on the machine.'}
+                                {form.provider === 'playit' &&
+                                    'The node makes the tunnel on your playit.gg account and runs playitd while a tunnel is open: install the playit package on every node.'}{' '}
+                                Nodes need the Stratosphere Wings of this release.
                             </li>
                             <li>
-                                Players connect through ngrok, so there is a little more delay than a port that is
+                                Players connect through the service, so there is a little more delay than a port that is
                                 forwarded. The address is on the Network tab and in the connection menu of the server.
                             </li>
                             <li>
-                                ngrok gives TCP tunnels, which is what Minecraft Java needs. Bedrock (UDP) and voice
-                                chat plugins can not be tunnelled by ngrok.
+                                Minecraft Java (TCP) is what is tunnelled. Bedrock (UDP) and voice chat plugins that
+                                need UDP are not.
                             </li>
                             <li>
-                                The address of a free account changes when the tunnel is opened again, for example when
+                                The address of a free plan can change when the tunnel is opened again, for example when
                                 the node restarts. The new one shows up by itself.
                             </li>
                             <li>Turning tunnels off, or closing one here, closes it on the node within a moment.</li>

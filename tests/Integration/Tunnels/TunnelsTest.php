@@ -35,6 +35,12 @@ class TunnelsTest extends IntegrationTestCase
         }
         DB::table('settings')->where('key', 'like', 'settings::tunnels:%')->delete();
         Tunnel::query()->delete();
+        // The settings are cached, so they are cleared through the service as well.
+        $service = $this->app->make(TunnelService::class);
+        $service->setToken(null);
+        $service->setEnabled(false);
+        $service->setProvider('ngrok');
+        $service->setMaxPerServer(1);
 
         $this->egg = Egg::factory()->create([
             'nest_id' => Nest::factory()->create()->id, 'name' => 'Java', 'author' => 'test@example.com', 'docker_images' => ['Java 21' => 'ghcr.io/example/java_21'],
@@ -217,19 +223,19 @@ class TunnelsTest extends IntegrationTestCase
         $this->daemon->shouldReceive('sync');
 
         $response = $this->patchJson('/api/client/admin/settings/tunnels', [
-            'enabled' => true, 'token' => 'secret-ngrok-token', 'max' => 3, 'node_tokens' => [['id' => $server->node_id, 'token' => 'secret-node-token']],
+            'enabled' => true, 'provider' => 'ngrok', 'token' => 'secret-ngrok-token', 'max' => 3, 'node_tokens' => [['id' => $server->node_id, 'token' => 'secret-node-token']],
         ])->assertOk()->assertJsonPath('enabled', true)->assertJsonPath('token_set', true)->assertJsonPath('max', 3);
         $this->assertStringNotContainsString('secret-', $response->getContent());
         $node = collect($response->json('nodes'))->firstWhere('id', $server->node_id);
         $this->assertTrue($node['has_token']);
 
         // An empty token keeps the saved one, clearing removes it.
-        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'token' => '', 'max' => 3])->assertJsonPath('token_set', true);
-        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'clear_token' => true, 'max' => 3, 'node_tokens' => [['id' => $server->node_id, 'clear' => true]]])
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'ngrok', 'token' => '', 'max' => 3])->assertJsonPath('token_set', true);
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'ngrok', 'clear_token' => true, 'max' => 3, 'node_tokens' => [['id' => $server->node_id, 'clear' => true]]])
             ->assertJsonPath('token_set', false);
         $this->assertNull(Node::query()->find($server->node_id)->tunnel_token);
 
-        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'max' => 0])->assertStatus(422);
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'ngrok', 'max' => 0])->assertStatus(422);
     }
 
     public function testAdminsCanCloseATunnel(): void
@@ -256,5 +262,46 @@ class TunnelsTest extends IntegrationTestCase
 
         $row = collect($this->getJson('/api/client')->assertOk()->json('data'))->firstWhere('attributes.uuid', $server->uuid);
         $this->assertSame([['allocation_id' => $server->allocation_id, 'address' => '1.tcp.ngrok.io:4242']], $row['attributes']['tunnels']);
+    }
+
+    public function testTheServiceIsChosenAndGoesToTheNode(): void
+    {
+        $this->turnOn('the-token');
+        [, $server] = $this->account();
+        $node = Node::query()->findOrFail($server->node_id);
+        $service = $this->app->make(TunnelService::class);
+
+        $this->assertSame('ngrok', $service->provider());
+        $this->assertSame('ngrok', $service->configFor($node)['provider']);
+
+        $this->actingAs(User::factory()->create(['root_admin' => true]));
+        $this->daemon->shouldReceive('sync');
+        $response = $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'playit', 'max' => 1])->assertOk()->assertJsonPath('provider', 'playit');
+        $this->assertSame(['ngrok', 'pinggy', 'playit'], collect($response->json('providers'))->pluck('id')->all());
+        $this->assertSame('playit', $service->configFor($node)['provider']);
+        $this->assertSame('the-token', $service->configFor($node)['token']);
+
+        $this->patchJson('/api/client/admin/settings/tunnels', ['enabled' => true, 'provider' => 'nope', 'max' => 1])->assertStatus(422);
+    }
+
+    public function testPinggyNeedsNoTokenButTheOthersDo(): void
+    {
+        $service = $this->app->make(TunnelService::class);
+        $service->setEnabled(true);
+        $service->setProvider('ngrok');
+        $this->assertFalse($service->enabled(), 'ngrok without a token is off');
+
+        $service->setProvider('pinggy');
+        $this->assertTrue($service->enabled(), 'the free plan of Pinggy needs no token');
+
+        [$user, $server] = $this->account();
+        $this->daemon->shouldReceive('sync');
+        $this->actingAs($user)->postJson($this->url($server), ['allocation_id' => $server->allocation_id])->assertStatus(201);
+        $config = $service->configFor(Node::query()->findOrFail($server->node_id));
+        $this->assertSame(['pinggy', null], [$config['provider'], $config['token']]);
+        $this->assertCount(1, $config['tunnels']);
+
+        $service->setProvider('playit');
+        $this->assertFalse($service->enabled(), 'playit.gg needs its secret key');
     }
 }

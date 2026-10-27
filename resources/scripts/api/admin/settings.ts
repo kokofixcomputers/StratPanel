@@ -284,8 +284,18 @@ export interface TunnelRow {
     error: string | null;
 }
 
+export interface TunnelProvider {
+    id: 'ngrok' | 'pinggy' | 'playit';
+    name: string;
+    // What the token of the service is called, and whether the service works without one.
+    token: string;
+    required: boolean;
+}
+
 export interface Tunnels {
     enabled: boolean;
+    provider: TunnelProvider['id'];
+    providers: TunnelProvider[];
     // Whether a token is saved, it is never given back.
     token_set: boolean;
     max: number;

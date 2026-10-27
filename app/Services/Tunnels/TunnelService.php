@@ -15,8 +15,8 @@ use Pterodactyl\Repositories\Wings\DaemonTunnelRepository;
 use Pterodactyl\Exceptions\Http\Connection\DaemonConnectionException;
 
 /**
- * Ports of servers that are opened to the internet through a tunnel service (ngrok), so a server can be played without forwarding a port on
- * the router. An admin turns it on and gives the token of the service (Settings > Tunnels); the owner of a server opens a tunnel for one of
+ * Ports of servers that are opened to the internet through a tunnel service (ngrok, Pinggy or playit.gg), so a server can be played without forwarding a port on
+ * the router. An admin turns it on, picks the service and gives its token (Settings > Tunnels); the owner of a server opens a tunnel for one of
  * its allocations on the Network tab. The panel only keeps what is wanted: the node (Wings, which has the ngrok agent built in) asks for it,
  * opens the tunnels and reports the public address back.
  */
@@ -25,6 +25,17 @@ class TunnelService
     private const ENABLED = 'settings::tunnels:enabled';
     private const TOKEN = 'settings::tunnels:token';
     private const MAX = 'settings::tunnels:max';
+    private const PROVIDER = 'settings::tunnels:provider';
+
+    /**
+     * The services a tunnel can go through, and what each needs. The node does the work (see Wings, tunnel/): ngrok with the agent that is
+     * built in, Pinggy over SSH, playit.gg with its API and the playitd daemon.
+     */
+    public const PROVIDERS = [
+        'ngrok' => ['name' => 'ngrok', 'token' => 'ngrok authtoken', 'required' => true, 'udp' => false],
+        'pinggy' => ['name' => 'Pinggy', 'token' => 'Pinggy token', 'required' => false, 'udp' => false],
+        'playit' => ['name' => 'playit.gg', 'token' => 'playit.gg agent secret key', 'required' => true, 'udp' => true],
+    ];
 
     public function __construct(
         private SettingsRepositoryInterface $settings,
@@ -35,10 +46,23 @@ class TunnelService
 
     // ---- what the admin set -----------------------------------------------------------------------------------------
 
-    /** Whether people may open tunnels: an admin turned it on and a token is set. */
+    /** Whether people may open tunnels: an admin turned it on and the service has what it needs (a token, except for the free plan of Pinggy). */
     public function enabled(): bool
     {
-        return $this->switchedOn() && ($this->token() !== null);
+        return $this->switchedOn() && ($this->token() !== null || !self::PROVIDERS[$this->provider()]['required']);
+    }
+
+    /** The service the tunnels go through. */
+    public function provider(): string
+    {
+        $chosen = (string) $this->settings->get(self::PROVIDER, 'ngrok');
+
+        return array_key_exists($chosen, self::PROVIDERS) ? $chosen : 'ngrok';
+    }
+
+    public function setProvider(string $provider): void
+    {
+        $this->settings->set(self::PROVIDER, array_key_exists($provider, self::PROVIDERS) ? $provider : 'ngrok');
     }
 
     public function switchedOn(): bool
@@ -105,7 +129,7 @@ class TunnelService
         if ($allocation->server_id !== $server->id) {
             throw new DisplayException('That port does not belong to this server.');
         }
-        if ($this->tokenFor($server->node) === null) {
+        if ($this->tokenFor($server->node) === null && self::PROVIDERS[$this->provider()]['required']) {
             throw new DisplayException('This node has no tunnel token.');
         }
 
@@ -144,6 +168,7 @@ class TunnelService
             ->filter(fn (Tunnel $tunnel) => $tunnel->allocation && $tunnel->allocation->server_id === $tunnel->server_id);
 
         return [
+            'provider' => $this->provider(),
             'token' => $this->enabled() ? $this->tokenFor($node) : null,
             'tunnels' => $this->enabled() ? $tunnels->map(fn (Tunnel $tunnel) => [
                 'id' => $tunnel->id,

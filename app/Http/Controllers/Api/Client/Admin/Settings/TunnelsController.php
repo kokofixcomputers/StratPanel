@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Pterodactyl\Http\Controllers\Controller;
 use Pterodactyl\Services\Tunnels\TunnelService;
 
-/** Settings > Tunnels: whether servers can be opened to the internet through ngrok, with which token, and the tunnels that are open. */
+/** Settings > Tunnels: whether servers can be opened to the internet through ngrok, Pinggy or playit.gg, with which token, and the tunnels that are open. */
 class TunnelsController extends Controller
 {
     public function __construct(private TunnelService $tunnels)
@@ -20,6 +20,8 @@ class TunnelsController extends Controller
     {
         return new JsonResponse([
             'enabled' => $this->tunnels->switchedOn(),
+            'provider' => $this->tunnels->provider(),
+            'providers' => collect(TunnelService::PROVIDERS)->map(fn ($info, $id) => ['id' => $id] + $info)->values()->all(),
             'token_set' => $this->tunnels->token() !== null,
             'max' => $this->tunnels->maxPerServer(),
             'nodes' => Node::query()->orderBy('name')->get(['id', 'name', 'tunnel_token'])->map(fn (Node $node) => [
@@ -43,6 +45,7 @@ class TunnelsController extends Controller
     {
         $data = $request->validate([
             'max' => 'required|integer|between:1,50',
+            'provider' => 'required|in:' . implode(',', array_keys(TunnelService::PROVIDERS)),
             'token' => 'nullable|string|max:500',
             'clear_token' => 'nullable|boolean',
             'node_tokens' => 'nullable|array',
@@ -52,6 +55,7 @@ class TunnelsController extends Controller
         ]);
 
         $this->tunnels->setEnabled($request->boolean('enabled'));
+        $this->tunnels->setProvider($data['provider']);
         $this->tunnels->setMaxPerServer((int) $data['max']);
         if ($request->boolean('clear_token')) {
             $this->tunnels->setToken(null);
