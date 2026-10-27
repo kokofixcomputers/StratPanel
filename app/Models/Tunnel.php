@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $server_id
  * @property int $allocation_id
- * @property string $status pending, active or failed
+ * @property string $status pending, waiting, active or failed
  * @property string|null $address
  * @property string|null $error
  * @property Server $server
@@ -22,6 +22,8 @@ class Tunnel extends Model
     public const PENDING = 'pending';
     public const ACTIVE = 'active';
     public const FAILED = 'failed';
+    // The server is not running: the tunnel opens when it starts.
+    public const WAITING = 'waiting';
 
     protected $table = 'tunnels';
 

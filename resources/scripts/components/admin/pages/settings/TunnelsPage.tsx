@@ -213,6 +213,8 @@ export default () => {
                                                     <span className={'font-mono text-xs'}>{t.address}</span>
                                                 ) : t.status === 'pending' ? (
                                                     <Pill tone={'yellow'}>Opening</Pill>
+                                                ) : t.status === 'waiting' ? (
+                                                    <Pill>Waits for the server</Pill>
                                                 ) : (
                                                     <span title={t.error || ''}>
                                                         <Pill tone={'red'}>Failed</Pill>

@@ -279,7 +279,7 @@ export interface TunnelRow {
     server: string | null;
     node: string | null;
     port: number | null;
-    status: 'pending' | 'active' | 'failed';
+    status: 'pending' | 'waiting' | 'active' | 'failed';
     address: string | null;
     error: string | null;
 }

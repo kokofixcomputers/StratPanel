@@ -136,10 +136,16 @@ class TunnelsTest extends IntegrationTestCase
 
         $config = $this->withHeaders($headers)->getJson('/api/remote/tunnels')->assertOk()->json();
         $this->assertSame('the-token', $config['token']);
-        $this->assertSame([['id' => $tunnel->id, 'ip' => $server->allocation->ip, 'port' => $server->allocation->port]], $config['tunnels']);
+        $this->assertSame([['id' => $tunnel->id, 'ip' => $server->allocation->ip, 'port' => $server->allocation->port, 'server' => $server->uuid]], $config['tunnels']);
 
         $this->withHeaders($headers)->postJson('/api/remote/tunnels/' . $tunnel->id, ['state' => 'active', 'address' => '0.tcp.ngrok.io:12345'])->assertNoContent();
         $this->actingAs($user)->getJson($this->url($server))->assertJsonPath('allocations.0.tunnel.address', '0.tcp.ngrok.io:12345')->assertJsonPath('allocations.0.tunnel.status', 'active');
+
+        // The server stops: the node closes the tunnel and says it waits, the address is gone. It is not a failure.
+        $this->withHeaders($headers)->postJson('/api/remote/tunnels/' . $tunnel->id, ['state' => 'waiting', 'message' => 'It opens when the server starts.'])->assertNoContent();
+        $tunnel->refresh();
+        $this->assertSame(['waiting', null, null], [$tunnel->status, $tunnel->address, $tunnel->error]);
+        $this->actingAs($user)->getJson($this->url($server))->assertJsonPath('allocations.0.tunnel.status', 'waiting');
 
         $this->withHeaders($headers)->postJson('/api/remote/tunnels/' . $tunnel->id, ['state' => 'failed', 'message' => 'authentication failed'])->assertNoContent();
         $tunnel->refresh();

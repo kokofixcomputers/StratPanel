@@ -34,7 +34,7 @@ class TunnelsController extends Controller
             throw new HttpForbiddenException('Requesting node does not have permission to access this tunnel.');
         }
 
-        $data = $request->validate(['state' => 'required|in:active,failed', 'address' => 'nullable|string|max:255', 'message' => 'nullable|string|max:1000']);
+        $data = $request->validate(['state' => 'required|in:active,failed,waiting', 'address' => 'nullable|string|max:255', 'message' => 'nullable|string|max:1000']);
         $this->tunnels->report($found, $data['state'], $data['address'] ?? null, $data['message'] ?? null);
 
         return new JsonResponse([], JsonResponse::HTTP_NO_CONTENT);

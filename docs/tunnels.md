@@ -28,6 +28,9 @@ on the same page (*Tokens of nodes*), a node without one uses the token of the p
 * Network tab: each port has a bar with **Open to the internet**. The node opens the tunnel in a few seconds and the bar shows the address
   players connect to (`0.tcp.eu.ngrok.io:12345`), with a Copy on click and **Close**. A failed tunnel shows why and can be tried again.
 * The address is also in the connection menu of the server (next to the domains) and works in the server list of Minecraft.
+* A tunnel is open while its server is running: it closes when the server stops and opens again when it starts (the node looks every few
+  seconds). While the server is off the bar says the tunnel opens when the server starts. With a free plan the address can be a new one every
+  time, the new one shows up by itself.
 * A server can have 1 tunnel open at once by default (*Tunnels for each server*). Closing a tunnel, removing the port from the server or
   deleting the server closes it on the node. Opening and closing is in the activity log of the server.
 * The address of a free account changes when the tunnel is opened again (the node restarted, the token changed).
@@ -37,7 +40,7 @@ on the same page (*Tokens of nodes*), a node without one uses the token of the p
 The panel keeps what is wanted (`tunnels` table: server, allocation, status, address). The node asks `GET /api/remote/tunnels` (token and the
 ports of its servers that have a tunnel), opens them and answers `POST /api/remote/tunnels/{id}` with `active` and the address, or `failed`
 and why. When something changes the panel tells the node `POST /api/tunnels/sync`; the node also asks when it starts and every three
-minutes, which opens a tunnel that failed or went away.
+minutes, which opens a tunnel that failed or went away; every few seconds it looks at which servers run and opens or closes the tunnels of the ones that started or stopped (a tunnel is `waiting` while its server is off).
 
 ## Limits
 

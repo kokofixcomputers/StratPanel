@@ -161,7 +161,7 @@ class TunnelService
     /** What the node is told it should have open: the token, and the ports of the servers that have a tunnel. */
     public function configFor(Node $node): array
     {
-        $tunnels = Tunnel::query()->with('allocation')
+        $tunnels = Tunnel::query()->with(['allocation', 'server:id,uuid'])
             ->whereHas('server', fn ($q) => $q->where('node_id', $node->id))
             ->get()
             // The port may have been taken from the server since.
@@ -174,6 +174,8 @@ class TunnelService
                 'id' => $tunnel->id,
                 'ip' => $tunnel->allocation->ip,
                 'port' => $tunnel->allocation->port,
+                // It is open while this server runs.
+                'server' => $tunnel->server->uuid,
             ])->values()->all() : [],
         ];
     }
@@ -181,10 +183,12 @@ class TunnelService
     /** What the node says about a tunnel. */
     public function report(Tunnel $tunnel, string $state, ?string $address, ?string $message): void
     {
+        $status = in_array($state, [Tunnel::ACTIVE, Tunnel::WAITING], true) ? $state : Tunnel::FAILED;
         $tunnel->forceFill([
-            'status' => $state === Tunnel::ACTIVE ? Tunnel::ACTIVE : Tunnel::FAILED,
-            'address' => $state === Tunnel::ACTIVE ? $address : null,
-            'error' => $state === Tunnel::ACTIVE ? null : Str::limit((string) $message, 500),
+            'status' => $status,
+            'address' => $status === Tunnel::ACTIVE ? $address : null,
+            // A tunnel that waits for its server has nothing wrong with it.
+            'error' => $status === Tunnel::FAILED ? Str::limit((string) $message, 500) : null,
         ])->save();
     }
 

@@ -5,7 +5,7 @@ import { ServerContext } from '@/state/server';
 
 export interface TunnelState {
     id: number;
-    status: 'pending' | 'active' | 'failed';
+    status: 'pending' | 'waiting' | 'active' | 'failed';
     // Where players connect, once the tunnel is open.
     address: string | null;
     error: string | null;

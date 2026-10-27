@@ -74,6 +74,11 @@ export default ({ allocation }: { allocation: number }) => {
                     <span css={tw`flex-1 text-neutral-300`}>Opening the tunnel...</span>
                 </>
             )}
+            {tunnel?.status === 'waiting' && (
+                <span css={tw`flex-1 text-neutral-300`}>
+                    Open to the internet while the server runs: the tunnel opens when the server starts.
+                </span>
+            )}
             {tunnel?.status === 'active' && (
                 <>
                     <span css={tw`text-neutral-300`}>Players connect to</span>
