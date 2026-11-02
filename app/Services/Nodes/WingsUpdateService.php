@@ -56,7 +56,7 @@ class WingsUpdateService
         }
 
         if (!empty($result['unsupported'])) {
-            return $out + ['status' => 'failed', 'message' => 'This Wings is too old to update itself (or is not the Wings of Stratosphere). Replace its binary once by hand with the newest build, see docs/updates.md.'];
+            return $out + ['status' => 'failed', 'message' => 'This Wings is too old to update itself (or is not the Wings of Stratosphere). Replace its binary once by hand with the newest build, see the Updates page of the Stratosphere docs (https://github.com/kokofixcomputers/stratosphere-docs).'];
         }
         if (!empty($result['error'])) {
             return $out + ['status' => 'failed', 'message' => $result['error']];

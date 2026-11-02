@@ -8,8 +8,7 @@ import java.util.logging.Logger;
 /**
  * Sends messages to the panel as console lines. The panel reads them from the console it already streams and hides
  * them from what people see. The line has to be printed by the plugin's own logger, so it starts with the log header and
- * "[Stratosphere]", that is how the panel knows a player did not type it into chat. See docs/stratosphere-commands.md in
- * the panel.
+ * "[Stratosphere]", that is how the panel knows a player did not type it into chat. See the commands.json page of the Stratosphere docs.
  */
 public final class Bridge {
 

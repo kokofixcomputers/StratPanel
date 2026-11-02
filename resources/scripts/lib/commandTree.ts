@@ -1,6 +1,6 @@
 /**
  * Reads stratosphere.commands.json, the command tree a plugin or mod writes into the server root, and turns it
- * into the tree the console tab completion walks. The format is described in docs/pterodactyl-commands.md.
+ * into the tree the console tab completion walks. The format is described in the Stratosphere docs (commands.json).
  */
 import { Node, node } from '@/lib/commandComplete';
 

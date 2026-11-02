@@ -242,7 +242,7 @@ export default () => {
                                     <Notice>
                                         Port 80 is not answered by the edge. Set <code>HTTP_LISTEN=:80</code> in{' '}
                                         <code>/etc/stratosphere-net.env</code> (the web server has to move off port 80,
-                                        see tools/stratnet/edge/README.md).
+                                        see the Certificates page of the Stratosphere docs).
                                     </Notice>
                                 )}
                             </Stack>

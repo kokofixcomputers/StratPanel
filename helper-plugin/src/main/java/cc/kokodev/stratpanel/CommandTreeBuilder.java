@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 /**
  * Turns a Brigadier command tree into the nodes of stratosphere.commands.json. It only knows Brigadier, so it can be
- * tested without a server. See docs/pterodactyl-commands.md in the panel for the format.
+ * tested without a server. See the commands.json page of the Stratosphere docs for the format.
  */
 public final class CommandTreeBuilder {
 

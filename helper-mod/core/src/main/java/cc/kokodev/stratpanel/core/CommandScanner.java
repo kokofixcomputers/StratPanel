@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 
 /**
  * Reads every command of the server and writes it to stratosphere.commands.json in the server root, for the panel's tab
- * completion. See docs/stratosphere-commands.md in the panel for the format.
+ * completion. See the commands.json page of the Stratosphere docs for the format.
  */
 public final class CommandScanner {
 

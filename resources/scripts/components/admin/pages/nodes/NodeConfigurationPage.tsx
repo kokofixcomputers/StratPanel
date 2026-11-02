@@ -61,8 +61,8 @@ export default () => {
             </div>
             <Dialog open={!!token} onClose={() => setToken(null)} title={'Token created'}>
                 <p className={'mb-2 text-sm text-neutral-200'}>
-                    On a new machine, with the Wings of Stratosphere in place (see docs/updates.md), this does
-                    everything, including the service:
+                    On a new machine, with the Wings of Stratosphere in place (see the Updates page of the Stratosphere
+                    docs), this does everything, including the service:
                 </p>
                 <CopyOnClick text={install ?? ''}>
                     <pre

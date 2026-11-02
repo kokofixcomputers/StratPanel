@@ -1,7 +1,7 @@
 # Stratosphere helper mod (Fabric and NeoForge)
 
 The mod version of the [helper plugin](../helper-plugin). It speaks the same protocol, see
-[`docs/stratosphere-commands.md`](../docs/stratosphere-commands.md), so the panel treats it like the plugin: tab completion
+[the commands.json page of the docs](https://github.com/kokofixcomputers/stratosphere-docs), so the panel treats it like the plugin: tab completion
 from the command tree of the server, the list of players, their vitals, inventory, ender chest and the shulker boxes in them, TPS and MSPT.
 
 There is **one jar, `Stratosphere-mod.jar`, for both loaders**:

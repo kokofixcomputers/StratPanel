@@ -4,7 +4,7 @@
 #   sudo bash tools/updater/install.sh
 #
 # It installs a small root service that does nothing until the panel writes a request file, and then does one of two fixed things.
-# See docs/updates.md.
+# See the Updates page of the Stratosphere docs: https://github.com/kokofixcomputers/stratosphere-docs
 set -euo pipefail
 
 PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"

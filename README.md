@@ -7,6 +7,8 @@ modern light UI plus the Minecraft tools you would otherwise need plugins and sc
 > Stratosphere is not affiliated with or endorsed by the Pterodactyl project. Pterodactyl® is a trademark of its owners.
 > This repository is MIT licensed like the original, see [LICENSE.md](LICENSE.md).
 
+**Documentation** lives in its own repository: https://github.com/kokofixcomputers/stratosphere-docs
+
 ## What is different
 
 **A new interface.** The whole panel, including the admin area, was redesigned: light theme, rounded cards, top tab

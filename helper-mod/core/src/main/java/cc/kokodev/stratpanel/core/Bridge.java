@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 /**
  * Sends messages to the panel as console lines. The panel reads them from the console it already streams and hides them from
  * what people see. The line starts with {@code [Stratosphere]} directly after the log header, that is how the panel knows a
- * player did not type it into chat. See docs/stratosphere-commands.md in the panel.
+ * player did not type it into chat. See the commands.json page of the Stratosphere docs.
  */
 public final class Bridge {
 
