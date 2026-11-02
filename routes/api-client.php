@@ -159,6 +159,12 @@ Route::group([
         Route::delete('/{database}', [Client\Servers\DatabaseController::class, 'delete']);
     });
 
+    Route::group(['prefix' => '/private-network'], function () {
+        Route::get('/', [Client\Servers\PrivateNetworkController::class, 'index']);
+        Route::post('/', [Client\Servers\PrivateNetworkController::class, 'join']);
+        Route::delete('/', [Client\Servers\PrivateNetworkController::class, 'leave']);
+    });
+
     Route::group(['prefix' => '/tunnels'], function () {
         Route::get('/', [Client\Servers\TunnelController::class, 'index']);
         Route::post('/', [Client\Servers\TunnelController::class, 'store']);

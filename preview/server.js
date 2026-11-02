@@ -656,6 +656,20 @@ api.delete('/account/passkeys/:id', (req, res) => {
     res.status(204).end();
 });
 
+// The private network between servers.
+let mockPrivate = { enabled: true, available: true, joined: false, address: null };
+const privateState = () => ({ ...mockPrivate, node: 'Frankfurt-1', others: mockPrivate.joined ? [{ name: 'Lobby', address: '10.142.3.3', identifier: 'aa11bb22' }, { name: 'Survival SMP', address: '10.142.5.2', identifier: 'a1b2c3d4' }] : [] });
+api.get('/servers/:id/private-network', (req, res) => res.json(privateState()));
+api.post('/servers/:id/private-network', (req, res) => { mockPrivate = { ...mockPrivate, joined: true, address: '10.142.3.2' }; res.status(201).json(privateState()); });
+api.delete('/servers/:id/private-network', (req, res) => { mockPrivate = { ...mockPrivate, joined: false, address: null }; res.json(privateState()); });
+let mockPrivateAdmin = { enabled: false, range: '', suggested: '10.142.0.0/16', joined: 3 };
+api.get('/admin/settings/private-network', (req, res) => res.json({ ...mockPrivateAdmin, nodes: [
+    { id: 1, name: 'Frankfurt-1', fqdn: 'fra.example.com', enabled: true, subnet: mockPrivateAdmin.enabled ? '10.142.3.0/24' : null, port: 51820, state: 'ready', message: null, reported_at: new Date().toISOString(), recent: true, has_key: true, servers: 2 },
+    { id: 2, name: 'Dallas-1', fqdn: 'dal.example.com', enabled: true, subnet: mockPrivateAdmin.enabled ? '10.142.5.0/24' : null, port: 51820, state: 'error', message: 'could not set up the tunnel (does the kernel have WireGuard?): operation not supported', reported_at: new Date().toISOString(), recent: true, has_key: false, servers: 1 },
+    { id: 3, name: 'Old-node', fqdn: 'old.example.com', enabled: true, subnet: mockPrivateAdmin.enabled ? '10.142.6.0/24' : null, port: 51820, state: null, message: null, reported_at: null, recent: false, has_key: false, servers: 0 },
+] }));
+api.patch('/admin/settings/private-network', (req, res) => { mockPrivateAdmin = { ...mockPrivateAdmin, enabled: !!req.body.enabled, range: req.body.range || mockPrivateAdmin.suggested }; res.json({}); });
+
 // Opening ports of the server to the internet through a tunnel (ngrok).
 let mockTunnel = null;
 const tunnelState = () => ({

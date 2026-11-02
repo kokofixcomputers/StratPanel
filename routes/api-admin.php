@@ -139,6 +139,9 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
             Route::delete('/zones/{zone}', [Admin\Settings\DomainsController::class, 'destroy'])->whereNumber('zone')->middleware('admin.can:settings.domains.update');
         });
 
+        Route::get('/private-network', [Admin\Settings\PrivateNetworkController::class, 'index'])->middleware('admin.can:settings.private.view');
+        Route::patch('/private-network', [Admin\Settings\PrivateNetworkController::class, 'update'])->middleware('admin.can:settings.private.update');
+
         Route::prefix('/tunnels')->group(function () {
             Route::get('/', [Admin\Settings\TunnelsController::class, 'index'])->middleware('admin.can:settings.tunnels.view');
             Route::patch('/', [Admin\Settings\TunnelsController::class, 'update'])->middleware('admin.can:settings.tunnels.update');

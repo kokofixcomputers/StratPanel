@@ -306,3 +306,30 @@ export interface Tunnels {
     nodes: { id: number; name: string; has_token: boolean }[];
     tunnels: TunnelRow[];
 }
+
+export interface PrivateNetworkNode {
+    id: number;
+    name: string;
+    fqdn: string;
+    enabled: boolean;
+    // The slice of the range this node gives its servers addresses from, made by the panel.
+    subnet: string | null;
+    port: number;
+    // ready, error or off, as the node says it, and when it last said anything.
+    state: 'ready' | 'error' | 'off' | null;
+    message: string | null;
+    reported_at: string | null;
+    recent: boolean;
+    has_key: boolean;
+    servers: number;
+}
+
+export interface PrivateNetwork {
+    enabled: boolean;
+    range: string;
+    // The range to start with when it is turned on, or the one that is set.
+    suggested: string;
+    // How many servers joined.
+    joined: number;
+    nodes: PrivateNetworkNode[];
+}

@@ -88,6 +88,9 @@ class Node extends Model implements Identifiable
         'maintenance_mode' => 'boolean',
         'cpu_burst_enabled' => 'boolean',
         'cpu_burst_percent' => 'integer',
+        'private_enabled' => 'boolean',
+        'private_port' => 'integer',
+        'private_reported_at' => 'datetime',
     ];
 
     /**

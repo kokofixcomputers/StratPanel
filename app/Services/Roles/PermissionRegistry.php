@@ -148,6 +148,8 @@ final class PermissionRegistry
                 'settings.authentication.update' => 'Change the captcha, passkey and sign up settings',
                 'settings.providers.view' => 'See sign in providers',
                 'settings.providers.update' => 'Add, change and remove sign in providers',
+                'settings.private.view' => 'See the private network between servers: its range and how each node is doing',
+                'settings.private.update' => 'Turn the private network on and off, change its range, and choose which nodes take part',
                 'settings.tunnels.view' => 'See whether servers can be opened to the internet through a tunnel service, and which tunnels are open (never the tokens)',
                 'settings.tunnels.update' => 'Turn tunnels on, pick the service, set its tokens, and close tunnels',
                 'settings.backups.view' => 'See where backups are kept outside the node, and how much of it (never the keys and passwords)',

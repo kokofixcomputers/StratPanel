@@ -4,6 +4,7 @@ import useFlash, { useFlashKey } from '@/plugins/useFlash';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import { ServerContext } from '@/state/server';
 import AllocationRow from '@/components/server/network/AllocationRow';
+import PrivateNetworkCard from '@/components/server/network/PrivateNetworkCard';
 import { Button } from '@/components/elements/button/index';
 import createServerAllocation from '@/api/server/network/createServerAllocation';
 import tw from 'twin.macro';
@@ -301,6 +302,7 @@ const NetworkContainer = () => {
                 onApply={onApplyGeyser}
             />
             <SpinnerOverlay visible={loading} />
+            <PrivateNetworkCard />
             {!data ? (
                 <Spinner size={'large'} centered />
             ) : (

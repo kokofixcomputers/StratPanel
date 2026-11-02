@@ -97,6 +97,11 @@ class ServerDeletionService
             $server->delete();
         });
 
+        if ($server->private_address) {
+            // Its address is free again, the nodes drop it from their rules.
+            app(\Pterodactyl\Services\PrivateNetwork\PrivateNetworkService::class)->syncAll();
+        }
+
         if ($hadTunnels) {
             app(\Pterodactyl\Services\Tunnels\TunnelService::class)->syncNode($server->node);
         }

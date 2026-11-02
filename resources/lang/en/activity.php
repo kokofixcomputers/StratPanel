@@ -136,6 +136,10 @@ return [
             'primary' => 'Set :allocation as the primary server allocation',
             'delete' => 'Deleted the :allocation allocation',
         ],
+        'private-network' => [
+            'join' => 'Joined the private network as :address',
+            'leave' => 'Left the private network',
+        ],
         'tunnel' => [
             'open' => 'Opened :allocation to the internet through a tunnel',
             'close' => 'Closed a tunnel of the server',
