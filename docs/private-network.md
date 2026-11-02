@@ -12,7 +12,9 @@ Servers can reach each other on private addresses, on one node and between nodes
 3. The owner of a server presses **Join** on the Network tab and gets an address from the slice of the node, like `10.142.3.2`. The servers of the
    same owner that joined reach each other on those addresses, with the port the server listens on (for Velocity: in `velocity.toml`).
 
-Needs the Stratosphere Wings of this release on the nodes, a kernel with WireGuard (built in since Linux 5.6), root and iptables (Docker has them).
+Needs the Stratosphere Wings of this release on the nodes, root and iptables (Docker has them), and for more than one node a kernel with WireGuard (built in since Linux 5.6).
+**With a single node** nothing but the Docker network and the rules is made: servers of the same owner on that node reach each other on their private
+addresses, no tunnel and no WireGuard needed. The tunnel is made when a second node takes part.
 The nodes must reach each other on a UDP port (51820 by default, set per node) at their FQDN: the node opens it in iptables, a firewall of a
 cloud provider has to be told.
 
