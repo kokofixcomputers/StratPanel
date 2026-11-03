@@ -16,6 +16,7 @@ import {
     TrashIcon,
 } from '@heroicons/react/solid';
 import copy from 'copy-to-clipboard';
+import { Server } from '@/api/server/getServer';
 import { ServerContext } from '@/state/server';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader, { EmptyState } from '@/components/elements/PageHeader';
@@ -29,6 +30,11 @@ import { Button } from '@/components/elements/button/index';
 import MotdBuilder from '@/components/server/properties/MotdBuilder';
 import { builderToMini, miniToBuilder } from '@/lib/proxyMotd';
 import AddServersDialog from '@/components/server/proxy/AddServersDialog';
+import LinkedServer from '@/components/server/proxy/LinkedServer';
+import useAccountServers from '@/plugins/useAccountServers';
+import useServerStats from '@/components/dashboard/useServerStats';
+import useServerPlayers from '@/components/dashboard/useServerPlayers';
+import { findLinked } from '@/lib/proxyLink';
 import useFlash from '@/plugins/useFlash';
 import saveFileContents from '@/api/server/files/saveFileContents';
 import { httpErrorToHuman } from '@/api/http';
@@ -90,6 +96,7 @@ const ServerItem = ({
     onMove,
     onChange,
     onRemove,
+    linked,
 }: {
     server: ProxyServer;
     index: number;
@@ -98,9 +105,14 @@ const ServerItem = ({
     joinPosition: number | null;
     onChange: (patch: Partial<ProxyServer>) => void;
     onRemove: () => void;
+    // The server of the account this entry points at, shown instead of the name and address fields (it gets the function that
+    // switches to those fields).
+    linked?: (edit: () => void) => React.ReactNode;
 }) => {
     const hiddenClass = useHiddenClass();
     const controls = useDragControls();
+    const [manual, setManual] = useState(false);
+    const showLinked = !!linked && !manual;
 
     return (
         <Reorder.Item
@@ -152,26 +164,41 @@ const ServerItem = ({
                 >
                     {joinPosition ? `#${joinPosition} try` : 'not tried'}
                 </span>
-                <div css={tw`w-40`}>
-                    <Input
-                        type={'text'}
-                        value={server.name}
-                        placeholder={'name'}
-                        aria-label={'Server name'}
-                        onChange={(e) => onChange({ name: e.currentTarget.value.replace(/[^\w-]/g, '') })}
-                    />
-                </div>
-                <div css={tw`flex-1 min-w-[12rem]`}>
-                    <Input
-                        type={'text'}
-                        value={server.address}
-                        placeholder={'127.0.0.1:25566'}
-                        aria-label={'Server address'}
-                        className={hiddenClass}
-                        css={tw`font-mono`}
-                        onChange={(e) => onChange({ address: e.currentTarget.value })}
-                    />
-                </div>
+                {showLinked ? (
+                    linked!(() => setManual(true))
+                ) : (
+                    <>
+                        <div css={tw`w-40`}>
+                            <Input
+                                type={'text'}
+                                value={server.name}
+                                placeholder={'name'}
+                                aria-label={'Server name'}
+                                onChange={(e) => onChange({ name: e.currentTarget.value.replace(/[^\w-]/g, '') })}
+                            />
+                        </div>
+                        <div css={tw`flex-1 min-w-[12rem]`}>
+                            <Input
+                                type={'text'}
+                                value={server.address}
+                                placeholder={'127.0.0.1:25566'}
+                                aria-label={'Server address'}
+                                className={hiddenClass}
+                                css={tw`font-mono`}
+                                onChange={(e) => onChange({ address: e.currentTarget.value })}
+                            />
+                        </div>
+                        {linked && (
+                            <button
+                                type={'button'}
+                                onClick={() => setManual(false)}
+                                css={tw`text-xs font-semibold text-primary-600 hover:underline`}
+                            >
+                                Show the server
+                            </button>
+                        )}
+                    </>
+                )}
                 <label css={tw`flex items-center text-xs text-neutral-300 cursor-pointer select-none`}>
                     <input
                         type={'checkbox'}
@@ -197,6 +224,7 @@ const ServerItem = ({
 export default () => {
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
+    const thisServer = ServerContext.useStoreState((state) => state.server.data!);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
     const allocationPort = ServerContext.useStoreState(
@@ -237,6 +265,23 @@ export default () => {
     }, [uuid]);
 
     const dirty = useMemo(() => !!config && JSON.stringify(config) !== snapshot, [config, snapshot]);
+
+    // The servers of the account, so an entry that is one of them is shown as that server.
+    const account = useAccountServers();
+    const self = useMemo(() => account.servers?.find((s) => s.uuid === uuid) || null, [account.servers, uuid]);
+    const linkedServers = useMemo(() => {
+        const found = new Map<string, Server>();
+        if (config && account.servers && self) {
+            for (const entry of config.servers) {
+                const match = findLinked(entry.address, account.servers, self);
+                if (match) found.set(entry.id, match);
+            }
+        }
+
+        return found;
+    }, [config, account.servers, self]);
+    const { stats, refresh } = useServerStats(Array.from(new Set(linkedServers.values())));
+    const players = useServerPlayers(Array.from(new Set(linkedServers.values())), stats);
 
     if (raw === null || (!missing && !config)) {
         return (
@@ -441,13 +486,40 @@ export default () => {
                                 }
                                 onChange={(patch) => patchServer(server.id, patch)}
                                 onRemove={() => removeServer(server.id)}
+                                linked={
+                                    linkedServers.has(server.id)
+                                        ? (edit) => {
+                                              const match = linkedServers.get(server.id)!;
+
+                                              return (
+                                                  <LinkedServer
+                                                      server={match}
+                                                      stats={stats[match.uuid]}
+                                                      players={players[match.uuid]}
+                                                      name={server.name}
+                                                      address={server.address}
+                                                      proxyJoined={!!self?.privateAddress}
+                                                      onName={(name) => patchServer(server.id, { name })}
+                                                      onAddress={(address) => patchServer(server.id, { address })}
+                                                      onEdit={edit}
+                                                      onRefresh={() => refresh(match.uuid)}
+                                                  />
+                                              );
+                                          }
+                                        : undefined
+                                }
                             />
                         ))}
                     </Reorder.Group>
                 )}
                 {hasDuplicate && <p css={tw`mt-3 text-sm text-red-600`}>Server names must be unique.</p>}
                 <div css={tw`mt-4 flex flex-wrap gap-2`}>
-                    <Button onClick={() => setPicking(true)}>
+                    <Button
+                        onClick={() => {
+                            account.reload();
+                            setPicking(true);
+                        }}
+                    >
                         <ServerIcon css={tw`w-4 h-4 mr-2 -ml-1`} />
                         Add from my servers
                     </Button>
@@ -472,6 +544,9 @@ export default () => {
                 </div>
                 <AddServersDialog
                     open={picking}
+                    servers={account.servers}
+                    error={account.error}
+                    proxy={self || thisServer}
                     existing={config.servers}
                     onClose={() => setPicking(false)}
                     onAdd={(added) => update({ servers: [...config.servers, ...added] })}

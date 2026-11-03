@@ -68,11 +68,12 @@ const fileAttrs = ([name, isFile, size = 4096, mimetype]) => item('file_object',
 
 // Auto sleep of the mock server, off like on a real one. /mock-sleep?sleeping=1 puts it to sleep, ?idle=1 starts the countdown,
 // ?wake=0 says no domain is set up (the wake option is then explained instead of offered).
+let mockPrivate = { enabled: true, available: true, joined: false, address: null };
 const mockSleep = { enabled: false, idle_minutes: 15, wake_on_join: true, slept_at: null, idle_since: null, wake_available: true };
 const sleepAttrs = () => ({ ...mockSleep, sleeping: mockSleep.enabled && !!mockSleep.slept_at, choices: [5, 10, 15, 30, 60, 120, 240] });
 const serverAttrs = () => ({
     identifier: SHORT, server_identifier: SHORT, internal_id: 11868, __deprecated_uuid_short: SHORT, uuid: UUID,
-    name: 'kokotest', server_owner: true, tunnels: [], split: { part_of: null, parts: 1 }, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
+    name: 'kokotest', server_owner: true, private_address: mockPrivate.joined ? '10.142.3.2' : null, tunnels: [], split: { part_of: null, parts: 1 }, node: 'Pterodactyl', is_node_under_maintenance: false, cpu_burst: { enabled: true, percent: 100 }, status: null, can_control: { start: true, stop: true, restart: true }, auto_sleep: { enabled: mockSleep.enabled, sleeping: mockSleep.enabled && !!mockSleep.slept_at }, trash: { enabled: true, retention_days: 30 },
     sftp_details: { ip: 'play.example.com', port: 2022 }, invocation: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar',
     docker_image: 'ghcr.io/pterodactyl/yolks:java_21', description: 'Fabric survival world with friends',
     limits: { memory: 6144, swap: 0, disk: 20480, io: 500, cpu: 300, threads: null },
@@ -107,7 +108,7 @@ const api = express.Router();
 const otherServer = (name, uuid, port) => ({ ...serverAttrs(), split: name === 'Lobby' ? { part_of: { identifier: SHORT, name: 'kokotest' }, parts: 0 } : { part_of: null, parts: 0 }, name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
 const dashServers = () => [
     item('server', { ...serverAttrs(), server_owner: true }),
-    item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true }),
+    item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true, private_address: '10.142.5.2' }),
     item('server', { ...otherServer('Creative Plots!', 'b1b2c3d4-0000-4000-8000-000000000002', 25571), server_owner: false, node: 'Dallas-1' }),
     ...['Lobby', 'Skyblock', 'Bedwars', 'Modded Fun', 'Test Server 10', 'Test Server 2'].map((n, i) =>
         item('server', { ...otherServer(n, `c${i}b2c3d4-0000-4000-8000-00000000010${i}`, 25580 + i), server_owner: i % 3 !== 0, node: i % 2 ? 'Singapore-1' : 'Frankfurt-1', description: i === 2 ? 'Minigames for the whole family' : '' })
@@ -463,8 +464,8 @@ enable-player-address-logging = true
 
 [servers]
 # Configure your servers here.
-lobby = "127.0.0.1:30066"
-factions = "127.0.0.1:30067"
+lobby = "127.0.0.1:25570"
+factions = "10.0.0.5:25571"
 minigames = "127.0.0.1:30068"
 
 # In what order we should try servers when a player logs in or is kicked from a server.
@@ -657,7 +658,6 @@ api.delete('/account/passkeys/:id', (req, res) => {
 });
 
 // The private network between servers.
-let mockPrivate = { enabled: true, available: true, joined: false, address: null };
 const privateState = () => ({ ...mockPrivate, node: 'Frankfurt-1', others: mockPrivate.joined ? [{ name: 'Lobby', address: '10.142.3.3', identifier: 'aa11bb22' }, { name: 'Survival SMP', address: '10.142.5.2', identifier: 'a1b2c3d4' }] : [] });
 api.get('/servers/:id/private-network', (req, res) => res.json(privateState()));
 api.post('/servers/:id/private-network', (req, res) => { mockPrivate = { ...mockPrivate, joined: true, address: '10.142.3.2' }; res.status(201).json(privateState()); });

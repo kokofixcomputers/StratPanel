@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircleIcon, ExclamationCircleIcon, SearchIcon, ServerIcon } from '@heroicons/react/solid';
-import getServers from '@/api/getServers';
 import { Server } from '@/api/server/getServer';
-import { ServerContext } from '@/state/server';
 import { ProxyServer, uid } from '@/lib/velocity';
-import { ip } from '@/lib/formatters';
+import { backendAddressOf, findLinked, publicAddressOf } from '@/lib/proxyLink';
 import { Dialog } from '@/components/elements/dialog';
 import { Button } from '@/components/elements/button/index';
 import Input from '@/components/elements/Input';
@@ -14,6 +12,10 @@ import { BackendResult, BackendState, configureBackend, detectBackend } from '@/
 
 interface Props {
     open: boolean;
+    // The servers of the account and the proxy itself as they are now (the private network address of either may be new).
+    servers: Server[] | null;
+    error: string;
+    proxy: Server;
     existing: ProxyServer[];
     onClose: () => void;
     onAdd: (servers: ProxyServer[]) => void;
@@ -23,11 +25,9 @@ interface Props {
     forwardingMode?: string;
 }
 
-export const addressOf = (server: Server): string | null => {
-    const allocation = server.allocations.find((a) => a.isDefault) || server.allocations[0];
-
-    return allocation ? `${allocation.alias || ip(allocation.ip)}:${allocation.port}` : null;
-};
+// What the proxy is pointed at: the private address of the server when both joined the private network.
+export const addressOf = (server: Server, proxy?: Server | { privateAddress: string | null }): string | null =>
+    proxy ? backendAddressOf(server, proxy) : publicAddressOf(server);
 
 /** Velocity names only allow letters, numbers, dashes and underscores. */
 export const toProxyName = (name: string, taken: string[]): string => {
@@ -43,10 +43,9 @@ export const toProxyName = (name: string, taken: string[]): string => {
 };
 
 /** Lists the user's other servers so they can be added to the proxy by picking them instead of typing an address. */
-export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }: Props) => {
-    const current = ServerContext.useStoreState((state) => state.server.data!.uuid);
-    const [servers, setServers] = useState<Server[] | null>(null);
-    const [error, setError] = useState('');
+export default ({ open, servers, error, proxy, existing, onClose, onAdd, ensureSecret, forwardingMode }: Props) => {
+    const current = proxy.uuid;
+    const currentServer = servers?.find((s) => s.uuid === current) || proxy;
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<string[]>([]);
     // After picking: whether to set the servers up for the proxy, which of them, and how it went.
@@ -61,31 +60,20 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
 
         setSelected([]);
         setQuery('');
-        setError('');
         setStep('pick');
         setResults({});
-
-        (async () => {
-            try {
-                const all: Server[] = [];
-                for (let page = 1; page <= 10; page++) {
-                    const result = await getServers({ page });
-                    all.push(...result.items);
-                    if (page >= result.pagination.totalPages) break;
-                }
-                setServers(all);
-            } catch (e) {
-                setError(httpErrorToHuman(e));
-            }
-        })();
     }, [open]);
 
-    const taken = useMemo(() => new Set(existing.map((s) => s.address)), [existing]);
+    // A server is added already when an entry points at it, by whichever address.
+    const isAdded = (server: Server) => existing.some((entry) => findLinked(entry.address, [server], currentServer));
     const visible = useMemo(
         () =>
             (servers || [])
-                .filter((s) => s.uuid !== current && addressOf(s))
-                .filter((s) => !query || `${s.name} ${addressOf(s)}`.toLowerCase().includes(query.toLowerCase())),
+                .filter((s) => s.uuid !== current && addressOf(s, currentServer))
+                .filter(
+                    (s) =>
+                        !query || `${s.name} ${addressOf(s, currentServer)}`.toLowerCase().includes(query.toLowerCase())
+                ),
         [servers, current, query]
     );
 
@@ -101,7 +89,7 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
         const added: ProxyServer[] = picked.map((s) => {
             const name = toProxyName(s.name, names);
             names.push(name);
-            const entry = { id: uid(), name, address: addressOf(s)!, join: needsJoin };
+            const entry = { id: uid(), name, address: addressOf(s, currentServer)!, join: needsJoin };
             needsJoin = false;
 
             return entry;
@@ -285,8 +273,8 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
                             <p className={'py-6 text-center text-sm text-neutral-400'}>No other servers found.</p>
                         ) : (
                             visible.map((server) => {
-                                const address = addressOf(server)!;
-                                const added = taken.has(address);
+                                const address = addressOf(server, currentServer)!;
+                                const added = isAdded(server);
 
                                 return (
                                     <label
@@ -308,6 +296,12 @@ export default ({ open, existing, onClose, onAdd, ensureSecret, forwardingMode }
                                             </span>
                                             <span className={'block truncate font-mono text-xs text-neutral-300'}>
                                                 {address}
+                                                {!!server.privateAddress &&
+                                                    address.startsWith(`${server.privateAddress}:`) && (
+                                                        <span className={'ml-2 font-sans text-primary-600'}>
+                                                            private network
+                                                        </span>
+                                                    )}
                                             </span>
                                         </span>
                                         {added && <span className={'text-xs text-neutral-300'}>Added</span>}

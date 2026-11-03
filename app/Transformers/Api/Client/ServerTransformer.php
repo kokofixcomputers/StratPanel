@@ -98,6 +98,8 @@ class ServerTransformer extends BaseClientTransformer
             ],
             // The ports that are open to the internet through a tunnel, and where players connect (see TunnelService).
             'tunnels' => $server->tunnels->where('status', 'active')->map(fn ($tunnel) => ['allocation_id' => $tunnel->allocation_id, 'address' => $tunnel->address])->values()->all(),
+            // The address on the private network when the server joined it (see PrivateNetworkService), for pointing a proxy at it.
+            'private_address' => $server->private_address,
             // Whether this server was split off another one (see ServerSplitService), and into how many servers it was split itself.
             'split' => [
                 'part_of' => $server->parent ? [

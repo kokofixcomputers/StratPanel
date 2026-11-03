@@ -194,7 +194,7 @@ type Timer = ReturnType<typeof setInterval>;
  * Start, restart and stop of a server, small enough for a row of the list. Only the ones the user may use are shown. The row is a
  * link to the server, so a click on a button must not follow it.
  */
-const PowerActions = ({
+export const PowerActions = ({
     server,
     status,
     busy,

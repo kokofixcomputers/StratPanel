@@ -50,6 +50,8 @@ export interface Server {
     split: { partOf: { id: string; name: string } | null; parts: number };
     // Where players connect through a tunnel, for the ports that are open to the internet.
     tunnels: { allocationId: number; address: string }[];
+    // The address on the private network, when the server joined it.
+    privateAddress: string | null;
     sftpDetails: {
         ip: string;
         port: number;
@@ -105,6 +107,7 @@ export const rawDataToServerObject = ({ attributes: data }: FractalResponseData)
         partOf: data.split?.part_of ? { id: data.split.part_of.identifier, name: data.split.part_of.name } : null,
         parts: data.split?.parts ?? 0,
     },
+    privateAddress: data.private_address ?? null,
     invocation: data.invocation,
     dockerImage: data.docker_image,
     sftpDetails: {
