@@ -5,6 +5,7 @@ namespace Pterodactyl\Http\Controllers\Api\Client\Admin;
 use Illuminate\Http\Request;
 use Pterodactyl\Models\Role;
 use Pterodactyl\Models\User;
+use Pterodactyl\Services\Minecraft\MinecraftLinkService;
 use Pterodactyl\Facades\Activity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -61,7 +62,7 @@ class UsersController extends Controller
                 'root_admin' => (bool) $user->root_admin,
                 'servers' => (int) $user->servers_count,
                 'subuser_of' => (int) $user->subuser_of_count,
-                'gravatar' => 'https://www.gravatar.com/avatar/' . md5(strtolower($user->email)) . '?s=100',
+                'gravatar' => MinecraftLinkService::avatar($user->minecraft_uuid) ?? 'https://www.gravatar.com/avatar/' . md5(strtolower($user->email)) . '?s=100',
                 'roles' => $user->roles->map(fn (Role $role) => ['id' => $role->id, 'name' => $role->name, 'color' => $role->color])->values()->all(),
             ])->values()->all(),
             'pagination' => $this->pagination($users),

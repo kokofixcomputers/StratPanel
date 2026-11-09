@@ -150,6 +150,8 @@ final class PermissionRegistry
                 'settings.providers.update' => 'Add, change and remove sign in providers',
                 'settings.private.view' => 'See the private network between servers: its range and how each node is doing',
                 'settings.private.update' => 'Turn the private network on and off, change its range, and choose which nodes take part',
+                'settings.minecraft.view' => 'See whether people can link their Minecraft account and how many did',
+                'settings.minecraft.update' => 'Turn the linking of Minecraft accounts on and off and set the address people join to get a code',
                 'settings.tunnels.view' => 'See whether servers can be opened to the internet through a tunnel service, and which tunnels are open (never the tokens)',
                 'settings.tunnels.update' => 'Turn tunnels on, pick the service, set its tokens, and close tunnels',
                 'settings.backups.view' => 'See where backups are kept outside the node, and how much of it (never the keys and passwords)',

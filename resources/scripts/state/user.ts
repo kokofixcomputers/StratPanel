@@ -16,6 +16,10 @@ export interface UserData {
     useTotp: boolean;
     // False for somebody who signed up with another service and has not chosen a password yet.
     passwordSet: boolean;
+    // The Minecraft account linked to this account (its UUID and name), and the head of its skin, which then is the avatar.
+    minecraftUuid: string | null;
+    minecraftUsername: string | null;
+    minecraftAvatar: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

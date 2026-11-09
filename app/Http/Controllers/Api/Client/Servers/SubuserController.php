@@ -9,6 +9,8 @@ use Pterodactyl\Facades\Activity;
 use Pterodactyl\Models\Permission;
 use Pterodactyl\Jobs\RevokeSftpAccessJob;
 use Pterodactyl\Repositories\Eloquent\SubuserRepository;
+use Illuminate\Validation\ValidationException;
+use Pterodactyl\Services\Minecraft\MinecraftLinkService;
 use Pterodactyl\Services\Subusers\SubuserCreationService;
 use Pterodactyl\Transformers\Api\Client\SubuserTransformer;
 use Pterodactyl\Repositories\Wings\DaemonRevocationRepository;
@@ -27,6 +29,7 @@ class SubuserController extends ClientApiController
         private SubuserRepository $repository,
         private SubuserCreationService $creationService,
         private DaemonRevocationRepository $revocationRepository,
+        private MinecraftLinkService $minecraft,
     ) {
         parent::__construct();
     }
@@ -63,15 +66,25 @@ class SubuserController extends ClientApiController
      */
     public function store(StoreSubuserRequest $request, Server $server): array
     {
+        $email = $request->input('email');
+        if (!$email) {
+            // By Minecraft name: the person has to have linked it to their account, that is how we know whose it is.
+            $user = $this->minecraft->enabled() ? $this->minecraft->findByName((string) $request->input('minecraft')) : null;
+            if ($user === null) {
+                throw ValidationException::withMessages(['minecraft' => 'Nobody linked that Minecraft name to their account. They can do that under Account > Minecraft account.']);
+            }
+            $email = $user->email;
+        }
+
         $response = $this->creationService->handle(
             $server,
-            $request->input('email'),
+            $email,
             $this->getDefaultPermissions($request)
         );
 
         Activity::event('server:subuser.create')
             ->subject($response->user)
-            ->property(['email' => $request->input('email'), 'permissions' => $this->getDefaultPermissions($request)])
+            ->property(['email' => $email, 'permissions' => $this->getDefaultPermissions($request)])
             ->log();
 
         return $this->fractal->item($response)

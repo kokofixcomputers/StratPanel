@@ -35,6 +35,8 @@ export interface Subuser {
     username: string;
     email: string;
     image: string;
+    // The Minecraft account this person linked, when they did (their head is the image).
+    minecraft: { uuid: string; username: string } | null;
     twoFactorEnabled: boolean;
     createdAt: Date;
     permissions: SubuserPermission[];

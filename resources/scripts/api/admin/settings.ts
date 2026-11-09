@@ -333,3 +333,15 @@ export interface PrivateNetwork {
     joined: number;
     nodes: PrivateNetworkNode[];
 }
+
+export interface MinecraftLink {
+    enabled: boolean;
+    // The address players join in Minecraft to get a code, empty when not set.
+    address: string;
+    minutes: number;
+    // How many panel accounts have a Minecraft account linked, and how many codes are waiting to be typed in.
+    linked: number;
+    waiting: number;
+    // Whether the panel has a secret for the router (without it the router cannot show codes).
+    router: boolean;
+}

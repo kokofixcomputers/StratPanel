@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -71,6 +72,9 @@ type config struct {
 	InstallMOTD   string
 	SleepingMOTD  string
 	WakingMOTD    string
+	// Where Mojang is asked who a player is (see linker.go), only changed by the tests.
+	MojangURL string
+	LinkMOTD  string
 }
 
 type router struct {
@@ -80,6 +84,10 @@ type router struct {
 
 	stateMu sync.Mutex
 	states  map[string]cachedState
+
+	// Whether the panel links Minecraft accounts: then an address that leads nowhere is the way to do it.
+	linking atomic.Bool
+	linker  linker
 }
 
 // Getenv is where the settings are read from. The program sets it so that the router and the edge can each have their own LISTEN
@@ -120,6 +128,8 @@ func loadConfig() config {
 		InstallMOTD:   motdOr("INSTALLING_MOTD", "§eThis server is being set up.\n§7Check back soon."),
 		SleepingMOTD:  motdOr("SLEEPING_MOTD", "§bThis server is asleep.\n§7Join to wake it up."),
 		WakingMOTD:    motdOr("WAKING_MOTD", "§aWaking the server up...\n§7Join again in about a minute."),
+		MojangURL:     Getenv("MOJANG_SESSION_URL"),
+		LinkMOTD:      motdOr("LINK_MOTD", "§bStratosphere Minecraft Link\n§7Join to link your Minecraft account."),
 	}
 }
 
@@ -371,12 +381,17 @@ func (r *router) refresh(ctx context.Context) error {
 func (r *router) parse(data []byte) error {
 	var body struct {
 		Data []mapping `json:"data"`
+		// Whether the panel links Minecraft accounts (Admin > Settings > Minecraft accounts).
+		Link struct {
+			Enabled bool `json:"enabled"`
+		} `json:"link"`
 	}
 	if err := json.Unmarshal(data, &body); err != nil {
 		return err
 	}
 
 	r.set(body.Data)
+	r.linking.Store(body.Link.Enabled)
 
 	return nil
 }
@@ -570,6 +585,15 @@ func (r *router) handle(client net.Conn) {
 
 	found, ok := r.lookup(hs.Host)
 	if !ok {
+		if r.linking.Load() {
+			// Joining is how an account gets linked (see linker.go), the server list says so.
+			if hs.NextState == 2 || hs.NextState == 3 {
+				r.link(client, br, hs)
+				return
+			}
+			reply(client, br, hs, "Account linking", r.cfg.LinkMOTD)
+			return
+		}
 		reply(client, br, hs, "Unknown", r.cfg.UnknownMOTD)
 		return
 	}

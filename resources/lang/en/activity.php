@@ -50,6 +50,8 @@ return [
             'passkey-removed' => 'Removed the passkey :name',
             'provider-linked' => 'Linked :provider to the account',
             'provider-unlinked' => 'Unlinked :provider from the account',
+            'minecraft-linked' => 'Linked the Minecraft account :username',
+            'minecraft-unlinked' => 'Unlinked the Minecraft account',
         ],
         'api-key' => [
             'create' => 'Created new API key :identifier',

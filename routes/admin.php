@@ -72,6 +72,7 @@ Route::group(['prefix' => 'settings'], function () {
     Route::get('/pools', Admin\SpaController::class)->name('admin.settings.pools')->middleware('admin.can:settings.pools.view');
     Route::get('/trash', Admin\SpaController::class)->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::get('/private-network', Admin\SpaController::class)->name('admin.settings.private')->middleware('admin.can:settings.private.view');
+    Route::get('/minecraft', Admin\SpaController::class)->name('admin.settings.minecraft')->middleware('admin.can:settings.minecraft.view');
     Route::get('/tunnels', Admin\SpaController::class)->name('admin.settings.tunnels')->middleware('admin.can:settings.tunnels.view');
     Route::get('/backups', Admin\SpaController::class)->name('admin.settings.backups')->middleware('admin.can:settings.backups.view');
     Route::get('/certificates', Admin\SpaController::class)->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');

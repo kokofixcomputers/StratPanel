@@ -3,7 +3,9 @@ import { rawDataToServerSubuser } from '@/api/server/users/getServerSubusers';
 import { Subuser } from '@/state/server/subusers';
 
 interface Params {
-    email: string;
+    // Who to invite: an email address, or the Minecraft name of somebody who linked their account.
+    email?: string;
+    minecraft?: string;
     permissions: string[];
 }
 

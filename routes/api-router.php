@@ -18,3 +18,4 @@ Route::get('/domains', Router\DomainsController::class);
 Route::get('/state', Router\StateController::class);
 Route::post('/wake', Router\WakeController::class);
 Route::get('/certificates', Router\CertificatesController::class);
+Route::post('/link', Router\LinkController::class)->middleware('throttle:120,1');

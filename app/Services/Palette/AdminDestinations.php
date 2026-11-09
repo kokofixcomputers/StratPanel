@@ -37,6 +37,7 @@ final class AdminDestinations
         ['settings.pools.view', 'admin.settings.pools', 'Settings: Resource pools', 'page', 'quota limits memory ram cpu disk allocations servers users create'],
         ['settings.trash.view', 'admin.settings.trash', 'Settings: Trash bin', 'page', 'deleted files retention'],
         ['settings.private.view', 'admin.settings.private', 'Settings: Private network', 'page', 'private network wireguard internal ip servers reach each other'],
+        ['settings.minecraft.view', 'admin.settings.minecraft', 'Settings: Minecraft accounts', 'page', 'link minecraft account skin avatar mojang'],
         ['settings.tunnels.view', 'admin.settings.tunnels', 'Settings: Tunnels', 'page', 'ngrok port forwarding expose server internet'],
         ['settings.backups.view', 'admin.settings.backups', 'Settings: Backups', 'page', 'external s3 webdav offsite storage retention copies'],
         ['settings.certificates.view', 'admin.settings.certificates', 'Settings: Certificates', 'page', 'https ssl tls lets encrypt'],

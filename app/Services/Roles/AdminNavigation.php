@@ -20,6 +20,7 @@ final class AdminNavigation
         ['settings.pools.view', 'admin.settings.pools'],
         ['settings.trash.view', 'admin.settings.trash'],
         ['settings.private.view', 'admin.settings.private'],
+        ['settings.minecraft.view', 'admin.settings.minecraft'],
         ['settings.tunnels.view', 'admin.settings.tunnels'],
         ['settings.backups.view', 'admin.settings.backups'],
         ['settings.certificates.view', 'admin.settings.certificates'],

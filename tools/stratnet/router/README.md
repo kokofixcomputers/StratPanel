@@ -61,5 +61,6 @@ add the domain in a server's **Domains** tab.
   looking at the server list does not, and a server that its owner stopped by hand is never started by a player. It needs the
   server to have a domain here, without one there is nothing that can notice the player. Change the wording with
   `SLEEPING_MOTD` and `WAKING_MOTD`.
+- **Linking Minecraft accounts.** When the panel turns it on (Admin > Settings > Minecraft accounts), an address that leads to no server is not a dead end: the router does the encryption login of an online mode server, asks Mojang (`sessionserver.mojang.com`, or `MOJANG_SESSION_URL`) whether the player is who they say, asks the panel (`POST /api/router/link`) for a code and shows it on the disconnect screen. Offline accounts cannot get one. One address may try 12 times a minute. `LINK_MOTD` is the server list text. Code: `router/linker.go`.
 - Java Edition only. Bedrock uses UDP and is not routed.
 - Build it yourself with `go build` (Go 1.21 or newer), run the tests with `go test ./...`.

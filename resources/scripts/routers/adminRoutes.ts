@@ -94,6 +94,9 @@ const SettingsDomainsPage = lazy(
 const SettingsDomainZonePage = lazy(
     () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/DomainZonePage')
 );
+const SettingsMinecraftPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/MinecraftLinkPage')
+);
 const SettingsPrivateNetworkPage = lazy(
     () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/PrivateNetworkPage')
 );
@@ -223,6 +226,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     },
     { path: '/admin/settings/pools', permissions: ['settings.pools.view'], component: SettingsPoolsPage },
     { path: '/admin/settings/trash', permissions: ['settings.trash.view'], component: SettingsTrashPage },
+    { path: '/admin/settings/minecraft', permissions: ['settings.minecraft.view'], component: SettingsMinecraftPage },
     {
         path: '/admin/settings/private-network',
         permissions: ['settings.private.view'],

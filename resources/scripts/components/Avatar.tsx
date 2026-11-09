@@ -12,6 +12,20 @@ const _Avatar = ({ variant = 'beam', ...props }: AvatarProps) => (
 
 const _UserAvatar = ({ variant = 'beam', ...props }: Omit<Props, 'name'>) => {
     const uuid = useStoreState((state) => state.user.data?.uuid);
+    const head = useStoreState((state) => state.user.data?.minecraftAvatar);
+
+    // A linked Minecraft account gives the skin head as the avatar.
+    if (head) {
+        return (
+            <img
+                src={head}
+                alt={''}
+                width={props.size}
+                height={props.size}
+                style={{ width: '100%', height: '100%', imageRendering: 'pixelated', objectFit: 'cover' }}
+            />
+        );
+    }
 
     return <BoringAvatar colors={palette} name={uuid || 'system'} variant={variant} {...props} />;
 };

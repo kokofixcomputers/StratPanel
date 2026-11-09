@@ -6,6 +6,9 @@ export const rawDataToServerSubuser = (data: FractalResponseData): Subuser => ({
     username: data.attributes.username,
     email: data.attributes.email,
     image: data.attributes.image,
+    minecraft: data.attributes.minecraft
+        ? { uuid: data.attributes.minecraft.uuid, username: data.attributes.minecraft.username }
+        : null,
     twoFactorEnabled: data.attributes['2fa_enabled'],
     createdAt: new Date(data.attributes.created_at),
     permissions: data.attributes.permissions || [],

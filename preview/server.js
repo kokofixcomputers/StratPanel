@@ -48,7 +48,9 @@ const state = {
             relationships: { tasks: { object: 'list', data: [item('schedule_task', { id: 1, sequence_id: 1, action: 'command', payload: 'say Restarting in 1 minute', time_offset: 0, is_queued: false, continue_on_failure: false, created_at: now(), updated_at: now() }), item('schedule_task', { id: 2, sequence_id: 2, action: 'power', payload: 'restart', time_offset: 60, is_queued: false, continue_on_failure: false, created_at: now(), updated_at: now() })] } } },
     ],
     users: [
-        { uuid: 'u1', username: 'alex', email: 'alex@example.com', image: 'https://www.gravatar.com/avatar/?d=identicon', '2fa_enabled': true, permissions: ['control.console', 'control.start', 'control.stop', 'file.read'], created_at: now() },
+        { uuid: 'u1', username: 'alex', email: 'alex@example.com', image: 'https://www.gravatar.com/avatar/?d=identicon', minecraft: null, '2fa_enabled': true,
+        permissions: ['control.console'], created_at: now() },
+        { uuid: 'u2', username: 'notch', email: 'notch@example.com', image: 'https://mc-heads.net/avatar/069a79f444e94726a5befca90e38aaf5/128', minecraft: { uuid: '069a79f444e94726a5befca90e38aaf5', username: 'Notch' }, '2fa_enabled': false, permissions: ['control.console', 'control.start', 'control.stop', 'file.read'], created_at: now() },
     ],
     status: 'offline',
     nextId: 100,
@@ -623,6 +625,13 @@ api.get('/servers/:id/schedules', (req, res) => res.json({ object: 'list', data:
 api.get('/servers/:id/schedules/:s', (req, res) => res.json(item('server_schedule', state.schedules.find((s) => s.id == req.params.s) || state.schedules[0])));
 
 api.get('/servers/:id/users', (req, res) => res.json({ object: 'list', data: state.users.map((u) => item('user', u)) }));
+api.post('/servers/:id/users', (req, res) => {
+    const known = { notch: ['069a79f444e94726a5befca90e38aaf5', 'Notch'], jeb_: ['853c80ef3c3749fdaa49938b674adae6', 'jeb_'] }[String(req.body.minecraft || '').toLowerCase()];
+    if (req.body.minecraft && !known) return res.status(422).json({ errors: [{ code: 'ValidationException', status: '422', detail: 'Nobody linked that Minecraft name to their account.', meta: { source_field: 'minecraft' } }] });
+    const u = { uuid: `u${state.users.length + 1}`, username: known ? known[1].toLowerCase() : 'new', email: known ? `${known[1].toLowerCase()}@example.com` : req.body.email, image: known ? mcAvatar(known[0]) : 'https://www.gravatar.com/avatar/?d=identicon', minecraft: known ? { uuid: known[0], username: known[1] } : null, '2fa_enabled': false, permissions: ['websocket.connect', ...(req.body.permissions || [])], created_at: now() };
+    state.users.push(u);
+    res.json(item('user', u));
+});
 api.get('/servers/:id/startup', (req, res) => res.json({ object: 'list', data: variables.map((v) => item('egg_variable', v)), meta: { startup_command: 'java -Xms128M -Xmx6144M -jar server.jar', docker_images: { 'Java 21': 'ghcr.io/pterodactyl/yolks:java_21', 'Java 17': 'ghcr.io/pterodactyl/yolks:java_17' }, raw_startup_command: 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}' } }));
 
 // The panel's CurseForge endpoints, answered from made-up data, see preview/curseforge.js. PREVIEW_CURSEFORGE=off turns it off.
@@ -656,6 +665,25 @@ api.delete('/account/passkeys/:id', (req, res) => {
     mockPasskeys = mockPasskeys.filter((k) => String(k.id) !== req.params.id);
     res.status(204).end();
 });
+
+// Linking a Minecraft account: the code from the disconnect screen is 123456.
+const mockMc = { enabled: true, linked: false, uuid: null, username: null };
+const mcAvatar = (uuid) => (uuid ? `https://mc-heads.net/avatar/${uuid}/128` : null);
+const mcState = () => ({ enabled: mockMc.enabled, minutes: 15, linked: mockMc.linked, username: mockMc.username, uuid: mockMc.uuid, avatar: mcAvatar(mockMc.uuid), join: 'link.example.com' });
+api.get('/account/minecraft', (req, res) => res.json(mcState()));
+api.post('/account/minecraft', (req, res) => {
+    if (String(req.body.code || '').replace(/\D/g, '') !== '123456') return res.status(400).json({ errors: [{ code: 'DisplayException', status: '400', detail: 'That code is not right, or it has expired. Join the Minecraft server again to get a new one.' }] });
+    Object.assign(mockMc, { linked: true, uuid: '069a79f444e94726a5befca90e38aaf5', username: 'Notch' });
+    res.json(mcState());
+});
+api.delete('/account/minecraft', (req, res) => { Object.assign(mockMc, { linked: false, uuid: null, username: null }); res.json(mcState()); });
+api.get('/minecraft/lookup', (req, res) => {
+    const known = { notch: ['069a79f444e94726a5befca90e38aaf5', 'Notch'], jeb_: ['853c80ef3c3749fdaa49938b674adae6', 'jeb_'] }[String(req.query.username || '').toLowerCase()];
+    res.json(known ? { found: true, username: known[1], avatar: mcAvatar(known[0]) } : { found: false, username: null, avatar: null });
+});
+let mockMcAdmin = { enabled: true, address: 'link.example.com' };
+api.get('/admin/settings/minecraft', (req, res) => res.json({ ...mockMcAdmin, minutes: 15, linked: mockMc.linked ? 3 : 2, waiting: 1, router: true }));
+api.patch('/admin/settings/minecraft', (req, res) => { mockMcAdmin = { enabled: !!req.body.enabled, address: req.body.address || '' }; mockMc.enabled = mockMcAdmin.enabled; res.json({}); });
 
 // The private network between servers.
 const privateState = () => ({ ...mockPrivate, node: 'Frankfurt-1', others: mockPrivate.joined ? [{ name: 'Lobby', address: '10.142.3.3', identifier: 'aa11bb22' }, { name: 'Survival SMP', address: '10.142.5.2', identifier: 'a1b2c3d4' }] : [] });
@@ -817,7 +845,7 @@ api.all('*', (req, res) => (req.method === 'GET' ? res.json({ object: 'list', da
 app.use('/api/client', api);
 app.get('/locales/locale.json', (req, res) => res.json({}));
 
-const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', root_admin: true, can_access_admin: true, admin_permissions: [], use_totp: false, language: 'en', updated_at: now(), created_at: now() };
+const user = { uuid: 'preview-user', username: 'preview', email: 'preview@example.com', get minecraft_uuid() { return mockMc.uuid; }, get minecraft_username() { return mockMc.username; }, get minecraft_avatar() { return mcAvatar(mockMc.uuid); }, root_admin: true, can_access_admin: true, admin_permissions: [], use_totp: false, language: 'en', updated_at: now(), created_at: now() };
 const page = (title, guest = false) => `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
 <script>window.fetch=(function(f){return function(u,o){return f(typeof u==='string'?u.replace('https://api.modrinth.com/v2','/mr'):u,o)}})(window.fetch.bind(window));</script><script>${guest ? '' : `window.PterodactylUser=${JSON.stringify(user)};`}window.SiteConfiguration=${JSON.stringify({ theme: themeSaved.config, name: 'Stratosphere', locale: 'en', recaptcha: { enabled: false, siteKey: '' }, captcha: { provider: 'none', siteKey: '' }, auth: { registration: true, passwordRegistration: true, passkeys: true, providers: [{ key: 'github', name: 'GitHub', type: 'github', signup: true }, { key: 'discord', name: 'Discord', type: 'discord', signup: true }, { key: 'google', name: 'Google', type: 'google', signup: false }] }, branding: { favicon: process.env.PREVIEW_FAVICON || null, announcements: [{ id: 'a1', key: 'a1:1', title: 'Maintenance tonight', message: 'The Frankfurt node restarts at 22:00 UTC.\nServers come back by themselves.', type: 'warning', enabled: true, dismissible: true, link_label: 'Status page', link_url: 'https://status.example.com' }, { id: 'a2', key: 'a2:1', title: '', message: 'Welcome to Stratosphere, read the rules before you start.', type: 'info', enabled: true, dismissible: false, link_label: '', link_url: '' }], links: [{ label: 'Discord', url: 'https://discord.gg/example', location: 'navbar', new_tab: true }, { label: 'Rules', url: '/rules', location: 'sidebar', new_tab: false }, { label: 'Terms', url: '/terms', location: 'footer', new_tab: true }, { label: 'Privacy', url: '/privacy', location: 'footer', new_tab: true }] } })};</script><style>html.dark { background: #0c1017; color-scheme: dark; }</style><style id="stratosphere-custom-theme">${themeSaved.css}</style><script>var marks=${JSON.stringify(themeSaved.attributes || {})};for(var k in marks)document.documentElement.setAttribute(k,marks[k]);</script></head>
 <body><div id="modal-portal"></div><div id="app"></div><script src="/assets/bundle.js"></script></body></html>`;

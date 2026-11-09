@@ -141,6 +141,8 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
 
         Route::get('/private-network', [Admin\Settings\PrivateNetworkController::class, 'index'])->middleware('admin.can:settings.private.view');
         Route::patch('/private-network', [Admin\Settings\PrivateNetworkController::class, 'update'])->middleware('admin.can:settings.private.update');
+        Route::get('/minecraft', [Admin\Settings\MinecraftLinkController::class, 'index'])->middleware('admin.can:settings.minecraft.view');
+        Route::patch('/minecraft', [Admin\Settings\MinecraftLinkController::class, 'update'])->middleware('admin.can:settings.minecraft.update');
 
         Route::prefix('/tunnels')->group(function () {
             Route::get('/', [Admin\Settings\TunnelsController::class, 'index'])->middleware('admin.can:settings.tunnels.view');

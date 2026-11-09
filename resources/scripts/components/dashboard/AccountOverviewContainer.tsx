@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useStoreState } from 'easy-peasy';
 import { useLocation } from 'react-router-dom';
-import { CalendarIcon, EyeOffIcon, KeyIcon, MailIcon, ShieldCheckIcon } from '@heroicons/react/solid';
+import { CalendarIcon, CubeIcon, EyeOffIcon, KeyIcon, MailIcon, ShieldCheckIcon } from '@heroicons/react/solid';
 import { format } from 'date-fns';
 import { ApplicationStore } from '@/state';
 import UpdatePasswordForm from '@/components/dashboard/forms/UpdatePasswordForm';
@@ -15,6 +15,8 @@ import Avatar from '@/components/Avatar';
 import Switch from '@/components/elements/Switch';
 import { usePrivacy } from '@/lib/privacy';
 import Sensitive from '@/components/elements/Sensitive';
+import MinecraftAccountForm from '@/components/dashboard/forms/MinecraftAccountForm';
+import { useMinecraftAccount } from '@/api/account/minecraft';
 
 const Pill = ({ tone, children }: { tone: 'green' | 'grey' | 'blue'; children: React.ReactNode }) => (
     <span
@@ -35,6 +37,7 @@ export default () => {
     const { state } = useLocation<undefined | { twoFactorRedirect?: boolean }>();
     const user = useStoreState((s: ApplicationStore) => s.user.data!);
     const [hidden, setHidden] = usePrivacy();
+    const minecraft = useMinecraftAccount().data;
 
     return (
         <PageContentBlock title={'Account Settings'}>
@@ -96,6 +99,24 @@ export default () => {
                 >
                     <UpdatePasswordForm />
                 </SectionCard>
+                {(minecraft?.enabled || minecraft?.linked) && (
+                    <SectionCard
+                        className={'lg:col-span-2'}
+                        icon={<CubeIcon className={'h-5 w-5'} />}
+                        title={'Minecraft account'}
+                        description={
+                            'Link your Minecraft account to use its skin as your avatar and to be invited by name.'
+                        }
+                        flash={'account:minecraft'}
+                        badge={
+                            <Pill tone={minecraft.linked ? 'green' : 'grey'}>
+                                {minecraft.linked ? 'Linked' : 'Not linked'}
+                            </Pill>
+                        }
+                    >
+                        <MinecraftAccountForm />
+                    </SectionCard>
+                )}
                 <SectionCard
                     className={'lg:col-span-2'}
                     icon={<EyeOffIcon className={'h-5 w-5'} />}

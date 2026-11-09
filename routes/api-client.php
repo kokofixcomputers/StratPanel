@@ -36,6 +36,7 @@ Route::prefix('/theme')->middleware('admin.can:settings.branding.update')->group
     Route::delete('/branding/favicon', [Client\ThemeController::class, 'removeFavicon']);
 });
 Route::get('/palette', [Client\ClientController::class, 'palette']);
+Route::get('/minecraft/lookup', [Client\MinecraftAccountController::class, 'lookup'])->middleware('throttle:30,1');
 Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 
 /*
@@ -104,6 +105,10 @@ Route::prefix('/account')->middleware(AccountSubject::class)->group(function () 
     Route::post('/passkeys/options', [Client\PasskeyController::class, 'options']);
     Route::post('/passkeys', [Client\PasskeyController::class, 'store']);
     Route::delete('/passkeys/{id}', [Client\PasskeyController::class, 'delete'])->whereNumber('id');
+
+    Route::get('/minecraft', [Client\MinecraftAccountController::class, 'index']);
+    Route::post('/minecraft', [Client\MinecraftAccountController::class, 'store'])->middleware('throttle:10,1');
+    Route::delete('/minecraft', [Client\MinecraftAccountController::class, 'delete']);
 
     Route::get('/providers', [Client\ProviderController::class, 'index']);
     Route::delete('/providers/{key}', [Client\ProviderController::class, 'delete'])->where('key', '[a-z0-9][a-z0-9-]{0,38}[a-z0-9]');

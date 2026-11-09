@@ -8,10 +8,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Pterodactyl\Models\ServerDomain;
 use Pterodactyl\Extensions\Hooks;
+use Pterodactyl\Services\Minecraft\MinecraftLinkService;
 
 class DomainsController extends Controller
 {
     use AuthorizesRouter;
+
+    public function __construct(private MinecraftLinkService $links)
+    {
+    }
 
     /**
      * Returns every domain together with the address it has to be proxied to. This is read by the Minecraft router
@@ -39,7 +44,8 @@ class DomainsController extends Controller
         // Extensions may change the list the router is given (the domains, where they lead).
         $filtered = Hooks::filter('router.domains', $data);
 
-        return new JsonResponse(['data' => is_array($filtered) ? $filtered : $data]);
+        // `link`: whether the panel links Minecraft accounts, which is what the router does with an address that leads nowhere.
+        return new JsonResponse(['data' => is_array($filtered) ? $filtered : $data, 'link' => ['enabled' => $this->links->enabled()]]);
     }
 
     /**

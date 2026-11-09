@@ -33,6 +33,9 @@ interface ExtendedWindow extends Window {
         /* eslint-disable camelcase */
         root_admin: boolean;
         password_set?: boolean;
+        minecraft_uuid?: string | null;
+        minecraft_username?: string | null;
+        minecraft_avatar?: string | null;
         can_access_admin?: boolean;
         can_access_all_servers?: boolean;
         admin_permissions?: string[];
@@ -59,6 +62,9 @@ const App = () => {
             canAccessAllServers: PterodactylUser.can_access_all_servers ?? PterodactylUser.root_admin,
             adminPermissions: PterodactylUser.admin_permissions ?? [],
             passwordSet: PterodactylUser.password_set !== false,
+            minecraftUuid: PterodactylUser.minecraft_uuid ?? null,
+            minecraftUsername: PterodactylUser.minecraft_username ?? null,
+            minecraftAvatar: PterodactylUser.minecraft_avatar ?? null,
             useTotp: PterodactylUser.use_totp,
             createdAt: new Date(PterodactylUser.created_at),
             updatedAt: new Date(PterodactylUser.updated_at),

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Subuser } from '@/state/server/subusers';
-import { LockClosedIcon, LockOpenIcon, PencilIcon } from '@heroicons/react/outline';
+import { CubeIcon, LockClosedIcon, LockOpenIcon, PencilIcon } from '@heroicons/react/outline';
 import RemoveSubuserButton from '@/components/server/users/RemoveSubuserButton';
 import EditSubuserModal from '@/components/server/users/EditSubuserModal';
 import Can from '@/components/elements/Can';
@@ -21,12 +21,22 @@ export default ({ subuser }: Props) => {
         <GreyRowBox css={tw`mb-3`}>
             <EditSubuserModal subuser={subuser} visible={visible} onModalDismissed={() => setVisible(false)} />
             <div css={tw`w-10 h-10 rounded-full bg-white border-2 border-neutral-500 overflow-hidden hidden md:block`}>
-                <img css={tw`w-full h-full`} src={`${subuser.image}?s=400`} />
+                <img
+                    css={tw`w-full h-full`}
+                    src={subuser.minecraft ? subuser.image : `${subuser.image}?s=400`}
+                    style={subuser.minecraft ? { imageRendering: 'pixelated' } : undefined}
+                />
             </div>
             <div css={tw`ml-4 flex-1 overflow-hidden`}>
                 <p css={tw`text-sm font-medium text-neutral-50 truncate`}>
                     <Sensitive>{subuser.email}</Sensitive>
                 </p>
+                {subuser.minecraft && (
+                    <p css={tw`mt-0.5 flex items-center gap-1 text-xs text-neutral-400 truncate`}>
+                        <CubeIcon css={tw`w-3.5 h-3.5 flex-shrink-0 text-primary-600`} />
+                        {subuser.minecraft.username}
+                    </p>
+                )}
             </div>
             <div css={tw`ml-4`}>
                 <p css={tw`font-medium text-center`}>

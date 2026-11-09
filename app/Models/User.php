@@ -205,6 +205,8 @@ class User extends Model implements
         return Collection::make($this->toArray())->except(['id', 'external_id'])
             ->merge([
                 'identifier' => $this->identifier,
+                // The head of the linked Minecraft account, which is the avatar of a person who linked one.
+                'minecraft_avatar' => \Pterodactyl\Services\Minecraft\MinecraftLinkService::avatar($this->minecraft_uuid),
                 'can_access_admin' => $this->canAccessAdmin(),
                 'can_access_all_servers' => $this->canAccessAllServers(),
                 // What the admin area shows this person: every permission for root admins, the ones of their roles for the rest.

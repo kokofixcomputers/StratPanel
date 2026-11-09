@@ -14,7 +14,9 @@ class StoreSubuserRequest extends SubuserRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|email:strict|between:1,191',
+            // Invited by email address, or by the Minecraft name of somebody who linked their account.
+            'email' => 'required_without:minecraft|nullable|email:strict|between:1,191',
+            'minecraft' => ['required_without:email', 'nullable', 'string', 'regex:/^\w{1,16}$/'],
             'permissions' => 'required|array',
             'permissions.*' => 'string',
         ];
