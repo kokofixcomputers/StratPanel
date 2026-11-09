@@ -10,6 +10,7 @@ import OperatorsCard from '@/components/server/players/OperatorsCard';
 import WhitelistCard from '@/components/server/players/WhitelistCard';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 import StatusBadge from '@/components/server/console/StatusBadge';
+import ConnectionBadge from '@/components/server/console/ConnectionBadge';
 import PowerButtons from '@/components/server/console/PowerButtons';
 import ServerDetailsBlock from '@/components/server/console/ServerDetailsBlock';
 import HelperStatus from '@/components/server/console/HelperStatus';
@@ -62,7 +63,10 @@ const ServerConsoleContainer = () => {
                 <div className={'min-w-0'}>
                     <h1 className={'text-3xl font-bold tracking-tight text-neutral-50 line-clamp-1'}>{name}</h1>
                     {description && <p className={'mt-1 text-sm text-neutral-400 line-clamp-2'}>{description}</p>}
-                    <StatusBadge className={'mt-3'} />
+                    <div className={'mt-3 flex flex-wrap items-center gap-2'}>
+                        <StatusBadge />
+                        <ConnectionBadge />
+                    </div>
                 </div>
                 <div className={'flex flex-wrap items-center gap-2'}>
                     <Can action={'control.console'}>
