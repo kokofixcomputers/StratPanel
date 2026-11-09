@@ -15,10 +15,26 @@ export const rawDataToServerSubuser = (data: FractalResponseData): Subuser => ({
     can: (permission) => (data.attributes.permissions || []).indexOf(permission) >= 0,
 });
 
-export default (uuid: string): Promise<Subuser[]> => {
+export interface ServerUsers {
+    // The owner of the server: not a subuser, so there is nothing to change or remove (permissions are all of them).
+    owner: Subuser | null;
+    subusers: Subuser[];
+}
+
+export default (uuid: string): Promise<ServerUsers> => {
     return new Promise((resolve, reject) => {
         http.get(`/api/client/servers/${uuid}/users`)
-            .then(({ data }) => resolve((data.data || []).map(rawDataToServerSubuser)))
+            .then(({ data }) =>
+                resolve({
+                    owner: data.owner
+                        ? rawDataToServerSubuser({
+                              ...data.owner,
+                              attributes: { ...data.owner.attributes, permissions: ['*'] },
+                          })
+                        : null,
+                    subusers: (data.data || []).map(rawDataToServerSubuser),
+                })
+            )
             .catch(reject);
     });
 };

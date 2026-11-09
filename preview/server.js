@@ -624,7 +624,7 @@ api.post('/servers/:id/backups', (req, res) => { const b = { uuid: `b${state.nex
 api.get('/servers/:id/schedules', (req, res) => res.json({ object: 'list', data: state.schedules.map((s) => item('server_schedule', s)) }));
 api.get('/servers/:id/schedules/:s', (req, res) => res.json(item('server_schedule', state.schedules.find((s) => s.id == req.params.s) || state.schedules[0])));
 
-api.get('/servers/:id/users', (req, res) => res.json({ object: 'list', data: state.users.map((u) => item('user', u)) }));
+api.get('/servers/:id/users', (req, res) => res.json({ object: 'list', data: state.users.map((u) => item('user', u)), owner: item('user', { uuid: 'owner', username: 'preview', email: 'preview@example.com', image: 'https://www.gravatar.com/avatar/?d=identicon', minecraft: null, '2fa_enabled': true, created_at: now() }) }));
 api.post('/servers/:id/users', (req, res) => {
     const known = { notch: ['069a79f444e94726a5befca90e38aaf5', 'Notch'], jeb_: ['853c80ef3c3749fdaa49938b674adae6', 'jeb_'] }[String(req.body.minecraft || '').toLowerCase()];
     if (req.body.minecraft && !known) return res.status(422).json({ errors: [{ code: 'ValidationException', status: '422', detail: 'Nobody linked that Minecraft name to their account.', meta: { source_field: 'minecraft' } }] });

@@ -6,7 +6,8 @@ import Spinner from '@/components/elements/Spinner';
 import AddSubuserButton from '@/components/server/users/AddSubuserButton';
 import UserRow from '@/components/server/users/UserRow';
 import FlashMessageRender from '@/components/FlashMessageRender';
-import getServerSubusers from '@/api/server/users/getServerSubusers';
+import OwnerRow from '@/components/server/users/OwnerRow';
+import getServerSubusers, { ServerUsers } from '@/api/server/users/getServerSubusers';
 import { httpErrorToHuman } from '@/api/http';
 import Can from '@/components/elements/Can';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
@@ -16,6 +17,7 @@ import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHe
 
 export default () => {
     const [loading, setLoading] = useState(true);
+    const [owner, setOwner] = useState<ServerUsers['owner']>(null);
 
     const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const serverName = ServerContext.useStoreState((state) => state.server.data!.name);
@@ -29,7 +31,8 @@ export default () => {
     useEffect(() => {
         clearFlashes('users');
         getServerSubusers(uuid)
-            .then((subusers) => {
+            .then(({ owner, subusers }) => {
+                setOwner(owner);
                 setSubusers(subusers);
                 setLoading(false);
             })
@@ -54,11 +57,16 @@ export default () => {
         <ServerContentBlock title={'Users'}>
             <PageHeader title={'Users'} subtitle={`Manage who can access ${serverName}`} />
             <FlashMessageRender byKey={'users'} css={tw`mb-4`} />
-            <ListHeader icon={<UsersIcon className={'w-6 h-6'} />} title={'Users'} count={`${subusers.length}`}>
+            <ListHeader
+                icon={<UsersIcon className={'w-6 h-6'} />}
+                title={'Users'}
+                count={`${subusers.length + (owner ? 1 : 0)}`}
+            >
                 <Can action={'user.create'}>
                     <AddSubuserButton />
                 </Can>
             </ListHeader>
+            {owner && <OwnerRow owner={owner} />}
             {!subusers.length ? (
                 <EmptyState>It looks like you don&apos;t have any subusers.</EmptyState>
             ) : (

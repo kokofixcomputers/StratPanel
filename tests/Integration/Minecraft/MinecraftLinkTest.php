@@ -179,4 +179,14 @@ class MinecraftLinkTest extends ClientApiIntegrationTestCase
             ->assertStatus(422)->assertJsonPath('errors.0.meta.source_field', 'minecraft');
         $this->actingAs($owner)->postJson($this->link($server) . '/users', ['permissions' => [Permission::ACTION_USER_CREATE]])->assertStatus(422);
     }
+
+    public function testTheUsersListNamesTheOwner()
+    {
+        [$viewer, $server] = $this->account();
+        Subuser::query()->where('user_id', $viewer->id)->update(['permissions' => [Permission::ACTION_USER_READ]]);
+
+        $response = $this->actingAs($viewer)->getJson($this->link($server) . '/users')->assertOk();
+        $response->assertJsonPath('owner.attributes.uuid', $server->user->uuid)->assertJsonPath('owner.attributes.email', $server->user->email);
+        $this->assertCount(1, $response->json('data'));
+    }
 }

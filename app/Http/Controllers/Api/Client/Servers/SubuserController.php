@@ -12,6 +12,7 @@ use Pterodactyl\Repositories\Eloquent\SubuserRepository;
 use Illuminate\Validation\ValidationException;
 use Pterodactyl\Services\Minecraft\MinecraftLinkService;
 use Pterodactyl\Services\Subusers\SubuserCreationService;
+use Pterodactyl\Transformers\Api\Client\UserTransformer;
 use Pterodactyl\Transformers\Api\Client\SubuserTransformer;
 use Pterodactyl\Repositories\Wings\DaemonRevocationRepository;
 use Pterodactyl\Http\Controllers\Api\Client\ClientApiController;
@@ -39,9 +40,16 @@ class SubuserController extends ClientApiController
      */
     public function index(GetSubuserRequest $request, Server $server): array
     {
-        return $this->fractal->collection($server->subusers)
+        $list = $this->fractal->collection($server->subusers)
             ->transformWith($this->getTransformer(SubuserTransformer::class))
             ->toArray();
+
+        // The owner is not a subuser, but the list shows them first (they cannot be changed or removed).
+        $list['owner'] = $this->fractal->item($server->user)
+            ->transformWith($this->getTransformer(UserTransformer::class))
+            ->toArray();
+
+        return $list;
     }
 
     /**
