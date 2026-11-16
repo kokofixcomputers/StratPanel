@@ -7,6 +7,7 @@ import {
     parseTrustedBridgeLine,
     readBridgeStatus,
     toPlayer,
+    isTrustedBridgeLine,
 } from './bridge';
 
 describe('bridge messages', () => {
@@ -63,12 +64,23 @@ describe('bridge messages', () => {
         ).toBeNull();
     });
 
+    it('trusts the lowercase plugin id Velocity prints', () => {
+        expect(isTrustedBridgeLine('[12:00:00 INFO] [stratosphere]: ::stratpanel:: {"event":"players"}')).toBe(true);
+        expect(isTrustedBridgeLine('[12:00:00 INFO] <Steve> [stratosphere]: ::stratpanel:: {"event":"players"}')).toBe(
+            false
+        );
+    });
+
     it('accepts player names and uuids that can be real', () => {
         expect(toPlayer({ name: 'Steve', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03' })).toEqual({
             name: 'Steve',
             uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03',
+            server: null,
         });
-        expect(toPlayer({ name: '.Bedrock Guy' })).toEqual({ name: '.Bedrock Guy', uuid: null });
+        expect(toPlayer({ name: '.Bedrock Guy' })).toEqual({ name: '.Bedrock Guy', uuid: null, server: null });
+        // On a proxy: the backend server, as long as it is a name a server can have.
+        expect(toPlayer({ name: 'Steve', server: 'lobby-2' })?.server).toBe('lobby-2');
+        expect(toPlayer({ name: 'Steve', server: '<b>x</b>' })?.server).toBeNull();
         expect(toPlayer({ name: 'a<b>' })).toBeNull();
         expect(toPlayer({ name: 'x'.repeat(40) })).toBeNull();
         expect(toPlayer(null)).toBeNull();

@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
+import Spinner from '@/components/elements/Spinner';
 import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Input from '@/components/elements/Input';
@@ -30,6 +31,8 @@ import PlayerVitals from '@/components/server/players/PlayerVitals';
 import PlayerModal from '@/components/server/players/PlayerModal';
 import useVitalsPolling from '@/plugins/useVitalsPolling';
 import { useVitals } from '@/lib/vitals';
+import ProxyPlayers from '@/components/server/players/ProxyPlayers';
+import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
 interface CacheEntry {
     uuid: string;
@@ -88,7 +91,7 @@ const matches = (player: Known, filter: Filter) =>
         ? player.banned
         : player.whitelisted;
 
-export default () => {
+const ServerPlayers = () => {
     const server = ServerContext.useStoreState((state) => state.server.data!.uuid);
     const status = ServerContext.useStoreState((state) => state.status.value);
     const instance = ServerContext.useStoreState((state) => state.socket.instance);
@@ -550,4 +553,20 @@ export default () => {
             )}
         </ServerContentBlock>
     );
+};
+
+/** A proxy has no inventories or health, its page only lists who is connected and where. */
+export default () => {
+    const uuid = ServerContext.useStoreState((state) => state.server.data!.uuid);
+    const [proxy, setProxy] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        isProxyServer(uuid)
+            .then(setProxy)
+            .catch(() => setProxy(false));
+    }, [uuid]);
+
+    if (proxy === null) return <Spinner size={'large'} centered />;
+
+    return proxy ? <ProxyPlayers /> : <ServerPlayers />;
 };

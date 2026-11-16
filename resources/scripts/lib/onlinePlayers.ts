@@ -36,11 +36,13 @@ export const parseLogLine = (line: string): LogEvent | null => {
 interface State {
     online: string[];
     uuids: Record<string, string>;
+    // On a proxy: the backend server each player is on, by name. Players who are still connecting are not in it.
+    servers: Record<string, string>;
 }
 
 const states = new Map<string, State>();
 const listeners = new Set<() => void>();
-const empty: State = { online: [], uuids: {} };
+const empty: State = { online: [], uuids: {}, servers: {} };
 
 export const readOnlinePlayers = (server: string): State => states.get(server) || empty;
 
@@ -72,7 +74,12 @@ export const handleLogLine = (server: string, line: string) => {
 export const handleBridgeMessage = (server: string, message: BridgeMessage) => {
     const state = readOnlinePlayers(server);
 
-    if (message.event === 'player-join' || message.event === 'player-leave') {
+    if (message.event === 'player-server') {
+        // A proxy: the player moved to (or joined) a backend server.
+        const player = toPlayer(message);
+        if (!player || !player.server || state.servers[player.name] === player.server) return;
+        write(server, { ...state, servers: { ...state.servers, [player.name]: player.server } });
+    } else if (message.event === 'player-join' || message.event === 'player-leave') {
         const player = toPlayer(message);
         if (!player) return;
 
@@ -86,18 +93,31 @@ export const handleBridgeMessage = (server: string, message: BridgeMessage) => {
                     ? state.online
                     : [...state.online, player.name]
                 : state.online.filter((name) => name !== player.name);
-        if (online !== state.online || uuids !== state.uuids) write(server, { online, uuids });
+        const servers = { ...state.servers };
+        if (message.event === 'player-leave') delete servers[player.name];
+        else if (player.server) servers[player.name] = player.server;
+        if (
+            online !== state.online ||
+            uuids !== state.uuids ||
+            JSON.stringify(servers) !== JSON.stringify(state.servers)
+        ) {
+            write(server, { online, uuids, servers });
+        }
     } else if (message.event === 'players' && Array.isArray(message.players)) {
         const players = message.players.map(toPlayer).filter((p): p is NonNullable<ReturnType<typeof toPlayer>> => !!p);
         const uuids = { ...state.uuids };
         players.forEach((p) => p.uuid && (uuids[p.name] = p.uuid));
-        write(server, { online: players.map((p) => p.name), uuids });
+        const servers: Record<string, string> = {};
+        players.forEach((p) => p.server && (servers[p.name] = p.server));
+        write(server, { online: players.map((p) => p.name), uuids, servers });
     }
 };
 
 /** Nobody can be online while the server is not running. */
 export const clearOnlinePlayers = (server: string) => {
-    if (readOnlinePlayers(server).online.length) write(server, { ...readOnlinePlayers(server), online: [] });
+    if (readOnlinePlayers(server).online.length) {
+        write(server, { ...readOnlinePlayers(server), online: [], servers: {} });
+    }
 };
 
 export const useOnlinePlayers = (server: string): State => {

@@ -1,0 +1,8 @@
+{
+  "id": "stratosphere",
+  "name": "Stratosphere",
+  "version": "${VERSION}",
+  "description": "Shares the players of the proxy and the server each one is on with the Stratosphere panel.",
+  "authors": ["kokodev"],
+  "main": "cc.kokodev.stratpanel.velocity.StratVelocity"
+}

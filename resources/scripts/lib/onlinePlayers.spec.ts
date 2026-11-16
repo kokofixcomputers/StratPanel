@@ -66,3 +66,26 @@ describe('online player log parsing', () => {
         expect(readOnlinePlayers('b').online).toEqual(['C', 'D']);
     });
 });
+
+describe('players of a proxy', () => {
+    const steve = { name: 'Steve', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03' };
+
+    it('knows which backend server each player is on', () => {
+        clearOnlinePlayers('proxy');
+        handleBridgeMessage('proxy', { event: 'players', players: [{ ...steve, server: 'lobby' }, { name: 'Alex' }] });
+        expect(readOnlinePlayers('proxy').online).toEqual(['Steve', 'Alex']);
+        expect(readOnlinePlayers('proxy').servers).toEqual({ Steve: 'lobby' });
+
+        handleBridgeMessage('proxy', { event: 'player-server', ...steve, server: 'survival' });
+        handleBridgeMessage('proxy', { event: 'player-server', name: 'Alex', server: 'lobby' });
+        expect(readOnlinePlayers('proxy').servers).toEqual({ Steve: 'survival', Alex: 'lobby' });
+    });
+
+    it('forgets the server of a player who leaves, and of everybody when the proxy stops', () => {
+        handleBridgeMessage('proxy', { event: 'player-leave', ...steve });
+        expect(readOnlinePlayers('proxy').servers).toEqual({ Alex: 'lobby' });
+
+        clearOnlinePlayers('proxy');
+        expect(readOnlinePlayers('proxy').servers).toEqual({});
+    });
+});

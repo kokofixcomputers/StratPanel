@@ -58,7 +58,7 @@ const state = {
 
 const files = {
     '/': [
-        ...(process.env.PREVIEW_PROXY ? [['velocity.toml', true, 2400, 'text/plain']] : []), ['.cache', false], ['.fabric', false], ['libraries', false], ['logs', false], ['mods', false], ['world', false],
+        ...(process.env.PREVIEW_PROXY ? [['velocity.toml', true, 2400, 'text/plain'], ['stratosphere.commands.json', true, 900, 'application/json']] : []), ['.cache', false], ['.fabric', false], ['libraries', false], ['logs', false], ['mods', false], ['world', false],
         ['eula.txt', true, 10, 'text/plain'], ['fabric-server-launch.jar', true, 182000, 'application/jar'], ['server.jar', true, 54000000, 'application/jar'],
         ['server.properties', true, 1360, 'text/plain'], ['ops.json', true, 120, 'application/json'], ['pterodactyl.commands.json', true, 2400, 'application/json'], ['backup.tar.gz', true, 9100000, 'application/gzip'],
     ],
@@ -911,7 +911,18 @@ wss.on('connection', (ws) => {
             const prefix = '[17:10:00] [Server thread/INFO]: [StratPanel] ::stratpanel:: ';
             const sub = String(args[0]).split(' ')[1];
             const players = '{"event":"players","players":[{"name":"kokofixcomputers","uuid":"13bc7d5e-f906-41ff-a949-6c1eb677fe03"}]}';
-            if (sub === 'handshake') {
+            if (process.env.PREVIEW_PROXY && ['handshake', 'refresh', 'sync'].includes(sub)) {
+                // A Velocity proxy: the plugin id is in the header of the line, and the players say which backend server they are on.
+                const velocity = '[17:10:00 INFO] [stratosphere]: ::stratpanel:: ';
+                if (sub === 'handshake') send('console output', velocity + '{"event":"handshake","version":"1.0.0","platform":"velocity","minecraft":"3.4.0","proxy":true,"protocol":9}');
+                send('console output', velocity + JSON.stringify({ event: 'players', players: [
+                    { name: 'kokofixcomputers', uuid: '13bc7d5e-f906-41ff-a949-6c1eb677fe03', server: 'lobby' },
+                    { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', server: 'survival' },
+                    { name: 'jeb_', uuid: '853c80ef-3c37-49fd-aa49-938b674adae6', server: 'lobby' },
+                    { name: 'Dinnerbone', uuid: '61699b2e-d327-4a01-9f1e-0ea8c3f06bc6' },
+                ] }));
+                if (sub === 'refresh') send('console output', velocity + '{"event":"refreshed","generatedAt":"2026-11-16T12:00:00Z"}');
+            } else if (sub === 'handshake') {
                 send('console output', prefix + '{"event":"handshake","version":"1.0.0","platform":"paper","minecraft":"26.3","protocol":9}');
                 send('console output', prefix + players);
             } else if (sub === 'vitals') {

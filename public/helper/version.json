@@ -1,10 +1,11 @@
 {
-  "version": "261018-0357-SNAPSHOT",
+  "version": "261116-2005-SNAPSHOT",
   "file": "Stratosphere.jar",
   "platforms": [
     "paper",
     "spigot",
-    "purpur"
+    "purpur",
+    "velocity"
   ],
   "mod": {
     "version": "261023-2019-SNAPSHOT",

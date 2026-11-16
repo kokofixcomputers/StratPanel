@@ -18,9 +18,13 @@ describe('lib/helperPlugin', () => {
             expect(helperBuild('neoforge')).toEqual(mod);
         });
 
+        it('is the plugin on a Velocity proxy too, it reports the players', () => {
+            expect(helperBuild('VELOCITY')).toEqual(helperBuild('PAPER'));
+            expect(wantsHelper('velocity')).toBe(true);
+        });
+
         it('has nothing for software that is not supported', () => {
             expect(helperBuild('FORGE')).toBeNull();
-            expect(helperBuild('VELOCITY')).toBeNull();
             expect(helperBuild(null)).toBeNull();
             expect(helperBuild(undefined)).toBeNull();
             expect(helperBuild('')).toBeNull();
@@ -55,9 +59,7 @@ describe('lib/helperPlugin', () => {
         });
 
         it('is false for the rest', () => {
-            expect(['FORGE', 'QUILT', 'VELOCITY', '', null, undefined].some((software) => wantsHelper(software))).toBe(
-                false
-            );
+            expect(['FORGE', 'QUILT', '', null, undefined].some((software) => wantsHelper(software))).toBe(false);
         });
     });
 

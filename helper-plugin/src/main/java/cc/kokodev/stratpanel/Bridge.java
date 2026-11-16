@@ -3,6 +3,7 @@ package cc.kokodev.stratpanel;
 import com.google.gson.Gson;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
@@ -14,11 +15,16 @@ public final class Bridge {
 
   static final String TAG = "::stratpanel::";
 
-  private final Logger logger;
+  private final Consumer<String> out;
   private final Gson gson = new Gson();
 
   public Bridge(Logger logger) {
-    this.logger = logger;
+    this(logger::info);
+  }
+
+  /** For platforms with another logger: {@code out} prints one line with the logger of the plugin. */
+  public Bridge(Consumer<String> out) {
+    this.out = out;
   }
 
   /** Prints one message, {@code fields} are added after the event name. */
@@ -26,7 +32,7 @@ public final class Bridge {
     Map<String, Object> message = new LinkedHashMap<>();
     message.put("event", event);
     message.putAll(fields);
-    logger.info(TAG + " " + gson.toJson(message));
+    out.accept(TAG + " " + gson.toJson(message));
   }
 
   public void send(String event) {

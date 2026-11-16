@@ -31,7 +31,7 @@ import { ExtensionBoundary } from '@/components/elements/ExtensionSlot';
 import { isProxyServer } from '@/components/server/versions/detectCurrent';
 
 // The pages of a server that a proxy has no use for.
-const PROXY_HIDDEN = ['/players', '/tools', '/worlds'];
+const PROXY_HIDDEN = ['/tools', '/worlds'];
 
 export default () => {
     const match = useRouteMatch<{ id: string }>();
@@ -192,7 +192,7 @@ export default () => {
                                         exact: route.exact,
                                     }))}
                                 adminUrl={adminArea ? `/admin/servers/view/${serverId}` : undefined}
-                                playersUrl={isProxy ? undefined : to('/players', true)}
+                                playersUrl={to('/players', true)}
                             />
                         )}
                         <div className={'min-w-0 flex-1 lg:px-4'}>

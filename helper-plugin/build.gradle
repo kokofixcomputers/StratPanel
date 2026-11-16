@@ -50,6 +50,7 @@ repositories {
             includeModule("io.papermc", "paperlib")
             includeModule("net.md-5", "bungeecord-chat")
             includeGroup("io.papermc.adventure")
+            includeGroup("com.velocitypowered")
         }
     }
 
@@ -66,6 +67,8 @@ repositories {
 
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT'
+    // The same jar also is a Velocity plugin (velocity-plugin.json), which only reports who is online and where.
+    compileOnly 'com.velocitypowered:velocity-api:3.4.0-SNAPSHOT'
     compileOnly 'com.github.spotbugs:spotbugs-annotations:4.9.5'
     implementation 'io.papermc:paperlib:1.0.8'
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0'
@@ -82,7 +85,7 @@ test {
 processResources {
     // The version is written into plugin.yml, tell Gradle so it does not reuse an old plugin.yml when only the time changed.
     inputs.property('pluginVersion', version.toString())
-    filesMatching("**/plugin.yml") {
+    filesMatching(["**/plugin.yml", "**/velocity-plugin.json"]) {
         expand ( NAME: rootProject.name, VERSION: version, PACKAGE: rootProject.group.toString() )
     }
 }

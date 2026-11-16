@@ -32,7 +32,7 @@ fi
 mkdir -p public/helper
 cp "$JAR" public/helper/Stratosphere.jar
 PLUGIN_VERSION="$(unzip -p public/helper/Stratosphere.jar plugin.yml | sed -n 's/^version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -n 1)"
-printf '{\n  "version": "%s",\n  "file": "Stratosphere.jar",\n  "platforms": ["paper", "spigot", "purpur"]\n}\n' "$PLUGIN_VERSION" > public/helper/version.json
+printf '{\n  "version": "%s",\n  "file": "Stratosphere.jar",\n  "platforms": ["paper", "spigot", "purpur", "velocity"]\n}\n' "$PLUGIN_VERSION" > public/helper/version.json
 echo "Helper plugin ${PLUGIN_VERSION} bundled."
 
 echo "Building the helper mods..."

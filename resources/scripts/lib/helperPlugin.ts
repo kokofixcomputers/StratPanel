@@ -27,6 +27,8 @@ const BUILDS: Record<string, HelperBuild> = {
     PAPER: PLUGIN,
     SPIGOT: PLUGIN,
     PURPUR: PLUGIN,
+    // The same jar is a Velocity plugin as well: on a proxy it reports who is connected and to which server.
+    VELOCITY: PLUGIN,
     FABRIC: MOD,
     NEOFORGE: MOD,
 };

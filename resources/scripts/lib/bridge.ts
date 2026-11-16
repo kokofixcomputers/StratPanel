@@ -42,7 +42,10 @@ export const parseBridgeLine = (line: string): BridgeMessage | null => {
  * logger prints: the log header, then the plugin's own prefix, then the tag. Chat cannot start a new line, so a player
  * cannot forge such a line, while text typed into chat or logged by another plugin always has something else first.
  */
-const TRUSTED = /^(?:\[[^\]\n]*\]\s*)+:\s*\[(?:Stratosphere|StratPanel)\]\s+::stratpanel::/;
+// Paper: "[12:00:00 INFO]: [Stratosphere] ::stratpanel::". Velocity puts the id of the plugin (lowercase) in the header instead:
+// "[12:00:00 INFO] [stratosphere]: ::stratpanel::".
+const TRUSTED =
+    /^(?:(?:\[[^\]\n]*\]\s*)+:\s*\[(?:Stratosphere|StratPanel)\]|(?:\[[^\]\n]*\]\s*)*\[(?:Stratosphere|StratPanel)\]:)\s+::stratpanel::/i;
 
 export const isTrustedBridgeLine = (line: string): boolean => TRUSTED.test(stripAnsi(line).trimStart());
 
@@ -55,15 +58,23 @@ const UUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$
 export interface BridgePlayer {
     name: string;
     uuid: string | null;
+    // On a proxy: the backend server the player is on, null when it is not said (or they are still connecting).
+    server: string | null;
 }
+
+const SERVER_NAME = /^[A-Za-z0-9_.-]{1,64}$/;
 
 /** A player from a message, or null when the name is not something a player can be called. */
 export const toPlayer = (value: unknown): BridgePlayer | null => {
     if (!value || typeof value !== 'object') return null;
-    const { name, uuid } = value as Record<string, unknown>;
+    const { name, uuid, server } = value as Record<string, unknown>;
     if (typeof name !== 'string' || !NAME.test(name)) return null;
 
-    return { name, uuid: typeof uuid === 'string' && UUID.test(uuid) ? uuid : null };
+    return {
+        name,
+        uuid: typeof uuid === 'string' && UUID.test(uuid) ? uuid : null,
+        server: typeof server === 'string' && SERVER_NAME.test(server) ? server : null,
+    };
 };
 
 // ---- the state of the connection with the plugin ----------------------------------------------------------------------
