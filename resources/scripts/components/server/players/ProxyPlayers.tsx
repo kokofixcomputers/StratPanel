@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SearchIcon, UsersIcon, XIcon } from '@heroicons/react/solid';
+import { PaperAirplaneIcon, SearchIcon, UsersIcon, XIcon } from '@heroicons/react/solid';
 import { ServerContext } from '@/state/server';
 import ServerContentBlock from '@/components/elements/ServerContentBlock';
 import PageHeader, { EmptyState, ListHeader } from '@/components/elements/PageHeader';
 import Input from '@/components/elements/Input';
+import Select from '@/components/elements/Select';
+import { readOptionalFile } from '@/lib/minecraft';
+import { parseVelocity } from '@/lib/velocity';
 import { Button } from '@/components/elements/button/index';
 import { PlayerHead } from '@/components/server/players/PlayerListCard';
 import { useOnlinePlayers } from '@/lib/onlinePlayers';
@@ -22,11 +25,38 @@ export default () => {
     const { online, uuids, servers } = useOnlinePlayers(uuid);
     const bridge = useBridgeStatus(uuid);
     const [canInstall] = usePermissions(['file.create']);
+    const [canControl] = usePermissions(['control.console']);
     const [search, setSearch] = useState('');
     const [only, setOnly] = useState<string | null>(null);
     const [installing, setInstalling] = useState(false);
     const [installed, setInstalled] = useState(false);
     const [failed, setFailed] = useState('');
+    // The backend servers of velocity.toml, to send players to, and where each player is about to be sent.
+    const [targets, setTargets] = useState<string[]>([]);
+    const [choice, setChoice] = useState<Record<string, string>>({});
+    const [sent, setSent] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        readOptionalFile(uuid, '/velocity.toml')
+            .then((content) =>
+                setTargets(
+                    content
+                        ? parseVelocity(content)
+                              .servers.map((s) => s.name)
+                              .filter((n) => /^[\w-]+$/.test(n))
+                        : []
+                )
+            )
+            .catch(() => setTargets([]));
+    }, [uuid]);
+
+    // The console command of Velocity: send <player> <server>. Names that could carry a second word are not sent.
+    const send = (name: string, target: string) => {
+        if (!instance || !/^[\w.-]+$/.test(name) || !targets.includes(target)) return;
+        instance.send('send command', `send ${name} ${target}`);
+        setSent((all) => ({ ...all, [name]: target }));
+        setTimeout(() => setSent((all) => Object.fromEntries(Object.entries(all).filter(([n]) => n !== name))), 4000);
+    };
 
     const running = status === 'running';
 
@@ -186,6 +216,36 @@ export default () => {
                                 <p className={'truncate text-sm font-semibold text-neutral-50'}>{name}</p>
                                 <p className={'text-xs text-neutral-300'}>Connected</p>
                             </div>
+                            {canControl && running && targets.length > 0 && /^[\w.-]+$/.test(name) && (
+                                <div className={'flex items-center gap-2'}>
+                                    <div className={'w-36'}>
+                                        <Select
+                                            aria-label={`Server to send ${name} to`}
+                                            value={choice[name] ?? ''}
+                                            onChange={(e) =>
+                                                setChoice((all) => ({ ...all, [name]: e.currentTarget.value }))
+                                            }
+                                        >
+                                            <option value={''}>Send to...</option>
+                                            {targets
+                                                .filter((target) => target !== servers[name])
+                                                .map((target) => (
+                                                    <option key={target} value={target}>
+                                                        {target}
+                                                    </option>
+                                                ))}
+                                        </Select>
+                                    </div>
+                                    <Button
+                                        size={Button.Sizes.Small}
+                                        disabled={!choice[name]}
+                                        onClick={() => send(name, choice[name])}
+                                    >
+                                        <PaperAirplaneIcon className={'mr-1.5 h-4 w-4'} />
+                                        {sent[name] ? 'Sent' : 'Send'}
+                                    </Button>
+                                </div>
+                            )}
                             <span
                                 className={
                                     'rounded-full px-3 py-1 text-xs font-medium ' +
