@@ -87,7 +87,7 @@ class PayPalProvider implements PaymentProvider
         }
         $http = $this->http();
 
-        // What PayPal calls the order is what the person came back with, it has to be the one of this order.
+        // Always the order PayPal made for this one (kept on it), never one named in the address.
         $current = $http->get($this->base() . '/v2/checkout/orders/' . $order->provider_reference);
         if (!$current->successful()) {
             throw new PaymentException('PayPal could not be asked about this payment: ' . ($current->json('message') ?: 'it could not be reached.'));

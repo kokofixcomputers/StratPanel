@@ -2,6 +2,10 @@ import React from 'react';
 import { NavLink, Route, Switch } from 'react-router-dom';
 import NavigationBar from '@/components/NavigationBar';
 import CreateServerContainer from '@/components/dashboard/CreateServerContainer';
+import BoxesContainer from '@/components/dashboard/boxes/BoxesContainer';
+import BoxContainer from '@/components/dashboard/boxes/BoxContainer';
+import StoreContainer from '@/components/dashboard/store/StoreContainer';
+import StoreReturnContainer from '@/components/dashboard/store/StoreReturnContainer';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
@@ -55,6 +59,18 @@ export default () => {
                                 </Route>
                                 <Route path={'/create'} exact>
                                     <CreateServerContainer />
+                                </Route>
+                                <Route path={'/boxes'} exact>
+                                    <BoxesContainer />
+                                </Route>
+                                <Route path={'/boxes/:id'} exact>
+                                    <BoxContainer />
+                                </Route>
+                                <Route path={'/store'} exact>
+                                    <StoreContainer />
+                                </Route>
+                                <Route path={'/store/return'} exact>
+                                    <StoreReturnContainer />
                                 </Route>
                                 {routes.account.map(({ path, component: Component }) => (
                                     <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>

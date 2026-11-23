@@ -685,6 +685,53 @@ let mockMcAdmin = { enabled: true, address: 'link.example.com' };
 api.get('/admin/settings/minecraft', (req, res) => res.json({ ...mockMcAdmin, minutes: 15, linked: mockMc.linked ? 3 : 2, waiting: 1, router: true }));
 api.patch('/admin/settings/minecraft', (req, res) => { mockMcAdmin = { enabled: !!req.body.enabled, address: req.body.address || '' }; mockMc.enabled = mockMcAdmin.enabled; res.json({}); });
 
+
+// Boxes and the store (mock data kept in memory).
+const mockShare = (memory, disk, cpu, allocations, backups, databases) => ({ memory, disk, cpu, allocations, backups, databases });
+const mockBoxServers = [
+    { id: 'aaaa1111', uuid: '11111111-0000-4000-8000-000000000001', admin_id: 21, name: 'Survival', status: null, node: 'Frankfurt-1', address: 'play.example.com:25570', limits: mockShare(2048, 4096, 100, 1, 1, 0) },
+    { id: 'bbbb2222', uuid: '11111111-0000-4000-8000-000000000002', admin_id: 22, name: 'Creative', status: null, node: 'Frankfurt-1', address: 'play.example.com:25571', limits: mockShare(1024, 2048, 50, 1, 0, 0) },
+];
+const sumShare = (list) => list.reduce((a, s) => Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + s.limits[k]])), mockShare(0, 0, 0, 0, 0, 0));
+const mockBox = { id: 'c0ffee00-0000-4000-8000-000000000001', admin_id: 7, name: 'Starter box', status: 'active', source: 'order', expires_at: new Date(Date.now() + 12 * 864e5).toISOString(), notes: null, node: { id: 1, name: 'Frankfurt-1' }, owner: { id: 1, username: 'preview', email: 'preview@example.com' }, limits: mockShare(8192, 20480, 400, 4, 3, 2), can_create: true };
+const boxView = (detail) => {
+    const used = sumShare(mockBoxServers);
+    const remaining = Object.fromEntries(Object.keys(used).map((k) => [k, Math.max(0, mockBox.limits[k] - used[k])]));
+    const base = { ...mockBox, used, remaining, servers: mockBoxServers.length };
+    return detail ? { ...base, minimum: mockShare(512, 1024, 50, 1, 0, 0), servers_list: mockBoxServers, nodes: [{ id: 1, name: 'Frankfurt-1', location: 'fra', free_allocations: 30 }], renew: { package: 'pkg-box-1', name: 'Starter box', price: 999, period_days: 30, currency: 'USD' } } : base;
+};
+api.get('/boxes', (req, res) => res.json({ data: [boxView(false)] }));
+api.get('/boxes/:id', (req, res) => res.json(boxView(true)));
+api.post('/boxes/:id/servers', (req, res) => {
+    const b = req.body; const n = mockBoxServers.length + 1;
+    mockBoxServers.push({ id: `dddd${n}000`, uuid: `11111111-0000-4000-8000-00000000010${n}`, admin_id: 30 + n, name: b.name, status: null, node: 'Frankfurt-1', address: `play.example.com:2558${n}`, limits: mockShare(b.memory, b.disk, b.cpu, b.allocations, b.backups, b.databases) });
+    res.status(201).json(boxView(true));
+});
+api.patch('/boxes/:id/servers/:server', (req, res) => { const s = mockBoxServers.find((x) => x.uuid === req.params.server); if (s) s.limits = mockShare(req.body.memory, req.body.disk, req.body.cpu, req.body.allocations, req.body.backups, req.body.databases); res.json(boxView(true)); });
+const mockPackages = [
+    { id: 'pkg-box-1', name: 'Starter box', description: 'Make your own servers, share 8 GB between them.', kind: 'box', price: 999, period_days: 30, ...mockShare(8192, 20480, 400, 4, 3, 2) },
+    { id: 'pkg-srv-1', name: 'Survival server', description: 'A ready server, install Minecraft from the Versions tab.', kind: 'server', price: 499, period_days: 30, ...mockShare(4096, 10240, 200, 2, 2, 1) },
+];
+api.get('/store', (req, res) => res.json({ open: true, currency: 'USD', providers: [{ id: 'stripe', name: 'Card (Stripe)' }, { id: 'paypal', name: 'PayPal' }], packages: mockPackages }));
+api.get('/store/orders', (req, res) => res.json({ data: [{ id: 'o1', package: 'Starter box', kind: 'box', amount: 999, currency: 'USD', provider: 'stripe', status: 'paid', renewal: false, setting_up: false, problem: null, box: mockBox.id, server: null, paid_at: new Date().toISOString(), created_at: new Date().toISOString() }] }));
+api.post('/store/checkout', (req, res) => res.json({ url: '/store/return?order=o1' }));
+api.post('/store/orders/:id/confirm', (req, res) => res.json({ id: 'o1', package: 'Starter box', kind: 'box', amount: 999, currency: 'USD', provider: 'stripe', status: 'paid', renewal: false, setting_up: false, problem: null, box: mockBox.id, server: null, paid_at: new Date().toISOString(), created_at: new Date().toISOString() }));
+const mockAdminPackages = mockPackages.map((p, i) => ({ id: i + 1, uuid: p.id, active: true, sort: i, node_id: null, egg_id: null, sold: 3 - i, ...p }));
+api.get('/admin/boxes', (req, res) => res.json({ boxes: [boxView(false), { ...boxView(false), id: 'c0ffee00-0000-4000-8000-000000000002', admin_id: 8, name: 'Gift box', source: 'admin', expires_at: null, owner: { id: 5, username: 'alex', email: 'alex@example.com' } }], pagination: { total: 2, count: 2, per_page: 25, current_page: 1, total_pages: 1 }, nodes: [{ id: 1, name: 'Frankfurt-1' }] }));
+api.get('/admin/boxes/:id', (req, res) => res.json(boxView(true)));
+api.post('/admin/boxes', (req, res) => res.status(201).json(boxView(true)));
+api.patch('/admin/boxes/:id', (req, res) => res.json(boxView(true)));
+api.post('/admin/boxes/:id/suspend', (req, res) => res.json(boxView(true)));
+api.get('/admin/packages', (req, res) => res.json({ currency: 'USD', packages: mockAdminPackages, nodes: [{ id: 1, name: 'Frankfurt-1' }], eggs: [{ id: 1, name: 'Java' }] }));
+api.post('/admin/packages', (req, res) => res.status(201).json({}));
+api.patch('/admin/packages/:id', (req, res) => res.json({}));
+api.get('/admin/orders', (req, res) => res.json({ orders: [
+    { id: 1, uuid: 'o1', user: { id: 1, username: 'preview' }, package: 'Starter box', kind: 'box', amount: 999, currency: 'USD', provider: 'stripe', status: 'paid', renewal: false, box_id: 7, server_id: null, setting_up: false, error: null, paid_at: new Date().toISOString(), created_at: new Date().toISOString() },
+    { id: 2, uuid: 'o2', user: { id: 5, username: 'alex' }, package: 'Survival server', kind: 'server', amount: 499, currency: 'USD', provider: 'paypal', status: 'paid', renewal: false, box_id: null, server_id: null, setting_up: true, error: 'The node has no free port for another server.', paid_at: new Date().toISOString(), created_at: new Date().toISOString() },
+], pagination: { total: 2, count: 2, per_page: 25, current_page: 1, total_pages: 1 } }));
+api.get('/admin/settings/payments', (req, res) => res.json({ enabled: true, currency: 'USD', stripe: { enabled: true, secret_set: true, webhook_secret_set: false, webhook_url: 'https://panel.example.com/api/store/webhooks/stripe' }, paypal: { enabled: false, client_id: '', secret_set: false, mode: 'sandbox', webhook_id: '', webhook_url: 'https://panel.example.com/api/store/webhooks/paypal' } }));
+api.patch('/admin/settings/payments', (req, res) => res.json({}));
+
 // The private network between servers.
 const privateState = () => ({ ...mockPrivate, node: 'Frankfurt-1', others: mockPrivate.joined ? [{ name: 'Lobby', address: '10.142.3.3', identifier: 'aa11bb22' }, { name: 'Survival SMP', address: '10.142.5.2', identifier: 'a1b2c3d4' }] : [] });
 api.get('/servers/:id/private-network', (req, res) => res.json(privateState()));

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { LogoutIcon, ViewGridIcon, AdjustmentsIcon } from '@heroicons/react/outline';
+import { LogoutIcon, ViewGridIcon, AdjustmentsIcon, CubeIcon, ShoppingCartIcon } from '@heroicons/react/outline';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import CommandPalette from '@/components/palette/CommandPalette';
@@ -16,6 +16,8 @@ import useBranding from '@/plugins/useBranding';
 import { linksAt } from '@/lib/branding';
 import ThemeToggle from '@/components/elements/ThemeToggle';
 import PrivacyBadge from '@/components/elements/PrivacyBadge';
+import { useBoxes } from '@/api/boxes';
+import { useStore } from '@/api/store';
 
 const RightNavigation = styled.div`
     ${tw`flex items-center space-x-1`};
@@ -45,6 +47,9 @@ export default () => {
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data!.canAccessAdmin);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const inAdmin = useLocation().pathname.startsWith('/admin');
+    // Boxes are there once a person has one, the store once an admin opened it.
+    const hasBoxes = (useBoxes().data?.length ?? 0) > 0;
+    const storeOpen = !!useStore().data?.open;
     const navbarLinks = linksAt(useBranding().links, 'navbar');
 
     const onTriggerLogout = () => {
@@ -105,6 +110,20 @@ export default () => {
                             <ViewGridIcon />
                         </NavLink>
                     </Tooltip>
+                    {hasBoxes && (
+                        <Tooltip placement={'bottom'} content={'Boxes'}>
+                            <NavLink to={'/boxes'}>
+                                <CubeIcon />
+                            </NavLink>
+                        </Tooltip>
+                    )}
+                    {storeOpen && (
+                        <Tooltip placement={'bottom'} content={'Store'}>
+                            <NavLink to={'/store'}>
+                                <ShoppingCartIcon />
+                            </NavLink>
+                        </Tooltip>
+                    )}
                     {rootAdmin && (
                         <Tooltip placement={'bottom'} content={'Admin'}>
                             <NavLink to={'/admin'}>

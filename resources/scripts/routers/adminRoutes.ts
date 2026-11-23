@@ -144,6 +144,18 @@ const NodeServersPage = lazy(
     () => import(/* webpackChunkName: "admin-nodes" */ '@/components/admin/pages/nodes/NodeServersPage')
 );
 
+const BoxesPage = lazy(() => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxesPage'));
+const BoxPage = lazy(() => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxPage'));
+const PackagesPage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/store/PackagesPage')
+);
+const OrdersPage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/store/OrdersPage')
+);
+const SettingsPaymentsPage = lazy(
+    () => import(/* webpackChunkName: "admin-settings" */ '@/components/admin/pages/settings/PaymentsPage')
+);
+
 const ServersPage = lazy(
     () => import(/* webpackChunkName: "admin-servers" */ '@/components/admin/pages/servers/ServersPage')
 );
@@ -226,6 +238,11 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     },
     { path: '/admin/settings/pools', permissions: ['settings.pools.view'], component: SettingsPoolsPage },
     { path: '/admin/settings/trash', permissions: ['settings.trash.view'], component: SettingsTrashPage },
+    { path: '/admin/boxes', permissions: ['boxes.view'], component: BoxesPage },
+    { path: '/admin/boxes/view/:id', permissions: ['boxes.view'], component: BoxPage },
+    { path: '/admin/packages', permissions: ['packages.view'], component: PackagesPage },
+    { path: '/admin/orders', permissions: ['orders.view'], component: OrdersPage },
+    { path: '/admin/settings/payments', permissions: ['settings.payments.view'], component: SettingsPaymentsPage },
     { path: '/admin/settings/minecraft', permissions: ['settings.minecraft.view'], component: SettingsMinecraftPage },
     {
         path: '/admin/settings/private-network',

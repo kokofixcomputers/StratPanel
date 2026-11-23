@@ -38,6 +38,7 @@ class PackagesController extends Controller
     public function index(): JsonResponse
     {
         return new JsonResponse([
+            'currency' => app(\Pterodactyl\Services\Store\StoreSettings::class)->currency(),
             'packages' => StorePackage::query()->orderBy('sort')->orderBy('id')->get()->map(fn (StorePackage $p) => self::present($p))->values()->all(),
             'nodes' => Node::query()->orderBy('name')->get(['id', 'name'])->map(fn ($n) => ['id' => $n->id, 'name' => $n->name])->all(),
             'eggs' => Egg::query()->orderBy('name')->get(['id', 'name'])->map(fn ($e) => ['id' => $e->id, 'name' => $e->name])->all(),

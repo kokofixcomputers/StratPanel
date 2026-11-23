@@ -47,6 +47,8 @@ class BoxesController extends Controller
         return new JsonResponse([
             'boxes' => $boxes->getCollection()->map(fn (Box $b) => BoxPresenter::summary($b))->values()->all(),
             'pagination' => $this->pagination($boxes),
+            // For the form of a new box.
+            'nodes' => \Pterodactyl\Models\Node::query()->orderBy('name')->get(['id', 'name'])->map(fn ($n) => ['id' => $n->id, 'name' => $n->name])->all(),
         ]);
     }
 
