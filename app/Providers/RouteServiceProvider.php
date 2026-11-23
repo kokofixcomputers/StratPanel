@@ -80,6 +80,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('/api/router')
                 ->group(base_path('routes/api-router.php'));
 
+            // Payment services call this without a session, every notification is checked (see StoreService).
+            Route::middleware(['throttle:120,1'])
+                ->prefix('/api/store')
+                ->group(base_path('routes/api-store.php'));
+
             Route::middleware('daemon')
                 ->prefix('/api/remote')
                 ->scopeBindings()

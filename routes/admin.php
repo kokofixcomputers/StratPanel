@@ -73,6 +73,7 @@ Route::group(['prefix' => 'settings'], function () {
     Route::get('/trash', Admin\SpaController::class)->name('admin.settings.trash')->middleware('admin.can:settings.trash.view');
     Route::get('/private-network', Admin\SpaController::class)->name('admin.settings.private')->middleware('admin.can:settings.private.view');
     Route::get('/minecraft', Admin\SpaController::class)->name('admin.settings.minecraft')->middleware('admin.can:settings.minecraft.view');
+    Route::get('/payments', Admin\SpaController::class)->name('admin.settings.payments')->middleware('admin.can:settings.payments.view');
     Route::get('/tunnels', Admin\SpaController::class)->name('admin.settings.tunnels')->middleware('admin.can:settings.tunnels.view');
     Route::get('/backups', Admin\SpaController::class)->name('admin.settings.backups')->middleware('admin.can:settings.backups.view');
     Route::get('/certificates', Admin\SpaController::class)->name('admin.settings.certificates')->middleware('admin.can:settings.certificates.view');
@@ -152,6 +153,21 @@ Route::group(['prefix' => 'servers'], function () {
     // A file to download, not a page.
     Route::get('/view/{server:id}/export', Admin\Servers\ServerExportController::class)->name('admin.servers.view.export')->middleware('admin.can:servers.view');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Boxes and the store
+|--------------------------------------------------------------------------
+|
+| Endpoint: /admin/boxes, /admin/packages, /admin/orders (the React app, the data comes from the admin API)
+|
+*/
+Route::group(['prefix' => 'boxes'], function () {
+    Route::get('/', Admin\SpaController::class)->name('admin.boxes')->middleware('admin.can:boxes.view');
+    Route::get('/view/{box}', Admin\SpaController::class)->name('admin.boxes.view')->whereNumber('box')->middleware('admin.can:boxes.view');
+});
+Route::get('/packages', Admin\SpaController::class)->name('admin.packages')->middleware('admin.can:packages.view');
+Route::get('/orders', Admin\SpaController::class)->name('admin.orders')->middleware('admin.can:orders.view');
 
 /*
 |--------------------------------------------------------------------------

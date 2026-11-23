@@ -141,6 +141,8 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
 
         Route::get('/private-network', [Admin\Settings\PrivateNetworkController::class, 'index'])->middleware('admin.can:settings.private.view');
         Route::patch('/private-network', [Admin\Settings\PrivateNetworkController::class, 'update'])->middleware('admin.can:settings.private.update');
+        Route::get('/payments', [Admin\Settings\PaymentsController::class, 'index'])->middleware('admin.can:settings.payments.view');
+        Route::patch('/payments', [Admin\Settings\PaymentsController::class, 'update'])->middleware('admin.can:settings.payments.update');
         Route::get('/minecraft', [Admin\Settings\MinecraftLinkController::class, 'index'])->middleware('admin.can:settings.minecraft.view');
         Route::patch('/minecraft', [Admin\Settings\MinecraftLinkController::class, 'update'])->middleware('admin.can:settings.minecraft.update');
 
@@ -228,6 +230,27 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
     // The people to choose an owner from, and the allocations of a node that are free: for the forms of servers.
     Route::get('/lookups/people', [Admin\ServersController::class, 'people'])->middleware('admin.can:users.view,servers.create,servers.update,roles.assign');
     Route::get('/nodes/{node}/free-allocations', [Admin\ServersController::class, 'freeAllocations'])->whereNumber('node')->middleware('admin.can:servers.create,servers.build,servers.transfer');
+
+    // Boxes (resources people make servers in) and the store that sells them.
+    Route::prefix('/boxes')->group(function () {
+        Route::get('/', [Admin\BoxesController::class, 'index'])->middleware('admin.can:boxes.view');
+        Route::post('/', [Admin\BoxesController::class, 'store'])->middleware('admin.can:boxes.create');
+        Route::get('/{box}', [Admin\BoxesController::class, 'show'])->whereNumber('box')->middleware('admin.can:boxes.view');
+        Route::patch('/{box}', [Admin\BoxesController::class, 'update'])->whereNumber('box')->middleware('admin.can:boxes.update');
+        Route::post('/{box}/suspend', [Admin\BoxesController::class, 'suspend'])->whereNumber('box')->middleware('admin.can:boxes.update');
+        Route::delete('/{box}', [Admin\BoxesController::class, 'destroy'])->whereNumber('box')->middleware('admin.can:boxes.delete');
+    });
+    Route::prefix('/packages')->group(function () {
+        Route::get('/', [Admin\PackagesController::class, 'index'])->middleware('admin.can:packages.view');
+        Route::post('/', [Admin\PackagesController::class, 'store'])->middleware('admin.can:packages.create');
+        Route::patch('/{package}', [Admin\PackagesController::class, 'update'])->whereNumber('package')->middleware('admin.can:packages.update');
+        Route::delete('/{package}', [Admin\PackagesController::class, 'destroy'])->whereNumber('package')->middleware('admin.can:packages.delete');
+    });
+    Route::prefix('/orders')->group(function () {
+        Route::get('/', [Admin\OrdersController::class, 'index'])->middleware('admin.can:orders.view');
+        Route::post('/{order}/refund', [Admin\OrdersController::class, 'refund'])->whereNumber('order')->middleware('admin.can:orders.update');
+        Route::post('/{order}/fulfill', [Admin\OrdersController::class, 'fulfill'])->whereNumber('order')->middleware('admin.can:orders.update');
+    });
 
     Route::prefix('/servers')->group(function () {
         Route::get('/', [Admin\ServersController::class, 'index'])->middleware('admin.can:servers.view');

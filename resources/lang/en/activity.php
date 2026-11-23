@@ -21,7 +21,23 @@ return [
         ],
     ],
     'node' => [
-        'certificate' => [
+        'box' => [
+        'create' => 'Created the box :name',
+        'update' => 'Changed the box :name',
+        'suspend' => 'Suspended the box :name',
+        'unsuspend' => 'Unsuspended the box :name',
+        'delete' => 'Deleted the box :name',
+    ],
+    'package' => [
+        'create' => 'Added the package :name to the store',
+        'update' => 'Changed the package :name',
+        'delete' => 'Removed the package :name from the store',
+    ],
+    'order' => [
+        'refund' => 'Refunded the order :order',
+        'fulfill' => 'Set up the order :order',
+    ],
+    'certificate' => [
             'push' => 'Gave a certificate to the node',
         ],
     ],
@@ -52,6 +68,13 @@ return [
             'provider-unlinked' => 'Unlinked :provider from the account',
             'minecraft-linked' => 'Linked the Minecraft account :username',
             'minecraft-unlinked' => 'Unlinked the Minecraft account',
+        ],
+        'store' => [
+            'checkout' => 'Started paying for :package with :provider',
+        ],
+        'box' => [
+            'server-create' => 'Created the server :server in the box :box',
+            'server-resize' => 'Changed what the server :server has of the box :box',
         ],
         'api-key' => [
             'create' => 'Created new API key :identifier',

@@ -41,6 +41,27 @@ Route::get('/self-service', [Client\SelfServiceController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
+| Boxes and the store
+|--------------------------------------------------------------------------
+|
+| Endpoint: /api/client/store, /api/client/boxes
+|
+*/
+Route::prefix('/store')->group(function () {
+    Route::get('/', [Client\StoreController::class, 'index']);
+    Route::post('/checkout', [Client\StoreController::class, 'checkout'])->middleware('throttle:10,1');
+    Route::get('/orders', [Client\StoreController::class, 'orders']);
+    Route::post('/orders/{order}/confirm', [Client\StoreController::class, 'confirm'])->where('order', '[0-9a-f-]{36}')->middleware('throttle:30,1');
+});
+Route::prefix('/boxes')->group(function () {
+    Route::get('/', [Client\BoxController::class, 'index']);
+    Route::get('/{box}', [Client\BoxController::class, 'show'])->where('box', '[0-9a-f-]{36}');
+    Route::post('/{box}/servers', [Client\BoxController::class, 'createServer'])->where('box', '[0-9a-f-]{36}')->middleware('throttle:10,1');
+    Route::patch('/{box}/servers/{member}', [Client\BoxController::class, 'resizeServer'])->where(['box' => '[0-9a-f-]{36}', 'member' => '[0-9a-f-]{36}']);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Dashboard folders and stars
 |--------------------------------------------------------------------------
 |

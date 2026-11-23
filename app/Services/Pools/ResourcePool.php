@@ -65,7 +65,8 @@ class ResourcePool
     /** @return array{memory: int, disk: int, cpu: int, allocations: int, backups: int, databases: int} what the servers of this person use now */
     public function used(User $user): array
     {
-        $servers = Server::query()->where('owner_id', $user->id);
+        // What is made inside a box is paid from the box, not from the pool.
+        $servers = Server::query()->where('owner_id', $user->id)->whereNull('box_id');
 
         return [
             'memory' => (int) (clone $servers)->sum('memory'),

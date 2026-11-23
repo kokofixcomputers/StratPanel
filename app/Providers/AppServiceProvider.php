@@ -40,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
             'allocation' => Models\Allocation::class,
             'api_key' => Models\ApiKey::class,
             'backup' => Models\Backup::class,
+            'box' => Models\Box::class,
             'certificate' => Models\Certificate::class,
             'database' => Models\Database::class,
             'egg' => Models\Egg::class,

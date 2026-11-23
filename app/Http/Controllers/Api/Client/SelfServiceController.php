@@ -41,7 +41,7 @@ class SelfServiceController extends ClientApiController
     {
         $config = config('pterodactyl.self_service');
         $max = $this->maxServers($request);
-        $owned = Server::query()->where('owner_id', $request->user()->id)->count();
+        $owned = Server::query()->where('owner_id', $request->user()->id)->whereNull('box_id')->count();
         // The panel's switch, unless a role of this person says otherwise.
         $enabled = $request->user()->allowedTo('self.servers.create', (bool) $config['enabled']);
 
@@ -137,7 +137,7 @@ class SelfServiceController extends ClientApiController
 
         $max = $this->maxServers($request);
         // With a pool it is the resources that run out, not a number of servers.
-        if (!$pooled && $max > 0 && Server::query()->where('owner_id', $user->id)->count() >= $max) {
+        if (!$pooled && $max > 0 && Server::query()->where('owner_id', $user->id)->whereNull('box_id')->count() >= $max) {
             throw new DisplayException("You have reached the limit of $max servers for your account.");
         }
 

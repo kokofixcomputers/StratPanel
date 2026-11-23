@@ -180,6 +180,8 @@ class Server extends Model implements Identifiable
      */
     protected $casts = [
         'node_id' => 'integer',
+        'box_id' => 'integer',
+        'expires_at' => 'datetime',
         'skip_scripts' => 'boolean',
         'owner_id' => 'integer',
         'memory' => 'integer',
@@ -348,6 +350,12 @@ class Server extends Model implements Identifiable
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\Pterodactyl\Models\Server, $this>
      */
+    /** The box the server lives in, when it does: its resources are the share of the box it was given. */
+    public function box(): BelongsTo
+    {
+        return $this->belongsTo(Box::class, 'box_id');
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_server_id');
