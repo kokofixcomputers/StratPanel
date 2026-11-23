@@ -211,4 +211,17 @@ class BoxesTest extends IntegrationTestCase
         $this->actingAs($this->admin())->getJson('/api/client/admin/boxes?search=' . urlencode($box->name))->assertOk()->assertJsonPath('boxes.0.id', $box->uuid)->assertJsonPath('boxes.0.owner.username', $user->username);
         $this->actingAs($user)->getJson('/api/client/admin/boxes')->assertStatus(403);
     }
+
+    public function testTheDashboardKnowsWhichServersAreFromABox(): void
+    {
+        $user = User::factory()->create();
+        $box = $this->box($user);
+        $this->actingAs($user)->postJson('/api/client/boxes/' . $box->uuid . '/servers', $this->share(['name' => $this->n('Tagged')]))->assertStatus(201);
+        $outside = $this->createServerModel(['owner_id' => $user->id, 'egg_id' => $this->egg->id, 'nest_id' => $this->egg->nest_id]);
+
+        $servers = collect($this->getJson('/api/client')->assertOk()->json('data'))->keyBy('attributes.uuid');
+        $inside = Server::query()->where('box_id', $box->id)->firstOrFail();
+        $this->assertSame(['id' => $box->uuid, 'name' => $box->name], $servers[$inside->uuid]['attributes']['box']);
+        $this->assertNull($servers[$outside->uuid]['attributes']['box']);
+    }
 }

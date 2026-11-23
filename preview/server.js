@@ -110,7 +110,7 @@ const api = express.Router();
 const otherServer = (name, uuid, port) => ({ ...serverAttrs(), split: name === 'Lobby' ? { part_of: { identifier: SHORT, name: 'kokotest' }, parts: 0 } : { part_of: null, parts: 0 }, name, uuid, identifier: uuid.slice(0, 8), server_identifier: uuid.slice(0, 8), relationships: { allocations: { object: 'list', data: [item('allocation', { id: port, ip: '10.0.0.5', ip_alias: null, port, notes: null, is_default: true })] }, variables: { object: 'list', data: [] } } });
 const dashServers = () => [
     item('server', { ...serverAttrs(), server_owner: true }),
-    item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true, private_address: '10.142.5.2' }),
+    item('server', { ...otherServer('Survival SMP', 'a1b2c3d4-0000-4000-8000-000000000001', 25570), server_owner: true, private_address: '10.142.5.2', box: { id: 'c0ffee00-0000-4000-8000-000000000001', name: 'Starter box' } }),
     item('server', { ...otherServer('Creative Plots!', 'b1b2c3d4-0000-4000-8000-000000000002', 25571), server_owner: false, node: 'Dallas-1' }),
     ...['Lobby', 'Skyblock', 'Bedwars', 'Modded Fun', 'Test Server 10', 'Test Server 2'].map((n, i) =>
         item('server', { ...otherServer(n, `c${i}b2c3d4-0000-4000-8000-00000000010${i}`, 25580 + i), server_owner: i % 3 !== 0, node: i % 2 ? 'Singapore-1' : 'Frankfurt-1', description: i === 2 ? 'Minigames for the whole family' : '' })

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faServer } from '@fortawesome/free-solid-svg-icons';
-import { PlayIcon, RefreshIcon, ScaleIcon, StarIcon as StarSolid, StopIcon } from '@heroicons/react/solid';
+import { CubeIcon, PlayIcon, RefreshIcon, ScaleIcon, StarIcon as StarSolid, StopIcon } from '@heroicons/react/solid';
 import { CheckIcon, FolderAddIcon, FolderIcon, StarIcon } from '@heroicons/react/outline';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -521,6 +521,15 @@ export default ({
                                     ? `Split from ${server.split.partOf.name}`
                                     : `Split into ${server.split.parts + 1} servers`}
                             </span>
+                        </p>
+                    )}
+                    {server.box && (
+                        <p
+                            css={tw`mt-1 mr-1 inline-flex max-w-full items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700`}
+                            title={`This server was made in the box ${server.box.name}, it shares the resources of the box`}
+                        >
+                            <CubeIcon css={tw`h-3.5 w-3.5 flex-shrink-0`} />
+                            <span css={tw`truncate`}>Box: {server.box.name}</span>
                         </p>
                     )}
                     {address && show.address && (
