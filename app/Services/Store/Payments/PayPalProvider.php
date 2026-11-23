@@ -59,7 +59,7 @@ class PayPalProvider implements PaymentProvider
             'purchase_units' => [[
                 'reference_id' => $order->uuid,
                 'custom_id' => $order->uuid,
-                'description' => Str::limit($order->package_name, 120, ''),
+                'description' => Str::limit($order->items->map(fn ($i) => $i->package_name)->countBy()->map(fn ($n, $name) => $n > 1 ? $n . ' x ' . $name : $name)->implode(', ') ?: $order->package_name, 120, ''),
                 'amount' => ['currency_code' => strtoupper($order->currency), 'value' => StoreSettings::decimal($order->amount, $order->currency)],
             ]],
             'payment_source' => ['paypal' => ['experience_context' => [

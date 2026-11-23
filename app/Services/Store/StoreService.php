@@ -9,6 +9,7 @@ use Pterodactyl\Models\Server;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Pterodactyl\Models\StoreOrder;
+use Pterodactyl\Models\StoreOrderItem;
 use Pterodactyl\Models\StorePackage;
 use Pterodactyl\Services\Boxes\BoxService;
 use Pterodactyl\Exceptions\DisplayException;
@@ -78,52 +79,87 @@ class StoreService
 
     // ---- buying ------------------------------------------------------------------------------------------------------------------
 
+    /** The most things one payment can be for. */
+    public const MAX_ITEMS = 20;
+
     /**
-     * Starts a payment. Returns the address of the page of the payment service where the person pays.
+     * Starts a payment for what is in the cart. Returns the address of the page of the payment service where the person pays.
      *
-     * @param  Box|Server|null  $renew  what the payment lengthens, when it is not a new purchase
+     * @param  list<array{package: StorePackage, renew?: Box|Server|null}>  $lines  one for every box or server, a renewal names what it renews
      *
      * @throws DisplayException
      */
-    public function checkout(User $user, StorePackage $package, string $providerId, Box|Server|null $renew = null): string
+    public function checkout(User $user, array $lines, string $providerId): string
     {
         if (!$this->settings->enabled()) {
             throw new DisplayException('The store is closed.');
         }
         $provider = $this->provider($providerId);
-        if (!$package->active && !$renew) {
-            throw new DisplayException('That package is not for sale.');
+        if ($lines === []) {
+            throw new DisplayException('The cart is empty.');
         }
-        if ($package->price < 1) {
-            throw new DisplayException('That package has no price.');
+        if (count($lines) > self::MAX_ITEMS) {
+            throw new DisplayException('At most ' . self::MAX_ITEMS . ' things can be paid for at once.');
         }
-        if ($renew) {
-            if (!$package->period_days) {
-                throw new DisplayException('This package is paid once, there is nothing to renew.');
+
+        $renewing = [];
+        foreach ($lines as $line) {
+            /** @var StorePackage $package */
+            $package = $line['package'];
+            $renew = $line['renew'] ?? null;
+            if (!$package->active && !$renew) {
+                throw new DisplayException($package->name . ' is not for sale any more.');
             }
-            if ((int) ($renew instanceof Box ? $renew->user_id : $renew->owner_id) !== $user->id) {
-                throw new DisplayException('That is not yours to renew.');
+            if ($package->price < 1) {
+                throw new DisplayException($package->name . ' has no price.');
+            }
+            if ($renew) {
+                if (!$package->period_days) {
+                    throw new DisplayException($package->name . ' is paid once, there is nothing to renew.');
+                }
+                if ((int) ($renew instanceof Box ? $renew->user_id : $renew->owner_id) !== $user->id) {
+                    throw new DisplayException('That is not yours to renew.');
+                }
+                $key = ($renew instanceof Box ? 'b' : 's') . $renew->id;
+                if (isset($renewing[$key])) {
+                    throw new DisplayException('Renew ' . ($renew->name ?? 'it') . ' once per payment, pay for more time after this one.');
+                }
+                $renewing[$key] = true;
             }
         }
 
-        $order = StoreOrder::query()->create([
-            'user_id' => $user->id,
-            'package_id' => $package->id,
-            'package_name' => $package->name,
-            'kind' => $package->kind,
-            'specs' => $package->specs() + ['node_id' => $package->node_id, 'egg_id' => $package->egg_id],
-            'amount' => $package->price,
-            'currency' => $this->settings->currency(),
-            'period_days' => $package->period_days,
-            'provider' => $provider->id(),
-            'status' => StoreOrder::PENDING,
-            'renewal' => $renew !== null,
-            'box_id' => $renew instanceof Box ? $renew->id : null,
-            'server_id' => $renew instanceof Server ? $renew->id : null,
-        ]);
+        $order = DB::transaction(function () use ($user, $lines, $provider) {
+            $order = StoreOrder::query()->create([
+                'user_id' => $user->id,
+                'package_name' => count($lines) === 1 ? $lines[0]['package']->name : count($lines) . ' items',
+                'kind' => 'cart',
+                'specs' => [],
+                'amount' => array_sum(array_map(fn ($l) => $l['package']->price, $lines)),
+                'currency' => $this->settings->currency(),
+                'provider' => $provider->id(),
+                'status' => StoreOrder::PENDING,
+            ]);
+            foreach ($lines as $line) {
+                $package = $line['package'];
+                $renew = $line['renew'] ?? null;
+                $order->items()->create([
+                    'package_id' => $package->id,
+                    'package_name' => $package->name,
+                    'kind' => $package->kind,
+                    'specs' => $package->specs() + ['node_id' => $package->node_id, 'egg_id' => $package->egg_id],
+                    'amount' => $package->price,
+                    'period_days' => $package->period_days,
+                    'renewal' => $renew !== null,
+                    'box_id' => $renew instanceof Box ? $renew->id : null,
+                    'server_id' => $renew instanceof Server ? $renew->id : null,
+                ]);
+            }
+
+            return $order;
+        });
 
         try {
-            return $provider->checkout($order->setRelation('user', $user), $this->settings->appUrl() . '/store/return?order=' . $order->uuid, $this->settings->appUrl() . '/store?canceled=1');
+            return $provider->checkout($order->setRelation('user', $user)->load('items'), $this->settings->appUrl() . '/store/return?order=' . $order->uuid, $this->settings->appUrl() . '/store?canceled=1');
         } catch (PaymentException $e) {
             $order->forceFill(['status' => StoreOrder::FAILED, 'error' => $e->getMessage()])->save();
 
@@ -168,63 +204,72 @@ class StoreService
     }
 
     /**
-     * Makes what was bought. A paid order is never lost: when it can not be made (no room on any node, for one) the reason is kept on the
-     * order and an admin can try again.
+     * Makes what was bought, line by line. A paid order is never lost: what can not be made (no room on any node, for one) keeps its reason
+     * on the line and an admin can try again, the lines that were made stay made.
      */
     public function fulfill(StoreOrder $order): StoreOrder
     {
-        try {
-            DB::transaction(function () use ($order) {
-                /** @var StoreOrder $locked */
-                $locked = StoreOrder::query()->lockForUpdate()->with('user')->findOrFail($order->id);
-                if ($locked->fulfilled_at !== null || $locked->status !== StoreOrder::PAID) {
-                    return;
-                }
+        $order->load(['items', 'user']);
+        foreach ($order->items as $item) {
+            if ($item->fulfilled_at !== null) {
+                continue;
+            }
+            try {
+                DB::transaction(function () use ($item, $order) {
+                    /** @var StoreOrderItem $locked */
+                    $locked = StoreOrderItem::query()->lockForUpdate()->findOrFail($item->id);
+                    if ($locked->fulfilled_at !== null || $order->fresh()->status !== StoreOrder::PAID) {
+                        return;
+                    }
 
-                $locked->renewal ? $this->renew($locked) : $this->make($locked);
-                $locked->forceFill(['fulfilled_at' => now(), 'error' => null])->save();
-            });
-        } catch (\Throwable $e) {
-            report($e);
-            $order->forceFill(['error' => $e instanceof DisplayException ? $e->getMessage() : 'It could not be set up: ' . $e->getMessage()])->save();
+                    $locked->renewal ? $this->renew($locked) : $this->make($locked, $order->user);
+                    $locked->forceFill(['fulfilled_at' => now(), 'error' => null])->save();
+                });
+            } catch (\Throwable $e) {
+                report($e);
+                $item->forceFill(['error' => $e instanceof DisplayException ? $e->getMessage() : 'It could not be set up: ' . $e->getMessage()])->save();
+            }
         }
+
+        $order->load('items');
+        $open = $order->items->first(fn (StoreOrderItem $i) => $i->fulfilled_at === null);
+        $order->forceFill($open === null ? ['fulfilled_at' => now(), 'error' => null] : ['error' => $open->package_name . ': ' . ($open->error ?? 'it is waiting to be set up')])->save();
 
         return $order->refresh();
     }
 
-    private function make(StoreOrder $order): void
+    private function make(StoreOrderItem $item, User $user): void
     {
-        $user = $order->user;
-        $specs = $order->specs;
-        $expires = $order->period_days ? now()->addDays($order->period_days) : null;
+        $specs = $item->specs;
+        $expires = $item->period_days ? now()->addDays($item->period_days) : null;
 
-        if ($order->kind === StorePackage::BOX) {
+        if ($item->kind === StorePackage::BOX) {
             $box = $this->boxes->create($user, $specs + [
-                'name' => $order->package_name,
+                'name' => $item->package_name,
                 'node_id' => $specs['node_id'] ?? null,
                 'source' => 'order',
                 'expires_at' => $expires,
             ]);
-            $order->forceFill(['box_id' => $box->id]);
+            $item->forceFill(['box_id' => $box->id]);
 
             return;
         }
 
-        $server = $this->makeServer($user, $order->package_name, $specs);
+        $server = $this->makeServer($user, $item->package_name, $specs);
         $server->forceFill(['expires_at' => $expires])->save();
-        $order->forceFill(['server_id' => $server->id]);
+        $item->forceFill(['server_id' => $server->id]);
     }
 
-    /** Lengthens a box or a server by what the order paid for, and lets it run again if it had run out. */
-    private function renew(StoreOrder $order): void
+    /** Lengthens a box or a server by what the line paid for, and lets it run again if it had run out. */
+    private function renew(StoreOrderItem $item): void
     {
-        $target = $order->box_id ? Box::query()->find($order->box_id) : Server::query()->find($order->server_id);
+        $target = $item->box_id ? Box::query()->find($item->box_id) : Server::query()->find($item->server_id);
         if (!$target) {
             throw new DisplayException('What was renewed does not exist any more.');
         }
         $from = $target->expires_at && $target->expires_at->isFuture() ? $target->expires_at : now();
         $wasOut = $target->expires_at !== null && $target->expires_at->isPast();
-        $target->forceFill(['expires_at' => $from->copy()->addDays((int) $order->period_days)])->save();
+        $target->forceFill(['expires_at' => $from->copy()->addDays((int) $item->period_days)])->save();
 
         if ($wasOut) {
             $target instanceof Box ? $this->boxes->unsuspend($target) : $this->suspension->toggle($target, SuspensionService::ACTION_UNSUSPEND);
@@ -304,10 +349,12 @@ class StoreService
         $order->forceFill(['status' => StoreOrder::REFUNDED])->save();
 
         if ($revoke) {
-            if ($order->box_id && ($box = Box::query()->find($order->box_id))) {
-                $this->boxes->suspend($box, Box::EXPIRED);
-            } elseif ($order->server_id && ($server = Server::query()->find($order->server_id))) {
-                $this->suspension->toggle($server, SuspensionService::ACTION_SUSPEND);
+            foreach ($order->items()->get() as $item) {
+                if ($item->box_id && ($box = Box::query()->find($item->box_id))) {
+                    $this->boxes->suspend($box, Box::EXPIRED);
+                } elseif ($item->server_id && ($server = Server::query()->find($item->server_id))) {
+                    $this->suspension->toggle($server, SuspensionService::ACTION_SUSPEND);
+                }
             }
         }
 

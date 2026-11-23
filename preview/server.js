@@ -723,8 +723,9 @@ api.post('/admin/boxes', (req, res) => res.status(201).json(boxView(true)));
 api.patch('/admin/boxes/:id', (req, res) => res.json(boxView(true)));
 api.post('/admin/boxes/:id/suspend', (req, res) => res.json(boxView(true)));
 api.get('/admin/packages', (req, res) => res.json({ currency: 'USD', packages: mockAdminPackages, nodes: [{ id: 1, name: 'Frankfurt-1' }], eggs: [{ id: 1, name: 'Java' }] }));
-api.post('/admin/packages', (req, res) => res.status(201).json({}));
-api.patch('/admin/packages/:id', (req, res) => res.json({}));
+api.get('/admin/packages/:id', (req, res) => res.json(mockAdminPackages.find((p) => p.id === Number(req.params.id)) || mockAdminPackages[0]));
+api.post('/admin/packages', (req, res) => res.status(201).json({ ...mockAdminPackages[0], id: 9 }));
+api.patch('/admin/packages/:id', (req, res) => res.json(mockAdminPackages[0]));
 api.get('/admin/orders', (req, res) => res.json({ orders: [
     { id: 1, uuid: 'o1', user: { id: 1, username: 'preview' }, package: 'Starter box', kind: 'box', amount: 999, currency: 'USD', provider: 'stripe', status: 'paid', renewal: false, box_id: 7, server_id: null, setting_up: false, error: null, paid_at: new Date().toISOString(), created_at: new Date().toISOString() },
     { id: 2, uuid: 'o2', user: { id: 5, username: 'alex' }, package: 'Survival server', kind: 'server', amount: 499, currency: 'USD', provider: 'paypal', status: 'paid', renewal: false, box_id: null, server_id: null, setting_up: true, error: 'The node has no free port for another server.', paid_at: new Date().toISOString(), created_at: new Date().toISOString() },

@@ -4,7 +4,10 @@ import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/solid';
 import PageContentBlock from '@/components/elements/PageContentBlock';
 import Spinner from '@/components/elements/Spinner';
 import { httpErrorToHuman } from '@/api/http';
+import { useStoreState } from 'easy-peasy';
+import { ApplicationStore } from '@/state';
 import { confirmOrder, StoreOrder } from '@/api/store';
+import { clearCart } from '@/lib/cart';
 
 /**
  * Where the payment page sends the person back to. The address is not believed: the panel asks the payment service what happened, and
@@ -12,6 +15,7 @@ import { confirmOrder, StoreOrder } from '@/api/store';
  */
 export default () => {
     const order = new URLSearchParams(useLocation().search).get('order');
+    const user = useStoreState((state: ApplicationStore) => state.user.data!.uuid);
     const [result, setResult] = useState<StoreOrder | null>(null);
     const [error, setError] = useState('');
     const [tries, setTries] = useState(0);
@@ -23,6 +27,8 @@ export default () => {
             .then((next) => {
                 if (stale) return;
                 setResult(next);
+                // What was paid for is not in the cart any more.
+                if (next.status === 'paid') clearCart(user);
                 if (next.status === 'pending' && tries < 8) setTimeout(() => !stale && setTries((n) => n + 1), 3000);
             })
             .catch((e) => !stale && setError(httpErrorToHuman(e)));
@@ -85,8 +91,18 @@ export default () => {
                     </>
                 )}
                 <div className={'mt-6 flex flex-wrap justify-center gap-3 text-sm font-semibold text-primary-600'}>
-                    {done && result?.box && <Link to={`/boxes/${result.box}`}>Open the box</Link>}
-                    {done && result?.server && <Link to={`/server/${result.server}`}>Open the server</Link>}
+                    {done &&
+                        result?.items.map((item, index) =>
+                            item.box ? (
+                                <Link key={index} to={`/boxes/${item.box}`}>
+                                    Open the box
+                                </Link>
+                            ) : item.server ? (
+                                <Link key={index} to={`/server/${item.server}`}>
+                                    Open {item.name}
+                                </Link>
+                            ) : null
+                        )}
                     <Link to={'/store'}>Back to the store</Link>
                 </div>
             </div>

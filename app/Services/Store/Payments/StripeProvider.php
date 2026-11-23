@@ -50,14 +50,15 @@ class StripeProvider implements PaymentProvider
             'success_url' => $returnUrl,
             'cancel_url' => $cancelUrl,
             'customer_email' => $order->user->email,
-            'line_items' => [[
-                'quantity' => 1,
+            // One line for every kind of thing in the cart, with how many of them.
+            'line_items' => $order->items->groupBy(fn ($item) => $item->package_name . '|' . $item->amount . '|' . ($item->renewal ? 'r' : 'n'))->values()->map(fn ($group) => [
+                'quantity' => $group->count(),
                 'price_data' => [
                     'currency' => strtolower($order->currency),
-                    'unit_amount' => $order->amount,
-                    'product_data' => ['name' => $order->package_name],
+                    'unit_amount' => $group->first()->amount,
+                    'product_data' => ['name' => $group->first()->package_name . ($group->first()->renewal ? ' (renewal)' : '')],
                 ],
-            ]],
+            ])->all(),
         ]);
 
         if (!$response->successful() || !$response->json('url')) {

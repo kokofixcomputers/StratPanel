@@ -164,9 +164,18 @@ Route::group(['prefix' => 'servers'], function () {
 */
 Route::group(['prefix' => 'boxes'], function () {
     Route::get('/', Admin\SpaController::class)->name('admin.boxes')->middleware('admin.can:boxes.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.boxes.new')->middleware('admin.can:boxes.create');
     Route::get('/view/{box}', Admin\SpaController::class)->name('admin.boxes.view')->whereNumber('box')->middleware('admin.can:boxes.view');
+    Route::get('/view/{box}/details', Admin\SpaController::class)->name('admin.boxes.view.details')->whereNumber('box')->middleware('admin.can:boxes.view');
+    Route::get('/view/{box}/servers', Admin\SpaController::class)->name('admin.boxes.view.servers')->whereNumber('box')->middleware('admin.can:boxes.view');
+    Route::get('/view/{box}/manage', Admin\SpaController::class)->name('admin.boxes.view.manage')->whereNumber('box')->middleware('admin.can:boxes.view');
+    Route::get('/view/{box}/delete', Admin\SpaController::class)->name('admin.boxes.view.delete')->whereNumber('box')->middleware('admin.can:boxes.delete');
 });
-Route::get('/packages', Admin\SpaController::class)->name('admin.packages')->middleware('admin.can:packages.view');
+Route::group(['prefix' => 'packages'], function () {
+    Route::get('/', Admin\SpaController::class)->name('admin.packages')->middleware('admin.can:packages.view');
+    Route::get('/new', Admin\SpaController::class)->name('admin.packages.new')->middleware('admin.can:packages.create');
+    Route::get('/view/{package}', Admin\SpaController::class)->name('admin.packages.view')->whereNumber('package')->middleware('admin.can:packages.view');
+});
 Route::get('/orders', Admin\SpaController::class)->name('admin.orders')->middleware('admin.can:orders.view');
 
 /*

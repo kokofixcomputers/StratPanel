@@ -18,7 +18,7 @@ interface Common {
 }
 
 const Help = ({ children }: { children?: React.ReactNode }) =>
-    children ? <p className={'input-help'}>{children}</p> : null;
+    children ? <p className={'input-help mt-1.5 text-xs text-neutral-400'}>{children}</p> : null;
 
 export const TextField = ({
     id,

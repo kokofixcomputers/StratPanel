@@ -21,7 +21,7 @@ class OrdersController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = StoreOrder::query()->with('user:id,username,email')->where('status', '!=', StoreOrder::PENDING);
+        $query = StoreOrder::query()->with(['user:id,username,email', 'items'])->where('status', '!=', StoreOrder::PENDING);
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
             $query->where(fn ($q) => $q->where('package_name', 'like', '%' . $search . '%')->orWhere('uuid', $search)
@@ -35,15 +35,12 @@ class OrdersController extends Controller
                 'uuid' => $o->uuid,
                 'user' => ['id' => $o->user->id, 'username' => $o->user->username],
                 'package' => $o->package_name,
-                'kind' => $o->kind,
                 'amount' => $o->amount,
                 'currency' => $o->currency,
                 'provider' => $o->provider,
                 'status' => $o->status,
-                'renewal' => $o->renewal,
-                'box_id' => $o->box_id,
-                'server_id' => $o->server_id,
-                'setting_up' => $o->status === StoreOrder::PAID && $o->fulfilled_at === null,
+                'items' => $o->items->map(fn ($i) => ['name' => $i->package_name, 'kind' => $i->kind, 'renewal' => $i->renewal, 'box_id' => $i->box_id, 'server_id' => $i->server_id, 'done' => $i->fulfilled_at !== null, 'error' => $i->error])->values()->all(),
+                'setting_up' => $o->isSettingUp(),
                 'error' => $o->error,
                 'paid_at' => $o->paid_at?->toIso8601String(),
                 'created_at' => $o->created_at?->toIso8601String(),
@@ -68,6 +65,6 @@ class OrdersController extends Controller
         $found = $this->store->fulfill(StoreOrder::query()->findOrFail($order));
         Activity::event('order:fulfill')->property(['order' => $found->uuid])->log();
 
-        return new JsonResponse(['setting_up' => $found->fulfilled_at === null, 'error' => $found->error]);
+        return new JsonResponse(['setting_up' => $found->isSettingUp(), 'error' => $found->error]);
     }
 }

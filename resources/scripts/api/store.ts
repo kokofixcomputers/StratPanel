@@ -20,20 +20,29 @@ export interface StoreState {
     packages: StorePackage[];
 }
 
+export interface StoreOrderItem {
+    name: string;
+    kind: 'server' | 'box';
+    amount: number;
+    renewal: boolean;
+    // Whether it was made (or renewed).
+    done: boolean;
+    box: string | null;
+    server: string | null;
+}
+
 export interface StoreOrder {
     id: string;
+    // What the order is called: the package, or "3 items".
     package: string;
-    kind: 'server' | 'box';
     amount: number;
     currency: string;
     provider: string;
     status: 'pending' | 'paid' | 'canceled' | 'failed' | 'refunded';
-    renewal: boolean;
-    // Paid, and waiting for what was bought to be made.
+    // Paid, and waiting for something to be made.
     setting_up: boolean;
     problem: string | null;
-    box: string | null;
-    server: string | null;
+    items: StoreOrderItem[];
     paid_at: string | null;
     created_at: string | null;
 }
@@ -52,12 +61,17 @@ export const useOrders = () =>
         }
     );
 
-/** Starts a payment, the answer is where to send the person. `target` renews a box or a server they have. */
-export const checkout = async (
-    pkg: string,
-    provider: string,
-    target?: { box?: string; server?: string }
-): Promise<string> => (await http.post('/api/client/store/checkout', { package: pkg, provider, ...target })).data.url;
+export interface CheckoutItem {
+    package: string;
+    quantity?: number;
+    // Renews a box or a server the person has, instead of buying another.
+    box?: string;
+    server?: string;
+}
+
+/** Starts a payment for the items, the answer is where to send the person. */
+export const checkout = async (items: CheckoutItem[], provider: string): Promise<string> =>
+    (await http.post('/api/client/store/checkout', { items, provider })).data.url;
 
 /** Asks the panel what became of a payment (it asks the payment service). */
 export const confirmOrder = async (order: string): Promise<StoreOrder> =>

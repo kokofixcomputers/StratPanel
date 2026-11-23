@@ -1,7 +1,14 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { LogoutIcon, ViewGridIcon, AdjustmentsIcon, CubeIcon, ShoppingCartIcon } from '@heroicons/react/outline';
+import {
+    LogoutIcon,
+    ViewGridIcon,
+    AdjustmentsIcon,
+    CubeIcon,
+    ShoppingBagIcon,
+    ShoppingCartIcon,
+} from '@heroicons/react/outline';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import CommandPalette from '@/components/palette/CommandPalette';
@@ -18,6 +25,7 @@ import ThemeToggle from '@/components/elements/ThemeToggle';
 import PrivacyBadge from '@/components/elements/PrivacyBadge';
 import { useBoxes } from '@/api/boxes';
 import { useStore } from '@/api/store';
+import { cartCount, useCart } from '@/lib/cart';
 
 const RightNavigation = styled.div`
     ${tw`flex items-center space-x-1`};
@@ -50,6 +58,7 @@ export default () => {
     // Boxes are there once a person has one, the store once an admin opened it.
     const hasBoxes = (useBoxes().data?.length ?? 0) > 0;
     const storeOpen = !!useStore().data?.open;
+    const inCart = cartCount(useCart(useStoreState((state: ApplicationStore) => state.user.data!.uuid)));
     const navbarLinks = linksAt(useBranding().links, 'navbar');
 
     const onTriggerLogout = () => {
@@ -119,8 +128,24 @@ export default () => {
                     )}
                     {storeOpen && (
                         <Tooltip placement={'bottom'} content={'Store'}>
-                            <NavLink to={'/store'}>
+                            <NavLink to={'/store'} exact>
+                                <ShoppingBagIcon />
+                            </NavLink>
+                        </Tooltip>
+                    )}
+                    {(storeOpen || inCart > 0) && (
+                        <Tooltip placement={'bottom'} content={'Cart'}>
+                            <NavLink to={'/store/cart'} className={'relative'}>
                                 <ShoppingCartIcon />
+                                {inCart > 0 && (
+                                    <span
+                                        className={
+                                            'absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary-600 px-1 text-2xs font-semibold text-white'
+                                        }
+                                    >
+                                        {inCart}
+                                    </span>
+                                )}
                             </NavLink>
                         </Tooltip>
                     )}

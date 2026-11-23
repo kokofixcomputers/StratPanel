@@ -243,6 +243,7 @@ Route::middleware(AdminAuthenticate::class)->group(function () {
     Route::prefix('/packages')->group(function () {
         Route::get('/', [Admin\PackagesController::class, 'index'])->middleware('admin.can:packages.view');
         Route::post('/', [Admin\PackagesController::class, 'store'])->middleware('admin.can:packages.create');
+        Route::get('/{package}', [Admin\PackagesController::class, 'show'])->whereNumber('package')->middleware('admin.can:packages.view');
         Route::patch('/{package}', [Admin\PackagesController::class, 'update'])->whereNumber('package')->middleware('admin.can:packages.update');
         Route::delete('/{package}', [Admin\PackagesController::class, 'destroy'])->whereNumber('package')->middleware('admin.can:packages.delete');
     });

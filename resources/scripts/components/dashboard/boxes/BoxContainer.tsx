@@ -85,7 +85,7 @@ export default () => {
         if (!box.renew) return;
         clearFlashes('box');
         setPaying(true);
-        checkout(box.renew.package, provider, { box: box.id })
+        checkout([{ package: box.renew.package, box: box.id }], provider)
             .then((url) => {
                 window.location.href = url;
             })

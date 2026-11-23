@@ -81,12 +81,18 @@ export const usePackages = () =>
         revalidateOnFocus: false,
     });
 
+export const usePackage = (id: number | null) =>
+    useSWR<AdminPackage, AxiosError>(
+        id === null ? null : `admin:package:${id}`,
+        async () => (await http.get(`${base}/packages/${id}`)).data,
+        { revalidateOnFocus: false }
+    );
+
 export const savePackage = async (
     id: number | null,
     body: Omit<AdminPackage, 'id' | 'uuid' | 'sold'>
-): Promise<void> => {
-    await (id === null ? http.post(`${base}/packages`, body) : http.patch(`${base}/packages/${id}`, body));
-};
+): Promise<AdminPackage> =>
+    (await (id === null ? http.post(`${base}/packages`, body) : http.patch(`${base}/packages/${id}`, body))).data;
 
 export const deletePackage = async (id: number): Promise<void> => {
     await http.delete(`${base}/packages/${id}`);
@@ -97,14 +103,19 @@ export interface AdminOrder {
     uuid: string;
     user: { id: number; username: string };
     package: string;
-    kind: 'server' | 'box';
     amount: number;
     currency: string;
     provider: string;
     status: 'pending' | 'paid' | 'canceled' | 'failed' | 'refunded';
-    renewal: boolean;
-    box_id: number | null;
-    server_id: number | null;
+    items: {
+        name: string;
+        kind: 'server' | 'box';
+        renewal: boolean;
+        box_id: number | null;
+        server_id: number | null;
+        done: boolean;
+        error: string | null;
+    }[];
     setting_up: boolean;
     error: string | null;
     paid_at: string | null;

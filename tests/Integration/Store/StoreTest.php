@@ -75,11 +75,18 @@ class StoreTest extends IntegrationTestCase
         ]);
     }
 
+    /** @param array<string, mixed> $extra box/server uuid to renew, or quantity */
     private function stripeCheckout(User $user, StorePackage $package, array $extra = []): StoreOrder
+    {
+        return $this->checkoutItems($user, [['package' => $package->uuid] + $extra]);
+    }
+
+    /** @param list<array<string, mixed>> $items */
+    private function checkoutItems(User $user, array $items): StoreOrder
     {
         // A new session id every time (an earlier fake of the same address would otherwise answer first).
         Http::fake(['api.stripe.com/v1/checkout/sessions' => fn () => Http::response(['id' => 'cs_' . bin2hex(random_bytes(4)), 'url' => 'https://checkout.stripe.com/pay/x'], 200)]);
-        $this->actingAs($user)->postJson('/api/client/store/checkout', ['package' => $package->uuid, 'provider' => 'stripe'] + $extra)->assertOk()->assertJsonPath('url', 'https://checkout.stripe.com/pay/x');
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => $items, 'provider' => 'stripe'])->assertOk()->assertJsonPath('url', 'https://checkout.stripe.com/pay/x');
 
         return StoreOrder::query()->where('user_id', $user->id)->orderByDesc('id')->firstOrFail();
     }
@@ -106,7 +113,7 @@ class StoreTest extends IntegrationTestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->getJson('/api/client/store')->assertOk()->assertJsonPath('open', false)->assertJsonCount(0, 'packages');
-        $this->actingAs($user)->postJson('/api/client/store/checkout', ['package' => $package->uuid, 'provider' => 'stripe'])->assertStatus(400);
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => [['package' => $package->uuid]], 'provider' => 'stripe'])->assertStatus(400);
     }
 
     public function testThePackagesAndWaysOfPayingAreListedWhenOpen(): void
@@ -152,7 +159,7 @@ class StoreTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(now()->addDays(30)->timestamp, $box->expires_at->timestamp, 5);
         $order->refresh();
         $this->assertSame('paid', $order->status);
-        $this->assertSame($box->id, $order->box_id);
+        $this->assertSame($box->id, $order->items()->sole()->box_id);
         $this->assertNotNull($order->fulfilled_at);
     }
 
@@ -215,7 +222,7 @@ class StoreTest extends IntegrationTestCase
             'api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response(['access_token' => 'tok'], 200),
             'api-m.sandbox.paypal.com/v2/checkout/orders' => Http::response(['id' => $pp, 'links' => [['rel' => 'payer-action', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=' . $pp]]], 201),
         ]);
-        $this->actingAs($user)->postJson('/api/client/store/checkout', ['package' => $package->uuid, 'provider' => 'paypal'])->assertOk()->assertJsonPath('url', 'https://www.sandbox.paypal.com/checkoutnow?token=' . $pp);
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => [['package' => $package->uuid]], 'provider' => 'paypal'])->assertOk()->assertJsonPath('url', 'https://www.sandbox.paypal.com/checkoutnow?token=' . $pp);
         $order = StoreOrder::query()->where('user_id', $user->id)->sole();
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/v2/checkout/orders') && $r['purchase_units'][0]['amount']['value'] === '10.00' && $r['purchase_units'][0]['custom_id'] === $order->uuid);
 
@@ -244,7 +251,7 @@ class StoreTest extends IntegrationTestCase
         $this->assertSame([2048, 5120, 100, 2], [$server->memory, $server->disk, $server->cpu, $server->allocation_limit]);
         $this->assertSame($this->node, $server->node_id);
         $this->assertEqualsWithDelta(now()->addDays(30)->timestamp, $server->expires_at->timestamp, 5);
-        $this->assertSame($server->id, $order->refresh()->server_id);
+        $this->assertSame($server->id, $order->items()->sole()->server_id);
     }
 
     public function testRenewingLengthensTheTimeAndLetsAnExpiredBoxRunAgain(): void
@@ -275,7 +282,7 @@ class StoreTest extends IntegrationTestCase
         $box = $this->app->make(\Pterodactyl\Services\Boxes\BoxService::class)->create($owner, ['name' => 'Theirs', 'node_id' => $this->node, 'memory' => 4096, 'disk' => 10240, 'cpu' => 200]);
         Http::fake();
 
-        $this->actingAs(User::factory()->create())->postJson('/api/client/store/checkout', ['package' => $this->package()->uuid, 'provider' => 'stripe', 'box' => $box->uuid])->assertStatus(400);
+        $this->actingAs(User::factory()->create())->postJson('/api/client/store/checkout', ['items' => [['package' => $this->package()->uuid, 'box' => $box->uuid]], 'provider' => 'stripe'])->assertStatus(400);
     }
 
     public function testAPaidOrderThatCannotBeSetUpKeepsItsReasonAndCanBeTriedAgain(): void
@@ -338,5 +345,82 @@ class StoreTest extends IntegrationTestCase
         $id = $this->actingAs($admin)->postJson('/api/client/admin/packages', $payload)->assertStatus(201)->json('id');
         $this->patchJson('/api/client/admin/packages/' . $id, array_merge($payload, ['price' => 3000]))->assertOk()->assertJsonPath('price', 3000);
         $this->deleteJson('/api/client/admin/packages/' . $id)->assertStatus(204);
+    }
+
+    public function testACartOfSeveralThingsIsOnePaymentForTheTotal(): void
+    {
+        $user = User::factory()->create();
+        $box = $this->package('box', ['price' => 1000]);
+        $server = $this->package('server', ['price' => 500, 'memory' => 2048, 'disk' => 5120, 'cpu' => 100, 'allocations' => 1, 'backups' => 0, 'databases' => 0]);
+
+        $order = $this->checkoutItems($user, [['package' => $box->uuid], ['package' => $server->uuid, 'quantity' => 2]]);
+
+        $this->assertSame(2000, $order->amount);
+        $this->assertSame(3, $order->items()->count());
+        Http::assertSent(function (Request $request) use ($box, $server) {
+            $lines = collect($request['line_items'] ?? []);
+
+            return $request->url() === 'https://api.stripe.com/v1/checkout/sessions' && $lines->count() === 2
+                && $lines->firstWhere('price_data.product_data.name', $server->name)['quantity'] === 2
+                && $lines->firstWhere('price_data.product_data.name', $box->name)['quantity'] === 1;
+        });
+
+        [$body, $signature] = $this->stripeEvent('checkout.session.completed', $order);
+        $this->deliver('stripe', $body, $signature)->assertOk();
+        $this->deliver('stripe', $body, $signature)->assertOk();
+
+        $this->assertSame(1, Box::query()->where('user_id', $user->id)->count());
+        $this->assertSame(2, Server::query()->where('owner_id', $user->id)->count());
+        $this->assertSame(0, $order->refresh()->items()->whereNull('fulfilled_at')->count());
+        $this->actingAs($user)->getJson('/api/client/store/orders')->assertOk()->assertJsonPath('data.0.setting_up', false)->assertJsonCount(3, 'data.0.items');
+    }
+
+    public function testWhatCouldBeMadeStaysMadeWhenAnotherThingInTheCartCould_Not(): void
+    {
+        $user = User::factory()->create();
+        $box = $this->package('box');
+        // This server needs a node that has no port to give.
+        $empty = $this->createServerModel(['egg_id' => $this->egg->id, 'nest_id' => $this->egg->nest_id]);
+        Allocation::query()->where('node_id', $empty->node_id)->whereNull('server_id')->update(['server_id' => $empty->id]);
+        $server = $this->package('server', ['node_id' => $empty->node_id]);
+
+        $order = $this->checkoutItems($user, [['package' => $box->uuid], ['package' => $server->uuid]]);
+        [$body, $signature] = $this->stripeEvent('checkout.session.completed', $order);
+        $this->deliver('stripe', $body, $signature)->assertOk();
+
+        $this->assertSame(1, Box::query()->where('user_id', $user->id)->count());
+        $this->assertSame(0, Server::query()->where('owner_id', $user->id)->count());
+        $order->refresh();
+        $this->assertNull($order->fulfilled_at);
+        $this->assertStringContainsString($server->name, (string) $order->error);
+        $this->actingAs($user)->getJson('/api/client/store/orders')->assertOk()->assertJsonPath('data.0.setting_up', true)->assertJsonPath('data.0.items.0.done', true)->assertJsonPath('data.0.items.1.done', false);
+
+        // Trying again does not make the box a second time.
+        Allocation::factory()->times(2)->create(['node_id' => $empty->node_id]);
+        $this->actingAs(User::factory()->create(['root_admin' => true]))->postJson('/api/client/admin/orders/' . $order->id . '/fulfill')->assertOk()->assertJsonPath('setting_up', false);
+        $this->assertSame(1, Box::query()->where('user_id', $user->id)->count());
+        $this->assertSame(1, Server::query()->where('owner_id', $user->id)->count());
+    }
+
+    public function testACartHasLimitsAndAnEmptyOneIsRefused(): void
+    {
+        $user = User::factory()->create();
+        $package = $this->package();
+        Http::fake();
+
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => [], 'provider' => 'stripe'])->assertStatus(422);
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => [['package' => $package->uuid, 'quantity' => 21]], 'provider' => 'stripe'])->assertStatus(422);
+        $this->actingAs($user)->postJson('/api/client/store/checkout', ['items' => [['package' => $package->uuid, 'quantity' => 15], ['package' => $package->uuid, 'quantity' => 10]], 'provider' => 'stripe'])->assertStatus(400);
+        $this->assertSame(0, StoreOrder::query()->where('user_id', $user->id)->count());
+    }
+
+    public function testThePricesAreTheOnesOfTheStoreWhateverTheCartShowed(): void
+    {
+        $user = User::factory()->create();
+        $package = $this->package('box', ['price' => 1000]);
+        // The cart only knows which package and how many, there is no price in what the browser sends.
+        $package->forceFill(['price' => 1500])->save();
+
+        $this->assertSame(1500, $this->checkoutItems($user, [['package' => $package->uuid, 'price' => 1]])->amount);
     }
 }

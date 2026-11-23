@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CubeIcon, ServerIcon } from '@heroicons/react/solid';
+import { useStoreState } from 'easy-peasy';
+import { CheckIcon, CubeIcon, ServerIcon, ShoppingCartIcon } from '@heroicons/react/solid';
+import { ApplicationStore } from '@/state';
 import PageContentBlock from '@/components/elements/PageContentBlock';
 import PageHeader, { EmptyState } from '@/components/elements/PageHeader';
 import FlashMessageRender from '@/components/FlashMessageRender';
 import Spinner from '@/components/elements/Spinner';
 import { Button } from '@/components/elements/button/index';
-import useFlash from '@/plugins/useFlash';
-import { checkout, StorePackage, useOrders, useStore } from '@/api/store';
+import { useOrders, useStore } from '@/api/store';
+import { addToCart, cartCount, MAX_IN_CART, MAX_PER_PACKAGE, useCart } from '@/lib/cart';
 import { formatMoney, periodLabel, SHARE_KEYS, SHARE_LABELS, shareText } from '@/lib/store';
 
 const STATUS: Record<string, string> = {
@@ -22,27 +24,33 @@ const STATUS: Record<string, string> = {
 export default () => {
     const { data: store, error } = useStore();
     const { data: orders } = useOrders();
-    const { clearFlashes, clearAndAddHttpError } = useFlash();
     const canceled = new URLSearchParams(useLocation().search).get('canceled');
-    const [paying, setPaying] = useState<string | null>(null);
+    const user = useStoreState((state: ApplicationStore) => state.user.data!.uuid);
+    const cart = useCart(user);
+    const count = cartCount(cart);
+    const [justAdded, setJustAdded] = useState<string | null>(null);
 
-    const buy = (pkg: StorePackage, provider: string) => {
-        clearFlashes('store');
-        setPaying(pkg.id + provider);
-        checkout(pkg.id, provider)
-            .then((url) => {
-                window.location.href = url;
-            })
-            .catch((e) => {
-                clearAndAddHttpError({ key: 'store', error: e });
-                setPaying(null);
-            });
+    const add = (id: string) => {
+        if (addToCart(user, id)) {
+            setJustAdded(id);
+            setTimeout(() => setJustAdded((now) => (now === id ? null : now)), 1500);
+        }
     };
 
     return (
         <PageContentBlock title={'Store'}>
-            <div className={'mt-6'}>
-                <PageHeader title={'Store'} subtitle={'Servers and boxes of resources to run your own servers in'} />
+            <div className={'mt-6 flex flex-wrap items-start justify-between gap-3'}>
+                <PageHeader
+                    title={'Store'}
+                    subtitle={'Servers and boxes of resources to run your own servers in'}
+                    className={'mb-0'}
+                />
+                <Link to={'/store/cart'}>
+                    <Button variant={Button.Variants.Secondary}>
+                        <ShoppingCartIcon className={'-ml-1 mr-2 h-4 w-4'} />
+                        Cart{count > 0 ? ` (${count})` : ''}
+                    </Button>
+                </Link>
             </div>
             <FlashMessageRender byKey={'store'} className={'mb-4'} />
             {canceled && (
@@ -102,21 +110,31 @@ export default () => {
                                     </li>
                                 ))}
                             </ul>
-                            <div className={'flex flex-wrap gap-2'}>
-                                {store.providers.map((provider) => (
-                                    <Button
-                                        key={provider.id}
-                                        disabled={paying !== null}
-                                        onClick={() => buy(pkg, provider.id)}
-                                    >
-                                        {paying === pkg.id + provider.id
-                                            ? 'Going to the payment page...'
-                                            : store.providers.length > 1
-                                            ? provider.name
-                                            : 'Buy'}
-                                    </Button>
-                                ))}
-                            </div>
+                            {(() => {
+                                const inCart = cart.find((l) => l.package === pkg.id)?.quantity ?? 0;
+                                const full = inCart >= MAX_PER_PACKAGE || count >= MAX_IN_CART;
+
+                                return (
+                                    <div className={'flex flex-wrap items-center gap-3'}>
+                                        <Button disabled={full} onClick={() => add(pkg.id)}>
+                                            {justAdded === pkg.id ? (
+                                                <>
+                                                    <CheckIcon className={'-ml-1 mr-2 h-4 w-4'} />
+                                                    Added
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShoppingCartIcon className={'-ml-1 mr-2 h-4 w-4'} />
+                                                    Add to cart
+                                                </>
+                                            )}
+                                        </Button>
+                                        {inCart > 0 && (
+                                            <span className={'text-xs text-neutral-400'}>{inCart} in your cart</span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ))}
                 </div>
@@ -134,11 +152,17 @@ export default () => {
                                 }
                             >
                                 <div className={'min-w-[10rem] flex-1'}>
-                                    <p className={'text-sm font-medium text-neutral-50'}>
-                                        {order.package}
-                                        {order.renewal && (
-                                            <span className={'ml-2 text-xs text-neutral-400'}>renewal</span>
-                                        )}
+                                    <p className={'text-sm font-medium text-neutral-50'}>{order.package}</p>
+                                    <p className={'text-xs text-neutral-300'}>
+                                        {Object.entries(
+                                            order.items.reduce<Record<string, number>>((all, item) => {
+                                                const name = item.renewal ? `${item.name} (renewal)` : item.name;
+
+                                                return { ...all, [name]: (all[name] || 0) + 1 };
+                                            }, {})
+                                        )
+                                            .map(([name, n]) => (n > 1 ? `${n} x ${name}` : name))
+                                            .join(', ')}
                                     </p>
                                     <p className={'text-xs text-neutral-400'}>
                                         {order.created_at ? new Date(order.created_at).toLocaleString() : ''} ·{' '}
@@ -156,21 +180,24 @@ export default () => {
                                 >
                                     {order.setting_up ? 'Setting up' : order.status}
                                 </span>
-                                {order.box && (
-                                    <Link
-                                        to={`/boxes/${order.box}`}
-                                        className={'text-xs font-semibold text-primary-600 hover:underline'}
-                                    >
-                                        Open box
-                                    </Link>
-                                )}
-                                {order.server && (
-                                    <Link
-                                        to={`/server/${order.server}`}
-                                        className={'text-xs font-semibold text-primary-600 hover:underline'}
-                                    >
-                                        Open server
-                                    </Link>
+                                {order.items.map((item, index) =>
+                                    item.box ? (
+                                        <Link
+                                            key={index}
+                                            to={`/boxes/${item.box}`}
+                                            className={'text-xs font-semibold text-primary-600 hover:underline'}
+                                        >
+                                            Open box
+                                        </Link>
+                                    ) : item.server ? (
+                                        <Link
+                                            key={index}
+                                            to={`/server/${item.server}`}
+                                            className={'text-xs font-semibold text-primary-600 hover:underline'}
+                                        >
+                                            Open server
+                                        </Link>
+                                    ) : null
                                 )}
                             </div>
                         ))}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ReceiptTaxIcon, SearchIcon } from '@heroicons/react/solid';
 import AdminPage from '@/components/admin/AdminPage';
+import AdminLink from '@/components/admin/AdminLink';
 import { AdminTable, Cell, Empty, Pill, Row } from '@/components/admin/AdminTable';
 import { ListHeader } from '@/components/elements/PageHeader';
 import { Button } from '@/components/elements/button/index';
@@ -12,7 +13,6 @@ import useAdmin from '@/plugins/useAdmin';
 import useFlash from '@/plugins/useFlash';
 import { AdminOrder, fulfillOrder, refundOrder, useOrders } from '@/api/admin/boxes';
 import { formatMoney } from '@/lib/store';
-import { Link } from 'react-router-dom';
 
 const TONE: Record<string, 'green' | 'yellow' | 'red' | 'primary'> = {
     paid: 'green',
@@ -92,13 +92,24 @@ export default () => {
                                         : ''}
                                 </Cell>
                                 <Cell>
-                                    <Link to={`/admin/users/${order.user.id}`} className={'hover:text-primary-600'}>
+                                    <AdminLink
+                                        to={`/admin/users/view/${order.user.id}`}
+                                        className={'hover:text-primary-600'}
+                                    >
                                         {order.user.username}
-                                    </Link>
+                                    </AdminLink>
                                 </Cell>
                                 <Cell className={'font-medium text-neutral-50'}>
-                                    {order.package}
-                                    {order.renewal && <span className={'ml-2 text-xs text-neutral-400'}>renewal</span>}
+                                    {order.items.length > 1 ? `${order.items.length} items` : order.package}
+                                    {order.items.map((item, index) => (
+                                        <p key={index} className={'text-xs font-normal text-neutral-300'}>
+                                            {item.name}
+                                            {item.renewal && ' (renewal)'}
+                                            {order.status === 'paid' && !item.done && (
+                                                <span className={'ml-1 text-yellow-700'}>not set up</span>
+                                            )}
+                                        </p>
+                                    ))}
                                     {order.error && <p className={'mt-1 text-xs text-red-600'}>{order.error}</p>}
                                 </Cell>
                                 <Cell>{formatMoney(order.amount, order.currency)}</Cell>
@@ -110,15 +121,16 @@ export default () => {
                                 </Cell>
                                 <Cell>
                                     <div className={'flex justify-end gap-2'}>
-                                        {order.box_id && (
-                                            <Link to={`/admin/boxes/view/${order.box_id}`}>
-                                                <Button.Text size={Button.Sizes.Small}>Box</Button.Text>
-                                            </Link>
-                                        )}
-                                        {order.server_id && (
-                                            <Link to={`/admin/servers/view/${order.server_id}`}>
-                                                <Button.Text size={Button.Sizes.Small}>Server</Button.Text>
-                                            </Link>
+                                        {order.items.map((item, index) =>
+                                            item.box_id ? (
+                                                <AdminLink key={index} to={`/admin/boxes/view/${item.box_id}`}>
+                                                    <Button.Text size={Button.Sizes.Small}>Box</Button.Text>
+                                                </AdminLink>
+                                            ) : item.server_id ? (
+                                                <AdminLink key={index} to={`/admin/servers/view/${item.server_id}`}>
+                                                    <Button.Text size={Button.Sizes.Small}>Server</Button.Text>
+                                                </AdminLink>
+                                            ) : null
                                         )}
                                         {can && order.setting_up && (
                                             <Button

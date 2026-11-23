@@ -5,6 +5,7 @@ import CreateServerContainer from '@/components/dashboard/CreateServerContainer'
 import BoxesContainer from '@/components/dashboard/boxes/BoxesContainer';
 import BoxContainer from '@/components/dashboard/boxes/BoxContainer';
 import StoreContainer from '@/components/dashboard/store/StoreContainer';
+import CartContainer from '@/components/dashboard/store/CartContainer';
 import StoreReturnContainer from '@/components/dashboard/store/StoreReturnContainer';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import { NotFound } from '@/components/elements/ScreenBlock';
@@ -68,6 +69,9 @@ export default () => {
                                 </Route>
                                 <Route path={'/store'} exact>
                                     <StoreContainer />
+                                </Route>
+                                <Route path={'/store/cart'} exact>
+                                    <CartContainer />
                                 </Route>
                                 <Route path={'/store/return'} exact>
                                     <StoreReturnContainer />

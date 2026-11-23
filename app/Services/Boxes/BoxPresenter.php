@@ -4,8 +4,8 @@ namespace Pterodactyl\Services\Boxes;
 
 use Pterodactyl\Models\Box;
 use Pterodactyl\Models\Server;
-use Pterodactyl\Models\StoreOrder;
 use Pterodactyl\Models\StorePackage;
+use Pterodactyl\Models\StoreOrderItem;
 
 /** A box as the pages show it: what it holds, what is used and left, and the servers in it. */
 final class BoxPresenter
@@ -82,12 +82,12 @@ final class BoxPresenter
         if ($box->source !== 'order') {
             return null;
         }
-        $order = StoreOrder::query()->where('box_id', $box->id)->where('renewal', false)->orderBy('id')->first();
-        $package = $order?->package_id ? StorePackage::query()->find($order->package_id) : null;
+        $item = StoreOrderItem::query()->with('order')->where('box_id', $box->id)->where('renewal', false)->orderBy('id')->first();
+        $package = $item?->package_id ? StorePackage::query()->find($item->package_id) : null;
         if (!$package || !$package->period_days) {
             return null;
         }
 
-        return ['package' => $package->uuid, 'name' => $package->name, 'price' => $package->price, 'period_days' => $package->period_days, 'currency' => $order->currency];
+        return ['package' => $package->uuid, 'name' => $package->name, 'price' => $package->price, 'period_days' => $package->period_days, 'currency' => $item->order->currency];
     }
 }

@@ -45,6 +45,11 @@ class PackagesController extends Controller
         ]);
     }
 
+    public function show(int $package): JsonResponse
+    {
+        return new JsonResponse(self::present(StorePackage::query()->findOrFail($package)));
+    }
+
     public function store(Request $request): JsonResponse
     {
         $package = StorePackage::query()->create($request->validate($this->rules()));
@@ -94,7 +99,7 @@ class PackagesController extends Controller
             'databases' => $p->databases,
             'node_id' => $p->node_id,
             'egg_id' => $p->egg_id,
-            'sold' => StoreOrder::query()->where('package_id', $p->id)->where('status', StoreOrder::PAID)->count(),
+            'sold' => \Pterodactyl\Models\StoreOrderItem::query()->where('package_id', $p->id)->whereHas('order', fn ($q) => $q->where('status', StoreOrder::PAID))->count(),
         ];
     }
 }

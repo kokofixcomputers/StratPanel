@@ -145,6 +145,24 @@ const NodeServersPage = lazy(
 );
 
 const BoxesPage = lazy(() => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxesPage'));
+const BoxCreatePage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxCreatePage')
+);
+const BoxDetailsPage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxDetailsPage')
+);
+const BoxServersPage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxServersPage')
+);
+const BoxManagePage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxManagePage')
+);
+const BoxDeletePage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxDeletePage')
+);
+const PackageFormPage = lazy(
+    () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/store/PackageFormPage')
+);
 const BoxPage = lazy(() => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/boxes/BoxPage'));
 const PackagesPage = lazy(
     () => import(/* webpackChunkName: "admin-boxes" */ '@/components/admin/pages/store/PackagesPage')
@@ -239,8 +257,15 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     { path: '/admin/settings/pools', permissions: ['settings.pools.view'], component: SettingsPoolsPage },
     { path: '/admin/settings/trash', permissions: ['settings.trash.view'], component: SettingsTrashPage },
     { path: '/admin/boxes', permissions: ['boxes.view'], component: BoxesPage },
+    { path: '/admin/boxes/new', permissions: ['boxes.create'], component: BoxCreatePage },
     { path: '/admin/boxes/view/:id', permissions: ['boxes.view'], component: BoxPage },
+    { path: '/admin/boxes/view/:id/details', permissions: ['boxes.view'], component: BoxDetailsPage },
+    { path: '/admin/boxes/view/:id/servers', permissions: ['boxes.view'], component: BoxServersPage },
+    { path: '/admin/boxes/view/:id/manage', permissions: ['boxes.view'], component: BoxManagePage },
+    { path: '/admin/boxes/view/:id/delete', permissions: ['boxes.delete'], component: BoxDeletePage },
     { path: '/admin/packages', permissions: ['packages.view'], component: PackagesPage },
+    { path: '/admin/packages/new', permissions: ['packages.create'], component: PackageFormPage },
+    { path: '/admin/packages/view/:id', permissions: ['packages.view'], component: PackageFormPage },
     { path: '/admin/orders', permissions: ['orders.view'], component: OrdersPage },
     { path: '/admin/settings/payments', permissions: ['settings.payments.view'], component: SettingsPaymentsPage },
     { path: '/admin/settings/minecraft', permissions: ['settings.minecraft.view'], component: SettingsMinecraftPage },

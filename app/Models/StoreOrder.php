@@ -4,6 +4,7 @@ namespace Pterodactyl\Models;
 
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -62,6 +63,18 @@ class StoreOrder extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** What the payment is for: one line for every box or server. */
+    public function items(): HasMany
+    {
+        return $this->hasMany(StoreOrderItem::class, 'order_id')->orderBy('id');
+    }
+
+    /** Whether something on the order still has to be made (it was paid, and a line is not done). */
+    public function isSettingUp(): bool
+    {
+        return $this->status === self::PAID && $this->items->contains(fn (StoreOrderItem $i) => $i->fulfilled_at === null);
     }
 
     public function package(): BelongsTo
